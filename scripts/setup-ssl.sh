@@ -1,19 +1,22 @@
 #!/usr/bin/env bash
-# Generates a locally-trusted SSL certificate using APP_DOMAIN from .env
-# Requires mkcert: https://github.com/FiloSottile/mkcert
+# Genera certificados SSL de confianza local con mkcert:
+#   - Certificado para APP_DOMAIN (dominio principal, .env raiz)
+#   - Certificado wildcard *.BASE_DOMAIN (suscripciones locales)
 #
-# Usage:
-#   bash setup-ssl.sh
+# Requiere mkcert: https://github.com/FiloSottile/mkcert
+#
+# Uso (desde la raiz del repo o desde cualquier sitio):
+#   bash scripts/setup-ssl.sh [dominio]    # dominio opcional, default APP_DOMAIN
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-CERTS_DIR="$SCRIPT_DIR/docker/nginx/certs"
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+CERTS_DIR="$ROOT_DIR/docker/nginx/certs"
 
 # Load APP_DOMAIN and BASE_DOMAIN from .env
-if [ -f "$SCRIPT_DIR/.env" ]; then
-    DOMAIN=$(grep -E "^APP_DOMAIN=" "$SCRIPT_DIR/.env" | cut -d '=' -f2)
-    BASE_DOMAIN=$(grep -E "^BASE_DOMAIN=" "$SCRIPT_DIR/.env" | cut -d '=' -f2)
+if [ -f "$ROOT_DIR/.env" ]; then
+    DOMAIN=$(grep -E "^APP_DOMAIN=" "$ROOT_DIR/.env" | cut -d '=' -f2)
+    BASE_DOMAIN=$(grep -E "^BASE_DOMAIN=" "$ROOT_DIR/.env" | cut -d '=' -f2)
 fi
 DOMAIN="${1:-${DOMAIN:-localhost}}"
 

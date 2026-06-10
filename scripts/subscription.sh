@@ -2,16 +2,24 @@
 # Gestiona "suscripciones" locales estilo IONOS: cada cliente es un subdominio
 # (<cliente>.<BASE_DOMAIN>) con su propio contenedor app, su API_PACKAGE y su BD MariaDB.
 #
-# Uso:
-#   bash subscription.sh init                       # prepara el wiring (compose + clients.yml)
-#   bash subscription.sh add <cliente> <Package>    # alta: BD + servicio + vhost + hosts + seed
-#   bash subscription.sh remove <cliente> [--drop-db]
-#   bash subscription.sh list
+# Credenciales de BD por suscripcion: database, usuario y password son el nombre
+# del paquete en snake_case (ej. MiPaquete -> mi_paquete). Por eso cada paquete
+# solo puede tener UNA suscripcion activa. Solo para local: en produccion cada
+# deploy define sus credenciales reales en su .env.
+#
+# Uso (desde la raiz del repo o desde cualquier sitio):
+#   bash scripts/subscription.sh init                       # prepara el wiring (compose + clients.yml)
+#   bash scripts/subscription.sh add <cliente> <Package>    # alta: BD + servicio + vhost + hosts + seed
+#   bash scripts/subscription.sh remove <cliente> [--drop-db]
+#   bash scripts/subscription.sh list
+#
+# Requisitos: stack principal construida (docker compose up -d) y cert wildcard
+# generado (bash scripts/setup-ssl.sh).
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR"
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT_DIR"
 
 CLIENTS_DIR="docker/clients"
 CLIENTS_FILE="docker-compose.clients.yml"
@@ -29,10 +37,13 @@ load_env() {
     BASE_DOMAIN=$(grep -E "^BASE_DOMAIN=" .env | cut -d '=' -f2 || true)
     APP_DOMAIN=$(grep -E "^APP_DOMAIN=" .env | cut -d '=' -f2 || true)
     HTTPS_PORT=$(grep -E "^HTTPS_PORT=" .env | cut -d '=' -f2 || true)
-    DB_ROOT_PASSWORD=$(grep -E "^DB_ROOT_PASSWORD=" .env | cut -d '=' -f2 || true)
     HTTPS_PORT="${HTTPS_PORT:-443}"
     [ -n "$BASE_DOMAIN" ] || die "BASE_DOMAIN no definido en .env"
-    [ -n "$DB_ROOT_PASSWORD" ] || die "DB_ROOT_PASSWORD no definido en .env"
+}
+
+# StudlyCase -> snake_case (MiPaquete -> mi_paquete)
+snake() {
+    echo "$1" | sed -r 's/([a-z0-9])([A-Z])/\1_\2/g' | tr '[:upper:]' '[:lower:]'
 }
 
 ensure_wiring() {
@@ -65,7 +76,7 @@ validate_name() {
 
 require_cert() {
     [ -f "$CERTS_DIR/wildcard.$BASE_DOMAIN.pem" ] || \
-        die "Falta el cert wildcard.$BASE_DOMAIN.pem. Ejecuta: bash setup-ssl.sh"
+        die "Falta el cert wildcard.$BASE_DOMAIN.pem. Ejecuta: bash scripts/setup-ssl.sh"
 }
 
 # ------------------------------------------------------------------ generators
@@ -166,8 +177,10 @@ EOF
 
 # -------------------------------------------------------------------- database
 
+# Root de MariaDB sin password: solo local (MARIADB_ALLOW_EMPTY_ROOT_PASSWORD
+# en docker-compose.yml).
 mariadb_exec() {
-    docker compose exec -T db mariadb -uroot -p"$DB_ROOT_PASSWORD" -e "$1"
+    docker compose exec -T db mariadb -uroot -e "$1"
 }
 
 create_database() {
@@ -254,23 +267,32 @@ hosts_remove() {
 cmd_init() {
     load_env
     ensure_wiring
-    info "Wiring listo. Crea suscripciones con: bash subscription.sh add <cliente> <Package>"
+    info "Wiring listo. Crea suscripciones con: bash scripts/subscription.sh add <cliente> <Package>"
 }
 
 cmd_add() {
     local c="${1:-}" pkg="${2:-}"
-    [ -n "$c" ] && [ -n "$pkg" ] || die "Uso: subscription.sh add <cliente> <Package>"
+    [ -n "$c" ] && [ -n "$pkg" ] || die "Uso: scripts/subscription.sh add <cliente> <Package>"
 
     load_env
     validate_name "$c"
     [ -d "src/packages/$pkg" ] || die "El paquete [$pkg] no existe en src/packages/. Crea uno: php artisan make:package $pkg"
     [ "$pkg" != "Core" ] || die "Core no es un paquete de negocio."
     [ ! -f "$CLIENTS_DIR/$c.env" ] || die "La suscripcion [$c] ya existe."
+
+    # BD/usuario/password = snake_case del paquete => una suscripcion por paquete
+    local existing
+    for existing in "$CLIENTS_DIR"/*.env; do
+        [ -e "$existing" ] || break
+        grep -q "^PACKAGE=$pkg\$" "$existing" && \
+            die "El paquete [$pkg] ya tiene una suscripcion ($(basename "${existing%.env}")). La BD se llama como el paquete: una suscripcion por paquete."
+    done
+
     require_cert
     ensure_wiring
 
-    local db="sub_${c//-/_}" pass
-    pass=$(openssl rand -hex 16)
+    local db
+    db=$(snake "$pkg")
 
     info "Registrando suscripcion [$c] (paquete $pkg, BD $db)..."
     cat > "$CLIENTS_DIR/$c.env" <<EOF
@@ -278,7 +300,7 @@ CLIENT=$c
 PACKAGE=$pkg
 DB_DATABASE=$db
 DB_USERNAME=$db
-DB_PASSWORD=$pass
+DB_PASSWORD=$db
 CREATED_AT=$(date -Iseconds)
 EOF
 
@@ -290,7 +312,7 @@ EOF
     until docker compose exec -T db healthcheck.sh --connect >/dev/null 2>&1; do sleep 2; done
 
     info "Creando base de datos y usuario..."
-    create_database "$db" "$db" "$pass"
+    create_database "$db" "$db" "$db"
 
     write_vhost "$c"
 
@@ -318,7 +340,7 @@ EOF
 
 cmd_remove() {
     local c="${1:-}" drop="${2:-}"
-    [ -n "$c" ] || die "Uso: subscription.sh remove <cliente> [--drop-db]"
+    [ -n "$c" ] || die "Uso: scripts/subscription.sh remove <cliente> [--drop-db]"
 
     load_env
     [ -f "$CLIENTS_DIR/$c.env" ] || die "La suscripcion [$c] no existe."
@@ -365,7 +387,7 @@ cmd_list() {
         printf "%-15s %-15s %-35s %-20s %s\n" \
             "$CLIENT" "$PACKAGE" "$CLIENT.$BASE_DOMAIN:$HTTPS_PORT" "$DB_DATABASE" "${status:-parado}"
     done
-    [ "$found" -eq 1 ] || echo "(sin suscripciones; crea una con: bash subscription.sh add <cliente> <Package>)"
+    [ "$found" -eq 1 ] || echo "(sin suscripciones; crea una con: bash scripts/subscription.sh add <cliente> <Package>)"
 }
 
 # ------------------------------------------------------------------------ main
@@ -376,7 +398,7 @@ case "${1:-}" in
     remove) cmd_remove "${2:-}" "${3:-}" ;;
     list)   cmd_list ;;
     *)
-        echo "Uso: bash subscription.sh <init|add|remove|list>"
+        echo "Uso: bash scripts/subscription.sh <init|add|remove|list>"
         echo "  init                        prepara compose + clients.yml"
         echo "  add <cliente> <Package>     alta de suscripcion"
         echo "  remove <cliente> [--drop-db] baja de suscripcion"

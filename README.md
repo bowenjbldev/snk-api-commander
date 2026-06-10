@@ -110,18 +110,20 @@ Para probar el modelo de produccion sin VPS: una sola stack Docker simula N susc
 **Requisitos:**
 
 1. `BASE_DOMAIN` definido en el `.env` raiz (default `snake.test`; evita `.local`, colisiona con mDNS).
-2. Certificado wildcard: `bash setup-ssl.sh` (genera `*.BASE_DOMAIN` con mkcert). Para que el navegador de Windows confie, importa la CA: `certutil.exe -addstore -f ROOT "$(wslpath -w "$(mkcert -CAROOT)/rootCA.pem")"`.
+2. Certificado wildcard: `bash scripts/setup-ssl.sh` (genera `*.BASE_DOMAIN` con mkcert). Para que el navegador de Windows confie, importa la CA: `certutil.exe -addstore -f ROOT "$(wslpath -w "$(mkcert -CAROOT)/rootCA.pem")"`.
 3. Stack principal arrancada al menos una vez (`docker compose up -d`) para que exista la imagen.
 
 **Uso:**
 
 ```bash
-bash subscription.sh add cliente1 MiPaquete   # alta completa
-bash subscription.sh list                     # listado y estado
-bash subscription.sh remove cliente1 --drop-db
+bash scripts/subscription.sh add cliente1 MiPaquete   # alta completa
+bash scripts/subscription.sh list                     # listado y estado
+bash scripts/subscription.sh remove cliente1 --drop-db
 ```
 
-`add` hace todo el ciclo: crea BD + usuario MariaDB con password aleatoria, genera el bloque de servicio en `docker-compose.clients.yml` (gitignored, regenerado desde `docker/clients/*.env`), genera el vhost nginx, levanta el contenedor (el entrypoint migra Core + paquete automaticamente), ejecuta seeders, y añade el subdominio al hosts de WSL y de Windows (pide UAC; si lo cancelas, imprime la linea para añadir a mano).
+`add` hace todo el ciclo: crea BD + usuario MariaDB, genera el bloque de servicio en `docker-compose.clients.yml` (gitignored, regenerado desde `docker/clients/*.env`), genera el vhost nginx, levanta el contenedor (el entrypoint migra Core + paquete automaticamente), ejecuta seeders, y añade el subdominio al hosts de WSL y de Windows (pide UAC; si lo cancelas, imprime la linea para añadir a mano).
+
+**Credenciales de BD por suscripcion**: database, usuario y password son el nombre del paquete en snake_case (`MiPaquete` → `mi_paquete`). Por eso cada paquete admite una sola suscripcion. El root de MariaDB corre sin password (`MARIADB_ALLOW_EMPTY_ROOT_PASSWORD`) — todo esto es SOLO para local; en produccion cada deploy define credenciales reales en su `.env`.
 
 **Aislamiento por suscripcion:**
 
