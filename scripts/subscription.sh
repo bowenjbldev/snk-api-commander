@@ -212,6 +212,14 @@ wait_for_app() {
 
 # ----------------------------------------------------------------------- hosts
 
+# El hosts de Windows se edita DIRECTO (sin UAC) si setup-ssl.sh ya concedio
+# permiso de escritura al usuario (icacls, una sola elevacion). Si no hay
+# permiso, fallback a una ventana UAC puntual.
+
+win_hosts_writable() {
+    ( : >> "$WIN_HOSTS" ) 2>/dev/null
+}
+
 hosts_add() {
     local fqdn="$1" c="$2"
 
@@ -221,8 +229,11 @@ hosts_add() {
             || echo "AVISO: no se pudo editar /etc/hosts de WSL (sudo cancelado?)"
     fi
 
-    if command -v powershell.exe >/dev/null 2>&1; then
-        if ! grep -q "$fqdn" "$WIN_HOSTS" 2>/dev/null; then
+    if [ -f "$WIN_HOSTS" ] && ! grep -q "$fqdn" "$WIN_HOSTS"; then
+        if win_hosts_writable; then
+            printf '\r\n127.0.0.1 %s # snake-sub:%s' "$fqdn" "$c" >> "$WIN_HOSTS"
+            info "Hosts de Windows: añadido $fqdn (sin UAC)"
+        elif command -v powershell.exe >/dev/null 2>&1; then
             info "Añadiendo $fqdn al hosts de Windows (acepta el UAC)..."
             local ps enc
             ps="Add-Content -Path \$env:SystemRoot\\System32\\drivers\\etc\\hosts -Value '127.0.0.1 $fqdn # snake-sub:$c'"
@@ -233,10 +244,11 @@ hosts_add() {
         fi
     fi
 
-    if ! grep -q "$fqdn" "$WIN_HOSTS" 2>/dev/null; then
+    if [ -f "$WIN_HOSTS" ] && ! grep -q "$fqdn" "$WIN_HOSTS"; then
         echo ""
         echo "AVISO: añade manualmente esta linea a C:\\Windows\\System32\\drivers\\etc\\hosts:"
         echo "  127.0.0.1 $fqdn # snake-sub:$c"
+        echo "(o ejecuta 'bash scripts/setup-ssl.sh' para conceder permiso de hosts con una sola elevacion)"
         echo ""
     fi
 }
@@ -247,17 +259,27 @@ hosts_remove() {
     sudo sed -i "/# snake-sub:$c\$/d" /etc/hosts 2>/dev/null \
         || echo "AVISO: limpia a mano la entrada snake-sub:$c de /etc/hosts"
 
-    if command -v powershell.exe >/dev/null 2>&1 && grep -q "snake-sub:$c" "$WIN_HOSTS" 2>/dev/null; then
-        info "Quitando entrada del hosts de Windows (acepta el UAC)..."
-        local ps enc
-        ps="\$h=\"\$env:SystemRoot\\System32\\drivers\\etc\\hosts\"; Set-Content -Path \$h -Value (Get-Content \$h | Where-Object { \$_ -notmatch 'snake-sub:$c\$' })"
-        enc=$(printf '%s' "$ps" | iconv -f UTF-8 -t UTF-16LE | base64 -w0)
-        powershell.exe -NoProfile -Command \
-            "Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile','-EncodedCommand','$enc'" \
-            >/dev/null 2>&1 || true
+    if [ -f "$WIN_HOSTS" ] && grep -q "snake-sub:$c" "$WIN_HOSTS"; then
+        if win_hosts_writable; then
+            # Reescritura via truncado (permiso M sobre el archivo basta; sed -i
+            # fallaria porque necesita crear un temporal en el directorio).
+            # Regex anclada con \r opcional (CRLF) para no comerse cliente10 al quitar cliente1.
+            local content
+            content=$(grep -Ev "snake-sub:$c\r?\$" "$WIN_HOSTS")
+            printf '%s' "$content" > "$WIN_HOSTS"
+            info "Hosts de Windows: entrada de $c eliminada (sin UAC)"
+        elif command -v powershell.exe >/dev/null 2>&1; then
+            info "Quitando entrada del hosts de Windows (acepta el UAC)..."
+            local ps enc
+            ps="\$h=\"\$env:SystemRoot\\System32\\drivers\\etc\\hosts\"; Set-Content -Path \$h -Value (Get-Content \$h | Where-Object { \$_ -notmatch 'snake-sub:$c\$' })"
+            enc=$(printf '%s' "$ps" | iconv -f UTF-8 -t UTF-16LE | base64 -w0)
+            powershell.exe -NoProfile -Command \
+                "Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile','-EncodedCommand','$enc'" \
+                >/dev/null 2>&1 || true
+        fi
     fi
 
-    if grep -q "snake-sub:$c" "$WIN_HOSTS" 2>/dev/null; then
+    if [ -f "$WIN_HOSTS" ] && grep -q "snake-sub:$c" "$WIN_HOSTS"; then
         echo "AVISO: limpia a mano la entrada snake-sub:$c del hosts de Windows."
     fi
 }

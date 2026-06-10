@@ -86,13 +86,52 @@ echo ""
 echo "Certs saved to $CERTS_DIR/"
 echo "Now run: docker compose up -d --force-recreate nginx"
 
-# En WSL, el navegador vive en Windows: importa la CA en el store del usuario.
-# certutil -user no requiere UAC, solo aceptar el dialogo de confirmacion.
-if command -v certutil.exe >/dev/null 2>&1 && command -v wslpath >/dev/null 2>&1; then
-    CA_WIN="$(wslpath -w "$("$MKCERT" -CAROOT)/rootCA.pem")"
-    echo ""
-    echo "Importando la CA de mkcert al store del usuario de Windows (acepta el dialogo)..."
-    certutil.exe -user -addstore Root "$CA_WIN" >/dev/null 2>&1 \
-        && echo "CA importada: el navegador de Windows confiara en los certs." \
-        || echo "AVISO: importa la CA a mano: certutil.exe -user -addstore Root \"$CA_WIN\""
+# --------------------------------------------------- Windows (WSL): UNA elevacion
+# Una sola ventana UAC que deja todo listo para siempre:
+#   1. Importa la CA de mkcert al store de MAQUINA (sin dialogos posteriores).
+#   2. Da a tu usuario permiso de escritura (M) sobre el hosts de Windows,
+#      para que subscription.sh edite el hosts directamente sin UAC.
+# Idempotente: si ambas cosas ya estan hechas, no pide nada.
+WIN_HOSTS="/mnt/c/Windows/System32/drivers/etc/hosts"
+
+if command -v powershell.exe >/dev/null 2>&1 && command -v wslpath >/dev/null 2>&1; then
+    NEED_ELEV=0
+
+    # hosts escribible directamente? (append de 0 bytes: no modifica nada)
+    ( : >> "$WIN_HOSTS" ) 2>/dev/null || NEED_ELEV=1
+
+    # CA ya en el store de maquina?
+    certutil.exe -verifystore Root 2>/dev/null | grep -qi mkcert || NEED_ELEV=1
+
+    if [ "$NEED_ELEV" -eq 1 ]; then
+        WIN_USER="$(powershell.exe -NoProfile -Command '$env:UserName' 2>/dev/null | tr -d '\r')"
+
+        # Copia la CA a disco C: — un certutil elevado puede no leer \\wsl.localhost
+        WIN_TMP="/mnt/c/Users/$WIN_USER/AppData/Local/Temp"
+        if [ -d "$WIN_TMP" ]; then
+            cp "$("$MKCERT" -CAROOT)/rootCA.pem" "$WIN_TMP/mkcert-rootCA.pem"
+            CA_WIN="C:\\Users\\$WIN_USER\\AppData\\Local\\Temp\\mkcert-rootCA.pem"
+        else
+            CA_WIN="$(wslpath -w "$("$MKCERT" -CAROOT)/rootCA.pem")"
+        fi
+
+        echo ""
+        echo "Configurando Windows (UNA sola ventana UAC): CA de confianza + permiso de hosts..."
+        PS="certutil -addstore -f ROOT '$CA_WIN'; icacls \$env:SystemRoot\\System32\\drivers\\etc\\hosts /grant '${WIN_USER}:(M)'"
+        ENC=$(printf '%s' "$PS" | iconv -f UTF-8 -t UTF-16LE | base64 -w0)
+        powershell.exe -NoProfile -Command \
+            "Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile','-EncodedCommand','$ENC'" \
+            >/dev/null 2>&1 || true
+
+        if ( : >> "$WIN_HOSTS" ) 2>/dev/null && certutil.exe -verifystore Root 2>/dev/null | grep -qi mkcert; then
+            echo "Windows configurado: navegador confia en los certs y el hosts es editable sin UAC."
+        else
+            echo "AVISO: la elevacion no se completo. Puedes reintentarlo ejecutando este script de nuevo,"
+            echo "       o hacerlo a mano en una PowerShell de administrador:"
+            echo "         certutil -addstore -f ROOT \"$CA_WIN\""
+            echo "         icacls \$env:SystemRoot\\System32\\drivers\\etc\\hosts /grant \"${WIN_USER}:(M)\""
+        fi
+    else
+        echo "Windows ya configurado (CA confiada y hosts editable sin UAC)."
+    fi
 fi

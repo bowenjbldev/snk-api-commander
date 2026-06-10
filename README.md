@@ -124,7 +124,7 @@ Para probar el modelo de produccion sin VPS: una sola stack Docker simula N susc
 **Requisitos:**
 
 1. `BASE_DOMAIN` definido en el `.env` raiz (default `snake.test`; evita `.local`, colisiona con mDNS).
-2. Certificado wildcard: `bash scripts/setup-ssl.sh` (genera `*.BASE_DOMAIN` con mkcert; si no esta instalado se auto-descarga a `~/.local/bin`). En WSL el propio script importa la CA al store del usuario de Windows (acepta el dialogo) para que el navegador confie.
+2. Certificado wildcard: `bash scripts/setup-ssl.sh` (genera `*.BASE_DOMAIN` con mkcert; si no esta instalado se auto-descarga a `~/.local/bin`). En WSL el script pide **una sola elevacion UAC** que deja Windows configurado para siempre: importa la CA de mkcert al store de maquina (navegador confia sin dialogos) y concede a tu usuario permiso de escritura sobre el hosts de Windows, de modo que `subscription.sh` añade/quita subdominios sin volver a pedir permisos. (Nota: ese permiso permite a procesos de tu usuario editar el hosts sin UAC — compromiso aceptable en una maquina de desarrollo.)
 3. Stack principal arrancada al menos una vez (`docker compose up -d`) para que exista la imagen.
 
 **Uso:**
@@ -135,7 +135,7 @@ bash scripts/subscription.sh list                     # listado y estado
 bash scripts/subscription.sh remove cliente1 --drop-db
 ```
 
-`add` hace todo el ciclo: crea BD + usuario MariaDB, genera el bloque de servicio en `docker-compose.clients.yml` (gitignored, regenerado desde `docker/clients/*.env`), genera el vhost nginx, levanta el contenedor (el entrypoint migra Core + paquete automaticamente), ejecuta seeders, y añade el subdominio al hosts de WSL y de Windows (pide UAC; si lo cancelas, imprime la linea para añadir a mano).
+`add` hace todo el ciclo: crea BD + usuario MariaDB, genera el bloque de servicio en `docker-compose.clients.yml` (gitignored, regenerado desde `docker/clients/*.env`), genera el vhost nginx, levanta el contenedor (el entrypoint migra Core + paquete automaticamente), ejecuta seeders, y añade el subdominio al hosts de WSL y de Windows (directo, sin UAC, gracias a la elevacion unica de `setup-ssl.sh`; sin ese permiso, cae a una ventana UAC puntual o imprime la linea para añadir a mano).
 
 **Credenciales de BD por suscripcion**: database, usuario y password son el nombre del paquete en snake_case (`MiPaquete` → `mi_paquete`). Por eso cada paquete admite una sola suscripcion. El root de MariaDB corre sin password (`MARIADB_ALLOW_EMPTY_ROOT_PASSWORD`) — todo esto es SOLO para local; en produccion cada deploy define credenciales reales en su `.env`.
 
