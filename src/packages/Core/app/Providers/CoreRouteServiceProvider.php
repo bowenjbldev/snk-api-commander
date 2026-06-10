@@ -36,7 +36,13 @@ class CoreRouteServiceProvider extends ServiceProvider
     private function configureMiddlewares(): void
     {
         $router = $this->app->make(Router::class);
+
+        // Metering el primero (outermost): registra tambien los 429 del
+        // throttle y los 402 del kill-switch.
+        $router->prependMiddlewareToGroup('api', \Packages\Core\Http\Middleware\CoreMeteringMiddleware::class);
         $router->pushMiddlewareToGroup('api', 'throttle:api');
+        // Kill-switch tras throttle y antes del auth de ruta.
+        $router->pushMiddlewareToGroup('api', \Packages\Core\Http\Middleware\CoreEnsureActiveMiddleware::class);
     }
 
     private function configureRoutes(): void

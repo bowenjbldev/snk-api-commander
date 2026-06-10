@@ -6,8 +6,11 @@ use Illuminate\Support\ServiceProvider;
 use Packages\Core\Console\Commands\CoreMakePackageCommand;
 use Packages\Core\Console\Commands\CoreMigrateCommand;
 use Packages\Core\Console\Commands\CoreMigrateRefreshCommand;
+use Packages\Core\Console\Commands\CoreQuotaMeasureCommand;
 use Packages\Core\Console\Commands\CoreRemovePackageCommand;
 use Packages\Core\Console\Commands\CoreSeedCommand;
+use Packages\Core\Console\Commands\CoreStatusCommand;
+use Packages\Core\Console\Commands\CoreUsageRollupCommand;
 
 class CoreConsoleServiceProvider extends ServiceProvider
 {
@@ -34,6 +37,9 @@ class CoreConsoleServiceProvider extends ServiceProvider
             CoreMigrateCommand::class,
             CoreMigrateRefreshCommand::class,
             CoreSeedCommand::class,
+            CoreStatusCommand::class,
+            CoreUsageRollupCommand::class,
+            CoreQuotaMeasureCommand::class,
             \Packages\Core\Console\Commands\Make\CoreCacheTableMakeCommand::class,
             \Packages\Core\Console\Commands\Make\CoreCastMakeCommand::class,
             \Packages\Core\Console\Commands\Make\CoreChannelMakeCommand::class,

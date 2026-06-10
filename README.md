@@ -247,6 +247,21 @@ php artisan core:seed
 php artisan core:seed --class=MiPaqueteProductSeeder
 ```
 
+### Control plane (estado, metering, cuotas)
+
+Cada deploy mide su uso y conoce su estado. Detalle completo en [`docs/CONTROL-PLANE.md`](docs/CONTROL-PLANE.md).
+
+```bash
+php artisan core:status                       # estado del deploy + cuotas
+php artisan core:status --set=suspended --reason=manual --message="Pago pendiente"   # kill-switch (402)
+php artisan core:usage:rollup --prune         # agrega metricas crudas en rollups hora/dia
+php artisan core:quota:measure                # mide disco/requests/usuarios y aplica on_exceed
+```
+
+- Estados: `active` | `grace` (sirve con headers `X-Package-Status`) | `suspended` (402 en rutas de negocio; health, docs y `/control` siguen respondiendo).
+- Metering por request en `core_request_logs` (middleware terminable, cero latencia con FPM) + rollups en `core_usage_rollups`.
+- Endpoints de gestion remota `/api/v1/control/*` (firma HMAC, para el futuro CMS): solo existen si `CORE_CONTROL_SECRET` esta definido.
+
 ### Generadores package-aware
 
 Todos los comandos `make:*` soportan `--package` para generar codigo dentro de un paquete:
