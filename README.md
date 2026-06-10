@@ -10,6 +10,20 @@ API modular sobre Laravel 13. Un despliegue sirve exactamente un paquete de nego
 - **Scramble** — Documentacion OpenAPI auto-generada con RapiDoc UI
 - **Docker** — PHP-FPM (Alpine) + Nginx + MariaDB
 
+## Puesta en marcha desde cero
+
+Solo necesitas Docker (composer, PHP y migraciones corren dentro del contenedor):
+
+```bash
+git clone <repo> && cd snake-laravel-api
+cp .env.example .env          # puertos, dominios (ajusta si quieres)
+bash scripts/setup-ssl.sh     # certs para nginx (mkcert si lo tienes; si no, self-signed)
+docker compose up -d          # build + composer install + APP_KEY + migrate, todo automatico
+curl -k https://localhost:8443/api/v1   # health check
+```
+
+La instancia principal arranca agnostica (sin paquete, BD sqlite). Para servir un paquete: crea uno (`docker compose exec app php artisan make:package MiPaquete`) y levanta una suscripcion (ver "Simulacion local de suscripciones") o define `API_PACKAGE` en `src/.env`.
+
 ## Estructura del proyecto
 
 ```

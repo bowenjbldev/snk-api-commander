@@ -38,6 +38,14 @@ if [ ! -f bootstrap/cache/packages.php ]; then
     php artisan package:discover --ansi
 fi
 
+# Con sqlite, migrate necesita que el archivo exista (clon fresco no lo trae)
+EFFECTIVE_DB="${DB_CONNECTION:-$(grep -E '^DB_CONNECTION=' .env | cut -d '=' -f2)}"
+if [ "$EFFECTIVE_DB" = "sqlite" ] && [ ! -f database/database.sqlite ]; then
+    echo "Creating empty sqlite database..."
+    touch database/database.sqlite
+    chmod 664 database/database.sqlite
+fi
+
 # Limpiar config cache (no requiere DB)
 echo "Clearing config cache..."
 php artisan config:clear
