@@ -135,7 +135,7 @@ bash scripts/subscription.sh list                     # listado y estado
 bash scripts/subscription.sh remove cliente1 --drop-db
 ```
 
-`add` hace todo el ciclo: crea BD + usuario MariaDB, genera el bloque de servicio en `docker-compose.clients.yml` (gitignored, regenerado desde `docker/clients/*.env`), genera el vhost nginx, levanta el contenedor (el entrypoint migra Core + paquete automaticamente), ejecuta seeders, y añade el subdominio al hosts de WSL y de Windows (directo, sin UAC, gracias a la elevacion unica de `setup-ssl.sh`; sin ese permiso, cae a una ventana UAC puntual o imprime la linea para añadir a mano).
+`add` hace todo el ciclo: crea BD + usuario MariaDB, genera el bloque de servicio en `docker-compose.clients.yml` (gitignored, regenerado desde `docker/clients/*.env`), genera el vhost nginx, levanta el contenedor (el entrypoint migra Core + paquete automaticamente), ejecuta seeders, y añade el subdominio al hosts de Windows (directo, sin UAC, gracias a la elevacion unica de `setup-ssl.sh`; sin ese permiso, cae a una ventana UAC puntual o imprime la linea para añadir a mano).
 
 **Credenciales de BD por suscripcion**: database, usuario y password son el nombre del paquete en snake_case (`MiPaquete` → `mi_paquete`). Por eso cada paquete admite una sola suscripcion. El root de MariaDB corre sin password (`MARIADB_ALLOW_EMPTY_ROOT_PASSWORD`) — todo esto es SOLO para local; en produccion cada deploy define credenciales reales en su `.env`.
 
@@ -149,7 +149,7 @@ bash scripts/subscription.sh remove cliente1 --drop-db
 **Advertencias:**
 
 - El wildcard cubre un solo nivel (`a.snake.test` si, `a.b.snake.test` no) y no el apex.
-- WSL regenera `/etc/hosts` al reiniciar copiando el de Windows: la fuente de verdad es `C:\Windows\System32\drivers\etc\hosts`.
+- Solo se edita el hosts de Windows (fuente de verdad): WSL lo copia a su `/etc/hosts` en cada arranque. Hasta reiniciar WSL, dentro de WSL prueba con `curl --resolve <cliente>.snake.test:8443:127.0.0.1 ...` (el navegador de Windows funciona al instante).
 - `APP_KEY` se comparte entre suscripciones (un solo `src/.env`); en produccion cada deploy tiene la suya.
 - Los volumenes anonimos huerfanos se limpian con `docker volume prune`.
 

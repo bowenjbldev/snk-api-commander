@@ -220,14 +220,12 @@ win_hosts_writable() {
     ( : >> "$WIN_HOSTS" ) 2>/dev/null
 }
 
+# Solo se toca el hosts de Windows (fuente de verdad): WSL copia ese archivo
+# a su /etc/hosts en cada arranque. Hasta reiniciar WSL, dentro de WSL se
+# puede probar con: curl --resolve <fqdn>:<puerto>:127.0.0.1 ...
+
 hosts_add() {
     local fqdn="$1" c="$2"
-
-    if ! grep -q "$fqdn" /etc/hosts 2>/dev/null; then
-        echo "127.0.0.1 $fqdn # snake-sub:$c" | sudo tee -a /etc/hosts >/dev/null \
-            && info "WSL /etc/hosts: añadido $fqdn" \
-            || echo "AVISO: no se pudo editar /etc/hosts de WSL (sudo cancelado?)"
-    fi
 
     if [ -f "$WIN_HOSTS" ] && ! grep -q "$fqdn" "$WIN_HOSTS"; then
         if win_hosts_writable; then
@@ -255,9 +253,6 @@ hosts_add() {
 
 hosts_remove() {
     local c="$1"
-
-    sudo sed -i "/# snake-sub:$c\$/d" /etc/hosts 2>/dev/null \
-        || echo "AVISO: limpia a mano la entrada snake-sub:$c de /etc/hosts"
 
     if [ -f "$WIN_HOSTS" ] && grep -q "snake-sub:$c" "$WIN_HOSTS"; then
         if win_hosts_writable; then
