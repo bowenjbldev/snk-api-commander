@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//tmp/snake-fresh/**)",
+      "Bash(rm -f docker/nginx/certs/*)",
+      "Bash(PATH=/tmp/fakebin bash scripts/setup-ssl.sh)",
+      "Bash(openssl x509 *)"
+    ]
+  }
+}
