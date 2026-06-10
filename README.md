@@ -144,6 +144,7 @@ bash scripts/subscription.sh remove cliente1 --drop-db
 - BD y usuario MariaDB propios (cache de Laravel incluida: `CACHE_STORE=database`).
 - `bootstrap/cache` aislado por contenedor (volumen anonimo).
 - Logs por contenedor (`LOG_CHANNEL=stderr`): `docker compose logs -f app-<cliente>`.
+- Shell de una instancia: `docker compose exec app-<cliente> bash` (artisan opera contra SU BD: `docker compose exec app-<cliente> php artisan tinker`). Ojo: `src/` es el mismo bind mount en todas — editar codigo afecta a todas las instancias; lo aislado son las variables de entorno y la BD.
 - `storage/` se comparte entre contenedores pero no guarda estado por cliente (sin sesiones — auth Bearer — y cache en BD).
 
 **Advertencias:**
@@ -346,12 +347,15 @@ DB_PASSWORD=root
 # Levantar el entorno
 docker compose up -d
 
-# El entrypoint automaticamente:
+# El entrypoint automaticamente (con flock: N contenedores arrancando a la
+# vez no se pisan al mutar el src/ compartido):
 # 1. Crea .env si no existe
 # 2. Instala dependencias (composer install)
 # 3. Genera APP_KEY si esta vacio
-# 4. Fija permisos de storage/cache/database
-# 5. Inicia PHP-FPM
+# 4. Fija permisos de storage/cache/database (ug+rwX, sin tocar modos de git)
+# 5. Crea database/database.sqlite si la conexion es sqlite y falta
+# 6. Ejecuta migraciones (Core + paquete activo via API_PACKAGE)
+# 7. Inicia PHP-FPM
 ```
 
 ### Servicios
