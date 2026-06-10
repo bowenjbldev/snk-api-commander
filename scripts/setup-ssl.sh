@@ -3,10 +3,9 @@
 #   - Certificado para APP_DOMAIN (dominio principal, .env raiz)
 #   - Certificado wildcard *.BASE_DOMAIN (suscripciones locales)
 #
-# Con mkcert (recomendado): certificados de confianza local (candado verde).
+# Usa mkcert (certificados de confianza local, candado verde). Si no esta
+# instalado, lo descarga automaticamente a ~/.local/bin (solo necesita curl).
 #   https://github.com/FiloSottile/mkcert
-# Sin mkcert: fallback self-signed con openssl — todo funciona igual pero el
-#   navegador mostrara aviso de cert no confiable.
 #
 # Uso (desde la raiz del repo o desde cualquier sitio):
 #   bash scripts/setup-ssl.sh [dominio]    # dominio opcional, default APP_DOMAIN
@@ -23,54 +22,77 @@ if [ -f "$ROOT_DIR/.env" ]; then
 fi
 DOMAIN="${1:-${DOMAIN:-localhost}}"
 
-HAVE_MKCERT=0
-if command -v mkcert >/dev/null 2>&1; then
-    HAVE_MKCERT=1
-    echo "Installing local CA (if not already installed)..."
-    mkcert -install
-else
-    echo "AVISO: mkcert no esta instalado; se generaran certs self-signed con openssl."
-    echo "       El navegador avisara de cert no confiable. Para candado verde:"
-    echo "       https://github.com/FiloSottile/mkcert"
-    command -v openssl >/dev/null 2>&1 || { echo "Error: tampoco hay openssl."; exit 1; }
-fi
+# ------------------------------------------------------------- mkcert (unico)
+
+MKCERT="mkcert"
+
+ensure_mkcert() {
+    if command -v mkcert >/dev/null 2>&1; then
+        return
+    fi
+
+    if [ -x "$HOME/.local/bin/mkcert" ]; then
+        MKCERT="$HOME/.local/bin/mkcert"
+        return
+    fi
+
+    command -v curl >/dev/null 2>&1 || { echo "Error: se necesita curl para descargar mkcert."; exit 1; }
+
+    local os arch
+    case "$(uname -s)" in
+        Linux)  os=linux ;;
+        Darwin) os=darwin ;;
+        *) echo "Error: SO no soportado para auto-instalar mkcert: $(uname -s)"; exit 1 ;;
+    esac
+    case "$(uname -m)" in
+        x86_64)          arch=amd64 ;;
+        aarch64|arm64)   arch=arm64 ;;
+        *) echo "Error: arquitectura no soportada: $(uname -m)"; exit 1 ;;
+    esac
+
+    echo "mkcert no encontrado: descargandolo a ~/.local/bin/mkcert..."
+    mkdir -p "$HOME/.local/bin"
+    curl -fsSL "https://dl.filippo.io/mkcert/latest?for=$os/$arch" -o "$HOME/.local/bin/mkcert"
+    chmod +x "$HOME/.local/bin/mkcert"
+    MKCERT="$HOME/.local/bin/mkcert"
+}
+
+ensure_mkcert
+
+echo "Installing local CA (if not already installed)..."
+# Puede pedir sudo para el trust store del sistema; si falla, los certs se
+# generan igual (la CA queda en CAROOT y el navegador de Windows se trata abajo)
+"$MKCERT" -install || echo "AVISO: no se pudo instalar la CA en el trust store local (continua)."
 
 mkdir -p "$CERTS_DIR"
 
-# gen_cert <prefijo-archivo> <dominio-san>
-gen_cert() {
-    local prefix="$1" san="$2"
-    if [ "$HAVE_MKCERT" -eq 1 ]; then
-        mkcert \
-            -cert-file "$CERTS_DIR/$prefix.pem" \
-            -key-file  "$CERTS_DIR/$prefix-key.pem" \
-            "$san"
-    else
-        openssl req -x509 -nodes -newkey rsa:2048 -days 825 \
-            -keyout "$CERTS_DIR/$prefix-key.pem" \
-            -out    "$CERTS_DIR/$prefix.pem" \
-            -subj   "/CN=$san" \
-            -addext "subjectAltName=DNS:$san" 2>/dev/null
-    fi
-}
-
 echo "Generating certificate for $DOMAIN..."
-gen_cert "$DOMAIN" "$DOMAIN"
+"$MKCERT" \
+    -cert-file "$CERTS_DIR/$DOMAIN.pem" \
+    -key-file  "$CERTS_DIR/$DOMAIN-key.pem" \
+    "$DOMAIN"
 
 # Wildcard para suscripciones locales (<cliente>.<BASE_DOMAIN>)
 # Nota: cubre un solo nivel (a.snake.test si, a.b.snake.test no) y no el apex.
 if [ -n "${BASE_DOMAIN:-}" ]; then
     echo "Generating wildcard certificate for *.$BASE_DOMAIN..."
-    gen_cert "wildcard.$BASE_DOMAIN" "*.$BASE_DOMAIN"
+    "$MKCERT" \
+        -cert-file "$CERTS_DIR/wildcard.$BASE_DOMAIN.pem" \
+        -key-file  "$CERTS_DIR/wildcard.$BASE_DOMAIN-key.pem" \
+        "*.$BASE_DOMAIN"
 fi
 
 echo ""
 echo "Certs saved to $CERTS_DIR/"
 echo "Now run: docker compose up -d --force-recreate nginx"
 
-if [ "$HAVE_MKCERT" -eq 1 ]; then
+# En WSL, el navegador vive en Windows: importa la CA en el store del usuario.
+# certutil -user no requiere UAC, solo aceptar el dialogo de confirmacion.
+if command -v certutil.exe >/dev/null 2>&1 && command -v wslpath >/dev/null 2>&1; then
+    CA_WIN="$(wslpath -w "$("$MKCERT" -CAROOT)/rootCA.pem")"
     echo ""
-    echo "Para que el navegador de Windows confie en los certs, importa la CA de mkcert:"
-    echo "  certutil.exe -addstore -f ROOT \"\$(wslpath -w \"\$(mkcert -CAROOT)/rootCA.pem\")\""
-    echo "(si tu dominio actual ya sale verde en el navegador, la CA ya esta importada)"
+    echo "Importando la CA de mkcert al store del usuario de Windows (acepta el dialogo)..."
+    certutil.exe -user -addstore Root "$CA_WIN" >/dev/null 2>&1 \
+        && echo "CA importada: el navegador de Windows confiara en los certs." \
+        || echo "AVISO: importa la CA a mano: certutil.exe -user -addstore Root \"$CA_WIN\""
 fi

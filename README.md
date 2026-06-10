@@ -17,7 +17,7 @@ Solo necesitas Docker (composer, PHP y migraciones corren dentro del contenedor)
 ```bash
 git clone <repo> && cd snake-laravel-api
 cp .env.example .env          # puertos, dominios (ajusta si quieres)
-bash scripts/setup-ssl.sh     # certs para nginx (mkcert si lo tienes; si no, self-signed)
+bash scripts/setup-ssl.sh     # certs nginx con mkcert (se auto-descarga si falta)
 docker compose up -d          # build + composer install + APP_KEY + migrate, todo automatico
 curl -k https://localhost:8443/api/v1   # health check
 ```
@@ -124,7 +124,7 @@ Para probar el modelo de produccion sin VPS: una sola stack Docker simula N susc
 **Requisitos:**
 
 1. `BASE_DOMAIN` definido en el `.env` raiz (default `snake.test`; evita `.local`, colisiona con mDNS).
-2. Certificado wildcard: `bash scripts/setup-ssl.sh` (genera `*.BASE_DOMAIN` con mkcert). Para que el navegador de Windows confie, importa la CA: `certutil.exe -addstore -f ROOT "$(wslpath -w "$(mkcert -CAROOT)/rootCA.pem")"`.
+2. Certificado wildcard: `bash scripts/setup-ssl.sh` (genera `*.BASE_DOMAIN` con mkcert; si no esta instalado se auto-descarga a `~/.local/bin`). En WSL el propio script importa la CA al store del usuario de Windows (acepta el dialogo) para que el navegador confie.
 3. Stack principal arrancada al menos una vez (`docker compose up -d`) para que exista la imagen.
 
 **Uso:**
