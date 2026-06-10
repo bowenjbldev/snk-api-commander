@@ -1,6 +1,7 @@
 services:
   # PHP Application (Laravel)
   app:
+    image: snake-laravel-api-app
     build:
       context: .
       dockerfile: docker/php/Dockerfile
@@ -11,6 +12,7 @@ services:
     working_dir: /var/www/src
     volumes:
       - ./src:/var/www/src
+      - /var/www/src/bootstrap/cache
     depends_on:
       db:
         condition: service_healthy

@@ -103,6 +103,40 @@ otro.midominio.com      ->  .env: API_PACKAGE=OtroPaquete, DB_DATABASE=otro
 
 Nota: si usas `php artisan config:cache` / `route:cache` en produccion, los valores quedan horneados. Tras cambiar `API_PACKAGE` o `DB_*`, ejecuta `php artisan optimize:clear` y vuelve a cachear.
 
+### Simulacion local de suscripciones (Docker + WSL2)
+
+Para probar el modelo de produccion sin VPS: una sola stack Docker simula N suscripciones. Cada cliente es un subdominio `<cliente>.<BASE_DOMAIN>` con su propio contenedor PHP-FPM (misma imagen y mismo `src/` montado, configurado solo por variables de entorno: `API_PACKAGE`, `DB_*`...), su base de datos MariaDB y su vhost nginx.
+
+**Requisitos:**
+
+1. `BASE_DOMAIN` definido en el `.env` raiz (default `snake.test`; evita `.local`, colisiona con mDNS).
+2. Certificado wildcard: `bash setup-ssl.sh` (genera `*.BASE_DOMAIN` con mkcert). Para que el navegador de Windows confie, importa la CA: `certutil.exe -addstore -f ROOT "$(wslpath -w "$(mkcert -CAROOT)/rootCA.pem")"`.
+3. Stack principal arrancada al menos una vez (`docker compose up -d`) para que exista la imagen.
+
+**Uso:**
+
+```bash
+bash subscription.sh add cliente1 MiPaquete   # alta completa
+bash subscription.sh list                     # listado y estado
+bash subscription.sh remove cliente1 --drop-db
+```
+
+`add` hace todo el ciclo: crea BD + usuario MariaDB con password aleatoria, genera el bloque de servicio en `docker-compose.clients.yml` (gitignored, regenerado desde `docker/clients/*.env`), genera el vhost nginx, levanta el contenedor (el entrypoint migra Core + paquete automaticamente), ejecuta seeders, y añade el subdominio al hosts de WSL y de Windows (pide UAC; si lo cancelas, imprime la linea para añadir a mano).
+
+**Aislamiento por suscripcion:**
+
+- BD y usuario MariaDB propios (cache de Laravel incluida: `CACHE_STORE=database`).
+- `bootstrap/cache` aislado por contenedor (volumen anonimo).
+- Logs por contenedor (`LOG_CHANNEL=stderr`): `docker compose logs -f app-<cliente>`.
+- `storage/` se comparte entre contenedores pero no guarda estado por cliente (sin sesiones — auth Bearer — y cache en BD).
+
+**Advertencias:**
+
+- El wildcard cubre un solo nivel (`a.snake.test` si, `a.b.snake.test` no) y no el apex.
+- WSL regenera `/etc/hosts` al reiniciar copiando el de Windows: la fuente de verdad es `C:\Windows\System32\drivers\etc\hosts`.
+- `APP_KEY` se comparte entre suscripciones (un solo `src/.env`); en produccion cada deploy tiene la suya.
+- Los volumenes anonimos huerfanos se limpian con `docker volume prune`.
+
 ### Override de configuracion
 
 - Core se aplica primero, el paquete activo despues → **el paquete gana**.

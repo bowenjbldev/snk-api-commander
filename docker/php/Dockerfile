@@ -41,6 +41,11 @@ RUN groupmod -g ${WWWGROUP} www-data && \
 COPY ./docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
+# Mountpoint para el volumen anonimo de bootstrap/cache (aislado por contenedor):
+# debe existir en la imagen con owner www-data o Docker lo crearia como root
+RUN mkdir -p /var/www/src/bootstrap/cache && \
+    chown -R www-data:www-data /var/www/src
+
 # Default user for container (entrypoint, exec, php-fpm)
 USER www-data
 

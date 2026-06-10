@@ -1,2 +1,5 @@
 docker/nginx/certs/
 .env
+docker-compose.clients.yml
+docker/clients/
+docker/nginx/conf.d/client-*.conf.template

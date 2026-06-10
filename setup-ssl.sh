@@ -10,9 +10,10 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CERTS_DIR="$SCRIPT_DIR/docker/nginx/certs"
 
-# Load APP_DOMAIN from .env
+# Load APP_DOMAIN and BASE_DOMAIN from .env
 if [ -f "$SCRIPT_DIR/.env" ]; then
     DOMAIN=$(grep -E "^APP_DOMAIN=" "$SCRIPT_DIR/.env" | cut -d '=' -f2)
+    BASE_DOMAIN=$(grep -E "^BASE_DOMAIN=" "$SCRIPT_DIR/.env" | cut -d '=' -f2)
 fi
 DOMAIN="${1:-${DOMAIN:-localhost}}"
 
@@ -33,6 +34,20 @@ mkcert \
     -key-file  "$CERTS_DIR/$DOMAIN-key.pem" \
     "$DOMAIN"
 
+# Wildcard para suscripciones locales (<cliente>.<BASE_DOMAIN>)
+# Nota: cubre un solo nivel (a.snake.test si, a.b.snake.test no) y no el apex.
+if [ -n "${BASE_DOMAIN:-}" ]; then
+    echo "Generating wildcard certificate for *.$BASE_DOMAIN..."
+    mkcert \
+        -cert-file "$CERTS_DIR/wildcard.$BASE_DOMAIN.pem" \
+        -key-file  "$CERTS_DIR/wildcard.$BASE_DOMAIN-key.pem" \
+        "*.$BASE_DOMAIN"
+fi
+
 echo ""
 echo "Certs saved to $CERTS_DIR/"
 echo "Now run: docker compose up -d --force-recreate nginx"
+echo ""
+echo "Para que el navegador de Windows confie en los certs, importa la CA de mkcert:"
+echo "  certutil.exe -addstore -f ROOT \"\$(wslpath -w \"\$(mkcert -CAROOT)/rootCA.pem\")\""
+echo "(si tu dominio actual ya sale verde en el navegador, la CA ya esta importada)"
