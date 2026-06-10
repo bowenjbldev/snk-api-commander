@@ -1,0 +1,17 @@
+# .dockerignore
+docker/nginx/certs
+src/vendor
+src/node_modules
+src/public/build
+src/*.log
+src/storage/logs/*.log
+src/storage/framework/cache/data/*
+src/storage/framework/sessions/*
+src/storage/framework/views/*
+.git
+.gitignore
+README.md
+docker-compose.yml
+.env
+src/.env
+src/.phpunit.result.cache

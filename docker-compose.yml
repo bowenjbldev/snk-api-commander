@@ -1,0 +1,67 @@
+services:
+  # PHP Application (Laravel)
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      args:
+        WWWUSER: ${WWWUSER:-1000}
+        WWWGROUP: ${WWWGROUP:-1000}
+    restart: unless-stopped
+    working_dir: /var/www/src
+    volumes:
+      - ./src:/var/www/src
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      app-network:
+        aliases:
+          - api-app
+
+  # Nginx Service
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    environment:
+      - APP_DOMAIN=${APP_DOMAIN:-localhost}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./src:/var/www/src
+      - ./docker/nginx/conf.d/:/etc/nginx/templates/:ro
+      - ./docker/nginx/certs/:/etc/nginx/certs/:ro
+    networks:
+      - app-network
+    depends_on:
+      app:
+        condition: service_started
+
+  # MariaDB Service
+  db:
+    image: mariadb:latest
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DB_DATABASE:-laravel}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-root}
+      MARIADB_USER: ${DB_USERNAME:-laravel}
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  db_data:
