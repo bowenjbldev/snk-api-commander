@@ -1,0 +1,31 @@
+{
+  "name": "snakecloud-cms",
+  "private": true,
+  "version": "1.14.2",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@carbon/charts": "^1.21.0",
+    "@carbon/charts-react": "^1.21.0",
+    "@carbon/icons-react": "^11.50.0",
+    "@carbon/react": "^1.71.0",
+    "@carbon/styles": "^1.70.0",
+    "d3": "^7.9.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "sass": "^1.81.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}
