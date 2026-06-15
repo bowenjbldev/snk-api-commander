@@ -9,7 +9,7 @@ Route::middleware(['api'])->group(function () {
     Route::get('/', [CoreHealthController::class, 'index']);
 });
 
-// Gestion remota (CMS -> deploy). Sin CORE_CONTROL_SECRET la superficie no existe.
+// Gestion remota (Commander -> deploy). Sin CORE_CONTROL_SECRET la superficie no existe.
 if ((string) config('core.control.secret', '') !== '') {
     Route::middleware(['api', CoreControlAuthMiddleware::class])
         ->prefix('control')

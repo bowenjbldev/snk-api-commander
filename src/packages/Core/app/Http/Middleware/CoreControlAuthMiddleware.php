@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Autenticacion maquina-a-maquina de los endpoints /control (los llama el
- * CMS). Firma HMAC-SHA256 con secreto compartido por deploy:
+ * Commander). Firma HMAC-SHA256 con secreto compartido por deploy:
  *
  *   payload  = timestamp \n METHOD \n /path \n sha256(body)
  *   firma    = hex(hmac_sha256(payload, CORE_CONTROL_SECRET))

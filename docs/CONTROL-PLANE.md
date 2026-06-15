@@ -2,7 +2,7 @@
 
 Base implementada en Core para operar la plataforma como un negocio: cada deploy
 mide su uso, conoce su estado (activo/gracia/suspendido) y expone una superficie
-de gestion firmada para el futuro CMS. Todo vive en la BD de **cada** deploy.
+de gestion firmada para el futuro Commander. Todo vive en la BD de **cada** deploy.
 
 ## 1. Objetivo y vision (monorepo)
 
@@ -11,11 +11,11 @@ Este repo convivira tres piezas:
 | Pieza | Donde | Estado |
 |---|---|---|
 | **API** (Core + paquete de negocio) | cada subdominio de cliente | hecho |
-| **CMS** (panel tipo Heroku) | `packages/Cms` en el deploy principal (`API_PACKAGE=Cms`) | futuro |
-| **Web publica + UI CMS** | React/Vite servidas en el dominio principal | futuro |
+| **Commander** (panel tipo Heroku) | `packages/Commander` en el deploy principal (`API_PACKAGE=Commander`) | futuro |
+| **Web publica + UI Commander** | React/Vite servidas en el dominio principal | futuro |
 
-El CMS gestionara N deploys de clientes llamando a los endpoints `/control` de
-cada uno. Cada deploy es autonomo: si el CMS cae, los clientes siguen sirviendo.
+El Commander gestionara N deploys de clientes llamando a los endpoints `/control` de
+cada uno. Cada deploy es autonomo: si el Commander cae, los clientes siguen sirviendo.
 
 ## 2. Modelo de datos
 
@@ -71,7 +71,7 @@ request
   └─ terminate(): INSERT core_request_logs                 (la respuesta ya salio: 0 latencia con FPM)
 ```
 
-- Un deploy **suspendido sigue midiendo**: los 402 son datos para el CMS.
+- Un deploy **suspendido sigue midiendo**: los 402 son datos para el Commander.
 - Los 404 sin ruta no pasan por el grupo 'api' → no se miden (solo rutas reales).
 - Metering jamas rompe un request: try/catch total + `report()`.
 
@@ -81,7 +81,7 @@ request
   Con `CACHE_STORE=database` el cache es una fila en la misma BD: sigue siendo
   una lectura PK barata y la propagacion de un cambio de estado es ≤ TTL.
 - **Quien suspende, escribe la tabla** via `CorePackageStateService::set()`:
-  CLI (`core:status`), cuotas (`core:quota:measure`) y CMS (`POST /control/state`).
+  CLI (`core:status`), cuotas (`core:quota:measure`) y Commander (`POST /control/state`).
   Punto de convergencia unico — añadir mecanismos no toca el middleware.
 - `402 Payment Required` para suspended (403 seria "prohibido por identidad";
   402 expresa "relacion de servicio caducada"). Grace: pasa con headers de aviso.
@@ -114,14 +114,14 @@ Ciclo: `core:quota:measure` → mide → persiste → compara con `limit_value` 
   grace propio vencio ⇒ **suspended** definitivo.
 - **bajo el limite de nuevo** → limpia `exceeded_at` y **auto-heal**: vuelve a
   active SOLO si la suspension la causo esa misma metrica (nunca pisa una
-  suspension manual o del CMS).
+  suspension manual o del Commander).
 
 Medicion cross-driver: `disk_db_mb` usa `information_schema` en MariaDB/MySQL y
 `filesize()` (+ WAL) en sqlite; driver desconocido → null (degrada sin romper).
 Añadir una metrica = fila nueva en `core_quota_metrics` + case en
 `CoreQuotaMeasurerService::measure()`.
 
-## 7. Integracion con el CMS (push, confirmado)
+## 7. Integracion con el Commander (push, confirmado)
 
 Cada deploy expone `/api/v1/control/*`, firmado HMAC, **solo si**
 `CORE_CONTROL_SECRET` esta definido (sin secreto las rutas no se registran).
@@ -146,7 +146,7 @@ headers  = X-Control-Timestamp: <unix>, X-Control-Signature: <firma>
 ```
 
 Anti-replay por ventana de reloj (`CORE_CONTROL_CLOCK_SKEW`, ±300s) y
-comparacion `hash_equals`. Ejemplo bash (el CMS hara esto en PHP):
+comparacion `hash_equals`. Ejemplo bash (el Commander hara esto en PHP):
 
 ```bash
 TS=$(date +%s); BODY='{"status":"suspended","reason":"payment_overdue"}'
@@ -158,7 +158,7 @@ curl -X POST https://cliente.dominio.com/api/v1/control/state \
      -H 'Content-Type: application/json' -d "$BODY"
 ```
 
-### Boceto del package Cms (futuro)
+### Boceto del package Commander (futuro)
 
 BD propia del deploy principal con el registro de la plataforma:
 
@@ -169,15 +169,15 @@ BD propia del deploy principal con el registro de la plataforma:
   accion llama a `POST {base_url}/api/v1/control/state` con suspend/grace
 - `usage_snapshots` (cache local de `GET /control/usage` para dashboards)
 
-UI React (Vite) consumiendo el `/api/v1` del propio deploy Cms.
+UI React (Vite) consumiendo el `/api/v1` del propio deploy Commander.
 
 ### Alternativas descartadas
 
-- **Pull/heartbeat** (el deploy pregunta al CMS): re-introduce la dependencia
-  del CMS para operar y necesita scheduler vivo en cada deploy para el control.
-- **BD directa** (el CMS escribe core_package_state de cada BD): se rompe en
-  cuanto un deploy viva en otro servidor; acopla el CMS a la topologia de BD.
-- **Telemetria push** (deploy → CMS con rollups): compatible y complementaria,
+- **Pull/heartbeat** (el deploy pregunta al Commander): re-introduce la dependencia
+  del Commander para operar y necesita scheduler vivo en cada deploy para el control.
+- **BD directa** (el Commander escribe core_package_state de cada BD): se rompe en
+  cuanto un deploy viva en otro servidor; acopla el Commander a la topologia de BD.
+- **Telemetria push** (deploy → Commander con rollups): compatible y complementaria,
   puede añadirse despues sin tocar nada de lo actual.
 
 ## 8. Operativa
@@ -231,4 +231,4 @@ sin poda es `core_request_logs`.
   request). Si la instancia sqlite recibiera trafico real: WAL + busy_timeout.
 - **404 sin ruta no se miden** (no pasan por el grupo 'api').
 - **APP_KEY/secretos**: `CORE_CONTROL_SECRET` distinto por deploy; rotarlo =
-  actualizar .env del deploy y el registro del CMS.
+  actualizar .env del deploy y el registro del Commander.

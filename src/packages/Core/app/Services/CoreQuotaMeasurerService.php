@@ -12,7 +12,7 @@ use Packages\Core\Models\CoreQuotaMetricModel;
  * Mide las metricas de cuota y aplica la accion on_exceed. La unica via de
  * suspension es CorePackageStateService; el auto-heal solo revierte
  * suspensiones causadas por la propia metrica (reason quota_exceeded:<key>),
- * nunca pisa una suspension manual o del CMS.
+ * nunca pisa una suspension manual o del Commander.
  */
 class CoreQuotaMeasurerService
 {

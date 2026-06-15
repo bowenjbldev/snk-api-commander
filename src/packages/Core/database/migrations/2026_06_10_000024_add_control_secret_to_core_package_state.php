@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Runtime control-secret override (set by the CMS via POST /control/rotate-secret). When present it
+ * Runtime control-secret override (set by the Commander via POST /control/rotate-secret). When present it
  * takes precedence over CORE_CONTROL_SECRET (.env), so rotating invalidates the old secret without
  * a redeploy. Stored encrypted; never serialized.
  */

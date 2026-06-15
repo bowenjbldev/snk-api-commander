@@ -30,12 +30,10 @@
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/",
             "Packages\\": "packages/",
-            "Packages\\Cms\\": "packages/Cms/app/",
-            "Packages\\Cms\\Database\\Seeders\\": "packages/Cms/database/seeders/",
+            "Packages\\Commander\\": "packages/Commander/app/",
+            "Packages\\Commander\\Database\\Seeders\\": "packages/Commander/database/seeders/",
             "Packages\\Core\\": "packages/Core/app/",
-            "Packages\\Core\\Database\\Seeders\\": "packages/Core/database/seeders/",
-            "Packages\\Tracking\\": "packages/Tracking/app/",
-            "Packages\\Tracking\\Database\\Seeders\\": "packages/Tracking/database/seeders/"
+            "Packages\\Core\\Database\\Seeders\\": "packages/Core/database/seeders/"
         }
     },
     "autoload-dev": {

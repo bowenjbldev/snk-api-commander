@@ -54,7 +54,7 @@ class CoreScrambleServiceProvider extends ServiceProvider
                 return false;
             }
 
-            // Los endpoints /control son maquina-a-maquina (CMS): fuera de docs publicas
+            // Los endpoints /control son maquina-a-maquina (Commander): fuera de docs publicas
             if (Str::is('api/v1/control*', $route->uri)) {
                 return false;
             }

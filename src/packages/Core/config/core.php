@@ -32,7 +32,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Remote Control (CMS -> deploy)
+    | Remote Control (Commander -> deploy)
     |--------------------------------------------------------------------------
     |
     | Endpoints /api/v1/control/* firmados con HMAC-SHA256. Sin secreto, las

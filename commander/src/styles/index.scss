@@ -1,0 +1,13 @@
+// SnakeCloud Commander — global stylesheet.
+// Configure Carbon BEFORE forwarding it; @carbon/styles must be the last @carbon @use.
+@use '@carbon/styles/scss/config' with (
+  $font-path: '@ibm/plex',
+  $use-flexbox-grid: false,
+  $css--reset: true,
+  $css--font-face: true
+);
+@use '@carbon/styles';
+
+// NOTE: app tokens/utilities live in ./tokens.scss, imported SEPARATELY in main.tsx.
+// Keeping them out of this file means editing tokens doesn't recompile the (large)
+// @carbon/styles Sass graph — much faster HMR.

@@ -11,7 +11,7 @@ use Packages\Core\Support\CorePackageStateData;
 
 /**
  * Unico propietario del estado del deploy. Todo lo que suspende o reactiva
- * (CLI, cuotas, CMS via /control) pasa por set(); los lectores usan current()
+ * (CLI, cuotas, Commander via /control) pasa por set(); los lectores usan current()
  * que cachea la fila durante core.state.cache_ttl segundos.
  */
 class CorePackageStateService

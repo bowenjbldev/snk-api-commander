@@ -14,7 +14,7 @@ use Packages\Core\Services\CorePackageStateService;
 use Packages\Core\Support\CorePackageStateData;
 
 /**
- * Endpoints de gestion remota del deploy (consumidos por el CMS, firma HMAC
+ * Endpoints de gestion remota del deploy (consumidos por el Commander, firma HMAC
  * en CoreControlAuthMiddleware). No aparecen en la documentacion publica.
  */
 class CoreControlController extends Controller
@@ -84,7 +84,7 @@ class CoreControlController extends Controller
     }
 
     /**
-     * Store a new control secret (delivered by the CMS, signed with the CURRENT secret). Once stored
+     * Store a new control secret (delivered by the Commander, signed with the CURRENT secret). Once stored
      * it overrides CORE_CONTROL_SECRET for verification — the old secret stops working immediately.
      */
     public function rotateSecret(Request $request): JsonResponse

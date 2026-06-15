@@ -98,7 +98,7 @@ regen_compose() {
         CONTROL_SECRET=""   # default for pre-Phase-4 client envs (control plane stays off)
         # shellcheck disable=SC1090
         source "$state"
-        # nginx alias so the CMS container resolves <cliente>.<BASE_DOMAIN> to nginx (Host routing).
+        # nginx alias so the Commander container resolves <cliente>.<BASE_DOMAIN> to nginx (Host routing).
         aliases="${aliases}          - ${CLIENT}.\${BASE_DOMAIN}\n"
         cat >> "$tmp" <<EOF
   app-${CLIENT}:
@@ -130,7 +130,7 @@ regen_compose() {
 EOF
     done
 
-    # Extend the base nginx service with one network alias per client domain so the CMS
+    # Extend the base nginx service with one network alias per client domain so the Commander
     # (app container) can reach each deploy by its subdomain over the internal network.
     if [ "$found" -eq 1 ]; then
         {
@@ -327,7 +327,7 @@ cmd_add() {
 
     local db control_secret
     db=$(snake "$pkg")
-    # Per-deploy control-plane secret: enables /control on the deploy and lets the CMS sign.
+    # Per-deploy control-plane secret: enables /control on the deploy and lets the Commander sign.
     control_secret="sk_ctl_live_$(openssl rand -hex 12)"
 
     info "Registrando suscripcion [$c] (paquete $pkg, BD $db)..."
@@ -364,16 +364,16 @@ EOF
     info "Ejecutando seeders..."
     docker compose exec -T "app-$c" php artisan core:seed --force
 
-    # Register the live deploy in the CMS so the SPA can control it (suspend/grace/resume/sync).
-    info "Registrando el deploy en el CMS (control plane)..."
-    if docker compose exec -T app php artisan cms:register-deploy "$c" \
+    # Register the live deploy in the Commander so the SPA can control it (suspend/grace/resume/sync).
+    info "Registrando el deploy en el Commander (control plane)..."
+    if docker compose exec -T app php artisan commander:register-deploy "$c" \
         --package="$pkg" \
         --base-url="https://$c.$BASE_DOMAIN/api/v1" \
         --secret="$control_secret" \
         --client="$c"; then
-        info "Deploy [$c] registrado en el CMS."
+        info "Deploy [$c] registrado en el Commander."
     else
-        echo "AVISO: no se pudo registrar en el CMS (¿el servicio 'app' corre con API_PACKAGE=Cms?)." >&2
+        echo "AVISO: no se pudo registrar en el Commander (¿el servicio 'app' corre con API_PACKAGE=Commander?)." >&2
     fi
 
     hosts_add "$c.$BASE_DOMAIN" "$c"
@@ -384,7 +384,7 @@ EOF
     echo "  Docs:     https://$c.$BASE_DOMAIN:$HTTPS_PORT/api/v1/docs"
     echo "  Login:    admin@snake.com / secret1234 (seed por defecto)"
     echo "  BD:       $db (usuario $db)"
-    echo "  Control:  registrado en el CMS (controlable desde el panel)"
+    echo "  Control:  registrado en el Commander (controlable desde el panel)"
     echo "  Logs:     docker compose logs -f app-$c"
 }
 
@@ -397,8 +397,8 @@ cmd_remove() {
     # shellcheck disable=SC1090
     source "$CLIENTS_DIR/$c.env"
 
-    info "Quitando el deploy del registro del CMS..."
-    docker compose exec -T app php artisan cms:deregister-deploy "$c" >/dev/null 2>&1 || true
+    info "Quitando el deploy del registro del Commander..."
+    docker compose exec -T app php artisan commander:deregister-deploy "$c" >/dev/null 2>&1 || true
 
     info "Parando y eliminando app-$c..."
     docker compose rm -sf "app-$c" >/dev/null 2>&1 || true
