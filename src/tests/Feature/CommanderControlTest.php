@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Packages\Commander\Database\Seeders\CommanderDatabaseSeeder;
 use Packages\Commander\Models\DeploymentModel;
@@ -61,6 +62,41 @@ class CommanderControlTest extends TestCase
         $staleSig = CommanderControlSigner::sign($secret, $staleTs, 'POST', '/api/v1/control/state', $signedBody);
         $stale = $this->controlRequest('POST', 'https://deploy.test/api/v1/control/state', $signedBody, $staleTs, $staleSig);
         $this->assertSame(401, $this->runMiddleware($stale)->getStatusCode());
+    }
+
+    public function test_middleware_rejects_a_replayed_signature(): void
+    {
+        $secret = 'shared-control-secret';
+        config(['core.control.secret' => $secret, 'core.control.clock_skew_seconds' => 300]);
+
+        $ts = time();
+        $body = json_encode(['status' => 'suspended']);
+        $sig = CommanderControlSigner::sign($secret, $ts, 'POST', '/api/v1/control/state', $body);
+
+        // First use of a valid signature passes...
+        $first = $this->controlRequest('POST', 'https://deploy.test/api/v1/control/state', $body, $ts, $sig);
+        $this->assertSame(200, $this->runMiddleware($first)->getStatusCode());
+
+        // ...the same (timestamp, signature, body) replayed within the window is rejected.
+        $replay = $this->controlRequest('POST', 'https://deploy.test/api/v1/control/state', $body, $ts, $sig);
+        $this->assertSame(401, $this->runMiddleware($replay)->getStatusCode());
+    }
+
+    public function test_an_undecryptable_rotated_secret_fails_closed_instead_of_using_env(): void
+    {
+        $env = 'env-control-secret-original';
+        config(['core.control.secret' => $env, 'core.control.clock_skew_seconds' => 300]);
+
+        // Raw garbage in the encrypted column (bypassing the cast) simulates a value that can no
+        // longer be decrypted (e.g. APP_KEY rotated). activeSecret() must fail closed, never fall
+        // back to the env secret — that env value is exactly the secret rotation invalidated.
+        DB::table('core_package_state')->updateOrInsert(['id' => 1], ['control_secret' => 'not-valid-ciphertext']);
+
+        $ts = time();
+        $sig = CommanderControlSigner::sign($env, $ts, 'GET', '/api/v1/control/state', '');
+        $req = $this->controlRequest('GET', 'https://deploy.test/api/v1/control/state', '', $ts, $sig);
+
+        $this->assertSame(401, $this->runMiddleware($req)->getStatusCode());
     }
 
     public function test_suspend_pushes_signed_state_and_mirrors_locally(): void
