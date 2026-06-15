@@ -91,17 +91,20 @@ export const useStore = create<StoreState>((set, get) => {
     })
   }
   const replaceDep = (d: Deployment) =>
-    set((s) => ({
-      deployments: s.deployments.map((x) => {
-        if (x.id !== d.id) return x
-        // Drop an out-of-order reconcile: a response older than our current state would otherwise
-        // overwrite a newer optimistic mutation (two rapid actions on the same deployment).
-        const incoming = d.state?.changed_at
-        const current = x.state?.changed_at
-        if (incoming && current && incoming < current) return x
-        return d
-      }),
-    }))
+    set((s) => ({ deployments: s.deployments.map((x) => (x.id === d.id ? d : x)) }))
+  // Per-deployment action sequence: each optimistic state action bumps it, and a reconcile is
+  // applied only if it is the response to the LATEST issued action for that deployment. This makes
+  // two rapid out-of-order responses safe WITHOUT comparing the server's changed_at to the
+  // optimistic client clock — that comparison dropped legitimate no-status-flip echoes (e.g.
+  // re-suspending with a new reason) and mis-fired on benign client/server clock skew.
+  const depActionSeq = new Map<string, number>()
+  const reconcileDep = (id: string) => {
+    const seq = (depActionSeq.get(id) ?? 0) + 1
+    depActionSeq.set(id, seq)
+    return (d: Deployment) => {
+      if (depActionSeq.get(id) === seq) replaceDep(d)
+    }
+  }
   const upsertDep = (d: Deployment) =>
     set((s) => ({
       deployments: s.deployments.some((x) => x.id === d.id)
@@ -181,7 +184,7 @@ export const useStore = create<StoreState>((set, get) => {
           method: 'POST',
           body: { reason: input.reason, message: input.message ?? null },
         }),
-        replaceDep,
+        reconcileDep(id),
       )
     },
 
@@ -210,7 +213,7 @@ export const useStore = create<StoreState>((set, get) => {
           method: 'POST',
           body: { reason: input.reason, message: input.message ?? null, grace_until: input.grace_until },
         }),
-        replaceDep,
+        reconcileDep(id),
       )
     },
 
@@ -221,7 +224,7 @@ export const useStore = create<StoreState>((set, get) => {
         ),
         activity: [activity('resume', { deployment_id: id, by }), ...s.activity],
       }))
-      persist(api<Deployment>(`/deployments/${id}/resume`, { method: 'POST' }), replaceDep)
+      persist(api<Deployment>(`/deployments/${id}/resume`, { method: 'POST' }), reconcileDep(id))
     },
 
     // The deploy mints + accepts the new secret (signed with the current one); we adopt the

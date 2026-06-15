@@ -58,7 +58,12 @@ class CommanderDeploymentSyncService
         $deployment->status = $newStatus;
         $deployment->reason = $state['reason'] ?? null;
         $deployment->message = $state['message'] ?? null;
-        $deployment->grace_until = isset($state['grace_until']) ? CarbonImmutable::parse($state['grace_until']) : null;
+        // Keep grace_until only when the resolved status is actually grace. An expired grace echoes
+        // effective_status=suspended with a past grace_until; persisting that would leave a suspended
+        // row carrying a stale grace deadline (the deploy itself never stores that combination).
+        $deployment->grace_until = ($newStatus === 'grace' && isset($state['grace_until']))
+            ? CarbonImmutable::parse($state['grace_until'])
+            : null;
         $deployment->changed_by = $state['changed_by'] ?? 'cms';
 
         if ($flipped || $deployment->changed_at === null) {
