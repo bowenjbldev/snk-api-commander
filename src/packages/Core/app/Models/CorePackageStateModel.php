@@ -16,6 +16,7 @@ class CorePackageStateModel extends Model
         return [
             'status' => CorePackageStatusEnum::class,
             'grace_until' => 'datetime',
+            'control_secret' => 'encrypted',
         ];
     }
 }

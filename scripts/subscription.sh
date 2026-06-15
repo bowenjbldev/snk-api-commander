@@ -91,11 +91,15 @@ regen_compose() {
     } > "$tmp"
 
     local found=0
+    local aliases=""
     for state in "$CLIENTS_DIR"/*.env; do
         [ -e "$state" ] || break
         found=1
+        CONTROL_SECRET=""   # default for pre-Phase-4 client envs (control plane stays off)
         # shellcheck disable=SC1090
         source "$state"
+        # nginx alias so the CMS container resolves <cliente>.<BASE_DOMAIN> to nginx (Host routing).
+        aliases="${aliases}          - ${CLIENT}.\${BASE_DOMAIN}\n"
         cat >> "$tmp" <<EOF
   app-${CLIENT}:
     image: snake-laravel-api-app
@@ -111,6 +115,7 @@ regen_compose() {
       LOG_CHANNEL: stderr
       CACHE_STORE: database
       SESSION_DRIVER: cookie
+      CORE_CONTROL_SECRET: "${CONTROL_SECRET}"
       DB_CONNECTION: mysql
       DB_HOST: db
       DB_PORT: "3306"
@@ -124,6 +129,18 @@ regen_compose() {
       - app-network
 EOF
     done
+
+    # Extend the base nginx service with one network alias per client domain so the CMS
+    # (app container) can reach each deploy by its subdomain over the internal network.
+    if [ "$found" -eq 1 ]; then
+        {
+            echo "  nginx:"
+            echo "    networks:"
+            echo "      app-network:"
+            echo "        aliases:"
+            printf '%b' "$aliases"
+        } >> "$tmp"
+    fi
 
     if [ "$found" -eq 0 ]; then
         sed -i 's/^services:$/services: {}/' "$tmp"
@@ -308,8 +325,10 @@ cmd_add() {
     require_cert
     ensure_wiring
 
-    local db
+    local db control_secret
     db=$(snake "$pkg")
+    # Per-deploy control-plane secret: enables /control on the deploy and lets the CMS sign.
+    control_secret="sk_ctl_live_$(openssl rand -hex 12)"
 
     info "Registrando suscripcion [$c] (paquete $pkg, BD $db)..."
     cat > "$CLIENTS_DIR/$c.env" <<EOF
@@ -318,6 +337,7 @@ PACKAGE=$pkg
 DB_DATABASE=$db
 DB_USERNAME=$db
 DB_PASSWORD=$db
+CONTROL_SECRET=$control_secret
 CREATED_AT=$(date -Iseconds)
 EOF
 
@@ -336,23 +356,36 @@ EOF
     info "Levantando app-$c..."
     docker compose up -d "app-$c"
 
-    info "Recargando nginx (re-render de vhosts)..."
-    docker compose restart nginx >/dev/null
+    info "Recargando nginx (re-render de vhosts + alias de red)..."
+    docker compose up -d nginx >/dev/null
 
     wait_for_app "$c"
 
     info "Ejecutando seeders..."
     docker compose exec -T "app-$c" php artisan core:seed --force
 
+    # Register the live deploy in the CMS so the SPA can control it (suspend/grace/resume/sync).
+    info "Registrando el deploy en el CMS (control plane)..."
+    if docker compose exec -T app php artisan cms:register-deploy "$c" \
+        --package="$pkg" \
+        --base-url="https://$c.$BASE_DOMAIN/api/v1" \
+        --secret="$control_secret" \
+        --client="$c"; then
+        info "Deploy [$c] registrado en el CMS."
+    else
+        echo "AVISO: no se pudo registrar en el CMS (¿el servicio 'app' corre con API_PACKAGE=Cms?)." >&2
+    fi
+
     hosts_add "$c.$BASE_DOMAIN" "$c"
 
     echo ""
     echo "Suscripcion [$c] lista:"
-    echo "  URL:    https://$c.$BASE_DOMAIN:$HTTPS_PORT/api/v1"
-    echo "  Docs:   https://$c.$BASE_DOMAIN:$HTTPS_PORT/api/v1/docs"
-    echo "  Login:  admin@snake.com / secret1234 (seed por defecto)"
-    echo "  BD:     $db (usuario $db)"
-    echo "  Logs:   docker compose logs -f app-$c"
+    echo "  URL:      https://$c.$BASE_DOMAIN:$HTTPS_PORT/api/v1"
+    echo "  Docs:     https://$c.$BASE_DOMAIN:$HTTPS_PORT/api/v1/docs"
+    echo "  Login:    admin@snake.com / secret1234 (seed por defecto)"
+    echo "  BD:       $db (usuario $db)"
+    echo "  Control:  registrado en el CMS (controlable desde el panel)"
+    echo "  Logs:     docker compose logs -f app-$c"
 }
 
 cmd_remove() {
@@ -364,11 +397,16 @@ cmd_remove() {
     # shellcheck disable=SC1090
     source "$CLIENTS_DIR/$c.env"
 
+    info "Quitando el deploy del registro del CMS..."
+    docker compose exec -T app php artisan cms:deregister-deploy "$c" >/dev/null 2>&1 || true
+
     info "Parando y eliminando app-$c..."
     docker compose rm -sf "app-$c" >/dev/null 2>&1 || true
 
     rm -f "$NGINX_CONF_DIR/client-$c.conf.template"
-    docker compose restart nginx >/dev/null 2>&1 || true
+    rm -f "$CLIENTS_DIR/$c.env"
+    regen_compose
+    docker compose up -d nginx >/dev/null 2>&1 || true
 
     if [ "$drop" = "--drop-db" ]; then
         echo "Esto BORRARA la base de datos [$DB_DATABASE] de forma permanente."
@@ -383,8 +421,6 @@ cmd_remove() {
         info "BD $DB_DATABASE conservada (usa --drop-db para borrarla)."
     fi
 
-    rm -f "$CLIENTS_DIR/$c.env"
-    regen_compose
     hosts_remove "$c"
 
     info "Suscripcion [$c] eliminada."

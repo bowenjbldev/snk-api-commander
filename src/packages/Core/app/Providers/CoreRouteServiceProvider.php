@@ -24,12 +24,14 @@ class CoreRouteServiceProvider extends ServiceProvider
 
     private function configureRateLimiting(): void
     {
+        // SPA dashboards fan out several requests per navigation (loadData + per-page usage),
+        // so the per-user budget is generous and env-tunable.
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+            return Limit::perMinute((int) env('CORE_API_RATE_LIMIT', 240))->by($request->user()?->id ?: $request->ip());
         });
 
         RateLimiter::for('login', function (Request $request) {
-            return Limit::perMinute(5)->by($request->ip());
+            return Limit::perMinute((int) env('CORE_LOGIN_RATE_LIMIT', 10))->by($request->ip());
         });
     }
 

@@ -7,6 +7,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Packages\Core\Enums\CorePackageStatusEnum;
+use Packages\Core\Models\CorePackageStateModel;
 use Packages\Core\Models\CoreQuotaMetricModel;
 use Packages\Core\Models\CoreUsageRollupModel;
 use Packages\Core\Services\CorePackageStateService;
@@ -80,6 +81,27 @@ class CoreControlController extends Controller
         }
 
         return response()->json($query->paginate((int) ($data['per_page'] ?? 200)));
+    }
+
+    /**
+     * Store a new control secret (delivered by the CMS, signed with the CURRENT secret). Once stored
+     * it overrides CORE_CONTROL_SECRET for verification — the old secret stops working immediately.
+     */
+    public function rotateSecret(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'new_secret' => 'required|string|min:16|max:128',
+        ]);
+
+        CorePackageStateModel::query()->updateOrCreate(
+            ['id' => 1],
+            ['control_secret' => $data['new_secret']],
+        );
+
+        return response()->json([
+            'rotated' => true,
+            'suffix' => substr($data['new_secret'], -4),
+        ]);
     }
 
     private function statePayload(CorePackageStateData $state): array

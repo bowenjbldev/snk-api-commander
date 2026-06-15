@@ -1,57 +1,87 @@
-// Simulated demo clock.
-//
-// The design is a snapshot at a fixed instant. To make countdowns and relative
-// timestamps both MATCH the mock ("13h 42m", "3h ago") AND tick live, we anchor
-// a virtual "now" to that instant and advance it by real elapsed wall-time.
-import {
-  createContext,
-  createElement,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from 'react'
+// Time helpers. All timestamps are ISO strings (UTC). Relative formatting is
+// anchored to a passed-in `nowMs` so countdowns and "3h ago" stay coherent with
+// the demo dataset, which is built relative to app-load time (see fixtures).
 
-export const DEMO_NOW_ISO = '2026-06-11T14:02:31Z'
-export const DEMO_NOW_MS = Date.parse(DEMO_NOW_ISO)
+const MIN = 60_000
+const HOUR = 60 * MIN
+const DAY = 24 * HOUR
 
-export const SEC = 1000
-export const MIN = 60 * SEC
-export const HOUR = 60 * MIN
-export const DAY = 24 * HOUR
-
-/** ISO timestamp `seconds` before the demo instant (deterministic, no Date.now). */
-export function agoIso(seconds: number): string {
-  return new Date(DEMO_NOW_MS - seconds * 1000).toISOString()
-}
-/** ISO timestamp `seconds` after the demo instant. */
-export function aheadIso(seconds: number): string {
-  return new Date(DEMO_NOW_MS + seconds * 1000).toISOString()
+export function msUntil(iso: string, nowMs: number): number {
+  return new Date(iso).getTime() - nowMs
 }
 
-// Real wall-clock anchor, captured once at module load.
-const REAL_START_MS = Date.now()
-
-/** Current simulated time in ms (demo instant + real elapsed). */
-export function simNowMs(): number {
-  return DEMO_NOW_MS + (Date.now() - REAL_START_MS)
+export function msSince(iso: string, nowMs: number): number {
+  return nowMs - new Date(iso).getTime()
 }
 
-// ---------------------------------------------------------------------------
-// React clock context — re-renders subscribers every second.
-// ---------------------------------------------------------------------------
-const NowContext = createContext<number>(DEMO_NOW_MS)
-
-export function NowProvider({ children }: { children: ReactNode }) {
-  const [nowMs, setNowMs] = useState<number>(() => simNowMs())
-  useEffect(() => {
-    const t = window.setInterval(() => setNowMs(simNowMs()), 1000)
-    return () => window.clearInterval(t)
-  }, [])
-  return createElement(NowContext.Provider, { value: nowMs }, children)
+/** "3h ago", "2m ago", "just now", or "in 5h" for the future. */
+export function formatRelative(iso: string, nowMs: number): string {
+  const diff = nowMs - new Date(iso).getTime()
+  const future = diff < 0
+  const abs = Math.abs(diff)
+  let out: string
+  if (abs < 45 * 1000) out = 'just now'
+  else if (abs < HOUR) out = `${Math.round(abs / MIN)}m`
+  else if (abs < DAY) out = `${Math.round(abs / HOUR)}h`
+  else out = `${Math.round(abs / DAY)}d`
+  if (out === 'just now') return out
+  return future ? `in ${out}` : `${out} ago`
 }
 
-/** Ticking simulated now (ms). Re-renders the caller every second. */
-export function useNowMs(): number {
-  return useContext(NowContext)
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+function pad(n: number, len = 2): string {
+  return String(n).padStart(len, '0')
+}
+
+/** "2026-06-11 14:02 UTC" — used in the hover tooltip on relative times. */
+export function formatAbsoluteUTC(iso: string): string {
+  const d = new Date(iso)
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(
+    d.getUTCHours(),
+  )}:${pad(d.getUTCMinutes())} UTC`
+}
+
+/** "Jun 12, 2026 09:00 UTC" — deadlines, created dates. */
+export function formatDateUTC(iso: string): string {
+  const d = new Date(iso)
+  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()} ${pad(
+    d.getUTCHours(),
+  )}:${pad(d.getUTCMinutes())} UTC`
+}
+
+/** "Jun 12" — compact date for table cells. */
+export function formatDayMonth(iso: string): string {
+  const d = new Date(iso)
+  return `${MONTHS[d.getUTCMonth()]} ${pad(d.getUTCDate())}`
+}
+
+/** "Mar 2024" — client "since" lines. */
+export function formatMonthYear(iso: string): string {
+  const d = new Date(iso)
+  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`
+}
+
+/** "13h 42m" — grace tag in tables and dashboard. Clamps at 0. */
+export function formatCountdownShort(ms: number): string {
+  if (ms <= 0) return '0m'
+  const totalMin = Math.floor(ms / MIN)
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
+  if (h >= 24) {
+    const d = Math.floor(h / 24)
+    return `${d}d ${h % 24}h`
+  }
+  if (h > 0) return `${h}h ${pad(m)}m`
+  return `${m}m`
+}
+
+/** "13:42:10" — the big mono countdown on the detail state card. Clamps at 0. */
+export function formatCountdownClock(ms: number): string {
+  const clamped = Math.max(0, ms)
+  const totalSec = Math.floor(clamped / 1000)
+  const h = Math.floor(totalSec / 3600)
+  const m = Math.floor((totalSec % 3600) / 60)
+  const s = totalSec % 60
+  return `${pad(h)}:${pad(m)}:${pad(s)}`
 }

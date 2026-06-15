@@ -1,0 +1,440 @@
+// Custom tokens + utilities Carbon doesn't ship.
+//
+// Carbon emits theme-zone classes (.cds--g100 / .cds--g10 / .cds--g90 / .cds--white)
+// from @carbon/styles' scss/_zone.scss, each carrying the full --cds-* token set plus
+// background-color/color. We pigg-back our own --scns-* tokens onto those same zones so
+// they switch with the active theme. The app body gets the zone class (set by
+// ThemeProvider); the Header re-themes itself to g100 via a nested <Theme theme="g100">.
+
+@mixin scns-dark {
+  --scns-amber-bg: #5b4300;
+  --scns-amber-text: #f1c21b;
+  --scns-tag-red-bg: #750e13;
+  --scns-tag-red-text: #ff8389;
+  --scns-warn-text: #f1c21b;
+  --scns-method-blue-bg: #0043ce;
+  --scns-method-blue-text: #d0e2ff;
+  --scns-method-green-bg: #044317;
+  --scns-method-green-text: #6fdc8c;
+  --scns-skeleton: #292929;
+  --scns-skeleton-accent: #393939;
+  --scns-chart-grid: #333333;
+  --scns-overlay: rgba(10, 10, 10, 0.65);
+  --scns-success: #42be65;
+  --scns-warning: #f1c21b;
+  --scns-error: #fa4d56;
+}
+
+@mixin scns-light {
+  --scns-amber-bg: #f8e6a0;
+  --scns-amber-text: #684e00;
+  --scns-tag-red-bg: #ffd7d9;
+  --scns-tag-red-text: #a2191f;
+  --scns-warn-text: #8e6a00;
+  --scns-method-blue-bg: #d0e2ff;
+  --scns-method-blue-text: #0043ce;
+  --scns-method-green-bg: #a7f0ba;
+  --scns-method-green-text: #0e6027;
+  --scns-skeleton: #e8e8e8;
+  --scns-skeleton-accent: #d6d6d6;
+  --scns-chart-grid: #e6e6e6;
+  --scns-overlay: rgba(22, 22, 22, 0.5);
+  --scns-success: #24a148;
+  --scns-warning: #f1c21b;
+  --scns-error: #da1e28;
+}
+
+.cds--g100 { @include scns-dark; }
+.cds--g90  { @include scns-dark; }
+.cds--g10  { @include scns-light; }
+.cds--white { @include scns-light; }
+
+// Sober engineering character: sharp corners everywhere. Carbon defaults to 0 radius
+// already; tags/pills keep their rounded shape.
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+body {
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--cds-background);
+  color: var(--cds-text-primary);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+// ── Utilities ────────────────────────────────────────────────────────────────
+
+.scns-mono {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-feature-settings: 'tnum' 1, 'zero' 1;
+}
+
+// Right-aligned tabular numerics for table cells.
+.scns-num {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.scns-link {
+  color: var(--cds-link-primary);
+  text-decoration: none;
+  cursor: pointer;
+  &:hover { text-decoration: underline; }
+}
+
+// Link-styled <button> for keyboard-accessible name cells that open drawers/panels.
+.scns-linkbtn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--cds-link-primary);
+  cursor: pointer;
+  text-align: left;
+  &:hover { text-decoration: underline; }
+}
+
+// Relative timestamps: Plex Mono (per the art direction) + dotted underline →
+// absolute-time tooltip on hover.
+.scns-reltime {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--cds-text-helper);
+  border-bottom: 1px dotted var(--cds-text-helper);
+  cursor: default;
+}
+
+.scns-helper { color: var(--cds-text-helper); }
+.scns-secondary { color: var(--cds-text-secondary); }
+
+// Semantic value colors (KPI values, deltas).
+.scns-val-amber { color: var(--scns-amber-text); }
+.scns-val-red { color: var(--scns-error); }
+.scns-val-green { color: var(--scns-success); }
+
+// Page scaffolding: a centered content container (Bootstrap-style margin auto),
+// capped so wide monitors don't stretch content edge-to-edge. Full width until the cap.
+.scns-page {
+  width: 100%;
+  max-width: 1312px;
+  margin: 0 auto;
+  padding: 24px 32px 48px;
+}
+
+// ── Tags ───────────────────────────────────────────────────────────────────────
+// Carbon has no warm-amber tag; this matches the design tokens and pill shape.
+.scns-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 12px;
+  border-radius: 24px;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.scns-tag--amber {
+  background: var(--scns-amber-bg);
+  color: var(--scns-amber-text);
+}
+.scns-tag--sm {
+  height: 18px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+
+// Method micro-tags in log/endpoint tables.
+.scns-method {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 24px;
+  letter-spacing: 0.3px;
+}
+.scns-method--get {
+  background: var(--scns-method-blue-bg);
+  color: var(--scns-method-blue-text);
+}
+.scns-method--post {
+  background: var(--scns-method-green-bg);
+  color: var(--scns-method-green-text);
+}
+.scns-method--other {
+  background: var(--cds-layer-accent);
+  color: var(--cds-text-secondary);
+}
+
+// ── KPI cluster (1px-gap grid; the gap IS the border color showing through) ──────
+.scns-kpi-cluster {
+  display: grid;
+  gap: 1px;
+  background: var(--cds-border-subtle);
+  border: 1px solid var(--cds-border-subtle);
+}
+.scns-kpi-tile {
+  background: var(--cds-layer);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.scns-kpi-label {
+  font-size: 12px;
+  color: var(--cds-text-secondary);
+}
+.scns-kpi-value {
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.1;
+}
+.scns-kpi-helper {
+  font-size: 12px;
+  color: var(--cds-text-helper);
+}
+
+// ── Quota bar ────────────────────────────────────────────────────────────────
+.scns-qbar {
+  position: relative;
+  background: var(--cds-layer-accent);
+  overflow: hidden;
+  border-radius: 0;
+}
+.scns-qbar__fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+// ── Bordered card / list ───────────────────────────────────────────────────────
+.scns-card {
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+}
+
+// ── Drawer (424px) + detail panel (340px) ────────────────────────────────────
+.scns-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--scns-overlay);
+  z-index: 8500;
+}
+.scns-drawer {
+  position: fixed;
+  top: 48px;
+  right: 0;
+  bottom: 0;
+  width: 424px;
+  background: var(--cds-layer);
+  border-left: 1px solid var(--cds-border-subtle);
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.24);
+  z-index: 8600;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.scns-panel {
+  width: 340px;
+  flex: none;
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+  align-self: flex-start;
+}
+
+// ── Inline edit ────────────────────────────────────────────────────────────────
+.scns-inline-value {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  border-bottom: 1px dashed var(--cds-border-strong);
+  cursor: pointer;
+}
+.scns-inline-value:hover {
+  border-bottom-color: var(--cds-link-primary);
+}
+.scns-inline-value--placeholder {
+  color: var(--cds-text-placeholder);
+}
+.scns-inline-input {
+  background: var(--cds-field);
+  border: none;
+  border-bottom: 2px solid var(--cds-border-interactive);
+  color: var(--cds-text-primary);
+  font: inherit;
+  padding: 2px 4px;
+  outline: none;
+  width: 96px;
+}
+.scns-inline-btn {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  flex: none;
+}
+.scns-inline-btn--ok {
+  background: var(--cds-button-primary, #0f62fe);
+  color: #fff;
+}
+.scns-inline-btn--cancel {
+  background: transparent;
+  color: var(--cds-text-primary);
+  border: 1px solid var(--cds-border-strong);
+}
+
+// Drawer header bar.
+.scns-drawer__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 16px;
+  border-bottom: 1px solid var(--cds-border-subtle);
+}
+.scns-section-label {
+  font-size: 12px;
+  letter-spacing: 0.32px;
+  text-transform: uppercase;
+  color: var(--cds-text-secondary);
+  margin: 0 0 8px;
+}
+
+// ── Pulsing live-tail dot ──────────────────────────────────────────────────────
+@keyframes scns-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+.scns-pulse {
+  animation: scns-pulse 1.2s ease-in-out infinite;
+}
+
+// ── Dense log table (34px rows, all mono 11.5px) ───────────────────────────────
+.scns-logtable td,
+.scns-logtable th {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11.5px;
+}
+.scns-logtable td {
+  height: 34px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.scns-logrow {
+  cursor: pointer;
+}
+.scns-logrow--sel td:first-child {
+  box-shadow: inset 3px 0 0 var(--cds-border-interactive);
+}
+
+// ── Command palette (⌘K) ───────────────────────────────────────────────────────
+.scns-cmdk {
+  position: fixed;
+  inset: 0;
+  z-index: 9100;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 96px;
+  background: var(--scns-overlay);
+}
+.scns-cmdk__box {
+  width: 560px;
+  max-width: 92vw;
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.scns-cmdk__input {
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  background: var(--cds-field);
+  border: none;
+  border-bottom: 1px solid var(--cds-border-subtle);
+  color: var(--cds-text-primary);
+  font: inherit;
+  outline: none;
+}
+.scns-cmdk__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+.scns-cmdk__item--active {
+  background: var(--cds-layer-selected, var(--cds-layer-accent));
+  box-shadow: inset 3px 0 0 var(--cds-border-interactive);
+}
+
+// ── Skip-to-content link (visible on focus) ────────────────────────────────────
+.scns-skip {
+  position: fixed;
+  top: -48px;
+  left: 8px;
+  z-index: 9200;
+  background: var(--cds-layer);
+  color: var(--cds-text-primary);
+  padding: 8px 12px;
+  border: 1px solid var(--cds-border-strong);
+  text-decoration: none;
+  transition: top 0.12s ease;
+}
+.scns-skip:focus {
+  top: 8px;
+}
+
+// ── Responsive: collapse multi-column grids on narrow viewports ────────────────
+// (!important overrides the inline grid-template-columns set on these elements.)
+@media (max-width: 1056px) {
+  .scns-kpi-cluster {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+  .scns-charts-row,
+  .scns-grid-2col {
+    grid-template-columns: 1fr !important;
+  }
+}
+@media (max-width: 672px) {
+  .scns-kpi-cluster {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .scns-page {
+    padding: 16px 16px 40px;
+  }
+}
+
+// Header keeps a 1px bottom border in both themes (it is always dark).
+.scns-header {
+  border-bottom: 1px solid #393939;
+}
+
+// The side nav sits BELOW the 48px header (it is not a child of the header) and
+// uses the layer surface (#262626 dark / #ffffff light) to stand out from the bg.
+.scns-sidenav.cds--side-nav {
+  top: 48px;
+  height: calc(100vh - 48px);
+  background: var(--cds-layer);
+}

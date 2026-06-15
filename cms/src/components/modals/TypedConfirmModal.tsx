@@ -1,51 +1,49 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Modal, TextInput } from '@carbon/react'
 
-/**
- * Danger modal gated by typed confirmation: the operator must type
- * `confirmWord` exactly to enable the primary action. Used for irreversible
- * actions (delete deployment, rotate control secret).
- */
-export function TypedConfirmModal({
-  open,
-  label,
-  heading,
-  body,
-  confirmWord,
-  confirmHelper,
-  primaryText,
-  onClose,
-  onConfirm,
-}: {
+interface Props {
   open: boolean
+  title: string
   label?: string
-  heading: string
-  body: React.ReactNode
+  body: ReactNode
+  /** The exact text the operator must type to enable the danger action. */
   confirmWord: string
-  confirmHelper?: string
-  primaryText: string
+  confirmLabel: string
   onClose: () => void
   onConfirm: () => void
-}) {
-  const [typed, setTyped] = useState('')
+}
+
+// Destructive / irreversible actions (delete, secret rotation): the danger button
+// stays disabled until the operator types the entity name exactly.
+export function TypedConfirmModal({
+  open,
+  title,
+  label,
+  body,
+  confirmWord,
+  confirmLabel,
+  onClose,
+  onConfirm,
+}: Props) {
+  const [val, setVal] = useState('')
   useEffect(() => {
-    if (open) setTyped('')
+    if (open) setVal('')
   }, [open])
 
-  const matches = typed.trim() === confirmWord
+  if (!open) return null
+
   return (
     <Modal
+      open
       danger
-      open={open}
-      size="sm"
       modalLabel={label}
-      modalHeading={heading}
-      primaryButtonText={primaryText}
+      modalHeading={title}
+      primaryButtonText={confirmLabel}
       secondaryButtonText="Cancel"
-      primaryButtonDisabled={!matches}
+      primaryButtonDisabled={val !== confirmWord}
       onRequestClose={onClose}
       onRequestSubmit={() => {
-        if (matches) onConfirm()
+        if (val === confirmWord) onConfirm()
       }}
     >
       <div style={{ marginBottom: 16 }}>{body}</div>
@@ -53,12 +51,11 @@ export function TypedConfirmModal({
         id="typed-confirm"
         labelText={
           <>
-            Type <span className="sc-mono">{confirmWord}</span> to confirm
+            Type <code className="scns-mono">{confirmWord}</code> to confirm
           </>
         }
-        helperText={confirmHelper}
-        value={typed}
-        onChange={(e) => setTyped(e.target.value)}
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
         autoComplete="off"
       />
     </Modal>

@@ -1,50 +1,55 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
-import { ThemeProvider } from './theme/ThemeContext'
-import { NowProvider } from './lib/time'
-import { ToastProvider } from './notify/ToastProvider'
-import { DataStoreProvider } from './store/DataStore'
-import { ModalHost } from './components/modals/ModalHost'
-import { AppLayout } from './shell/AppLayout'
-import { Dashboard } from './screens/Dashboard'
-import { DeploymentsList } from './screens/deployments/DeploymentsList'
-import { DeploymentDetail } from './screens/deployments/DeploymentDetail'
-import { Clients } from './screens/Clients'
-import { Invoices } from './screens/Invoices'
-import { Quotas } from './screens/Quotas'
-import { RequestLogs } from './screens/RequestLogs'
-import { Subscriptions } from './screens/Subscriptions'
-import { Usage } from './screens/Usage'
-import { Settings } from './screens/Settings'
-import { NotFound } from './screens/NotFound'
+import { useEffect } from 'react'
+import { RouterProvider } from 'react-router'
+import { ThemeProvider } from './providers/ThemeProvider'
+import { ToastProvider } from './providers/ToastProvider'
+import { TickProvider } from './providers/TickProvider'
+import { ActionsProvider } from './providers/ActionsProvider'
+import { FullScreenLoading } from './components/FullScreenLoading'
+import { Login } from './pages/Login'
+import { useAuth } from './store/auth'
+import { useStore } from './store/store'
+import { router } from './router'
 
-export function App() {
+// Authenticated shell: load the registry once, then mount the app (data-loading gate keeps
+// the router from flashing fixture data before the real API response lands).
+function AuthedApp() {
+  const loaded = useStore((s) => s.loaded)
+  const loadData = useStore((s) => s.loadData)
+
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
+
+  return (
+    <TickProvider>
+      <ActionsProvider>
+        {loaded ? <RouterProvider router={router} /> : <FullScreenLoading label="Loading workspace…" />}
+      </ActionsProvider>
+    </TickProvider>
+  )
+}
+
+function AuthGate() {
+  const status = useAuth((s) => s.status)
+  const bootstrap = useAuth((s) => s.bootstrap)
+
+  useEffect(() => {
+    void bootstrap()
+  }, [bootstrap])
+
+  if (status === 'loading') return <FullScreenLoading label="Signing in…" />
+  if (status === 'anon') return <Login />
+  return <AuthedApp />
+}
+
+function App() {
   return (
     <ThemeProvider>
-      <NowProvider>
-        <ToastProvider>
-          <DataStoreProvider>
-            <BrowserRouter>
-              <ModalHost>
-                <Routes>
-                  <Route element={<AppLayout />}>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/clients" element={<Clients />} />
-                    <Route path="/deployments" element={<DeploymentsList />} />
-                    <Route path="/deployments/:id" element={<DeploymentDetail />} />
-                    <Route path="/subscriptions" element={<Subscriptions />} />
-                    <Route path="/invoices" element={<Invoices />} />
-                    <Route path="/usage" element={<Usage />} />
-                    <Route path="/quotas" element={<Quotas />} />
-                    <Route path="/logs" element={<RequestLogs />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Route>
-                </Routes>
-              </ModalHost>
-            </BrowserRouter>
-          </DataStoreProvider>
-        </ToastProvider>
-      </NowProvider>
+      <ToastProvider>
+        <AuthGate />
+      </ToastProvider>
     </ThemeProvider>
   )
 }
+
+export default App

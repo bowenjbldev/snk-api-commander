@@ -1,76 +1,93 @@
 # SnakeCloud CMS
 
-Operator admin panel for the SnakeCloud API platform — the remote control
-(suspend / grace / resume) and business ledger (clients, subscriptions,
-invoices, usage, quotas, request logs) for subscription-based API deployments.
+Single-operator admin panel for the SnakeCloud platform — remote control
+(suspend / grace / resume) and business ledger (clients, subscriptions, invoices,
+usage, quotas, request logs) for subscription-based REST API deployments.
 
-Built with **React + Vite + TypeScript** and **IBM Carbon v11** (`@carbon/react`,
-`@carbon/charts`), faithfully recreating the high-fidelity design handoff in
-`../docs/design/design_handoff_snakecloud_cms/` using real Carbon components and
-theme tokens (not the prototype's hand-rolled CSS).
-
-> Standalone SPA. It runs independently from the Laravel app in `../src`. The
-> data layer is in-memory demo fixtures today; wire the store actions to the
-> deployment `/api/v1/control/*` endpoints to go live.
+Standalone **Vite + React + TypeScript** SPA built with **IBM Carbon Design System
+v11** (`@carbon/react`) and `@carbon/charts-react`, faithfully recreating the design
+handoff in `../docs/design/design_handoff_snakecloud_cms/`.
 
 ## Run
 
 ```bash
 cd cms
 npm install
-npm run dev        # http://localhost:5174
-npm run build      # tsc --noEmit && vite build  → dist/
-npm run typecheck  # tsc --noEmit
+npm run dev      # http://localhost:5174
+npm run build    # tsc -b && vite build (code-split vendor chunks)
+npm run preview  # serve the production build locally
 ```
 
-Requires Node 18+. IBM Plex fonts load from Google Fonts.
+## Test
 
-## What's implemented
+```bash
+npm test         # vitest run (unit + component, jsdom)
+npm run test:watch
+```
 
-- **UI Shell** — dark `Header` (g100 in *both* themes, like IBM Cloud) with ⌘K
-  command palette (search deployments/clients/invoices), themed `SideNav`,
-  `PROD`/connection chips, theme toggle.
-- **Theme** — `g100` (dark, default) / `g10` (light), runtime-switchable via
-  Carbon `<Theme>`, persisted to `localStorage`.
-- **7 screens** — Dashboard, Deployments (list + detail with Overview/Usage/
-  Logs/Settings tabs), Clients (list + quick-view drawer), Invoices (with the
-  overdue enforcement flow), Quotas (inline-editable limits), Request Logs
-  (live tail), plus Subscriptions / Usage / Settings built to the same system.
-- **Status semantics** — green "Operational"/"Paid", custom warm-amber
-  "Grace · 13h 42m" (live countdown) / "Pending", red "Suspended"/"Overdue".
-- **Live behavior** — a simulated clock anchored at the design instant
-  (2026-06-11 14:02:31 UTC) ticks in real time, so grace countdowns and
-  relative timestamps stay consistent *and* update live. Request Logs prepends
-  rows while "Live tail" is on (pauses on row selection).
-- **DataTable** — toolbar search + filters, batch actions, row overflow menus,
-  sorting, pagination, skeleton loading (`DataGrid<T>` over Carbon primitives).
-- **Mutations** — every state change (suspend/grace/resume, mark paid/overdue,
-  quota edits, secret rotation, delete) updates the in-memory store and fires a
-  `ToastNotification` with a mono timestamp. Destructive/irreversible actions
-  (delete, rotate secret) require typed confirmation. Suspend/Grace/Resume reuse
-  the same modal components from list overflow, batch bar, detail header and the
-  invoice follow-up modals.
+Covers `lib/time` + `lib/format`, the zustand store mutations (suspend/grace/resume,
+mark-paid, quota edits), and components (StatusTag, QuotaBar, InlineEdit, DataTableShell).
+
+## Build & serve (Docker / static)
+
+The build emits a static `dist/` (SPA). Serve it behind any static host with an
+SPA fallback to `index.html`. A multi-stage `Dockerfile` (node build → nginx) is
+included:
+
+```bash
+docker build -t snakecloud-cms ./cms
+docker run -p 8080:80 snakecloud-cms   # http://localhost:8080
+```
+
+`nginx.conf` does `try_files $uri /index.html` for client-side routing and caches the
+content-hashed `/assets/` immutably. (A future `Cms` deploy can serve `dist/` directly.)
+
+## Stack
+
+- React 19 · React Router 7 · TypeScript 5.9 · Vite 7
+- `@carbon/react` 1.109 · `@carbon/styles` · `@carbon/icons-react` · `@carbon/charts-react` 1.27
+- `zustand` for the in-memory store · self-hosted IBM Plex via `@ibm/plex`
+
+## Data
+
+The app runs on a **coherent in-memory demo dataset** (`src/store/fixtures.ts`):
+8 clients, 15 deployments, 8 invoices, quotas, request logs and an activity feed,
+built relative to app-load time so grace countdowns tick live and relative ages
+stay correct. All mutations (suspend/grace/resume, inline quota edits, invoice
+mark-paid/overdue enforcement, secret rotation, CRUD) update the store in place.
+
+There is **no backend wiring** yet. The domain types in `src/store/types.ts` mirror
+the deploy-side `core_*` tables (see `../docs/CONTROL-PLANE.md`) so a future swap
+from fixtures to the signed `/control` HMAC API is a data-source change, not a model
+change. A future `Cms` deploy can serve `cms/dist` without moving this source.
 
 ## Architecture
 
 ```
 src/
-├── types.ts                  # domain model
-├── lib/        time.ts (simulated clock + NowProvider), format.ts
-├── data/       dataset.ts (one coherent fixture set), charts.ts (seeded series)
-├── store/      DataStore.tsx (mutable state + mutators)
-├── theme/      ThemeContext.tsx (g100/g10 + persistence)
-├── notify/     ToastProvider.tsx
-├── components/
-│   ├── ui/     StatusTag, Bits, RelativeTime, LiveCountdown, QuotaBar,
-│   │           Drawer, InlineEdit, CodeBits, DataGrid, Layout (+ barrel)
-│   ├── modals/ StateChangeModals, OverdueModal, TypedConfirmModal, ModalHost
-│   └── charts/ Charts.tsx (Carbon charts wrappers + legend)
-├── shell/      AppHeader, AppSideNav, AppLayout, CommandPalette
-└── screens/    Dashboard, Clients, Invoices, Quotas, RequestLogs,
-                Subscriptions, Usage, Settings, deployments/*
+├── app/            UI shell — always-dark Header, SideNav (9 items), Breadcrumbs
+├── providers/      Theme (g100/g10, persisted) · Toast · Tick (1s clock) · Actions (modal orchestration)
+├── store/          zustand store · types · transitions (state machine) · fixtures · live-tail generator
+├── components/     reusable primitives — DataTableShell, Drawer, DetailPanel, InlineEdit,
+│                   StatusTag/AmberTag/MethodTag, GraceCountdown, QuotaBar, KpiCluster,
+│                   CopyableCode, CommandPalette, ChartCard, modals/
+├── pages/          Dashboard · Clients · Deployments (+ detail tabs) · Subscriptions ·
+│                   Invoices · Usage · Quotas · RequestLogs · Settings
+├── lib/            time · format · chart data + options
+├── styles/         index.scss (Carbon config + import) · tokens.scss (custom tokens + utilities)
+└── router.tsx      createBrowserRouter route table
 ```
 
-Screens compose the kit and read live data from `useStore()`; static lookups
-come from `data/dataset.ts`. The `ModalHost` centralizes every shared mutation
-modal so each screen just calls `useModals().openSuspend(dep)` etc.
+### Key decisions
+
+- **Theming**: the active theme is applied as a Carbon zone class (`cds--g100` /
+  `cds--g10`) on `<body>`; the Header re-themes to `g100` via a nested `<Theme>` so it
+  stays dark in both modes. Charts don't follow Carbon's theme — options carry an
+  explicit `theme` rebuilt via `useMemo`.
+- **Live updates without table churn**: a single 1s clock lives in `TickProvider`;
+  only `GraceCountdown` / `RelativeTime` leaves subscribe to it, so tables don't
+  re-render every second. The request-log live tail uses a plain capped table.
+- **Actions**: `ActionsProvider` owns the suspend/grace/resume/rotate/delete and
+  overdue-enforcement modals and exposes openers via `useActions()`, reused by list
+  rows, batch bar, detail header, state card and invoice flows.
+```
