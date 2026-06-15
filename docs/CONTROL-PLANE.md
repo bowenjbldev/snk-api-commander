@@ -11,8 +11,8 @@ Este repo convivira tres piezas:
 | Pieza | Donde | Estado |
 |---|---|---|
 | **API** (Core + paquete de negocio) | cada subdominio de cliente | hecho |
-| **Commander** (panel tipo Heroku) | `packages/Commander` en el deploy principal (`API_PACKAGE=Commander`) | futuro |
-| **Web publica + UI Commander** | React/Vite servidas en el dominio principal | futuro |
+| **Commander** (panel tipo Heroku) | `packages/Commander` en el deploy principal (`API_PACKAGE=Commander`) | hecho |
+| **Web publica + UI Commander** | React/Vite servidas en el dominio principal (SPA en `commander/`) | hecho |
 
 El Commander gestionara N deploys de clientes llamando a los endpoints `/control` de
 cada uno. Cada deploy es autonomo: si el Commander cae, los clientes siguen sirviendo.
@@ -33,6 +33,7 @@ Estado del deploy. Una sola fila tipada gana a un key-value: enum + timestamp.
 | message | text null | texto para el cliente, se devuelve en el 402 |
 | grace_until | timestamp null | un grace vencido se comporta como suspended (resuelto en lectura) |
 | changed_by | string(50) null | `cli` \| `quota` \| `cms` |
+| control_secret | text null (encrypted) | override runtime del secreto HMAC (set via `POST /control/rotate-secret`); precede a `CORE_CONTROL_SECRET`; nunca se serializa |
 
 ### `core_request_logs` (cruda, write-heavy)
 
@@ -101,8 +102,8 @@ request
 - p95 exacto calculado desde la tabla cruda (los percentiles **no componen**:
   el dia no puede derivarse de las horas). Por eso `retention_days >= 2`.
 - `--prune` borra crudo anterior a la retencion en lotes de 5000 (sin locks largos).
-- Crecimiento: con throttle 60 rpm el techo es ~86k filas/dia ≈ 15–25 MB/dia en
-  MariaDB. Valvulas: retencion y sample_rate.
+- Crecimiento: con el throttle por defecto de 240 rpm (`CORE_API_RATE_LIMIT`) el techo es
+  ~345k filas/dia ≈ 60–100 MB/dia en MariaDB. Valvulas: retencion y sample_rate.
 
 ## 6. Cuotas
 
@@ -135,6 +136,8 @@ POST /api/v1/control/state              → { state }
      body: { status: active|grace|suspended, reason?, message?, grace_until? }
 GET  /api/v1/control/usage              → paginado de core_usage_rollups
      query: period=hour|day, from?, to?, per_page?
+POST /api/v1/control/rotate-secret      → { rotated, suffix }
+     body: { new_secret }   (min 16 / max 128; nuevo override de core_package_state.control_secret)
 ```
 
 ### Firma (por request)
@@ -158,7 +161,7 @@ curl -X POST https://cliente.dominio.com/api/v1/control/state \
      -H 'Content-Type: application/json' -d "$BODY"
 ```
 
-### Boceto del package Commander (futuro)
+### El package Commander (implementado)
 
 BD propia del deploy principal con el registro de la plataforma:
 

@@ -1,4 +1,4 @@
-# SnakeCloud CMS
+# SnakeCloud Commander
 
 Single-operator admin panel for the SnakeCloud platform — remote control
 (suspend / grace / resume) and business ledger (clients, subscriptions, invoices,
@@ -11,7 +11,7 @@ handoff in `../docs/design/design_handoff_snakecloud_cms/`.
 ## Run
 
 ```bash
-cd cms
+cd commander
 npm install
 npm run dev      # http://localhost:5174
 npm run build    # tsc -b && vite build (code-split vendor chunks)
@@ -35,12 +35,12 @@ SPA fallback to `index.html`. A multi-stage `Dockerfile` (node build → nginx) 
 included:
 
 ```bash
-docker build -t snakecloud-cms ./cms
-docker run -p 8080:80 snakecloud-cms   # http://localhost:8080
+docker build -t snakecloud-commander ./commander
+docker run -p 8080:80 snakecloud-commander   # http://localhost:8080
 ```
 
 `nginx.conf` does `try_files $uri /index.html` for client-side routing and caches the
-content-hashed `/assets/` immutably. (A future `Cms` deploy can serve `dist/` directly.)
+content-hashed `/assets/` immutably. (A future `Commander` deploy can serve `dist/` directly.)
 
 ## Stack
 
@@ -59,7 +59,7 @@ mark-paid/overdue enforcement, secret rotation, CRUD) update the store in place.
 There is **no backend wiring** yet. The domain types in `src/store/types.ts` mirror
 the deploy-side `core_*` tables (see `../docs/CONTROL-PLANE.md`) so a future swap
 from fixtures to the signed `/control` HMAC API is a data-source change, not a model
-change. A future `Cms` deploy can serve `cms/dist` without moving this source.
+change. A future `Commander` deploy can serve `commander/dist` without moving this source.
 
 ## Architecture
 

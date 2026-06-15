@@ -22,9 +22,9 @@ paralelo por navegación).
    `CommanderDeploymentSyncService`, se añadió un comando de consola `commander:sync-deploys` y se programó
    horariamente desde `CommanderServiceProvider`. Así el mirror local (estado, cuotas y snapshots de uso)
    se mantiene fresco sin que nadie pulse **Sync**.
-2. **CORS para producción.** Configuración de orígenes permitidos vía `CORS_ALLOWED_ORIGINS`, con el
-   matiz —documentado en el propio fichero— de que el `cors.php` que de verdad consume `HandleCors`
-   es el del *app* (`config/cors.php`), no el que Core publica bajo la clave namespaced `core.cors`.
+2. **CORS para producción.** Configuración de orígenes permitidos vía `CORS_ALLOWED_ORIGINS`. `HandleCors`
+   consume la clave global `cors`: el fichero del *app* `src/config/cors.php` **mergeado con**
+   `packages/Core/config/cors.php` (descubierto como clave global), no una `core.cors` (que es `null`).
 3. **Auditoría de rotación.** Cada rotación de secreto graba un `ActivityEvent` con `kind = 'rotate'`,
    que el SPA ya sabe pintar en el feed de actividad del Dashboard.
 4. **Arreglos operativos del SPA en vivo.** Se resolvió el `database is locked` de SQLite activando
@@ -112,14 +112,18 @@ sí entra en juego. Los orígenes salen de `CORS_ALLOWED_ORIGINS` (lista separad
 CORS_ALLOWED_ORIGINS=https://panel.midominio.com,https://otro.midominio.com
 ```
 
-El **gotcha** clave —y la razón de que esto merezca su propio apartado— es de qué fichero lee
-`HandleCors`. El middleware consume la clave de config `cors`, que corresponde al fichero del *app*
-`config/cors.php`. Core publica su propio `packages/Core/config/cors.php`, pero por la convención de
-config namespaced del paquete ese fichero vive bajo `core.cors` y **NO** es lo que `HandleCors` mira.
-Quien controla el CORS efectivo de producción es `config/cors.php`: `paths` en `['api/*']`,
-`allowed_origins` desde `CORS_ALLOWED_ORIGINS` (por defecto `http://localhost:5174`, el puerto del SPA
-en dev), y `supports_credentials => false` porque la auth es por Bearer token, no por cookies. Editar
-el `core.cors` y esperar que cambie el comportamiento es perder el rato; hay que tocar el del app.
+El **gotcha** clave —y la razón de que esto merezca su propio apartado— es de qué sale el `config('cors')`
+que lee `HandleCors`. Laravel carga primero el fichero del *app* `src/config/cors.php`, pero **además**
+`packages/Core/config/cors.php` se descubre como clave global `cors` (porque existe `src/config/cors.php`,
+la clave entra en el glob de claves globales) y `CoreServiceProvider` lo **mergea encima** con
+`array_replace_recursive`. Es decir, el `cors` efectivo es el del app pisado por el de Core; **no** existe
+ninguna `core.cors` (`config('core.cors')` es `null`). Ambos ficheros se mantienen **alineados**: `paths`
+en `['api/*']`, `allowed_origins` desde `CORS_ALLOWED_ORIGINS` (por defecto `http://localhost:5174`, el
+puerto del SPA en dev) y `supports_credentials => false` porque la auth es por Bearer token, no cookies.
+**Cuidado**: como Core gana para cualquier clave que defina, editar solo `src/config/cors.php` no surte
+efecto si Core define la misma clave — hay que tocar `packages/Core/config/cors.php` (o ambos en sync).
+(De hecho Core llegó a tener `paths => ['*']`, que ampliaba CORS a todas las rutas hasta corregirse a
+`['api/*']`.)
 
 ### Auditoría de rotación
 
@@ -163,9 +167,10 @@ identificarlo sin filtrarlo. El SPA conoce el tipo (`ActivityKind` incluye `'rot
 
 ## Gotchas
 
-- **`HandleCors` lee `config('cors')`, es decir `config/cors.php` del app.** El `core.cors` del paquete
-  es decorativo a efectos de CORS; quien manda en producción es el fichero del app. Es el error fácil:
-  editar el equivocado.
+- **`HandleCors` lee `config('cors')`.** Ese `config('cors')` es el del app (`src/config/cors.php`)
+  **mergeado con** `packages/Core/config/cors.php` (descubierto como clave global), no una `core.cors`
+  (que es `null`). Core gana para cualquier clave que defina, así que para cambiar el CORS efectivo hay
+  que editar `packages/Core/config/cors.php` (o mantener ambos en sync), no solo el del app.
 - **El comentario de la migración de actividad está desactualizado.** Dice
   `suspend|grace|resume|paid|quota`; el código emite también `'rotate'` y la columna lo admite porque
   es un `string(16)` sin restricción. No hace falta migrar nada.
@@ -174,7 +179,7 @@ identificarlo sin filtrarlo. El SPA conoce el tipo (`ActivityKind` incluye `'rot
   sí. La cura fue triple: `journal_mode = WAL` (lecturas concurrentes durante una escritura),
   `busy_timeout = 5000` (esperar el lock en vez de fallar) y `CACHE_STORE=file` (sacar la caché del
   fichero de datos). Está en el `.env` activo (`DB_CONNECTION=sqlite`, `CACHE_STORE=file`) y los
-  *defaults* viven en `config/database.php`, en la conexión `sqlite`:
+  *defaults* viven en `src/config/database.php`, en la conexión `sqlite`:
   `'busy_timeout' => env('DB_BUSY_TIMEOUT', 5000)`, `'journal_mode' => env('DB_JOURNAL_MODE', 'WAL')`,
   `'synchronous' => env('DB_SYNCHRONOUS', 'NORMAL')`.
 - **`Too Many Attempts` (HTTP 429).** El SPA abanica varias peticiones por navegación, así que el
@@ -197,8 +202,8 @@ identificarlo sin filtrarlo. El SPA conoce el tipo (`ActivityKind` incluye `'rot
   `hourly()->withoutOverlapping()` dentro de `app->booted`.
 - `src/packages/Commander/app/Http/Controllers/CommanderDeploymentsController.php` — `rotateSecret()` graba el
   `ActivityEvent` `kind = 'rotate'` con el sufijo del nuevo secreto vía `recordActivity()`.
-- `config/cors.php` (app) — CORS efectivo de producción desde `CORS_ALLOWED_ORIGINS`; comentario que
-  aclara que este, y no `core.cors`, es el que consume `HandleCors`.
+- `src/config/cors.php` (app) — CORS efectivo de producción desde `CORS_ALLOWED_ORIGINS`; comentario que
+  aclara que este (mergeado con `packages/Core/config/cors.php`), y no `core.cors`, es el que consume `HandleCors`.
 - `src/config/database.php` — conexión `sqlite` con WAL + `busy_timeout` + `synchronous` env-tuneables.
 - `src/packages/Core/app/Providers/CoreRouteServiceProvider.php` — rate limit `api` env-tuneable
   (`CORE_API_RATE_LIMIT`, default 240/min) y orden de middlewares del grupo `api`.

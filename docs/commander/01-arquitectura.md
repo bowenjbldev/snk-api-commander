@@ -44,7 +44,7 @@ Lo decisivo es que el **kill-switch vive aquí**, no en el panel. El middleware
 `CoreEnsureActiveMiddleware` lee `core_package_state` (cacheado) en cada
 petición: si el despliegue está `suspended` devuelve `402 Payment Required` en
 las rutas de negocio; si está en `grace` deja pasar con cabeceras de aviso
-(`X-Package-Status`, `Grace-Until`, `Message`). Quedan **exentas** del kill-switch
+(`X-Package-Status`, `X-Package-Grace-Until`, `X-Package-Message`). Quedan **exentas** del kill-switch
 el health (`api/v1`) y `api/v1/control/*`, precisamente para que un despliegue
 suspendido pueda ser reactivado. El secreto de control vive en
 `CORE_CONTROL_SECRET`; si no está definido, las rutas `/control` ni se registran.

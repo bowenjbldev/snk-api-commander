@@ -263,9 +263,13 @@ charts with Ant Design Charts (AntV).
 
 ---
 
-## 3. Notas para el implementador (futuro package Cms)
+## 3. Notas para el implementador (futuro package Commander)
 
-- La UI final consumira el `/api/v1` del deploy con `API_PACKAGE=Cms`; ese
+> Nota: este documento es el prompt de diseño original, anterior al rename Cms→Commander.
+> El paquete activo es `API_PACKAGE=Commander` (no existe `Cms`); la marca "SnakeCloud CMS"
+> en el resto del texto es histórica.
+
+- La UI final consumira el `/api/v1` del deploy con `API_PACKAGE=Commander`; ese
   package guardara el registro (clients, deployments con secret cifrado,
   subscriptions, invoices) y hara de proxy de acciones: Suspend/Grace/Resume
   llaman a `POST {base_url}/api/v1/control/state` firmado (contrato en

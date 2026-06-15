@@ -185,7 +185,7 @@ sincronizados (NTP).
 
 El Commander lee su configuración de salida de `commander.commander.control`. Ojo con la clave doble: en
 este monorepo las configuraciones de paquete están namespaced como `<paquete>.<fichero>`,
-de modo que `commander/config/commander.php` se lee como `config('commander.commander.*')`, **no**
+de modo que `src/packages/Commander/config/commander.php` se lee como `config('commander.commander.*')`, **no**
 `config('cms.control.*')`. Core, en cambio, usa `core.*` directo. El cliente lo documenta
 en línea:
 
@@ -194,13 +194,13 @@ en línea:
 $config = (array) config('commander.commander.control', []);
 ```
 
-Las claves disponibles (de `commander/config/commander.php`):
+Las claves disponibles (de `src/packages/Commander/config/commander.php`):
 
 | Clave | Env | Defecto | Para qué |
 |---|---|---|---|
-| `timeout` | `Commander_CONTROL_TIMEOUT` | `5` | timeout total de la petición (s) |
-| `connect_timeout` | `Commander_CONTROL_CONNECT_TIMEOUT` | `3` | timeout de conexión (s) |
-| `verify` | `Commander_CONTROL_VERIFY` | `true` | verificación TLS del certificado |
+| `timeout` | `COMMANDER_CONTROL_TIMEOUT` | `5` | timeout total de la petición (s) |
+| `connect_timeout` | `COMMANDER_CONTROL_CONNECT_TIMEOUT` | `3` | timeout de conexión (s) |
+| `verify` | `COMMANDER_CONTROL_VERIFY` | `true` | verificación TLS del certificado |
 
 `verify` solo se desactiva si vale exactamente `false`, y entonces se llama a
 `$request->withoutVerifying()`. Esto cubre el escenario de despliegues con certificado

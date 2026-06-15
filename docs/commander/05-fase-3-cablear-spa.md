@@ -146,7 +146,7 @@ const TOKEN_KEY = 'commander_token'
 
 En desarrollo no se define `VITE_API_BASE`, así que la SPA llama a un `/api/v1` del **mismo
 origen** y el proxy de Vite lo reenvía al backend. En un build de producción se fija
-`VITE_API_BASE` al origen del despliegue (p. ej. `https://cms.host/api/v1`).
+`VITE_API_BASE` al origen del despliegue (p. ej. `https://commander.host/api/v1`).
 
 ## Cómo funciona
 

@@ -23,7 +23,7 @@ despliegue**, **prevalece** sobre el de la variable de entorno. Así, en cuanto 
 el nuevo secreto, el viejo deja de verificar — sin tocar el `.env` ni reiniciar el contenedor.
 
 Este documento es hermano de las fases anteriores del proxy `/control` (ver
-`08-fase-2-proxy-control.md` para el contrato de firma y la máquina de estados, y el contrato
+`04-fase-2-proxy-control.md` para el contrato de firma y la máquina de estados, y el contrato
 resumido en la memoria del proyecto).
 
 ## Qué se construyó
@@ -202,8 +202,9 @@ El flujo completo, de extremo a extremo:
    del receptor.
 
 4. **Despliegue (verificación + guardado).** `CoreControlAuthMiddleware` verifica la firma con
-   `activeSecret()` — que en este momento aún es el **viejo** —, comprueba la ventana de reloj
-   (`core.control.clock_skew_seconds`, 300s) con `hash_equals`, y deja pasar. Entonces
+   `activeSecret()` — que en este momento aún es el **viejo** — en tiempo constante (`hash_equals`),
+   comprueba la ventana de reloj (`core.control.clock_skew_seconds`, 300s) con `abs(time() - ts) > skew`,
+   y deja pasar. Entonces
    `CoreControlController::rotateSecret()` valida `new_secret` y hace:
 
    ```php

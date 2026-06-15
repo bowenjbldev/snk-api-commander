@@ -85,13 +85,13 @@ Las demás claves de control relevantes en `src/.env`:
 CORE_CONTROL_SECRET=dev-control-secret
 
 # El Commander llama a los deploys por su subdominio interno con cert wildcard self-signed -> no verificar TLS
-Commander_CONTROL_VERIFY=false
+COMMANDER_CONTROL_VERIFY=false
 
 # CORS para llamadas directas del SPA al API en prod; en dev se usa el proxy de Vite
 CORS_ALLOWED_ORIGINS=http://localhost:5174
 ```
 
-> `Commander_CONTROL_VERIFY` alimenta la clave de paquete `config('commander.commander.control.verify')` (ver el *gotcha*
+> `COMMANDER_CONTROL_VERIFY` alimenta la clave de paquete `config('commander.commander.control.verify')` (ver el *gotcha*
 > de config namespaced en §9). En dev se deja en `false` porque los despliegues usan el cert wildcard
 > self-signed; en producción debe ser `true`.
 
@@ -163,7 +163,7 @@ La SPA vive en `commander/` (React + IBM Carbon, Vite + Vitest). Configuración 
 Arranque:
 
 ```bash
-cd cms
+cd commander
 npm install   # la primera vez
 npm run dev   # http://localhost:5174
 ```
@@ -346,7 +346,7 @@ aunque el despliegue esté suspendido, lo que permite reactivarlo de forma remot
 ### Config namespaced: `commander.commander.*`, no `cms.*`
 
 Las configs de paquete están **namespaced por `<paquete>.<fichero>`**. El fichero
-`src/packages/Commander/config/commander.php` se publica bajo la clave `cms`, así que sus valores se leen como
+`src/packages/Commander/config/commander.php` se publica bajo la clave `commander`, así que sus valores se leen como
 `config('commander.commander.control.verify')` y `config('commander.commander.operator.default_grace_hours')` — **no**
 `config('cms.control.verify')`. Lo verás en `CommanderControlClient` (`config('commander.commander.control', [])`) y en
 `CommanderDeploymentsController`. `Core`, en cambio, usa `core.*` directo. Si una opción de control "no se
@@ -414,9 +414,9 @@ mira el cuerpo y la cabecera `X-Package-Status` para distinguirlas.
 
 El Commander llama a cada despliegue por su subdominio interno (`<cliente>.<BASE_DOMAIN>`), servido con el
 cert **wildcard self-signed** que genera `bash scripts/setup-ssl.sh`. Por eso en dev se pone
-`Commander_CONTROL_VERIFY=false` (→ `config('commander.commander.control.verify')`): sin ello, el cliente HTTP de control
+`COMMANDER_CONTROL_VERIFY=false` (→ `config('commander.commander.control.verify')`): sin ello, el cliente HTTP de control
 rechazaría el certificado y todo `sync`/acción remota fallaría con un error de TLS. En la SPA, el mismo
 problema se evita con el proxy de Vite (`secure: false`). En **producción**, donde los despliegues
-tienen certificados válidos, `Commander_CONTROL_VERIFY` debe ser `true`. Si las acciones remotas fallan con
+tienen certificados válidos, `COMMANDER_CONTROL_VERIFY` debe ser `true`. Si las acciones remotas fallan con
 errores de certificado, revisa: (a) que existe `docker/nginx/certs/wildcard.<BASE_DOMAIN>.pem`, y
-(b) el valor de `Commander_CONTROL_VERIFY`.
+(b) el valor de `COMMANDER_CONTROL_VERIFY`.

@@ -260,7 +260,7 @@ php artisan core:quota:measure                # mide disco/requests/usuarios y a
 
 - Estados: `active` | `grace` (sirve con headers `X-Package-Status`) | `suspended` (402 en rutas de negocio; health, docs y `/control` siguen respondiendo).
 - Metering por request en `core_request_logs` (middleware terminable, cero latencia con FPM) + rollups en `core_usage_rollups`.
-- Endpoints de gestion remota `/api/v1/control/*` (firma HMAC, para el futuro CMS): solo existen si `CORE_CONTROL_SECRET` esta definido.
+- Endpoints de gestion remota `/api/v1/control/*` (firma HMAC, para el Commander): solo existen si `CORE_CONTROL_SECRET` esta definido.
 
 ### Generadores package-aware
 
@@ -378,8 +378,8 @@ docker compose up -d
 | Servicio | Imagen | Puerto |
 |----------|--------|--------|
 | `app` | `php:8.3-fpm-alpine` | 9000 (interno) |
-| `nginx` | `nginx:alpine` | 8000:80 |
-| `db` | `mariadb:latest` | 3306:3306 |
+| `nginx` | `nginx:alpine` | `${HTTP_PORT:-80}:80` y `${HTTPS_PORT:-443}:443` (8080/8443 en local) |
+| `db` | `mariadb:latest` | `${DB_PORT:-3306}:3306` (3307 en local) |
 
 ## Desarrollo local
 

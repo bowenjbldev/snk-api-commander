@@ -86,8 +86,13 @@ protected $guarded = [];
 ### Los seis controladores
 
 En `src/packages/Commander/app/Http/Controllers/`. Los de recurso extienden `CoreBaseApiController` y solo
-declaran, de forma plana, el modelo, los cinco permisos (index/show/create/update/delete), las
-relaciones permitidas en `?with=` y las reglas de validación. Por ejemplo `CommanderClientsController`:
+declaran, de forma plana, el modelo, los permisos, las relaciones permitidas en `?with=` y las reglas de
+validación. No todos son CRUD completo: `CommanderClientsController` declara los cinco permisos
+(index/show/create/update/delete), pero `CommanderActivityController` solo `index`/`show` (ruta
+`only(['index','show'])`) y `CommanderQuotasController` solo `index`/`show`/`update`. (Además, en disco
+hay un séptimo controlador que extiende `CoreBaseApiController`, `CommanderUsageController` —`GET usage/platform`—,
+pero pertenece a la caché de uso de plataforma de la Fase 6, no al registro de esta fase.) Por ejemplo
+`CommanderClientsController`:
 
 ```php
 protected string $modelClass = ClientModel::class;
