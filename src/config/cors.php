@@ -6,8 +6,10 @@
  * served from a different origin and calls the API directly. Origins come from CORS_ALLOWED_ORIGINS
  * (comma-separated; the SPA dev port is allowed by default). Bearer tokens (not cookies) → no creds.
  *
- * Note: Core ships its own cors.php but it loads under the namespaced `core.cors` key (package
- * config convention) and is NOT what HandleCors consumes — this app-level file is.
+ * Note: Core also ships packages/Core/config/cors.php, which the package loader detects as the
+ * global `cors` key (because this app file exists) and merges ON TOP of this one via
+ * array_replace_recursive — so for any key Core defines, Core's value wins. There is no `core.cors`
+ * key (config('core.cors') is null). Keep the two files in sync.
  */
 
 $origins = array_values(array_filter(array_map(
