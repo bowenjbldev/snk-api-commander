@@ -397,6 +397,10 @@ cmd_remove() {
     # shellcheck disable=SC1090
     source "$CLIENTS_DIR/$c.env"
 
+    # Captura la identidad de BD del cliente AHORA: regen_compose (abajo) sourcea los
+    # envs de los clientes restantes y pisa DB_DATABASE/DB_USERNAME en este scope.
+    local target_db="${DB_DATABASE:-}" target_user="${DB_USERNAME:-}"
+
     info "Quitando el deploy del registro del Commander..."
     docker compose exec -T app php artisan commander:deregister-deploy "$c" >/dev/null 2>&1 || true
 
@@ -409,16 +413,16 @@ cmd_remove() {
     docker compose up -d nginx >/dev/null 2>&1 || true
 
     if [ "$drop" = "--drop-db" ]; then
-        echo "Esto BORRARA la base de datos [$DB_DATABASE] de forma permanente."
+        echo "Esto BORRARA la base de datos [$target_db] de forma permanente."
         read -r -p "Escribe el nombre del cliente para confirmar: " confirm
         if [ "$confirm" = "$c" ]; then
-            drop_database "$DB_DATABASE" "$DB_USERNAME"
-            info "BD $DB_DATABASE eliminada."
+            drop_database "$target_db" "$target_user"
+            info "BD $target_db eliminada."
         else
             echo "Confirmacion incorrecta: BD conservada."
         fi
     else
-        info "BD $DB_DATABASE conservada (usa --drop-db para borrarla)."
+        info "BD $target_db conservada (usa --drop-db para borrarla)."
     fi
 
     hosts_remove "$c"
