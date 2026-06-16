@@ -8,6 +8,12 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
+        // Control-plane table: only on tenant deploys. The Commander (operator panel) sets
+        // core.control_plane=false in CommanderServiceProvider and skips it (no table, no seed).
+        if (! config('core.control_plane', true)) {
+            return;
+        }
+
         Schema::create('core_package_state', function (Blueprint $table) {
             $table->id();
             $table->string('status', 20)->default('active');

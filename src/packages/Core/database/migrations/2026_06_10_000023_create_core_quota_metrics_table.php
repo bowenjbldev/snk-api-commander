@@ -8,6 +8,11 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
+        // Control-plane table + seed: tenant deploys only (Commander sets core.control_plane=false).
+        if (! config('core.control_plane', true)) {
+            return;
+        }
+
         Schema::create('core_quota_metrics', function (Blueprint $table) {
             $table->id();
             $table->string('metric_key', 64)->unique();

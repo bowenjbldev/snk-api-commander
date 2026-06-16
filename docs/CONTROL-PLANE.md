@@ -8,9 +8,12 @@ de gestion firmada para el Commander. Todo vive en la BD de **cada** deploy.
 > y `/control`) esta detras del flag `core.control_plane` (default `true`). El deploy
 > que hace de panel (`API_PACKAGE=Commander`) lo **apaga**: `CommanderServiceProvider`
 > pone `config(['core.control_plane' => false])` en su `register()`, de modo que no se
-> mide, no se le aplica kill-switch ni registra `/control` — es el operador, no un
-> tenant. Los deploys de cliente lo dejan en `true`. Core no mira el nombre del paquete;
-> el Commander se declara (asi Core no acopla nombres de negocio).
+> mide, no se le aplica kill-switch, no registra `/control`, **no crea las 4 tablas
+> `core_*`** (cada migración de control plane abre su `up()` con
+> `if (! config('core.control_plane', true)) return;`, igual que el resto de gates) ni
+> registra los comandos `core:status`/`core:usage:rollup`/`core:quota:measure`. Es el
+> operador, no un tenant. Los deploys de cliente lo dejan en `true`. Core no mira el
+> nombre del paquete; el Commander se declara (asi Core no acopla nombres de negocio).
 
 ## 1. Objetivo y vision (monorepo)
 

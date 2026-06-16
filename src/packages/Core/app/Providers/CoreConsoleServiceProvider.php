@@ -37,9 +37,6 @@ class CoreConsoleServiceProvider extends ServiceProvider
             CoreMigrateCommand::class,
             CoreMigrateRefreshCommand::class,
             CoreSeedCommand::class,
-            CoreStatusCommand::class,
-            CoreUsageRollupCommand::class,
-            CoreQuotaMeasureCommand::class,
             \Packages\Core\Console\Commands\Make\CoreCacheTableMakeCommand::class,
             \Packages\Core\Console\Commands\Make\CoreCastMakeCommand::class,
             \Packages\Core\Console\Commands\Make\CoreChannelMakeCommand::class,
@@ -78,5 +75,19 @@ class CoreConsoleServiceProvider extends ServiceProvider
             \Packages\Core\Console\Commands\Make\CoreTraitMakeCommand::class,
             \Packages\Core\Console\Commands\Make\CoreViewMakeCommand::class,
         ]);
+    }
+
+    public function boot(): void
+    {
+        // Control-plane commands are tenant-only. Gate in boot(), NOT register(): the Commander flips
+        // core.control_plane=false during the register phase, AFTER this provider's register() runs, so
+        // a register()-time read would still see the default true and wrongly register them.
+        if ($this->app->runningInConsole() && config('core.control_plane', true)) {
+            $this->commands([
+                CoreStatusCommand::class,
+                CoreUsageRollupCommand::class,
+                CoreQuotaMeasureCommand::class,
+            ]);
+        }
     }
 }

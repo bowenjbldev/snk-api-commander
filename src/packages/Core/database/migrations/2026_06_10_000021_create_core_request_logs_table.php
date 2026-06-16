@@ -7,6 +7,11 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
+        // Control-plane table: tenant deploys only (Commander sets core.control_plane=false).
+        if (! config('core.control_plane', true)) {
+            return;
+        }
+
         Schema::create('core_request_logs', function (Blueprint $table) {
             $table->id();
             // Unico indice ademas del PK: tabla write-heavy; occurred_at sirve

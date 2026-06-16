@@ -16,7 +16,11 @@ class CommanderServiceProvider extends ServiceProvider
         // (metering, kill-switch, quotas and the /control surface) for this deploy. Declared here in
         // the package — NOT by Core sniffing API_PACKAGE — so Core stays agnostic of business-package
         // names. register() runs before CoreRouteServiceProvider::boot() reads the flag, so it sees it.
-        config(['core.control_plane' => false]);
+        // Kept ON under tests: the suite runs as the Commander and must exercise Core's control plane
+        // machinery (signing, rotation, the core_* tables), which the gate would otherwise strip.
+        if (! $this->app->runningUnitTests()) {
+            config(['core.control_plane' => false]);
+        }
     }
 
     public function boot(): void

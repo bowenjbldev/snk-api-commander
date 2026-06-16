@@ -12,6 +12,12 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
+        // Control-plane column: tenant deploys only. On the Commander (core.control_plane=false)
+        // core_package_state was never created by 000020, so there is nothing to alter.
+        if (! config('core.control_plane', true)) {
+            return;
+        }
+
         Schema::table('core_package_state', function (Blueprint $table) {
             $table->text('control_secret')->nullable()->after('changed_by');
         });
