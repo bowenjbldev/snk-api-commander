@@ -57,7 +57,11 @@ El Commander son dos cosas que conviene no confundir:
   en el despliegue principal). Tiene su **propia base de datos** con el registro
   de la plataforma (tablas `commander_*`), su login de administrador por Sanctum, una
   API admin bajo `/api/v1` y, lo más importante, el **cliente saliente** que
-  firma y emite las llamadas a los `/control` de cada despliegue remoto.
+  firma y emite las llamadas a los `/control` de cada despliegue remoto. A diferencia
+  de un despliegue de cliente, **apaga el control plane de Core** (metering, kill-switch,
+  cuotas y `/control`) declarando `config(['core.control_plane' => false])` en su
+  `CommanderServiceProvider`: es el operador, no un tenant gestionado (ver
+  `docs/CONTROL-PLANE.md`).
 - **La SPA React** (carpeta `commander/`), construida con Vite, React, IBM Carbon y un
   store de `zustand`. Es la interfaz que el operador ve en el navegador: nueve
   secciones (Dashboard, Deployments, Usage, Clients, Subscriptions, Invoices,

@@ -2,7 +2,15 @@
 
 Base implementada en Core para operar la plataforma como un negocio: cada deploy
 mide su uso, conoce su estado (activo/gracia/suspendido) y expone una superficie
-de gestion firmada para el futuro Commander. Todo vive en la BD de **cada** deploy.
+de gestion firmada para el Commander. Todo vive en la BD de **cada** deploy.
+
+> **Solo en deploys de tenant.** Todo el control plane (metering, kill-switch, cuotas
+> y `/control`) esta detras del flag `core.control_plane` (default `true`). El deploy
+> que hace de panel (`API_PACKAGE=Commander`) lo **apaga**: `CommanderServiceProvider`
+> pone `config(['core.control_plane' => false])` en su `register()`, de modo que no se
+> mide, no se le aplica kill-switch ni registra `/control` — es el operador, no un
+> tenant. Los deploys de cliente lo dejan en `true`. Core no mira el nombre del paquete;
+> el Commander se declara (asi Core no acopla nombres de negocio).
 
 ## 1. Objetivo y vision (monorepo)
 
