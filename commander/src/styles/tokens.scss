@@ -23,6 +23,7 @@
   --scns-success: #42be65;
   --scns-warning: #f1c21b;
   --scns-error: #fa4d56;
+  --scns-card-border: var(--cds-border-subtle);
 }
 
 @mixin scns-light {
@@ -42,6 +43,7 @@
   --scns-success: #24a148;
   --scns-warning: #f1c21b;
   --scns-error: #da1e28;
+  --scns-card-border: #e0e0e0;
 }
 
 .cds--g100 { @include scns-dark; }
@@ -180,8 +182,8 @@ body {
 .scns-kpi-cluster {
   display: grid;
   gap: 1px;
-  background: var(--cds-border-subtle);
-  border: 1px solid var(--cds-border-subtle);
+  background: var(--scns-card-border);
+  border: 1px solid var(--scns-card-border);
 }
 .scns-kpi-tile {
   background: var(--cds-layer);
@@ -220,7 +222,7 @@ body {
 // ── Bordered card / list ───────────────────────────────────────────────────────
 .scns-card {
   background: var(--cds-layer);
-  border: 1px solid var(--cds-border-subtle);
+  border: 1px solid var(--scns-card-border);
 }
 
 // ── Drawer (424px) + detail panel (340px) ────────────────────────────────────

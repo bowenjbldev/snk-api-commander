@@ -177,6 +177,7 @@ export function DataTableShell<R>({
         )}
         <TableToolbarContent>
           {filters}
+          {toolbarExtra}
           {searchText && (
             <TableToolbarSearch
               persistent
@@ -187,7 +188,6 @@ export function DataTableShell<R>({
               }}
             />
           )}
-          {toolbarExtra}
         </TableToolbarContent>
       </TableToolbar>
       <Table>

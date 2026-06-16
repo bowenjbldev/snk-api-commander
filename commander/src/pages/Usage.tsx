@@ -18,6 +18,7 @@ import { ChartCard, ChartLegend } from '../components/ChartCard'
 import { KpiCluster, KpiTile } from '../components/KpiCluster'
 import { DeploymentStatusTag } from '../components/tags/StatusTag'
 import { QuotaBar } from '../components/QuotaBar'
+import { EmptyState } from '../components/EmptyState'
 import { stackedBarOptions, areaOptions, legendItems } from '../lib/chartOptions'
 import { snapshotsToPlatformSeries, type PlatformSeries } from '../lib/chartData'
 import { platformUsage } from '../lib/api'
@@ -87,7 +88,11 @@ export function Usage() {
             <UsageChartPlaceholder loading={platform.loading} error={platform.error} />
           )}
         </ChartCard>
-        <ChartCard title="Error rate" subtitle="4xx + 5xx">
+        <ChartCard
+          title="Error rate"
+          subtitle="%"
+          right={<ChartLegend items={[{ label: '4xx', color: '#d2a106' }, { label: '5xx', color: '#fa4d56' }]} />}
+        >
           {hasChart ? (
             <AreaChart data={errData} options={errOpts} />
           ) : (
@@ -110,19 +115,27 @@ export function Usage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {top.map((d) => (
-                <TableRow key={d.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/deployments/${d.id}`)}>
-                  <TableCell className="scns-mono" style={{ color: 'var(--cds-link-primary)' }}>{d.name}</TableCell>
-                  <TableCell>{clientName(d.client_id)}</TableCell>
-                  <TableCell>
-                    <DeploymentStatusTag state={d.state} />
-                  </TableCell>
-                  <TableCell style={{ textAlign: 'right' }} className="scns-num">{formatInt(d.requests_24h)}</TableCell>
-                  <TableCell style={{ width: 160 }}>
-                    <QuotaBar current={d.quota_health} limit={1} width={80} showLabel />
+              {top.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5}>
+                    <EmptyState title="No active deployments" />
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                top.map((d) => (
+                  <TableRow key={d.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/deployments/${d.id}`)}>
+                    <TableCell className="scns-mono" style={{ color: 'var(--cds-link-primary)' }}>{d.name}</TableCell>
+                    <TableCell>{clientName(d.client_id)}</TableCell>
+                    <TableCell>
+                      <DeploymentStatusTag state={d.state} />
+                    </TableCell>
+                    <TableCell style={{ textAlign: 'right' }} className="scns-num">{formatInt(d.requests_24h)}</TableCell>
+                    <TableCell style={{ width: 160 }}>
+                      <QuotaBar current={d.quota_health} limit={1} width={80} showLabel />
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </TableContainer>
@@ -133,8 +146,14 @@ export function Usage() {
 
 function UsageChartPlaceholder({ loading, error }: { loading: boolean; error: string | null }) {
   return (
-    <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--cds-text-secondary)', fontSize: 13 }}>
-      {loading ? <Loading withOverlay={false} small description="Loading usage…" /> : error ? `Usage unavailable: ${error}` : 'No usage data yet'}
+    <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {loading ? (
+        <Loading withOverlay={false} small description="Loading usage…" />
+      ) : error ? (
+        <EmptyState title="Usage unavailable" description={error} />
+      ) : (
+        <EmptyState title="No usage data yet" />
+      )}
     </div>
   )
 }

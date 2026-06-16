@@ -221,15 +221,17 @@ export function Quotas() {
               selectedItem={METRIC_ITEMS.find((i) => i.id === metricFilter)}
               onChange={({ selectedItem }) => setMetricFilter(selectedItem?.id ?? 'all')}
             />
-            <Toggle
-              id="only-breaches"
-              size="sm"
-              labelText=""
-              labelA="Only breaches"
-              labelB="Only breaches"
-              toggled={onlyBreaches}
-              onToggle={setOnlyBreaches}
-            />
+            <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px' }}>
+              <Toggle
+                id="only-breaches"
+                size="sm"
+                labelText=""
+                labelA="Only breaches"
+                labelB="Only breaches"
+                toggled={onlyBreaches}
+                onToggle={setOnlyBreaches}
+              />
+            </div>
           </>
         }
       />

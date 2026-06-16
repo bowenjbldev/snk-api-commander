@@ -2,19 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   Button,
   Dropdown,
-  Loading,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableHeader,
-  TableRow,
 } from '@carbon/react'
 import { Renew } from '@carbon/icons-react'
 import { useStore } from '../store/store'
+import { PageHeader } from '../components/PageHeader'
+import { DataTableShell, type ShellColumn } from '../components/DataTableShell'
 import { EmptyState } from '../components/EmptyState'
 import { MethodTag } from '../components/tags/MethodTag'
+import { useFirstLoad } from '../hooks/useFirstLoad'
 import { deploymentLogs } from '../lib/api'
 import { formatInt } from '../lib/format'
 import type { LogEntry } from '../store/types'
@@ -42,6 +37,7 @@ export function RequestLogs() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [tick, setTick] = useState(0)
   const [state, setState] = useState<LogsLoad>({ loading: false, logs: null, error: null })
+  const firstLoad = useFirstLoad()
 
   // Default to the first deployment once the registry loads.
   useEffect(() => {
@@ -68,88 +64,100 @@ export function RequestLogs() {
   const items = useMemo(() => deployments.map((d) => d.id), [deployments])
   const logs = state.logs ?? []
 
+  const columns: ShellColumn<LogEntry>[] = [
+    {
+      key: 'time',
+      header: 'Time',
+      width: 140,
+      render: (l) => <span className="scns-mono" style={{ color: 'var(--cds-text-helper)', fontSize: 12 }}>{logTime(l.occurred_at)}</span>,
+    },
+    {
+      key: 'method',
+      header: 'Method',
+      width: 100,
+      render: (l) => <MethodTag method={l.method} />,
+    },
+    {
+      key: 'route',
+      header: 'Route',
+      render: (l) => <span className="scns-mono" style={{ fontSize: 12 }}>{l.route}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      width: 100,
+      render: (l) => <span style={{ color: statusColor(l.status), fontWeight: 600 }}>{l.status}</span>,
+    },
+    {
+      key: 'ms',
+      header: 'ms',
+      align: 'right',
+      width: 100,
+      render: (l) => <span className="scns-num">{formatInt(l.duration_ms)}</span>,
+    },
+    {
+      key: 'ip',
+      header: 'IP',
+      width: 160,
+      render: (l) => <span className="scns-mono" style={{ color: 'var(--cds-text-helper)', fontSize: 12 }}>{l.ip}</span>,
+    },
+  ]
+
   return (
     <div className="scns-page">
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 400, margin: 0 }}>Request Logs</h1>
-        <div className="scns-helper" style={{ marginTop: 6, fontSize: 13 }}>
-          real request log per deployment · read-only
-        </div>
-      </div>
+      <PageHeader
+        title="Request Logs"
+        subtitle="Real request log per deployment · read-only"
+      />
 
-      {deployments.length === 0 ? (
-        <EmptyState
-          title="No deployments yet"
-          description="Provision a deployment (scripts/subscription.sh add …) to see its request logs here."
+      <div className="scns-card">
+        <DataTableShell
+          rows={logs}
+          columns={columns}
+          getId={(l) => l.id}
+          searchText={(l) => `${l.method} ${l.route} ${l.status} ${l.ip}`}
+          searchPlaceholder="Search logs"
+          itemLabel="logs"
+          loading={state.loading || firstLoad}
+          toolbarExtra={
+            <>
+              <Dropdown
+                id="logs-deploy"
+                titleText="Deployment"
+                hideLabel
+                label="Select a deployment"
+                items={items}
+                selectedItem={selectedId}
+                onChange={({ selectedItem }) => setSelectedId((selectedItem as string | null) ?? null)}
+                size="lg"
+                type="inline"
+                style={{ width: 280 }}
+              />
+              <Button
+                kind="ghost"
+                size="md"
+                renderIcon={Renew}
+                onClick={() => setTick((t) => t + 1)}
+                disabled={state.loading || !selectedId}
+              >
+                Refresh
+              </Button>
+            </>
+          }
+          empty={
+            deployments.length === 0 ? (
+              <EmptyState title="No deployments yet" />
+            ) : state.error ? (
+              <EmptyState
+                title="Logs unavailable"
+                description={`Could not reach the deploy's control plane: ${state.error}`}
+              />
+            ) : (
+              <EmptyState title="No recent requests" />
+            )
+          }
         />
-      ) : (
-        <>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', marginBottom: 16 }}>
-            <Dropdown
-              id="logs-deploy"
-              titleText="Deployment"
-              label="Select a deployment"
-              items={items}
-              selectedItem={selectedId}
-              onChange={({ selectedItem }) => setSelectedId((selectedItem as string | null) ?? null)}
-              size="sm"
-              style={{ minWidth: 280 }}
-            />
-            <Button
-              kind="ghost"
-              size="sm"
-              renderIcon={Renew}
-              onClick={() => setTick((t) => t + 1)}
-              disabled={state.loading || !selectedId}
-            >
-              Refresh
-            </Button>
-          </div>
-
-          {state.loading ? (
-            <Loading withOverlay={false} description="Loading logs…" />
-          ) : state.error ? (
-            <EmptyState
-              title="Logs unavailable"
-              description={`Could not reach the deploy's control plane: ${state.error}`}
-            />
-          ) : logs.length === 0 ? (
-            <EmptyState
-              title="No recent requests"
-              description="This deployment has no request-log rows in the retention window."
-            />
-          ) : (
-            <TableContainer>
-              <Table size="xs" className="scns-logtable">
-                <TableHead>
-                  <TableRow>
-                    <TableHeader>Time</TableHeader>
-                    <TableHeader>Method</TableHeader>
-                    <TableHeader>Route</TableHeader>
-                    <TableHeader>Status</TableHeader>
-                    <TableHeader style={{ textAlign: 'right' }}>ms</TableHeader>
-                    <TableHeader>IP</TableHeader>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {logs.map((l) => (
-                    <TableRow key={l.id}>
-                      <TableCell style={{ color: 'var(--cds-text-helper)' }}>{logTime(l.occurred_at)}</TableCell>
-                      <TableCell>
-                        <MethodTag method={l.method} />
-                      </TableCell>
-                      <TableCell>{l.route}</TableCell>
-                      <TableCell style={{ color: statusColor(l.status), fontWeight: 600 }}>{l.status}</TableCell>
-                      <TableCell style={{ textAlign: 'right' }}>{formatInt(l.duration_ms)}</TableCell>
-                      <TableCell style={{ color: 'var(--cds-text-helper)' }}>{l.ip}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-        </>
-      )}
+      </div>
     </div>
   )
 }

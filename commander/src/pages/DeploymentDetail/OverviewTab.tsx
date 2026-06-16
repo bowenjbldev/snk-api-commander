@@ -14,6 +14,7 @@ import { StateCard } from './StateCard'
 import { CopyableCode } from '../../components/CopyableCode'
 import { QuotaBar } from '../../components/QuotaBar'
 import { RelativeTime } from '../../components/RelativeTime'
+import { EmptyState } from '../../components/EmptyState'
 import { formatDateUTC, formatRelative } from '../../lib/time'
 import { formatCurrency, formatInt, formatMb, formatPercent } from '../../lib/format'
 
@@ -91,26 +92,32 @@ export function OverviewTab() {
           </Link>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24 }}>
-          {quotas.map((q) => {
-            const ratio = q.limit_value == null || q.limit_value === 0 ? 0 : q.current_value / q.limit_value
-            const fmt = (v: number) => (q.unit === 'mb' ? formatMb(v) : formatInt(v))
-            return (
-              <div key={q.id}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span className="scns-mono" style={{ fontSize: 12 }}>
-                    {q.metric_key}
-                  </span>
-                  <span className="scns-num" style={{ fontSize: 12 }}>
-                    {q.limit_value == null ? '—' : formatPercent(ratio)}
-                  </span>
+          {quotas.length === 0 ? (
+            <div style={{ gridColumn: '1 / -1' }}>
+              <EmptyState title="No quotas configured" />
+            </div>
+          ) : (
+            quotas.map((q) => {
+              const ratio = q.limit_value == null || q.limit_value === 0 ? 0 : q.current_value / q.limit_value
+              const fmt = (v: number) => (q.unit === 'mb' ? formatMb(v) : formatInt(v))
+              return (
+                <div key={q.id}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span className="scns-mono" style={{ fontSize: 12 }}>
+                      {q.metric_key}
+                    </span>
+                    <span className="scns-num" style={{ fontSize: 12 }}>
+                      {q.limit_value == null ? '—' : formatPercent(ratio)}
+                    </span>
+                  </div>
+                  <QuotaBar current={q.current_value} limit={q.limit_value} height={6} />
+                  <div className="scns-mono scns-helper" style={{ fontSize: 11, marginTop: 6 }}>
+                    {fmt(q.current_value)} / {q.limit_value == null ? 'no limit' : fmt(q.limit_value)}
+                  </div>
                 </div>
-                <QuotaBar current={q.current_value} limit={q.limit_value} height={6} />
-                <div className="scns-mono scns-helper" style={{ fontSize: 11, marginTop: 6 }}>
-                  {fmt(q.current_value)} / {q.limit_value == null ? 'no limit' : fmt(q.limit_value)}
-                </div>
-              </div>
-            )
-          })}
+              )
+            })
+          )}
         </div>
       </div>
     </div>

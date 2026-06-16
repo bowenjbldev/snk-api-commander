@@ -49,13 +49,15 @@ services:
       commander-web:
         condition: service_started
 
-  # Commander operator-panel SPA — static build served by its own nginx (commander/Dockerfile).
-  # Reachable at https://commander.${BASE_DOMAIN} through the main nginx (which also serves /api,
-  # so the panel and its API share one origin: no CORS, no Vite proxy).
+  # Commander operator-panel SPA
+  # Reachable at https://commander.${BASE_DOMAIN} through the main nginx.
+  # Running in dev mode with HMR for local development.
   commander-web:
-    image: snakecloud-commander-web
-    build:
-      context: ./commander
+    image: node:24-alpine
+    working_dir: /app
+    volumes:
+      - ./commander:/app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 80"
     restart: unless-stopped
     networks:
       - app-network

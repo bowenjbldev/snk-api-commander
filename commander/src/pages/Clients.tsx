@@ -208,37 +208,43 @@ function ClientDrawer({
       <div>
         <p className="scns-section-label">Deployments · {deployments.length}</p>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          {deployments.map((d) => (
-            <button
-              key={d.id}
-              type="button"
-              onClick={() => onOpenDeployment(d.id)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 8,
-                padding: '10px 0',
-                borderTop: '1px solid var(--cds-border-subtle)',
-                background: 'none',
-                border: 'none',
-                borderBottom: 'none',
-                cursor: 'pointer',
-                textAlign: 'left',
-                width: '100%',
-              }}
-            >
-              <div>
-                <div className="scns-mono" style={{ color: 'var(--cds-link-primary)' }}>
-                  {d.name}
+          {deployments.length === 0 ? (
+            <div className="scns-helper" style={{ padding: '12px 0', fontSize: 13 }}>
+              No deployments for this client.
+            </div>
+          ) : (
+            deployments.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => onOpenDeployment(d.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 8,
+                  padding: '10px 0',
+                  borderTop: '1px solid var(--cds-border-subtle)',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: 'none',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  width: '100%',
+                }}
+              >
+                <div>
+                  <div className="scns-mono" style={{ color: 'var(--cds-link-primary)' }}>
+                    {d.name}
+                  </div>
+                  <div className="scns-mono scns-helper" style={{ fontSize: 11 }}>
+                    {d.package} {d.version}
+                  </div>
                 </div>
-                <div className="scns-mono scns-helper" style={{ fontSize: 11 }}>
-                  {d.package} {d.version}
-                </div>
-              </div>
-              <DeploymentStatusTag state={d.state} />
-            </button>
-          ))}
+                <DeploymentStatusTag state={d.state} />
+              </button>
+            ))
+          )}
         </div>
       </div>
     </Drawer>

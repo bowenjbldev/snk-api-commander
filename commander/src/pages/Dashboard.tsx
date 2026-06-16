@@ -9,6 +9,7 @@ import { KpiCluster, KpiTile } from '../components/KpiCluster'
 import { ChartCard, ChartLegend } from '../components/ChartCard'
 import { GraceCountdown } from '../components/GraceCountdown'
 import { RelativeTime } from '../components/RelativeTime'
+import { EmptyState } from '../components/EmptyState'
 import { stackedBarOptions, areaOptions, legendItems } from '../lib/chartOptions'
 import { snapshotsToPlatformSeries, type PlatformSeries } from '../lib/chartData'
 import { platformUsage } from '../lib/api'
@@ -139,23 +140,27 @@ export function Dashboard() {
           <Tag type="red" size="sm">{attention.length}</Tag>
         </div>
         <div className="scns-card">
-          {attention.map((a, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => navigate(a.to)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 16, width: '100%', height: 48, padding: '0 16px',
-                background: 'none', border: 'none', borderTop: idx ? '1px solid var(--cds-border-subtle)' : 'none',
-                cursor: 'pointer', textAlign: 'left',
-              }}
-            >
-              <Pill tone={a.tone}>{a.sev}</Pill>
-              <span className="scns-mono" style={{ color: 'var(--cds-link-primary)', minWidth: 140 }}>{a.entity}</span>
-              <span style={{ flex: 1, fontSize: 13, color: 'var(--cds-text-secondary)' }}>{a.desc}</span>
-              <span className="scns-link" style={{ fontSize: 13 }}>{a.cta}</span>
-            </button>
-          ))}
+          {attention.length === 0 ? (
+            <EmptyState title="No issues detected" />
+          ) : (
+            attention.map((a, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => navigate(a.to)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 16, width: '100%', height: 48, padding: '0 16px',
+                  background: 'none', border: 'none', borderTop: idx ? '1px solid var(--cds-border-subtle)' : 'none',
+                  cursor: 'pointer', textAlign: 'left',
+                }}
+              >
+                <Pill tone={a.tone}>{a.sev}</Pill>
+                <span className="scns-mono" style={{ color: 'var(--cds-link-primary)', minWidth: 140 }}>{a.entity}</span>
+                <span style={{ flex: 1, fontSize: 13, color: 'var(--cds-text-secondary)' }}>{a.desc}</span>
+                <span className="scns-link" style={{ fontSize: 13 }}>{a.cta}</span>
+              </button>
+            ))
+          )}
         </div>
       </div>
 
@@ -172,7 +177,11 @@ export function Dashboard() {
             <ChartPlaceholder loading={platform.loading} error={platform.error} height={320} />
           )}
         </ChartCard>
-        <ChartCard title="Error rate" subtitle="4xx + 5xx">
+        <ChartCard
+          title="Error rate"
+          subtitle="%"
+          right={<ChartLegend items={[{ label: '4xx', color: '#d2a106' }, { label: '5xx', color: '#fa4d56' }]} />}
+        >
           {hasChart ? (
             <AreaChart data={errData} options={errOpts} />
           ) : (
@@ -183,21 +192,30 @@ export function Dashboard() {
 
       {/* Recent activity */}
       <div style={{ marginTop: 32 }}>
-        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Recent activity</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
+          <span style={{ fontSize: 16, fontWeight: 600 }}>Recent activity</span>
+          <span className="scns-helper" style={{ fontSize: 13 }}>
+            state changes, last 3 days
+          </span>
+        </div>
         <div className="scns-card">
-          {activity.map((ev, idx) => (
-            <div
-              key={ev.id}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 12, height: 44, padding: '0 16px',
-                borderTop: idx ? '1px solid var(--cds-border-subtle)' : 'none',
-              }}
-            >
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor(ev.kind), flex: 'none' }} aria-hidden="true" />
-              <span style={{ flex: 1, fontSize: 13 }}>{activitySentence(ev)}</span>
-              <RelativeTime iso={ev.at} />
-            </div>
-          ))}
+          {activity.length === 0 ? (
+            <EmptyState title="No recent activity" />
+          ) : (
+            activity.map((ev, idx) => (
+              <div
+                key={ev.id}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12, height: 44, padding: '0 16px',
+                  borderTop: idx ? '1px solid var(--cds-border-subtle)' : 'none',
+                }}
+              >
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor(ev.kind), flex: 'none' }} aria-hidden="true" />
+                <span style={{ flex: 1, fontSize: 13 }}>{activitySentence(ev)}</span>
+                <RelativeTime iso={ev.at} />
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
@@ -230,13 +248,13 @@ function activitySentence(ev: ActivityEvent): ReactNode {
 
 function ChartPlaceholder({ loading, error, height }: { loading: boolean; error: string | null; height: number }) {
   return (
-    <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--cds-text-secondary)', fontSize: 13 }}>
+    <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       {loading ? (
         <Loading withOverlay={false} small description="Loading usage…" />
       ) : error ? (
-        `Usage unavailable: ${error}`
+        <EmptyState title="Usage unavailable" description={error} />
       ) : (
-        'No usage data yet'
+        <EmptyState title="No usage data yet" />
       )}
     </div>
   )

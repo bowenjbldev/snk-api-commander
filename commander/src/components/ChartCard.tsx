@@ -27,19 +27,27 @@ export function ChartCard({
   children: ReactNode
 }) {
   return (
-    <div className="scns-card" style={{ padding: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8, gap: 12 }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 600 }}>{title}</div>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12, gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
+          <span style={{ fontSize: 16, fontWeight: 600 }}>{title}</span>
           {subtitle && (
-            <div className="scns-helper" style={{ fontSize: 12, marginTop: 2 }}>
+            <span className="scns-helper" style={{ fontSize: 13 }}>
               {subtitle}
-            </div>
+            </span>
           )}
         </div>
-        {right}
       </div>
-      {children}
+      <div className="scns-card" style={{ padding: 16, flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {right && (
+          <div style={{ alignSelf: 'flex-end', marginBottom: 16 }}>
+            {right}
+          </div>
+        )}
+        <div style={{ flex: 1 }}>
+          {children}
+        </div>
+      </div>
     </div>
   )
 }
