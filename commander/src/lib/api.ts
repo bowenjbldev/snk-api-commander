@@ -2,7 +2,7 @@
 // path that Vite proxies to the backend (see vite.config.ts) — no CORS, no cert prompt.
 // For a production build, set VITE_API_BASE to the deploy's origin (e.g. https://commander.host/api/v1).
 
-import type { UsageRollup, UsageSnapshot } from '../store/types'
+import type { LogEntry, UsageRollup, UsageSnapshot } from '../store/types'
 
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? '/api/v1'
 const TOKEN_KEY = 'commander_token'
@@ -103,6 +103,20 @@ export function deploymentUsage(
   if (params.to) qs.set('to', params.to)
   const q = qs.toString()
   return api<{ data: UsageRollup[] }>(`/deployments/${id}/usage${q ? `?${q}` : ''}`)
+}
+
+// Pulls a deploy's real recent request logs (proxied from its signed /control/logs, tagged with
+// deployment_id) for the Logs view. No real-time stream — fetch on demand / poll.
+export function deploymentLogs(
+  id: string,
+  params: { limit?: number; since?: string; status_class?: 2 | 3 | 4 | 5 } = {},
+): Promise<{ data: LogEntry[] }> {
+  const qs = new URLSearchParams()
+  if (params.limit) qs.set('limit', String(params.limit))
+  if (params.since) qs.set('since', params.since)
+  if (params.status_class) qs.set('status_class', String(params.status_class))
+  const q = qs.toString()
+  return api<{ data: LogEntry[] }>(`/deployments/${id}/logs${q ? `?${q}` : ''}`)
 }
 
 // Platform-wide hourly usage (aggregated Commander snapshot cache) for the Dashboard/Usage charts.

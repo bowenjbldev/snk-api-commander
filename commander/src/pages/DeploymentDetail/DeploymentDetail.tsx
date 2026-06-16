@@ -10,6 +10,7 @@ import { EmptyState } from '../../components/EmptyState'
 const TABS = [
   { label: 'Overview', to: 'overview' },
   { label: 'Usage', to: 'usage' },
+  { label: 'Logs', to: 'logs' },
   { label: 'Settings', to: 'settings' },
 ]
 
