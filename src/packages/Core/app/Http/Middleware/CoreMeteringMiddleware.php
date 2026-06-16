@@ -49,10 +49,13 @@ class CoreMeteringMiddleware
                 ? LARAVEL_START
                 : (float) $request->attributes->get('core_metering_start', microtime(true));
 
+            $route = $request->route()?->uri();
+
             DB::table('core_request_logs')->insert([
                 'occurred_at' => now('UTC'),
                 'method' => $request->method(),
-                'route' => $request->route()?->uri(),
+                // route column is string(191); truncate so a long URI can't raise "Data too long".
+                'route' => $route !== null ? Str::limit($route, 191, '') : null,
                 'path' => Str::limit($path, 255, ''),
                 'status' => $response->getStatusCode(),
                 'duration_ms' => max(0, (int) round((microtime(true) - $start) * 1000)),

@@ -79,7 +79,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
             return $this->controlError($e);
         }
 
-        $this->sync->applyState($deployment, $result['state'] ?? []);
+        $this->mirrorEchoedState($deployment, $result);
         $this->recordActivity('suspend', $deployment, $data['reason'], $data['message'] ?? null);
 
         return response()->json($deployment->fresh());
@@ -113,7 +113,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
             return $this->controlError($e);
         }
 
-        $this->sync->applyState($deployment, $result['state'] ?? []);
+        $this->mirrorEchoedState($deployment, $result);
         $this->recordActivity('grace', $deployment, $data['reason'], $data['message'] ?? null);
 
         return response()->json($deployment->fresh());
@@ -136,7 +136,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
             return $this->controlError($e);
         }
 
-        $this->sync->applyState($deployment, $result['state'] ?? []);
+        $this->mirrorEchoedState($deployment, $result);
         $this->recordActivity('resume', $deployment, null, null);
 
         return response()->json($deployment->fresh());
@@ -216,8 +216,10 @@ class CommanderDeploymentsController extends CoreBaseApiController
             return $this->controlError($e);
         }
 
-        // Remote accepted → adopt locally. Tiny window: if this save fails after the remote swap, the
-        // deploy is on $new while the Commander holds the old secret (operator would re-provision).
+        // Remote accepted → adopt locally. Inconsistency window (wider than just this save): if the
+        // deploy committed $new but its 2xx was lost (timeout), send() throws → 502 above and we never
+        // adopt $new, leaving the Commander on the old secret while the deploy is on $new. A failing
+        // save() here has the same end state. Recovery in both cases is to re-provision the deployment.
         $deployment->control_secret = $new;
         $deployment->control_secret_rotated_at = CarbonImmutable::now();
         $deployment->save();
@@ -225,6 +227,26 @@ class CommanderDeploymentsController extends CoreBaseApiController
         $this->recordActivity('rotate', $deployment, null, '…' . substr($new, -4));
 
         return response()->json($deployment->fresh());
+    }
+
+    /**
+     * Mirror the deploy's echoed state after a successful control call. A 2xx without a populated state
+     * envelope (shouldn't happen with Core, but the contract tolerates it) would otherwise leave a stale
+     * mirror behind a 200; fall through to a full sync so the response reflects live state.
+     */
+    private function mirrorEchoedState(DeploymentModel $deployment, array $result): void
+    {
+        if (($result['state'] ?? []) !== []) {
+            $this->sync->applyState($deployment, $result['state']);
+
+            return;
+        }
+
+        try {
+            $this->sync->sync($deployment);
+        } catch (CommanderControlException) {
+            // best-effort refresh; the remote action already succeeded, leave the mirror as-is
+        }
     }
 
     private function recordActivity(string $kind, DeploymentModel $deployment, ?string $reason, ?string $message): void

@@ -41,10 +41,15 @@ class CoreQuotaMeasurerService
         foreach (CoreQuotaMetricModel::query()->orderBy('metric_key')->get() as $metric) {
             $value = $this->measure($metric->metric_key);
 
-            if ($persist && $value !== null) {
+            // Set the measured value in memory first so enforce() always sees fresh data; only the DB
+            // write is gated on $persist (enforcing on a stale current_value would mis-decide suspend/heal).
+            if ($value !== null) {
                 $metric->current_value = $value;
-                $metric->measured_at = now();
-                $metric->save();
+
+                if ($persist) {
+                    $metric->measured_at = now();
+                    $metric->save();
+                }
             }
 
             $over = $value !== null && $metric->limit_value !== null && $value > $metric->limit_value;

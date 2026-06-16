@@ -278,7 +278,8 @@ hosts_remove() {
             # Regex anclada con \r opcional (CRLF) para no comerse cliente10 al quitar cliente1.
             local content
             content=$(grep -Ev "snake-sub:$c\r?\$" "$WIN_HOSTS")
-            printf '%s' "$content" > "$WIN_HOSTS"
+            # grep conserva el \r de la ultima linea superviviente; el \n cierra el CRLF correctamente.
+            printf '%s\n' "$content" > "$WIN_HOSTS"
             info "Hosts de Windows: entrada de $c eliminada (sin UAC)"
         elif command -v powershell.exe >/dev/null 2>&1; then
             info "Quitando entrada del hosts de Windows (acepta el UAC)..."

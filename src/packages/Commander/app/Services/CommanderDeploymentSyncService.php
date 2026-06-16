@@ -145,6 +145,8 @@ class CommanderDeploymentSyncService
             }
         }
 
-        return round($worst, 4);
+        // Clamp to the decimal(6,4) column ceiling (99.9999); a metric at >=100x its limit would
+        // otherwise overflow and error on save() under strict-mode MySQL.
+        return round(min($worst, 99.9999), 4);
     }
 }
