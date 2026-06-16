@@ -39,12 +39,16 @@ class CoreRouteServiceProvider extends ServiceProvider
     {
         $router = $this->app->make(Router::class);
 
-        // Metering el primero (outermost): registra tambien los 429 del
-        // throttle y los 402 del kill-switch.
-        $router->prependMiddlewareToGroup('api', \Packages\Core\Http\Middleware\CoreMeteringMiddleware::class);
         $router->pushMiddlewareToGroup('api', 'throttle:api');
-        // Kill-switch tras throttle y antes del auth de ruta.
-        $router->pushMiddlewareToGroup('api', \Packages\Core\Http\Middleware\CoreEnsureActiveMiddleware::class);
+
+        // Metering + kill-switch son control plane de tenant: solo en deploys gestionados.
+        // El Commander (operador, no tenant) apaga el control plane y no los engancha.
+        if (config('core.control_plane', true)) {
+            // Metering el primero (outermost): registra tambien los 429 del throttle y los 402 del kill-switch.
+            $router->prependMiddlewareToGroup('api', \Packages\Core\Http\Middleware\CoreMeteringMiddleware::class);
+            // Kill-switch tras throttle y antes del auth de ruta.
+            $router->pushMiddlewareToGroup('api', \Packages\Core\Http\Middleware\CoreEnsureActiveMiddleware::class);
+        }
     }
 
     private function configureRoutes(): void

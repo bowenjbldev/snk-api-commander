@@ -16,6 +16,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Control Plane (tenant self-management)
+    |--------------------------------------------------------------------------
+    |
+    | Whether this deploy runs the tenant control plane: metering, kill-switch,
+    | quotas and the /control surface. Customer deploys leave it on; the operator
+    | panel (API_PACKAGE=Commander) turns it off — it manages tenants, it is not one.
+    |
+    */
+
+    'control_plane' => (bool) env('CORE_CONTROL_PLANE', true),
+
+    /*
+    |--------------------------------------------------------------------------
     | Package State (kill-switch)
     |--------------------------------------------------------------------------
     |

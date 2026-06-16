@@ -12,7 +12,11 @@ class CommanderServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        // The Commander is the operator panel, not a managed tenant: turn off Core's control plane
+        // (metering, kill-switch, quotas and the /control surface) for this deploy. Declared here in
+        // the package — NOT by Core sniffing API_PACKAGE — so Core stays agnostic of business-package
+        // names. register() runs before CoreRouteServiceProvider::boot() reads the flag, so it sees it.
+        config(['core.control_plane' => false]);
     }
 
     public function boot(): void

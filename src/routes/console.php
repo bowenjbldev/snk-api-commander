@@ -10,5 +10,8 @@ Artisan::command('inspire', function () {
 
 // Control plane: requiere un proceso de scheduler corriendo
 // (php artisan schedule:work, o cron con schedule:run). Ver docs/CONTROL-PLANE.md.
-Schedule::command('core:usage:rollup --prune')->hourly()->withoutOverlapping();
-Schedule::command('core:quota:measure')->everySixHours()->withoutOverlapping();
+// Solo en deploys de tenant; el Commander apaga el control plane (CORE_CONTROL_PLANE=false).
+if (config('core.control_plane', true)) {
+    Schedule::command('core:usage:rollup --prune')->hourly()->withoutOverlapping();
+    Schedule::command('core:quota:measure')->everySixHours()->withoutOverlapping();
+}
