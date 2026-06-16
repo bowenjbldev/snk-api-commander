@@ -24,7 +24,27 @@ class CommanderControlTest extends TestCase
         $this->seed(CoreDatabaseSeeder::class);
         $this->seed(CommanderDatabaseSeeder::class);
 
+        // The seeder no longer ships demo data; create the deployments these tests drive.
+        $this->deployment('kestrel-track');
+        $this->deployment('helios-meter');
+
         return CoreUserModel::where('email', 'admin@snake.com')->firstOrFail();
+    }
+
+    private function deployment(string $id, string $status = 'active'): DeploymentModel
+    {
+        return DeploymentModel::updateOrCreate(['id' => $id], [
+            'name' => $id,
+            'subdomain' => "{$id}.test",
+            'client_id' => 'test-client',
+            'package' => 'test-api',
+            'version' => 'v1.0.0',
+            'base_url' => "https://{$id}.test/api/v1",
+            'control_secret' => 'sk_ctl_live_' . str_repeat('a', 24),
+            'control_secret_rotated_at' => now(),
+            'status' => $status,
+            'changed_by' => 'cli',
+        ]);
     }
 
     /**
@@ -226,6 +246,26 @@ class CommanderControlTest extends TestCase
         $deployment = DeploymentModel::find('kestrel-track');
         $this->assertSame(150, $deployment->requests_24h);
         $this->assertEqualsWithDelta(0.5, $deployment->quota_health, 0.0001); // 250000/500000 is the worst ratio
+    }
+
+    public function test_logs_proxies_real_request_logs_tagged_with_deployment_id(): void
+    {
+        Http::fake(['*/control/logs*' => Http::response([
+            'data' => [
+                ['id' => '42', 'occurred_at' => '2026-06-16T10:00:00+00:00', 'method' => 'GET',
+                    'route' => 'api/v1/users', 'status' => 200, 'duration_ms' => 12, 'user_id' => null,
+                    'token_id' => '', 'ip' => '127.0.0.1', 'request_bytes' => 0, 'response_bytes' => 100],
+            ],
+        ], 200)]);
+
+        $admin = $this->admin();
+
+        $res = $this->actingAs($admin, 'sanctum')->getJson('/api/v1/deployments/kestrel-track/logs');
+
+        $res->assertOk();
+        $res->assertJsonPath('data.0.deployment_id', 'kestrel-track');
+        $res->assertJsonPath('data.0.route', 'api/v1/users');
+        $res->assertJsonPath('data.0.status', 200);
     }
 
     public function test_middleware_prefers_a_rotated_db_secret_over_env(): void

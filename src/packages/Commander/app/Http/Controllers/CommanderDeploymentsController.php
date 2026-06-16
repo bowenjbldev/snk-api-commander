@@ -196,6 +196,44 @@ class CommanderDeploymentsController extends CoreBaseApiController
         return response()->json($usage);
     }
 
+    /** Proxy the deploy's real request logs (core_request_logs) for the Logs view. */
+    public function logs(Request $request, $id = null): JsonResponse
+    {
+        if ($response = $this->requirePermission($this->showPermission)) {
+            return $response;
+        }
+
+        if (($deployment = $this->findModel($id)) === null) {
+            return response()->json(['error' => 'Record not found'], 404);
+        }
+
+        $data = $request->validate([
+            'limit' => 'nullable|integer|min:1|max:500',
+            'since' => 'nullable|date',
+            'status_class' => 'nullable|integer|in:2,3,4,5',
+        ]);
+
+        $query = array_filter([
+            'limit' => $data['limit'] ?? 100,
+            'since' => $data['since'] ?? null,
+            'status_class' => $data['status_class'] ?? null,
+        ], static fn ($v) => $v !== null);
+
+        try {
+            $logs = $this->control->getLogs($deployment, $query);
+        } catch (CommanderControlException $e) {
+            return $this->controlError($e);
+        }
+
+        // Tag each row with the deployment id so the SPA receives complete LogEntry objects.
+        $rows = array_map(
+            static fn ($row) => array_merge((array) $row, ['deployment_id' => $deployment->id]),
+            (array) ($logs['data'] ?? []),
+        );
+
+        return response()->json(['data' => $rows]);
+    }
+
     /** Generate a new control secret, deliver it to the deploy (signed with the old one), then adopt it. */
     public function rotateSecret(Request $request, $id = null): JsonResponse
     {

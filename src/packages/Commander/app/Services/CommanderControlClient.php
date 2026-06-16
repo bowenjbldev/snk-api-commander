@@ -45,6 +45,12 @@ class CommanderControlClient
         return $this->send($deployment, 'GET', '/control/usage', null, $query);
     }
 
+    /** GET /control/logs?limit=&since=&status_class= → { data: [recent core_request_logs rows] }. */
+    public function getLogs(DeploymentModel $deployment, array $query = []): array
+    {
+        return $this->send($deployment, 'GET', '/control/logs', null, $query);
+    }
+
     /**
      * POST /control/rotate-secret — deliver a new secret to the deploy, signed with the row's CURRENT
      * secret (so the deploy verifies it before swapping). Caller adopts $newSecret locally on success.

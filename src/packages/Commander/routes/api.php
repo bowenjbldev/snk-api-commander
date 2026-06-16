@@ -29,6 +29,7 @@ Route::middleware(['api'])->group(function () {
         Route::post('deployments/{id}/sync', [CommanderDeploymentsController::class, 'sync']);
         Route::post('deployments/{id}/rotate-secret', [CommanderDeploymentsController::class, 'rotateSecret']);
         Route::get('deployments/{id}/usage', [CommanderDeploymentsController::class, 'usage']);
+        Route::get('deployments/{id}/logs', [CommanderDeploymentsController::class, 'logs']);
         Route::apiResource('deployments', CommanderDeploymentsController::class);
         Route::apiResource('subscriptions', CommanderSubscriptionsController::class);
         Route::apiResource('invoices', CommanderInvoicesController::class);

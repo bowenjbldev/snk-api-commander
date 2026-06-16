@@ -21,6 +21,7 @@ if (config('core.control_plane', true) && (string) config('core.control.secret',
             Route::get('state', [CoreControlController::class, 'showState']);
             Route::post('state', [CoreControlController::class, 'updateState']);
             Route::get('usage', [CoreControlController::class, 'usage']);
+            Route::get('logs', [CoreControlController::class, 'logs']);
             Route::post('rotate-secret', [CoreControlController::class, 'rotateSecret']);
         });
 }

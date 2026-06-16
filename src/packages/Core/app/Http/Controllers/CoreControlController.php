@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Packages\Core\Enums\CorePackageStatusEnum;
 use Packages\Core\Models\CorePackageStateModel;
 use Packages\Core\Models\CoreQuotaMetricModel;
@@ -81,6 +82,45 @@ class CoreControlController extends Controller
         }
 
         return response()->json($query->paginate((int) ($data['per_page'] ?? 200)));
+    }
+
+    /** Recent raw request logs (core_request_logs) for the Commander's Logs view. */
+    public function logs(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'limit' => 'nullable|integer|min:1|max:500',
+            'since' => 'nullable|date',
+            'status_class' => 'nullable|integer|in:2,3,4,5',
+        ]);
+
+        $query = DB::table('core_request_logs')
+            ->orderByDesc('occurred_at')
+            ->orderByDesc('id');
+
+        if (isset($data['since'])) {
+            $query->where('occurred_at', '>=', CarbonImmutable::parse($data['since']));
+        }
+
+        if (isset($data['status_class'])) {
+            $base = (int) $data['status_class'] * 100;
+            $query->whereBetween('status', [$base, $base + 99]);
+        }
+
+        $rows = $query->limit((int) ($data['limit'] ?? 100))->get()->map(fn ($r) => [
+            'id' => (string) $r->id,
+            'occurred_at' => CarbonImmutable::parse($r->occurred_at)->toIso8601String(),
+            'method' => $r->method,
+            'route' => $r->route ?? $r->path ?? '',
+            'status' => (int) $r->status,
+            'duration_ms' => (int) $r->duration_ms,
+            'user_id' => $r->user_id !== null ? (string) $r->user_id : null,
+            'token_id' => $r->token_id !== null ? (string) $r->token_id : '',
+            'ip' => (string) ($r->ip ?? ''),
+            'request_bytes' => (int) ($r->request_bytes ?? 0),
+            'response_bytes' => (int) ($r->response_bytes ?? 0),
+        ]);
+
+        return response()->json(['data' => $rows]);
     }
 
     /**
