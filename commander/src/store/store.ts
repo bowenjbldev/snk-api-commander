@@ -8,7 +8,6 @@ import type {
   Client,
   Deployment,
   Invoice,
-  LogEntry,
   OnExceed,
   OperatorSettings,
   QuotaMetric,
@@ -48,18 +47,9 @@ interface StoreActions {
   markInvoiceOverdue: (invoiceId: string) => void
   setInvoiceEnforcement: (invoiceId: string, enforcement: Invoice['enforcement']) => void
 
-  // ── live tail ──
-  prependLog: (entry: LogEntry) => void
-
   // ── CRUD ──
   addClient: (client: Omit<Client, 'id' | 'created_at'>) => string
   updateClient: (id: string, patch: Partial<Client>) => void
-  createDeployment: (input: {
-    name: string
-    client_id: string
-    package: string
-    version: string
-  }) => string
   deleteDeployment: (id: string) => void
   updateSettings: (patch: Partial<OperatorSettings>) => void
 }
@@ -131,12 +121,6 @@ export const useStore = create<StoreState>((set, get) => {
       if (depActionSeq.get(id) === seq) replaceDep(d)
     }
   }
-  const upsertDep = (d: Deployment) =>
-    set((s) => ({
-      deployments: s.deployments.some((x) => x.id === d.id)
-        ? s.deployments.map((x) => (x.id === d.id ? d : x))
-        : [...s.deployments, d],
-    }))
   const replaceInvoice = (i: Invoice) =>
     set((s) => ({ invoices: s.invoices.map((x) => (x.id === i.id ? i : x)) }))
   const replaceClient = (c: Client) =>
@@ -342,8 +326,6 @@ export const useStore = create<StoreState>((set, get) => {
       )
     },
 
-    prependLog: (entry) => set((s) => ({ logs: [entry, ...s.logs].slice(0, 200) })),
-
     addClient: (client) => {
       const id = slug(client.name) || nextId('client')
       set((s) => ({
@@ -372,52 +354,6 @@ export const useStore = create<StoreState>((set, get) => {
         clients: s.clients.map((c) => (c.id === id ? { ...c, ...patch } : c)),
       }))
       persist(api<Client>(`/clients/${id}`, { method: 'PATCH', body: patch }), replaceClient)
-    },
-
-    createDeployment: (input) => {
-      const id = slug(input.name)
-      const now = new Date().toISOString()
-      // Derive the deploy domain from the panel's own host (<name>.<BASE_DOMAIN>); no demo domain.
-      // Note: real deployments are provisioned by scripts/subscription.sh (commander:register-deploy)
-      // with a real control_secret — this panel form only creates a registry stub.
-      const baseDomain = window.location.hostname.replace(/^commander\./, '') || 'localhost'
-      const dep: Deployment = {
-        id,
-        name: input.name,
-        subdomain: `${id}.${baseDomain}`,
-        client_id: input.client_id,
-        package: input.package,
-        version: input.version,
-        state: buildState('active', { by: 'operator' }),
-        requests_24h: 0,
-        quota_health: 0,
-        last_seen: now,
-        base_url: `https://${id}.${baseDomain}/api/v1`,
-        control_secret_suffix: Math.floor(Math.random() * 0xffff)
-          .toString(16)
-          .padStart(4, '0'),
-        control_secret_rotated_at: now,
-        subscription_id: null,
-        created_at: now,
-      }
-      set((s) => ({ deployments: [...s.deployments, dep] }))
-      persist(
-        api<Deployment>('/deployments', {
-          method: 'POST',
-          body: {
-            id,
-            name: input.name,
-            subdomain: dep.subdomain,
-            client_id: input.client_id,
-            package: input.package,
-            version: input.version,
-            base_url: dep.base_url,
-            status: 'active',
-          },
-        }),
-        upsertDep,
-      )
-      return id
     },
 
     deleteDeployment: (id) => {

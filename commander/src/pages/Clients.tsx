@@ -10,7 +10,6 @@ import { useFirstLoad } from '../hooks/useFirstLoad'
 import { ClientStatusTag, DeploymentStatusTag } from '../components/tags/StatusTag'
 import { Drawer } from '../components/Drawer'
 import { ClientFormModal } from '../components/modals/ClientFormModal'
-import { CreateDeploymentModal } from '../components/modals/CreateDeploymentModal'
 import { formatMonthYear, formatAbsoluteUTC, formatRelative } from '../lib/time'
 import { formatCurrency } from '../lib/format'
 import type { Client, Deployment, Invoice } from '../store/types'
@@ -32,7 +31,6 @@ export function Clients() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [openId, setOpenId] = useState<string | null>(searchParams.get('client'))
   const [form, setForm] = useState<{ mode: 'create' | 'edit'; client?: Client } | null>(null)
-  const [newDepClient, setNewDepClient] = useState<string | null>(null)
 
   const depCount = useMemo(() => {
     const m = new Map<string, number>()
@@ -134,7 +132,6 @@ export function Clients() {
             navigate(`/deployments/${id}`)
           }}
           onEdit={(c) => setForm({ mode: 'edit', client: c })}
-          onNewDeployment={(id) => setNewDepClient(id)}
           onPlaceholder={(what) => toast.info(what, 'Coming online.')}
         />
       )}
@@ -142,15 +139,6 @@ export function Clients() {
       {form && (
         <ClientFormModal open mode={form.mode} client={form.client} onClose={() => setForm(null)} />
       )}
-      <CreateDeploymentModal
-        open={newDepClient != null}
-        presetClientId={newDepClient ?? undefined}
-        onClose={() => setNewDepClient(null)}
-        onCreated={(id) => {
-          setOpenId(null)
-          navigate(`/deployments/${id}`)
-        }}
-      />
     </div>
   )
 }
@@ -162,7 +150,6 @@ function ClientDrawer({
   onClose,
   onOpenDeployment,
   onEdit,
-  onNewDeployment,
   onPlaceholder,
 }: {
   client: Client
@@ -171,7 +158,6 @@ function ClientDrawer({
   onClose: () => void
   onOpenDeployment: (id: string) => void
   onEdit: (c: Client) => void
-  onNewDeployment: (id: string) => void
   onPlaceholder: (what: string) => void
 }) {
   return (
@@ -254,15 +240,6 @@ function ClientDrawer({
             </button>
           ))}
         </div>
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={Add}
-          style={{ marginTop: 16 }}
-          onClick={() => onNewDeployment(client.id)}
-        >
-          New deployment for this client
-        </Button>
       </div>
     </Drawer>
   )

@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { Dropdown, OverflowMenu, OverflowMenuItem } from '@carbon/react'
-import { Add } from '@carbon/icons-react'
 import { useStore } from '../store/store'
 import { useActions } from '../providers/ActionsProvider'
 import { useToast } from '../providers/ToastProvider'
@@ -9,7 +8,6 @@ import { PageHeader } from '../components/PageHeader'
 import { DataTableShell, type ShellColumn } from '../components/DataTableShell'
 import { useFirstLoad } from '../hooks/useFirstLoad'
 import { DeploymentStatusTag } from '../components/tags/StatusTag'
-import { CreateDeploymentModal } from '../components/modals/CreateDeploymentModal'
 import { QuotaBar } from '../components/QuotaBar'
 import { RelativeTime } from '../components/RelativeTime'
 import { formatInt } from '../lib/format'
@@ -31,7 +29,6 @@ export function Deployments() {
 
   const [stateFilter, setStateFilter] = useState('all')
   const [clientFilter, setClientFilter] = useState('all')
-  const [createOpen, setCreateOpen] = useState(false)
 
   const clientName = useMemo(() => {
     const m = new Map(clients.map((c) => [c.id, c.name]))
@@ -135,11 +132,6 @@ export function Deployments() {
             {counts.suspended} suspended
           </>
         }
-        primaryAction={{
-          label: 'Create deployment',
-          icon: Add,
-          onClick: () => setCreateOpen(true),
-        }}
       />
       <DataTableShell
         rows={filtered}
@@ -202,11 +194,6 @@ export function Deployments() {
             <OverflowMenuItem hasDivider isDelete itemText="Delete…" onClick={() => actions.deleteDeployment(d)} />
           </OverflowMenu>
         )}
-      />
-      <CreateDeploymentModal
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onCreated={(id) => navigate(`/deployments/${id}`)}
       />
     </div>
   )

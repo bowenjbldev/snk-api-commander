@@ -11,7 +11,6 @@ const Subscriptions = lazy(() => import('./pages/Subscriptions').then((m) => ({ 
 const Invoices = lazy(() => import('./pages/Invoices').then((m) => ({ default: m.Invoices })))
 const Usage = lazy(() => import('./pages/Usage').then((m) => ({ default: m.Usage })))
 const Quotas = lazy(() => import('./pages/Quotas').then((m) => ({ default: m.Quotas })))
-const RequestLogs = lazy(() => import('./pages/RequestLogs').then((m) => ({ default: m.RequestLogs })))
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })))
 const NotFound = lazy(() => import('./pages/NotFound').then((m) => ({ default: m.NotFound })))
 const DeploymentDetail = lazy(() =>
@@ -21,7 +20,6 @@ const OverviewTab = lazy(() =>
   import('./pages/DeploymentDetail/OverviewTab').then((m) => ({ default: m.OverviewTab })),
 )
 const UsageTab = lazy(() => import('./pages/DeploymentDetail/UsageTab').then((m) => ({ default: m.UsageTab })))
-const LogsTab = lazy(() => import('./pages/DeploymentDetail/LogsTab').then((m) => ({ default: m.LogsTab })))
 const SettingsTab = lazy(() =>
   import('./pages/DeploymentDetail/SettingsTab').then((m) => ({ default: m.SettingsTab })),
 )
@@ -41,7 +39,6 @@ export const router = createBrowserRouter([
           { index: true, element: <Navigate to="overview" replace /> },
           { path: 'overview', element: <OverviewTab /> },
           { path: 'usage', element: <UsageTab /> },
-          { path: 'logs', element: <LogsTab /> },
           { path: 'settings', element: <SettingsTab /> },
         ],
       },
@@ -49,7 +46,6 @@ export const router = createBrowserRouter([
       { path: 'invoices', element: <Invoices /> },
       { path: 'usage', element: <Usage /> },
       { path: 'quotas', element: <Quotas /> },
-      { path: 'request-logs', element: <RequestLogs /> },
       { path: 'settings', element: <Settings /> },
       { path: '*', element: <NotFound /> },
     ],
