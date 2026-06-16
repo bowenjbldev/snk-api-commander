@@ -11,7 +11,7 @@ import { GlobalTheme } from '@carbon/react'
 
 export type ThemeName = 'g100' | 'g10'
 
-const STORAGE_KEY = 'snakecloud-cms.theme'
+const STORAGE_KEY = 'commander.theme'
 
 interface ThemeContextValue {
   theme: ThemeName

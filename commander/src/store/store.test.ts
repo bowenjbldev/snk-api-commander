@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // The store fires API calls behind its optimistic mutations; stub the client so unit tests
 // exercise the local reducer logic only. Resolving to {} (no `id`) skips reconcile.
@@ -12,8 +12,15 @@ vi.mock('../lib/api', () => ({
 }))
 
 import { useStore } from './store'
+import { buildFixtures } from './fixtures'
 
 const s = () => useStore.getState()
+
+// The production store starts empty; seed the demo dataset before each test so the reducer logic
+// has deployments/invoices/quotas to mutate.
+beforeEach(() => {
+  useStore.setState(buildFixtures(Date.now()))
+})
 
 describe('store mutations', () => {
   it('suspend → resume writes activity and flips status', () => {

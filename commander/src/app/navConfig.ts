@@ -30,4 +30,4 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Settings', path: '/settings', icon: Settings },
 ]
 
-export const APP_VERSION = 'snakecloud-cms v1.14.2'
+export const APP_VERSION = 'SnakeCloud Commander v1.14.2'

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { create } from 'zustand'
-import { buildFixtures, type Dataset } from './fixtures'
+import type { Dataset } from './fixtures'
 import { activity, buildState, nextId, type StateOpts } from './transitions'
 import { api } from '../lib/api'
 import type {
@@ -66,7 +66,33 @@ interface StoreActions {
 
 export type StoreState = Dataset & StoreActions
 
-const initial = buildFixtures(Date.now())
+// Production starts empty — no demo data. loadData() fills clients/deployments/etc. from the API;
+// the registry is populated by real provisioning (subscription.sh) and the panel's CRUD. (Tests seed
+// buildFixtures explicitly; see store.test.ts.)
+const initial: Dataset = {
+  clients: [],
+  deployments: [],
+  subscriptions: [],
+  invoices: [],
+  quotas: [],
+  logs: [],
+  activity: [],
+  settings: {
+    default_grace_hours: 72,
+    operator_name: '',
+    operator_email: '',
+    notify_on_suspend: true,
+    notify_on_overdue: true,
+  },
+  dashboard: {
+    requests_24h: 0,
+    requests_delta: 0,
+    error_rate: 0,
+    error_rate_delta: 0,
+    mrr: 0,
+    mrr_delta: 0,
+  },
+}
 
 function slug(name: string): string {
   return name
@@ -351,10 +377,14 @@ export const useStore = create<StoreState>((set, get) => {
     createDeployment: (input) => {
       const id = slug(input.name)
       const now = new Date().toISOString()
+      // Derive the deploy domain from the panel's own host (<name>.<BASE_DOMAIN>); no demo domain.
+      // Note: real deployments are provisioned by scripts/subscription.sh (commander:register-deploy)
+      // with a real control_secret — this panel form only creates a registry stub.
+      const baseDomain = window.location.hostname.replace(/^commander\./, '') || 'localhost'
       const dep: Deployment = {
         id,
         name: input.name,
-        subdomain: `${id}.snakecloud.io`,
+        subdomain: `${id}.${baseDomain}`,
         client_id: input.client_id,
         package: input.package,
         version: input.version,
@@ -362,7 +392,7 @@ export const useStore = create<StoreState>((set, get) => {
         requests_24h: 0,
         quota_health: 0,
         last_seen: now,
-        base_url: `https://${id}.snakecloud.io/api/v1`,
+        base_url: `https://${id}.${baseDomain}/api/v1`,
         control_secret_suffix: Math.floor(Math.random() * 0xffff)
           .toString(16)
           .padStart(4, '0'),
