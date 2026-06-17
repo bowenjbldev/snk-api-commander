@@ -6,6 +6,8 @@ use Packages\Commander\Http\Controllers\CommanderAuthController;
 use Packages\Commander\Http\Controllers\CommanderClientsController;
 use Packages\Commander\Http\Controllers\CommanderDeploymentsController;
 use Packages\Commander\Http\Controllers\CommanderInvoicesController;
+use Packages\Commander\Http\Controllers\CommanderPlansController;
+use Packages\Commander\Http\Controllers\CommanderProvisioningController;
 use Packages\Commander\Http\Controllers\CommanderQuotasController;
 use Packages\Commander\Http\Controllers\CommanderSubscriptionsController;
 use Packages\Commander\Http\Controllers\CommanderUsageController;
@@ -21,6 +23,10 @@ Route::middleware(['api'])->group(function () {
         // Platform registry
         Route::apiResource('users', CommanderUsersController::class);
         Route::apiResource('clients', CommanderClientsController::class);
+        Route::apiResource('plans', CommanderPlansController::class);
+
+        // Client-first provisioning: create a desired subscription (client + plan → pending deployment)
+        Route::post('provisioning', [CommanderProvisioningController::class, 'store']);
 
         // Signed /control proxy — operator state actions + live mirror sync (push to each deploy)
         Route::post('deployments/{id}/suspend', [CommanderDeploymentsController::class, 'suspend']);

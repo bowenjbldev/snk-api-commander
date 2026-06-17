@@ -21,7 +21,7 @@ class CommanderDatabaseSeeder extends Seeder
 
     private function seedPermissions(): void
     {
-        $resources = ['clients', 'deployments', 'subscriptions', 'invoices', 'quotas', 'activity'];
+        $resources = ['clients', 'deployments', 'subscriptions', 'invoices', 'quotas', 'activity', 'plans'];
         $actions = ['index', 'show', 'create', 'update', 'delete'];
         $names = [];
         foreach ($resources as $resource) {
@@ -31,6 +31,8 @@ class CommanderDatabaseSeeder extends Seeder
         }
         // Custom: signed /control proxy actions (suspend/grace/resume/sync/rotate-secret).
         $names[] = 'control deployments';
+        // Custom: create a desired subscription (client + plan → pending deployment) in one shot.
+        $names[] = 'provision deployments';
         foreach ($names as $name) {
             Permission::findOrCreate($name, 'sanctum');
         }

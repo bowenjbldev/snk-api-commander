@@ -27,6 +27,15 @@ class CommanderClientsController extends CoreBaseApiController
         'phone' => 'nullable|string|max:50',
         'notes' => 'nullable|string',
         'status' => 'nullable|in:active,inactive',
+        // Billing
+        'billing_email' => 'nullable|email|max:255',
+        'tax_id' => 'nullable|string|max:64',
+        'address_line1' => 'nullable|string|max:255',
+        'address_line2' => 'nullable|string|max:255',
+        'city' => 'nullable|string|max:128',
+        'postal_code' => 'nullable|string|max:32',
+        'country' => 'nullable|string|size:2',
+        'payment_terms' => 'nullable|in:prepaid,net_15,net_30,net_60',
     ];
 
     protected array $validationRulesUpdate = [
@@ -36,5 +45,14 @@ class CommanderClientsController extends CoreBaseApiController
         'phone' => 'nullable|string|max:50',
         'notes' => 'nullable|string',
         'status' => 'nullable|in:active,inactive',
+        // Billing
+        'billing_email' => 'nullable|email|max:255',
+        'tax_id' => 'nullable|string|max:64',
+        'address_line1' => 'nullable|string|max:255',
+        'address_line2' => 'nullable|string|max:255',
+        'city' => 'nullable|string|max:128',
+        'postal_code' => 'nullable|string|max:32',
+        'country' => 'nullable|string|size:2',
+        'payment_terms' => 'nullable|in:prepaid,net_15,net_30,net_60',
     ];
 }

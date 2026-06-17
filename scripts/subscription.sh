@@ -96,6 +96,8 @@ regen_compose() {
         [ -e "$state" ] || break
         found=1
         CONTROL_SECRET=""   # default for pre-Phase-4 client envs (control plane stays off)
+        # Reset optional per-plan quota limits so they don't leak from a previous client in this loop.
+        CORE_QUOTA_REQUESTS_DAY=""; CORE_QUOTA_DISK_DB_MB=""; CORE_QUOTA_DISK_STORAGE_MB=""; CORE_QUOTA_USERS_TOTAL=""
         # shellcheck disable=SC1090
         source "$state"
         # nginx alias so the Commander container resolves <cliente>.<BASE_DOMAIN> to nginx (Host routing).
@@ -122,6 +124,15 @@ regen_compose() {
       DB_DATABASE: ${DB_DATABASE}
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: "${DB_PASSWORD}"
+EOF
+        # Optional per-plan quota limits (from the plan, baked in by cmd_add). Only emit set ones so
+        # clients without a plan keep unlimited defaults instead of a 0/empty limit.
+        local qk qv
+        for qk in CORE_QUOTA_REQUESTS_DAY CORE_QUOTA_DISK_DB_MB CORE_QUOTA_DISK_STORAGE_MB CORE_QUOTA_USERS_TOTAL; do
+            qv="${!qk}"
+            [ -n "$qv" ] && printf '      %s: "%s"\n' "$qk" "$qv" >> "$tmp"
+        done
+        cat >> "$tmp" <<EOF
     depends_on:
       db:
         condition: service_healthy
@@ -306,8 +317,17 @@ cmd_init() {
 }
 
 cmd_add() {
-    local pkg="${1:-}"
-    [ -n "$pkg" ] || die "Uso: scripts/subscription.sh add <Package>"
+    local pkg="${1:-}"; shift || true
+    local client="" client_name=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --client=*)      client="${1#*=}" ;;
+            --client-name=*) client_name="${1#*=}" ;;
+            *) die "Opcion desconocida para add: $1" ;;
+        esac
+        shift
+    done
+    [ -n "$pkg" ] || die "Uso: scripts/subscription.sh add <Package> [--client=<id>] [--client-name=<nombre>]"
 
     load_env
 
@@ -327,6 +347,10 @@ cmd_add() {
     validate_name "$c"
     [ ! -f "$CLIENTS_DIR/$c.env" ] || die "La suscripcion para [$pkg] ya existe (subdominio $c)."
 
+    # Cliente por defecto = subdominio. Con --client se asocia a un cliente ya dado de alta en el
+    # Commander (flujo client-first): el register-deploy de abajo activa el deployment pendiente.
+    : "${client:=$c}"
+
     require_cert
     ensure_wiring
 
@@ -335,8 +359,14 @@ cmd_add() {
     # Per-deploy control-plane secret: enables /control on the deploy and lets the Commander sign.
     control_secret="sk_ctl_live_$(openssl rand -hex 12)"
 
-    info "Registrando suscripcion [$c] (paquete $pkg, BD $db)..."
-    cat > "$CLIENTS_DIR/$c.env" <<EOF
+    # Si el Commander ya tiene un deployment pendiente para este subdominio (alta client-first), trae
+    # los limites de quota del plan como lineas CORE_QUOTA_*; el deploy los siembra al migrar.
+    local quota_env
+    quota_env=$(docker compose exec -T app php artisan commander:provision-env "$c" 2>/dev/null | grep -E '^CORE_QUOTA_[A-Z_]+=' || true)
+
+    info "Registrando suscripcion [$c] (paquete $pkg, BD $db, cliente $client)..."
+    {
+        cat <<EOF
 CLIENT=$c
 PACKAGE=$pkg
 DB_DATABASE=$db
@@ -345,6 +375,8 @@ DB_PASSWORD=$db
 CONTROL_SECRET=$control_secret
 CREATED_AT=$(date -Iseconds)
 EOF
+        [ -n "$quota_env" ] && printf '%s\n' "$quota_env"
+    } > "$CLIENTS_DIR/$c.env"
 
     regen_compose
     docker compose config -q || { rm -f "$CLIENTS_DIR/$c.env"; regen_compose; die "compose invalido, alta revertida"; }
@@ -369,14 +401,13 @@ EOF
     info "Ejecutando seeders..."
     docker compose exec -T "app-$c" php artisan core:seed --force
 
-    # Register the live deploy in the Commander so the SPA can control it (suspend/grace/resume/sync).
+    # Register/activate the live deploy in the Commander (suspend/grace/resume/sync). With --client it
+    # attaches to (or activates the pending row of) an existing client without clobbering its billing.
     info "Registrando el deploy en el Commander (control plane)..."
-    if docker compose exec -T app php artisan commander:register-deploy "$c" \
-        --package="$pkg" \
-        --base-url="https://$c.$BASE_DOMAIN/api/v1" \
-        --secret="$control_secret" \
-        --client="$c"; then
-        info "Deploy [$c] registrado en el Commander."
+    local reg_args=("$c" --package="$pkg" --base-url="https://$c.$BASE_DOMAIN/api/v1" --secret="$control_secret" --client="$client")
+    [ -n "$client_name" ] && reg_args+=(--client-name="$client_name")
+    if docker compose exec -T app php artisan commander:register-deploy "${reg_args[@]}"; then
+        info "Deploy [$c] registrado en el Commander (cliente $client)."
     else
         echo "AVISO: no se pudo registrar en el Commander (¿el servicio 'app' corre con API_PACKAGE=Commander?)." >&2
     fi
@@ -464,7 +495,7 @@ cmd_list() {
 
 case "${1:-}" in
     init)   cmd_init ;;
-    add)    cmd_add "${2:-}" ;;
+    add)    shift; cmd_add "$@" ;;
     remove) cmd_remove "${2:-}" "${3:-}" ;;
     list)   cmd_list ;;
     *)

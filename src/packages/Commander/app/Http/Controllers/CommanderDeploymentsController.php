@@ -35,7 +35,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
         'package' => 'required|string|max:255',
         'version' => 'required|string|max:32',
         'base_url' => 'required|string|max:255',
-        'status' => 'nullable|in:active,grace,suspended',
+        'status' => 'nullable|in:active,grace,suspended,provisioning',
     ];
 
     protected array $validationRulesUpdate = [
@@ -45,7 +45,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
         'package' => 'nullable|string|max:255',
         'version' => 'nullable|string|max:32',
         'base_url' => 'nullable|string|max:255',
-        'status' => 'nullable|in:active,grace,suspended',
+        'status' => 'nullable|in:active,grace,suspended,provisioning',
     ];
 
     /** Operator state actions are guarded by a dedicated control permission, not plain CRUD update. */

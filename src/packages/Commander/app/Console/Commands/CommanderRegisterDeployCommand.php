@@ -41,15 +41,40 @@ class CommanderRegisterDeployCommand extends Command
         $clientName = (string) ($this->option('client-name') ?: Str::headline($clientId));
         $host = parse_url($baseUrl, PHP_URL_HOST) ?: "{$deployment}.snake.test";
 
-        ClientModel::updateOrCreate(['id' => $clientId], [
+        // Activation path: a 'provisioning' (or already-registered) row exists — created either by the
+        // Commander's client-first flow or a previous run. Fill the real base_url/secret and flip to
+        // active WITHOUT clobbering the planned client/subscription/package/subdomain.
+        if ($existing = DeploymentModel::find($deployment)) {
+            $existing->fill([
+                'base_url' => $baseUrl,
+                'control_secret' => $secret,
+                'control_secret_rotated_at' => now(),
+                'version' => $existing->version === 'pending' ? 'v1.0.0' : $existing->version,
+                'last_seen' => now(),
+                'status' => 'active',
+                'reason' => null,
+                'message' => null,
+                'grace_until' => null,
+                'changed_by' => 'cms',
+                'changed_at' => now(),
+            ])->save();
+
+            $this->info("Activated deployment [{$deployment}] → {$baseUrl} (client {$existing->client_id}).");
+
+            return self::SUCCESS;
+        }
+
+        // Direct CLI flow (no pre-created client): ensure a placeholder client exists, but never
+        // overwrite an existing client's billing — firstOrCreate only fills on create.
+        ClientModel::firstOrCreate(['id' => $clientId], [
             'name' => $clientName,
             'company' => $clientName,
             'email' => "ops@{$clientId}.local",
             'status' => 'active',
-            'updated_at' => now(),
         ]);
 
-        DeploymentModel::updateOrCreate(['id' => $deployment], [
+        DeploymentModel::create([
+            'id' => $deployment,
             'name' => $deployment,
             'subdomain' => $host,
             'client_id' => $clientId,
@@ -68,7 +93,6 @@ class CommanderRegisterDeployCommand extends Command
             'grace_until' => null,
             'changed_by' => 'cms',
             'changed_at' => now(),
-            'updated_at' => now(),
         ]);
 
         $this->info("Registered deployment [{$deployment}] → {$baseUrl} (client {$clientId}).");
