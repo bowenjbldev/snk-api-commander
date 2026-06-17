@@ -7,6 +7,7 @@ import { Dashboard } from './pages/Dashboard'
 // (Suspense fallback lives in AppShell). Named exports → default for React.lazy.
 const Clients = lazy(() => import('./pages/Clients').then((m) => ({ default: m.Clients })))
 const Deployments = lazy(() => import('./pages/Deployments').then((m) => ({ default: m.Deployments })))
+const Catalog = lazy(() => import('./pages/Catalog').then((m) => ({ default: m.Catalog })))
 const Subscriptions = lazy(() => import('./pages/Subscriptions').then((m) => ({ default: m.Subscriptions })))
 const Invoices = lazy(() => import('./pages/Invoices').then((m) => ({ default: m.Invoices })))
 const Usage = lazy(() => import('./pages/Usage').then((m) => ({ default: m.Usage })))
@@ -45,6 +46,7 @@ export const router = createBrowserRouter([
           { path: 'settings', element: <SettingsTab /> },
         ],
       },
+      { path: 'catalog', element: <Catalog /> },
       { path: 'subscriptions', element: <Subscriptions /> },
       { path: 'invoices', element: <Invoices /> },
       { path: 'usage', element: <Usage /> },

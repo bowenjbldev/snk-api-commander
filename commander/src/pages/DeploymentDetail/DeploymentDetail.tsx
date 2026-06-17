@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate, useParams } from 'react-router'
-import { Button, OverflowMenu, OverflowMenuItem } from '@carbon/react'
+import { Button, CodeSnippet, InlineNotification, OverflowMenu, OverflowMenuItem } from '@carbon/react'
 import { Breadcrumbs } from '../../app/Breadcrumbs'
 import { useStore, useDeployment } from '../../store/store'
 import { useActions } from '../../providers/ActionsProvider'
@@ -53,20 +53,21 @@ export function DeploymentDetail() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 'none' }}>
-          {status !== 'suspended' && (
+          {status !== 'provisioning' && status !== 'suspended' && (
             <Button kind="danger--tertiary" onClick={() => actions.suspend(dep)}>
               Suspend now
             </Button>
           )}
-          {status !== 'active' ? (
-            <Button kind="primary" onClick={() => actions.resume(dep)}>
-              Resume deployment
-            </Button>
-          ) : (
-            <Button kind="tertiary" onClick={() => actions.grace(dep)}>
-              Move to grace
-            </Button>
-          )}
+          {status !== 'provisioning' &&
+            (status !== 'active' ? (
+              <Button kind="primary" onClick={() => actions.resume(dep)}>
+                Resume deployment
+              </Button>
+            ) : (
+              <Button kind="tertiary" onClick={() => actions.grace(dep)}>
+                Move to grace
+              </Button>
+            ))}
           <OverflowMenu size="md" flipped aria-label="More actions">
             <OverflowMenuItem
               itemText="Copy base_url"
@@ -84,6 +85,22 @@ export function DeploymentDetail() {
           </OverflowMenu>
         </div>
       </div>
+
+      {status === 'provisioning' && (
+        <div style={{ marginTop: 20 }}>
+          <InlineNotification
+            kind="info"
+            lowContrast
+            hideCloseButton
+            title="Awaiting host provisioning"
+            subtitle="This is a desired subscription. Run the command on the host to provision and activate it:"
+            style={{ maxWidth: '100%' }}
+          />
+          <CodeSnippet type="single" feedback="Copied" style={{ marginTop: 8 }}>
+            {`bash scripts/subscription.sh add ${dep.package} --client=${dep.client_id}`}
+          </CodeSnippet>
+        </div>
+      )}
 
       <nav
         style={{

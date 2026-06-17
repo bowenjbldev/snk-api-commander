@@ -10,9 +10,18 @@ import type {
   Invoice,
   OnExceed,
   OperatorSettings,
+  Plan,
   QuotaMetric,
   Subscription,
 } from './types'
+
+/** Payload for the client-first provisioning flow (POST /provisioning). */
+export interface ProvisionInput {
+  plan_id: string
+  client_id?: string
+  client?: Partial<Client> & { id: string; name: string; email: string }
+  subdomain?: string
+}
 
 export interface SuspendInput {
   reason: string
@@ -52,6 +61,16 @@ interface StoreActions {
   updateClient: (id: string, patch: Partial<Client>) => void
   deleteDeployment: (id: string) => void
   updateSettings: (patch: Partial<OperatorSettings>) => void
+
+  // ── catalog (plans) ──
+  addPlan: (plan: Plan) => void
+  updatePlan: (id: string, patch: Partial<Plan>) => void
+  deletePlan: (id: string) => void
+
+  // ── client-first provisioning ──
+  // Creates a client (new/existing) + subscription + a 'provisioning' deployment, then refreshes.
+  // Returns the host command the operator runs to fulfil it.
+  provision: (input: ProvisionInput) => Promise<string>
 }
 
 export type StoreState = Dataset & StoreActions
@@ -65,6 +84,7 @@ const initial: Dataset = {
   subscriptions: [],
   invoices: [],
   quotas: [],
+  plans: [],
   logs: [],
   activity: [],
   settings: {
@@ -139,12 +159,13 @@ export const useStore = create<StoreState>((set, get) => {
 
     loadData: async () => {
       try {
-        const [clients, deployments, subscriptions, invoices, quotas, activityFeed] = await Promise.all([
+        const [clients, deployments, subscriptions, invoices, quotas, plans, activityFeed] = await Promise.all([
           api<Client[]>('/clients'),
           api<Deployment[]>('/deployments'),
           api<Subscription[]>('/subscriptions'),
           api<Invoice[]>('/invoices'),
           api<QuotaMetric[]>('/quotas'),
+          api<Plan[]>('/plans'),
           api<ActivityEvent[]>('/activity'),
         ])
         set((s) => ({
@@ -153,6 +174,7 @@ export const useStore = create<StoreState>((set, get) => {
           subscriptions,
           invoices,
           quotas,
+          plans,
           activity: activityFeed,
           // Charts/deltas/error-rate stay synthetic; recompute the two real KPIs from live data.
           dashboard: {
@@ -342,6 +364,14 @@ export const useStore = create<StoreState>((set, get) => {
             phone: client.phone ?? null,
             notes: client.notes ?? null,
             status: client.status,
+            billing_email: client.billing_email ?? null,
+            tax_id: client.tax_id ?? null,
+            address_line1: client.address_line1 ?? null,
+            address_line2: client.address_line2 ?? null,
+            city: client.city ?? null,
+            postal_code: client.postal_code ?? null,
+            country: client.country ?? null,
+            payment_terms: client.payment_terms ?? null,
           },
         }),
         upsertClient,
@@ -366,6 +396,32 @@ export const useStore = create<StoreState>((set, get) => {
     },
 
     updateSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
+
+    addPlan: (plan) => {
+      set((s) => ({ plans: [...s.plans, plan] }))
+      persist(api<Plan>('/plans', { method: 'POST', body: plan }))
+    },
+
+    updatePlan: (id, patch) => {
+      set((s) => ({ plans: s.plans.map((p) => (p.id === id ? { ...p, ...patch } : p)) }))
+      persist(api<Plan>(`/plans/${id}`, { method: 'PATCH', body: patch }))
+    },
+
+    deletePlan: (id) => {
+      set((s) => ({ plans: s.plans.filter((p) => p.id !== id) }))
+      persist(api(`/plans/${id}`, { method: 'DELETE' }))
+    },
+
+    provision: async (input) => {
+      // Not optimistic: the server creates the client + subscription + pending deployment + quotas
+      // atomically and returns the host command. Refresh the whole registry on success.
+      const res = await api<{ deployment: Deployment; host_command: string }>('/provisioning', {
+        method: 'POST',
+        body: input,
+      })
+      await get().loadData()
+      return res.host_command
+    },
   }
 })
 

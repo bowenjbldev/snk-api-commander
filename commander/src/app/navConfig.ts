@@ -7,6 +7,7 @@ import {
   ChartBar,
   Meter,
   Catalog,
+  Money,
   Settings,
   type CarbonIconType,
 } from '@carbon/icons-react'
@@ -22,6 +23,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: Dashboard },
   { label: 'Clients', path: '/clients', icon: User },
   { label: 'Deployments', path: '/deployments', icon: Deploy },
+  { label: 'Catalog', path: '/catalog', icon: Money },
   { label: 'Subscriptions', path: '/subscriptions', icon: Renew },
   { label: 'Invoices', path: '/invoices', icon: Receipt },
   { label: 'Usage', path: '/usage', icon: ChartBar },

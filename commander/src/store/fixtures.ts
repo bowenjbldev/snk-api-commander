@@ -13,6 +13,7 @@ import type {
   Invoice,
   LogEntry,
   OperatorSettings,
+  Plan,
   QuotaMetric,
   Subscription,
   TopEndpoint,
@@ -29,6 +30,7 @@ export interface Dataset {
   subscriptions: Subscription[]
   invoices: Invoice[]
   quotas: QuotaMetric[]
+  plans: Plan[]
   logs: LogEntry[]
   activity: ActivityEvent[]
   settings: OperatorSettings
@@ -359,12 +361,18 @@ export function buildFixtures(nowMs: number): Dataset {
     notify_on_overdue: true,
   }
 
+  const plans: Plan[] = [
+    { id: 'commerce-pro', package: 'commerce-api', name: 'Commerce Pro', price_monthly: 290, q_requests_day: 500000, q_disk_db_mb: 4096, q_disk_storage_mb: 20480, q_users_total: null, status: 'active' },
+    { id: 'metrics-scale', package: 'metrics-api', name: 'Metrics Scale', price_monthly: 480, q_requests_day: 2000000, q_disk_db_mb: 10240, q_disk_storage_mb: 51200, q_users_total: 5000, status: 'active' },
+  ]
+
   return {
     clients,
     deployments,
     subscriptions,
     invoices,
     quotas,
+    plans,
     logs,
     activity,
     settings,

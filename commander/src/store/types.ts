@@ -2,7 +2,9 @@
 // core_quota_metrics, core_usage_rollups, core_request_logs) so a future swap from
 // fixtures to the signed /control API is a data-source change, not a model change.
 
-export type DeploymentStatus = 'active' | 'grace' | 'suspended'
+export type DeploymentStatus = 'active' | 'grace' | 'suspended' | 'provisioning'
+
+export type PaymentTerms = 'prepaid' | 'net_15' | 'net_30' | 'net_60'
 
 export type StateReason = 'manual' | 'payment_overdue' | 'abuse' | string
 
@@ -28,6 +30,30 @@ export interface Client {
   notes?: string
   status: ClientStatus
   created_at: string // ISO
+  // Billing (all optional; captured in the client-first provisioning flow)
+  billing_email?: string | null
+  tax_id?: string | null
+  address_line1?: string | null
+  address_line2?: string | null
+  city?: string | null
+  postal_code?: string | null
+  country?: string | null // ISO-3166 alpha-2
+  payment_terms?: PaymentTerms | null
+}
+
+// A catalog offering: a sellable plan tied to a business package, with a price and the default
+// quota limits applied to the deploy when provisioned.
+export interface Plan {
+  id: string
+  package: string // src/packages business package (Shop, Blog…)
+  name: string // plan label (Basic, Pro…)
+  description?: string | null
+  price_monthly: number
+  q_requests_day?: number | null
+  q_disk_db_mb?: number | null
+  q_disk_storage_mb?: number | null
+  q_users_total?: number | null
+  status: 'active' | 'inactive'
 }
 
 export interface Deployment {

@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Dropdown, Tag } from '@carbon/react'
-import { Add } from '@carbon/icons-react'
+import { Rocket } from '@carbon/icons-react'
 import { useStore } from '../store/store'
-import { useToast } from '../providers/ToastProvider'
 import { PageHeader } from '../components/PageHeader'
 import { DataTableShell, type ShellColumn } from '../components/DataTableShell'
 import { useFirstLoad } from '../hooks/useFirstLoad'
 import { BillingTag } from '../components/tags/StatusTag'
+import { ProvisionModal } from '../components/modals/ProvisionModal'
 import { formatCurrency, formatCurrencyShort } from '../lib/format'
 import type { Subscription } from '../store/types'
 
@@ -21,9 +21,9 @@ const STATUS_ITEMS = [
 export function Subscriptions() {
   const subscriptions = useStore((s) => s.subscriptions)
   const clients = useStore((s) => s.clients)
-  const toast = useToast()
   const navigate = useNavigate()
   const [statusFilter, setStatusFilter] = useState('all')
+  const [provisionOpen, setProvisionOpen] = useState(false)
 
   const clientName = useMemo(() => {
     const m = new Map(clients.map((c) => [c.id, c.name]))
@@ -78,7 +78,7 @@ export function Subscriptions() {
       <PageHeader
         title="Subscriptions"
         subtitle={`${subscriptions.length} subscriptions · ${formatCurrencyShort(mrr)}/mo total`}
-        primaryAction={{ label: 'Create subscription', icon: Add, onClick: () => toast.info('Create subscription', 'Subscription form coming online.') }}
+        primaryAction={{ label: 'New subscription', icon: Rocket, onClick: () => setProvisionOpen(true) }}
       />
       <DataTableShell
         rows={filtered}
@@ -104,6 +104,7 @@ export function Subscriptions() {
           />
         }
       />
+      {provisionOpen && <ProvisionModal open onClose={() => setProvisionOpen(false)} />}
     </div>
   )
 }
