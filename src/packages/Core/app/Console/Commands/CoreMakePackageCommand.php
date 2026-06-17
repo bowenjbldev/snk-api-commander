@@ -4,17 +4,19 @@ namespace Packages\Core\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Support\Composer;
 use Illuminate\Support\Str;
 use Packages\Core\Support\CoreTemplateRendererSupport;
 class CoreMakePackageCommand extends Command
 {
     protected $signature = 'make:package
         {name : Package name (e.g. Analytics)}
-        {--force : Overwrite package if it already exists}';
+        {--force : Overwrite package if it already exists}
+        {--no-dump : Skip the composer dump-autoload step}';
 
     protected $description = 'Create a new package scaffold in packages/ based on Core folder structure';
 
-    public function __construct(private readonly Filesystem $files)
+    public function __construct(private readonly Filesystem $files, private readonly Composer $composer)
     {
         parent::__construct();
     }
@@ -54,12 +56,34 @@ class CoreMakePackageCommand extends Command
         $this->cloneCoreGitkeepMarkedDirectories($corePath, $targetPath);
         $this->writePackageFiles($package, $targetPath);
         $this->syncComposerAutoload($package);
+        $this->dumpAutoload();
 
         $this->info("Package {$package} created at {$targetPath}");
-        $this->line('Next step: run composer dump-autoload manually.');
         $this->line("Set API_PACKAGE={$package} in .env to activate it.");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Regenerate the Composer autoloader so the new package's PSR-4 namespaces resolve immediately.
+     * Best-effort: the scaffold already succeeded, so a failing dump only warns (run it by hand then).
+     */
+    private function dumpAutoload(): void
+    {
+        if ($this->option('no-dump')) {
+            $this->line('Skipping composer dump-autoload (--no-dump). Run it manually before using the package.');
+            return;
+        }
+
+        $this->line('Running composer dump-autoload...');
+
+        try {
+            $this->composer->dumpAutoloads();
+            $this->line('Composer autoload regenerated.');
+        } catch (\Throwable $e) {
+            $this->warn('composer dump-autoload failed: ' . $e->getMessage());
+            $this->warn('Run "composer dump-autoload" manually before using the package.');
+        }
     }
 
     private function normalizePackageName(string $raw): ?string
