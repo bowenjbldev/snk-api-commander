@@ -9,8 +9,8 @@
 #
 # Uso (desde la raiz del repo o desde cualquier sitio):
 #   bash scripts/subscription.sh init                       # prepara el wiring (compose + clients.yml)
-#   bash scripts/subscription.sh add <cliente> <Package>    # alta: BD + servicio + vhost + hosts + seed
-#   bash scripts/subscription.sh remove <cliente> [--drop-db]
+#   bash scripts/subscription.sh add <Package>              # alta: BD + servicio + vhost + hosts + seed (subdominio = paquete)
+#   bash scripts/subscription.sh remove <Package> [--drop-db]
 #   bash scripts/subscription.sh list
 #
 # Requisitos: stack principal construida (docker compose up -d) y cert wildcard
@@ -302,26 +302,30 @@ hosts_remove() {
 cmd_init() {
     load_env
     ensure_wiring
-    info "Wiring listo. Crea suscripciones con: bash scripts/subscription.sh add <cliente> <Package>"
+    info "Wiring listo. Crea suscripciones con: bash scripts/subscription.sh add <Package>"
 }
 
 cmd_add() {
-    local c="${1:-}" pkg="${2:-}"
-    [ -n "$c" ] && [ -n "$pkg" ] || die "Uso: scripts/subscription.sh add <cliente> <Package>"
+    local pkg="${1:-}"
+    [ -n "$pkg" ] || die "Uso: scripts/subscription.sh add <Package>"
 
     load_env
-    validate_name "$c"
-    [ -d "src/packages/$pkg" ] || die "El paquete [$pkg] no existe en src/packages/. Crea uno: php artisan make:package $pkg"
-    [ "$pkg" != "Core" ] || die "Core no es un paquete de negocio."
-    [ ! -f "$CLIENTS_DIR/$c.env" ] || die "La suscripcion [$c] ya existe."
 
-    # BD/usuario/password = snake_case del paquete => una suscripcion por paquete
-    local existing
-    for existing in "$CLIENTS_DIR"/*.env; do
-        [ -e "$existing" ] || break
-        grep -q "^PACKAGE=$pkg\$" "$existing" && \
-            die "El paquete [$pkg] ya tiene una suscripcion ($(basename "${existing%.env}")). La BD se llama como el paquete: una suscripcion por paquete."
-    done
+    # Core es la base del sistema (todo paquete lo usa) y Commander es el panel del operador
+    # (su propio contenedor/vhost). Ninguno es un tenant suscribible ni tiene subdominio.
+    case "$pkg" in
+        Core|Commander) die "[$pkg] no es un paquete de negocio suscribible." ;;
+    esac
+
+    [ -d "src/packages/$pkg" ] || die "El paquete [$pkg] no existe en src/packages/. Crea uno: php artisan make:package $pkg"
+
+    # El subdominio se deriva del paquete: snake_case y '_' -> '-' (DNS no admite '_').
+    # La BD sigue usando snake_case puro (ver $db abajo). Una suscripcion por paquete: como el
+    # nombre del .env deriva del paquete, un segundo alta del mismo paquete colisiona en el check de abajo.
+    local c
+    c=$(snake "$pkg" | tr '_' '-')
+    validate_name "$c"
+    [ ! -f "$CLIENTS_DIR/$c.env" ] || die "La suscripcion para [$pkg] ya existe (subdominio $c)."
 
     require_cert
     ensure_wiring
@@ -390,10 +394,18 @@ EOF
 }
 
 cmd_remove() {
-    local c="${1:-}" drop="${2:-}"
-    [ -n "$c" ] || die "Uso: scripts/subscription.sh remove <cliente> [--drop-db]"
+    local arg="${1:-}" drop="${2:-}"
+    [ -n "$arg" ] || die "Uso: scripts/subscription.sh remove <Package> [--drop-db]"
 
     load_env
+
+    # Acepta el nombre del paquete (formato nuevo) o el subdominio literal (subs antiguas de 2 args).
+    local c
+    if [ -f "$CLIENTS_DIR/$arg.env" ]; then
+        c="$arg"
+    else
+        c=$(snake "$arg" | tr '_' '-')
+    fi
     [ -f "$CLIENTS_DIR/$c.env" ] || die "La suscripcion [$c] no existe."
     # shellcheck disable=SC1090
     source "$CLIENTS_DIR/$c.env"
@@ -415,7 +427,7 @@ cmd_remove() {
 
     if [ "$drop" = "--drop-db" ]; then
         echo "Esto BORRARA la base de datos [$target_db] de forma permanente."
-        read -r -p "Escribe el nombre del cliente para confirmar: " confirm
+        read -r -p "Escribe el subdominio [$c] para confirmar: " confirm
         if [ "$confirm" = "$c" ]; then
             drop_database "$target_db" "$target_user"
             info "BD $target_db eliminada."
@@ -445,22 +457,22 @@ cmd_list() {
         printf "%-15s %-15s %-35s %-20s %s\n" \
             "$CLIENT" "$PACKAGE" "$CLIENT.$BASE_DOMAIN:$HTTPS_PORT" "$DB_DATABASE" "${status:-parado}"
     done
-    [ "$found" -eq 1 ] || echo "(sin suscripciones; crea una con: bash scripts/subscription.sh add <cliente> <Package>)"
+    [ "$found" -eq 1 ] || echo "(sin suscripciones; crea una con: bash scripts/subscription.sh add <Package>)"
 }
 
 # ------------------------------------------------------------------------ main
 
 case "${1:-}" in
     init)   cmd_init ;;
-    add)    cmd_add "${2:-}" "${3:-}" ;;
+    add)    cmd_add "${2:-}" ;;
     remove) cmd_remove "${2:-}" "${3:-}" ;;
     list)   cmd_list ;;
     *)
         echo "Uso: bash scripts/subscription.sh <init|add|remove|list>"
-        echo "  init                        prepara compose + clients.yml"
-        echo "  add <cliente> <Package>     alta de suscripcion"
-        echo "  remove <cliente> [--drop-db] baja de suscripcion"
-        echo "  list                        listado"
+        echo "  init                         prepara compose + clients.yml"
+        echo "  add <Package>                alta de suscripcion (subdominio derivado del paquete)"
+        echo "  remove <Package> [--drop-db] baja de suscripcion"
+        echo "  list                         listado"
         exit 1
         ;;
 esac
