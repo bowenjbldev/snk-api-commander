@@ -11,7 +11,7 @@ class DeploymentModel extends Model
 {
     protected $table = 'commander_deployments';
 
-    protected $connection = 'central';
+    protected $connection = 'commander';
 
     public $incrementing = false;
 

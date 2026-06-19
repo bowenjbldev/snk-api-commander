@@ -63,7 +63,7 @@ class CoreMeteringMiddleware
 
             $route = $request->route()?->uri();
 
-            DB::connection('central')->table('request_logs')->insert([
+            DB::connection('commander')->table('request_logs')->insert([
                 'package_id' => $packageId,
                 'occurred_at' => now('UTC'),
                 'method' => $request->method(),

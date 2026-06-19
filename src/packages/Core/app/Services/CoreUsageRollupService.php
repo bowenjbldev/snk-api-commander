@@ -55,7 +55,7 @@ class CoreUsageRollupService
         $deleted = 0;
 
         do {
-            $affected = DB::connection('central')->table('request_logs')
+            $affected = DB::connection('commander')->table('request_logs')
                 ->where('occurred_at', '<', $cutoff)
                 ->limit(self::PRUNE_BATCH)
                 ->delete();
@@ -74,7 +74,7 @@ class CoreUsageRollupService
             return $this->truncate(CarbonImmutable::parse($last, 'UTC'), $period);
         }
 
-        $first = DB::connection('central')->table('request_logs')->min('occurred_at');
+        $first = DB::connection('commander')->table('request_logs')->min('occurred_at');
 
         return $first !== null
             ? $this->truncate(CarbonImmutable::parse($first, 'UTC'), $period)
@@ -88,7 +88,7 @@ class CoreUsageRollupService
         /** @var array<string, array{route: string, method: string, status_class: string, count: int, errors: int, dur_sum: int, durations: int[], req_bytes: int, resp_bytes: int, users: array<int|string, true>}> $groups */
         $groups = [];
 
-        DB::connection('central')->table('request_logs')
+        DB::connection('commander')->table('request_logs')
             ->where('occurred_at', '>=', $bucket)
             ->where('occurred_at', '<', $bucketEnd)
             ->orderBy('id')

@@ -9,7 +9,7 @@ class QuotaModel extends Model
 {
     protected $table = 'commander_quota_metrics';
 
-    protected $connection = 'central';
+    protected $connection = 'commander';
 
     public $incrementing = false;
 

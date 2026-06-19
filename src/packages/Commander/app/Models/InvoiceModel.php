@@ -9,7 +9,7 @@ class InvoiceModel extends Model
 {
     protected $table = 'commander_invoices';
 
-    protected $connection = 'central';
+    protected $connection = 'commander';
 
     public $incrementing = false;
 

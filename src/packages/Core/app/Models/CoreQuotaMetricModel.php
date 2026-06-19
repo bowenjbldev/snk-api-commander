@@ -8,7 +8,7 @@ class CoreQuotaMetricModel extends Model
 {
     protected $table = 'quota_metrics';
 
-    protected $connection = 'central';
+    protected $connection = 'commander';
 
     protected $guarded = [];
 

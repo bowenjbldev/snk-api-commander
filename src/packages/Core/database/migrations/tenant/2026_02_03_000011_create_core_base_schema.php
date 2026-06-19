@@ -18,7 +18,7 @@ return new class extends Migration
         Schema::dropIfExists('users');
 
         // Aislamiento FISICO por BD: cada package tiene su propia tabla users en su propia BD,
-        // y la central tiene la del operador. Sin package_id (lo reemplaza la separacion de BD).
+        // y la commander tiene la del operador. Sin package_id (lo reemplaza la separacion de BD).
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');

@@ -9,26 +9,25 @@ use Illuminate\Support\Str;
 
 /**
  * Multi-tenant. La presencia de --package decide el destino (convencion package = BD):
- *   - SIN --package  -> CENTRAL (BD commander): registro + control-plane + commander + base operador.
+ *   - SIN --package  -> COMMANDER (BD commander): registro + control-plane + commander_* + base operador.
  *   - CON --package   -> TENANT (BD = snake(package)): base Laravel del tenant + tablas de negocio.
- * El provisioning usa `core:migrate --package=Shop`; el deploy usa `core:migrate` (central).
+ * El provisioning usa `core:migrate --package=Shop`; el deploy usa `core:migrate` (commander).
  */
 class CoreMigrateCommand extends Command
 {
     protected $signature = 'core:migrate
-        {--package= : Package de negocio -> migracion de TENANT (BD = snake(package)). Sin --package = CENTRAL.}
+        {--package= : Package de negocio -> migracion de TENANT (BD = snake(package)). Sin --package = COMMANDER.}
         {--seed : Run seeders after migrating}
         {--fresh : Drop all tables and re-run all migrations}
         {--rollback : Rollback the last batch of migrations}
         {--step= : Number of migrations to rollback}
         {--force : Force the operation to run in production}';
 
-    protected $description = 'Run migrations on the central database or on a package\'s tenant database';
+    protected $description = 'Run migrations on the commander database or on a package\'s tenant database';
 
-    private const CENTRAL_PATHS = [
-        'packages/Core/database/migrations/central',   // packages + control-plane
-        'packages/Core/database/migrations/tenant',    // base Laravel del operador
-        'packages/Commander/database/migrations',      // commander_*
+    private const COMMANDER_PATHS = [
+        'packages/Core/database/migrations/tenant',    // base Laravel del operador (compartida con tenants)
+        'packages/Commander/database/migrations',      // registro (packages) + control-plane + commander_*
     ];
 
     public function handle(): int
@@ -46,8 +45,8 @@ class CoreMigrateCommand extends Command
                 "packages/{$package}/database/migrations",
             ];
         } else {
-            $connection = 'central';
-            $paths = self::CENTRAL_PATHS;
+            $connection = 'commander';
+            $paths = self::COMMANDER_PATHS;
         }
 
         $args = [
@@ -85,7 +84,7 @@ class CoreMigrateCommand extends Command
         return self::SUCCESS;
     }
 
-    /** --package validado (StudlyCase + existe en disco), o null = central. */
+    /** --package validado (StudlyCase + existe en disco), o null = commander. */
     private function resolvePackage(): ?string
     {
         $raw = trim((string) $this->option('package'));

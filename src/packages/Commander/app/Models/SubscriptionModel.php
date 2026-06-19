@@ -9,7 +9,7 @@ class SubscriptionModel extends Model
 {
     protected $table = 'commander_subscriptions';
 
-    protected $connection = 'central';
+    protected $connection = 'commander';
 
     public $incrementing = false;
 

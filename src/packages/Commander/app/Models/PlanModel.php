@@ -8,7 +8,7 @@ class PlanModel extends Model
 {
     protected $table = 'commander_plans';
 
-    protected $connection = 'central';
+    protected $connection = 'commander';
 
     public $incrementing = false;
 

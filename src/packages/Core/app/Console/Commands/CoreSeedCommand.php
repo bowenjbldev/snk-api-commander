@@ -9,17 +9,17 @@ use Illuminate\Support\Str;
 use Packages\Core\Database\Seeders\CorePackagesDatabaseSeeder;
 
 /**
- * Igual que core:migrate: --package -> TENANT (BD = snake(package)); sin --package -> CENTRAL
- * (operador: seeders de Core + Commander en la BD central).
+ * Igual que core:migrate: --package -> TENANT (BD = snake(package)); sin --package -> COMMANDER
+ * (operador: seeders de Core + Commander en la BD commander).
  */
 class CoreSeedCommand extends Command
 {
     protected $signature = 'core:seed
-        {--package= : Package -> TENANT (BD = snake(package)). Sin --package = CENTRAL (operador).}
+        {--package= : Package -> TENANT (BD = snake(package)). Sin --package = COMMANDER (operador).}
         {--class= : Specific seeder class to run}
         {--force : Force the operation to run in production}';
 
-    protected $description = 'Run seeders on the central database or on a package\'s tenant database';
+    protected $description = 'Run seeders on the commander database or on a package\'s tenant database';
 
     public function handle(): int
     {
@@ -31,8 +31,8 @@ class CoreSeedCommand extends Command
             DB::purge('tenant');
             $target = $package;
         } else {
-            $connection = 'central';
-            $target = 'Commander'; // el operador vive en la central
+            $connection = 'commander';
+            $target = 'Commander'; // el operador vive en la commander
         }
 
         $args = ['--force' => (bool) $this->option('force'), '--database' => $connection];
@@ -54,7 +54,7 @@ class CoreSeedCommand extends Command
         return self::SUCCESS;
     }
 
-    /** --package validado (StudlyCase + existe en disco), o null = central. */
+    /** --package validado (StudlyCase + existe en disco), o null = commander. */
     private function resolvePackage(): ?string
     {
         $raw = trim((string) $this->option('package'));

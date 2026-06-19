@@ -91,7 +91,7 @@ class CommanderProvisioningController extends CoreBaseApiController
         $baseDomain = (string) config('core.base_domain', 'snake.test');
         $fqdn = "{$subdomain}.{$baseDomain}";
 
-        [$deployment, $corePackage] = DB::connection('central')->transaction(function () use ($data, $plan, $package, $subdomain, $deploymentId, $fqdn, $database) {
+        [$deployment, $corePackage] = DB::connection('commander')->transaction(function () use ($data, $plan, $package, $subdomain, $deploymentId, $fqdn, $database) {
             $now = CarbonImmutable::now();
 
             $clientId = $data['client_id'] ?? null;
@@ -169,11 +169,11 @@ class CommanderProvisioningController extends CoreBaseApiController
             return [$deployment, $corePackage];
         });
 
-        // Crea la BD propia del package y migra/siembra ahi (DDL fuera de la transaccion central):
+        // Crea la BD propia del package y migra/siembra ahi (DDL fuera de la transaccion commander):
         // base Laravel del tenant + tablas de negocio + admin. Aislamiento fisico por BD.
-        // (sqlite no tiene CREATE DATABASE ni multi-schema: en tests solo se valida la parte central.)
-        if (DB::connection('central')->getDriverName() !== 'sqlite') {
-            DB::connection('central')->statement(
+        // (sqlite no tiene CREATE DATABASE ni multi-schema: en tests solo se valida la parte commander.)
+        if (DB::connection('commander')->getDriverName() !== 'sqlite') {
+            DB::connection('commander')->statement(
                 "CREATE DATABASE IF NOT EXISTS `{$database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
             );
 

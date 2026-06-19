@@ -8,7 +8,7 @@ class CoreUsageRollupModel extends Model
 {
     protected $table = 'usage_rollups';
 
-    protected $connection = 'central';
+    protected $connection = 'commander';
 
     protected $guarded = [];
 

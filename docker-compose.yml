@@ -68,9 +68,9 @@ services:
     restart: unless-stopped
     environment:
       # Root sin password (SOLO local): la app conecta como root para acceder a TODAS las BD de
-      # los packages y poder CREATE/DROP DATABASE al provisionar. En init crea la BD central.
+      # los packages y poder CREATE/DROP DATABASE al provisionar. En init crea la BD commander.
       MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "yes"
-      MARIADB_DATABASE: ${CENTRAL_DB_DATABASE:-commander}
+      MARIADB_DATABASE: ${COMMANDER_DB_DATABASE:-commander}
     ports:
       - "${DB_PORT:-3306}:3306"
     healthcheck:

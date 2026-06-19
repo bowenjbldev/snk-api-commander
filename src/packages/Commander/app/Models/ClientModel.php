@@ -9,7 +9,7 @@ class ClientModel extends Model
 {
     protected $table = 'commander_clients';
 
-    protected $connection = 'central';
+    protected $connection = 'commander';
 
     public $incrementing = false;
 

@@ -60,7 +60,7 @@ class CoreQuotaMeasurerService
             $this->active->set($package);
 
             // Apunta la conexion 'tenant' a la BD del package para medir lo LOCAL (users, tamaño BD).
-            // requests_day y las escrituras de quota_metrics siguen yendo a 'central'.
+            // requests_day y las escrituras de quota_metrics siguen yendo a 'commander'.
             if (! empty($package?->database)) {
                 config(['database.connections.tenant.database' => $package->database]);
                 DB::purge('tenant');
@@ -161,12 +161,12 @@ class CoreQuotaMeasurerService
         }
 
         // Aislamiento por BD: el tamaño = el de TODA la BD del package (information_schema es global,
-        // se consulta por la central). En sqlite (tests) no hay information_schema.
-        if (DB::connection('central')->getDriverName() === 'sqlite') {
+        // se consulta por la commander). En sqlite (tests) no hay information_schema.
+        if (DB::connection('commander')->getDriverName() === 'sqlite') {
             return null;
         }
 
-        $row = DB::connection('central')->selectOne(
+        $row = DB::connection('commander')->selectOne(
             'SELECT ROUND(SUM(data_length + index_length) / 1048576) AS mb
              FROM information_schema.tables WHERE table_schema = ?',
             [$package->database]
@@ -200,7 +200,7 @@ class CoreQuotaMeasurerService
     private function measureRequestsToday(?int $packageId): int
     {
         // Nota: con sample_rate < 1 esto infra-cuenta; escalar 1/sample_rate si se usa sampling.
-        return (int) DB::connection('central')->table('request_logs')
+        return (int) DB::connection('commander')->table('request_logs')
             ->where('occurred_at', '>=', CarbonImmutable::now('UTC')->startOfDay())
             ->when($packageId !== null, fn ($q) => $q->where('package_id', $packageId))
             ->count();

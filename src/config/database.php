@@ -17,7 +17,7 @@ return [
     |
     */
 
-    'default' => env('DB_CONNECTION', 'central'),
+    'default' => env('DB_CONNECTION', 'commander'),
 
     /*
     |--------------------------------------------------------------------------
@@ -116,14 +116,14 @@ return [
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
 
-        // ── Multi-tenant: una BD por package + una central ───────────────────
-        // 'central': registro (packages), commander_*, control-plane y la base del operador.
+        // ── Multi-tenant: una BD por package + una commander ───────────────────
+        // 'commander': registro (packages), commander_*, control-plane y la base del operador.
         // Necesita un usuario con acceso a todas las BD + CREATE DATABASE (local: root).
-        'central' => [
-            'driver' => env('CENTRAL_DB_DRIVER', 'mysql'), // sqlite en tests
+        'commander' => [
+            'driver' => env('COMMANDER_DB_DRIVER', 'mysql'), // sqlite en tests
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
-            'database' => env('CENTRAL_DB_DATABASE', 'commander'),
+            'database' => env('COMMANDER_DB_DATABASE', 'commander'),
             'username' => env('DB_USERNAME', 'root'),
             'password' => env('DB_PASSWORD', ''),
             'charset' => 'utf8mb4',
@@ -137,10 +137,10 @@ return [
         // 'tenant': BD del package activo; 'database' se fija en runtime
         // (CoreResolvePackageFromHostMiddleware / provisioning). El valor aqui es solo placeholder.
         'tenant' => [
-            'driver' => env('TENANT_DB_DRIVER', env('CENTRAL_DB_DRIVER', 'mysql')),
+            'driver' => env('TENANT_DB_DRIVER', env('COMMANDER_DB_DRIVER', 'mysql')),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
-            'database' => env('CENTRAL_DB_DATABASE', 'commander'),
+            'database' => env('COMMANDER_DB_DATABASE', 'commander'),
             'username' => env('DB_USERNAME', 'root'),
             'password' => env('DB_PASSWORD', ''),
             'charset' => 'utf8mb4',

@@ -38,7 +38,7 @@ class CoreAuthController extends Controller
         }
 
         // Aislamiento por BD: el login corre contra la BD del subdominio (conexion ya conmutada por
-        // CoreResolvePackageFromHostMiddleware) o la central (operador). Solo busca por email.
+        // CoreResolvePackageFromHostMiddleware) o la commander (operador). Solo busca por email.
         /** @var CoreUserModel|null $user */
         $user = CoreUserModel::query()->where('email', $email)->first();
 

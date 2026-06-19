@@ -8,7 +8,7 @@ class ActivityEventModel extends Model
 {
     protected $table = 'commander_activity_events';
 
-    protected $connection = 'central';
+    protected $connection = 'commander';
 
     public $incrementing = false;
 

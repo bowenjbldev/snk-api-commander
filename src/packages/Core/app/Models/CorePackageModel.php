@@ -13,7 +13,7 @@ class CorePackageModel extends Model
 {
     protected $table = 'packages';
 
-    protected $connection = 'central';
+    protected $connection = 'commander';
 
     protected $guarded = [];
 

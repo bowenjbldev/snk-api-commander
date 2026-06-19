@@ -119,7 +119,7 @@ class CommanderApiTest extends CommanderTestCase
         $this->assertSame('active', $package->fresh()->getRawOriginal('status'));
     }
 
-    public function test_deprovision_removes_central_rows(): void
+    public function test_deprovision_removes_commander_rows(): void
     {
         $admin = $this->admin();
 
@@ -135,7 +135,7 @@ class CommanderApiTest extends CommanderTestCase
             'current_value' => 0, 'limit_value' => 100, 'on_exceed' => 'suspend', 'unit' => 'count',
         ]);
 
-        // De-provision: en MariaDB hace DROP DATABASE; aqui (sqlite) limpia las filas centrales.
+        // De-provision: en MariaDB hace DROP DATABASE; aqui (sqlite) limpia las filas de la BD commander.
         $this->actingAs($admin, 'sanctum')->deleteJson('/api/v1/deployments/shop')->assertOk();
 
         $this->assertNull(DeploymentModel::find('shop'));
@@ -144,6 +144,6 @@ class CommanderApiTest extends CommanderTestCase
     }
 
     // Nota: el aislamiento operador↔tenant ya no necesita middleware: con BD por package, el token
-    // de un tenant vive en SU BD y no existe en la central -> 401 automatico. Se verifica en vivo
+    // de un tenant vive en SU BD y no existe en la commander -> 401 automatico. Se verifica en vivo
     // (no se puede modelar con una sola sqlite en tests).
 }

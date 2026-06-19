@@ -32,7 +32,7 @@ class CoreResolvePackageFromHostMiddleware
             abort(404);
         }
 
-        // CorePackageModel esta pinneado a la conexion 'central', asi que esta query
+        // CorePackageModel esta pinneado a la conexion 'commander', asi que esta query
         // resuelve el registro aunque luego cambiemos la conexion default a la del tenant.
         $package = CorePackageModel::query()->where('subdomain', $subdomain)->first();
 
@@ -44,7 +44,7 @@ class CoreResolvePackageFromHostMiddleware
 
         // Aislamiento FISICO: conmuta la conexion default a la BD del package. Bajo PHP-FPM cada
         // request es share-nothing, asi que el cambio vive solo en este request (no hay bleed).
-        // Las tablas centrales (packages, control-plane, commander_*) van pinneadas a 'central'.
+        // Las tablas de la BD commander (packages, control-plane, commander_*) van pinneadas a 'commander'.
         // El token de un tenant ni existe en la BD de otro -> 401 automatico, sin check explicito.
         if (! empty($package->database)) {
             config(['database.connections.tenant.database' => $package->database]);

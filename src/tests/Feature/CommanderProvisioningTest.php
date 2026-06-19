@@ -77,7 +77,7 @@ class CommanderProvisioningTest extends CommanderTestCase
         $this->assertSame('suspend', $dep->quotas->firstWhere('metric_key', 'requests_day')->on_exceed);
         $this->assertNull($dep->quotas->firstWhere('metric_key', 'disk_storage_mb')->limit_value);
 
-        // Real enforcement rows (quota_metrics) seeded per package (central).
+        // Real enforcement rows (quota_metrics) seeded per package (commander).
         $this->assertSame(100000, (int) CoreQuotaMetricModel::where('package_id', $cp->id)
             ->where('metric_key', 'requests_day')->value('limit_value'));
 
