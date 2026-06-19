@@ -41,11 +41,10 @@ interface StoreActions {
   actionError: { message: string; at: number } | null
   loadData: () => Promise<void>
 
-  // ── deployment state machine ──
+  // ── deployment state machine (in-process: writes the package's core_packages row) ──
   suspend: (id: string, input: SuspendInput) => void
   grace: (id: string, input: GraceInput) => void
   resume: (id: string, by?: StateOpts['by']) => void
-  rotateSecret: (id: string) => Promise<string | null> // server-generated; returns the new suffix
 
   // ── quotas ──
   editQuotaLimit: (quotaId: string, limit: number | null) => void
@@ -67,16 +66,16 @@ interface StoreActions {
   updatePlan: (id: string, patch: Partial<Plan>) => void
   deletePlan: (id: string) => void
 
-  // ── client-first provisioning ──
-  // Creates a client (new/existing) + subscription + a 'provisioning' deployment, then refreshes.
-  // Returns the host command the operator runs to fulfil it.
-  provision: (input: ProvisionInput) => Promise<string>
+  // ── client-first provisioning (one-step, in-process) ──
+  // Creates client (new/existing) + subscription + live instance (migrates + seeds + activates),
+  // then refreshes the registry. No host step.
+  provision: (input: ProvisionInput) => Promise<void>
 }
 
 export type StoreState = Dataset & StoreActions
 
 // Production starts empty — no demo data. loadData() fills clients/deployments/etc. from the API;
-// the registry is populated by real provisioning (subscription.sh) and the panel's CRUD. (Tests seed
+// the registry is populated by provisioning (POST /provisioning) and the panel's CRUD. (Tests seed
 // buildFixtures explicitly; see store.test.ts.)
 const initial: Dataset = {
   clients: [],
@@ -259,19 +258,6 @@ export const useStore = create<StoreState>((set, get) => {
       persist(api<Deployment>(`/deployments/${id}/resume`, { method: 'POST' }), reconcileDep(id))
     },
 
-    // The deploy mints + accepts the new secret (signed with the current one); we adopt the
-    // returned deployment (new suffix). Not optimistic — secrets are server-generated.
-    rotateSecret: async (id) => {
-      try {
-        const dep = await api<Deployment>(`/deployments/${id}/rotate-secret`, { method: 'POST' })
-        if (dep && typeof dep === 'object' && 'id' in dep) replaceDep(dep)
-        return dep?.control_secret_suffix ?? null
-      } catch (e) {
-        fail(e instanceof Error ? e.message : 'Secret rotation failed')
-        return null
-      }
-    },
-
     editQuotaLimit: (quotaId, limit) => {
       set((s) => ({
         quotas: s.quotas.map((q) => {
@@ -413,14 +399,10 @@ export const useStore = create<StoreState>((set, get) => {
     },
 
     provision: async (input) => {
-      // Not optimistic: the server creates the client + subscription + pending deployment + quotas
-      // atomically and returns the host command. Refresh the whole registry on success.
-      const res = await api<{ deployment: Deployment; host_command: string }>('/provisioning', {
-        method: 'POST',
-        body: input,
-      })
+      // One-step, in-process: the server creates the client + subscription + live instance
+      // (migrates + seeds + activates the package) atomically. Refresh the registry on success.
+      await api<{ deployment: Deployment }>('/provisioning', { method: 'POST', body: input })
       await get().loadData()
-      return res.host_command
     },
   }
 })

@@ -1,8 +1,8 @@
-// Domain model. Mirrors the deploy-side core_* tables (core_package_state,
-// core_quota_metrics, core_usage_rollups, core_request_logs) so a future swap from
-// fixtures to the signed /control API is a data-source change, not a model change.
+// Domain model. Mirrors the shared core_* tables (core_packages, core_quota_metrics,
+// core_usage_rollups, core_request_logs) of the centralized deploy. The Commander reads
+// them in-process (same app + DB), so this is the live shape, not a mirror.
 
-export type DeploymentStatus = 'active' | 'grace' | 'suspended' | 'provisioning'
+export type DeploymentStatus = 'active' | 'grace' | 'suspended'
 
 export type PaymentTerms = 'prepaid' | 'net_15' | 'net_30' | 'net_60'
 
@@ -68,8 +68,6 @@ export interface Deployment {
   quota_health: number // 0..>1 worst-metric ratio
   last_seen: string // ISO
   base_url: string
-  control_secret_suffix: string // last 4 of the secret
-  control_secret_rotated_at: string // ISO
   subscription_id: string | null
   created_at: string // ISO
 }
@@ -133,7 +131,7 @@ export interface LogEntry {
   context?: string // e.g. "Rejected by quota requests_day (policy: warn)"
 }
 
-export type ActivityKind = 'suspend' | 'grace' | 'resume' | 'paid' | 'quota' | 'rotate'
+export type ActivityKind = 'suspend' | 'grace' | 'resume' | 'paid' | 'quota'
 
 export interface ActivityEvent {
   id: string

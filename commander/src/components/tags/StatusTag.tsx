@@ -20,13 +20,6 @@ export function DeploymentStatusTag({ state }: { state: DeploymentState }) {
       </Tag>
     )
   }
-  if (state.status === 'provisioning') {
-    return (
-      <Tag type="blue" size="sm">
-        Provisioning
-      </Tag>
-    )
-  }
   return (
     <AmberTag small>
       Grace · {state.grace_until ? <GraceCountdown until={state.grace_until} /> : '—'}

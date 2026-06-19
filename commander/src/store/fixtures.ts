@@ -178,7 +178,7 @@ export function buildFixtures(nowMs: number): Dataset {
     'Your subscription payment is overdue. Service continues during a short grace period; settle the balance to avoid suspension.'
 
   const deployments: Deployment[] = rows.map((r) => {
-    const [name, client, pkg, version, status, req, health, seenMs, suffix, rotMs, created] = r
+    const [name, client, pkg, version, status, req, health, seenMs, , , created] = r
     let reason: string | null = null
     let message: string | null = null
     let grace_until: string | null = null
@@ -208,8 +208,6 @@ export function buildFixtures(nowMs: number): Dataset {
       quota_health: health,
       last_seen: ago(seenMs),
       base_url: `https://${name}.${DEMO_DOMAIN}/api/v1`,
-      control_secret_suffix: suffix,
-      control_secret_rotated_at: ago(rotMs),
       subscription_id: `sub_${name}`,
       created_at: created,
     }

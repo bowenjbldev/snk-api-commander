@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  CodeSnippet,
   Dropdown,
   InlineNotification,
   Modal,
@@ -40,7 +39,6 @@ export function ProvisionModal({ open, planId, onClose }: Props) {
   const [newBillingEmail, setNewBillingEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [hostCommand, setHostCommand] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
@@ -52,7 +50,6 @@ export function ProvisionModal({ open, planId, onClose }: Props) {
       setNewBillingEmail('')
       setSubmitted(false)
       setBusy(false)
-      setHostCommand(null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, planId])
@@ -67,10 +64,6 @@ export function ProvisionModal({ open, planId, onClose }: Props) {
   const valid = !planError && !newNameError && !newEmailError && !existingError
 
   const submit = async () => {
-    if (hostCommand) {
-      onClose()
-      return
-    }
     setSubmitted(true)
     if (!valid || !selectedPlan) return
     setBusy(true)
@@ -87,9 +80,9 @@ export function ProvisionModal({ open, planId, onClose }: Props) {
                 billing_email: newBillingEmail.trim() || undefined,
               },
             }
-      const cmd = await provision(input)
-      setHostCommand(cmd)
-      toast.success('Subscription created', `${selectedPlan.package} · ${selectedPlan.name}`)
+      await provision(input)
+      toast.success('Instance provisioned', `${selectedPlan.package} · ${selectedPlan.name} is live`)
+      onClose()
     } catch (e) {
       toast.error('Provisioning failed', e instanceof Error ? e.message : 'Request failed')
     } finally {
@@ -100,33 +93,14 @@ export function ProvisionModal({ open, planId, onClose }: Props) {
   return (
     <Modal
       open
-      modalHeading={hostCommand ? 'Subscription created — provision on host' : 'New subscription'}
+      modalHeading="New subscription"
       modalLabel="Provisioning"
-      primaryButtonText={hostCommand ? 'Done' : busy ? 'Creating…' : 'Create subscription'}
+      primaryButtonText={busy ? 'Provisioning…' : 'Create & provision'}
       primaryButtonDisabled={busy}
-      secondaryButtonText={hostCommand ? '' : 'Cancel'}
+      secondaryButtonText="Cancel"
       onRequestClose={onClose}
       onRequestSubmit={submit}
     >
-      {hostCommand ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <InlineNotification
-            kind="success"
-            lowContrast
-            hideCloseButton
-            title="Pending deployment created"
-            subtitle="The Commander can't start containers. Run this on the host to provision and activate it:"
-            style={{ maxWidth: '100%' }}
-          />
-          <CodeSnippet type="single" feedback="Copied">
-            {hostCommand}
-          </CodeSnippet>
-          <p className="scns-helper" style={{ fontSize: 13 }}>
-            When it finishes, the deployment flips from <strong>Provisioning</strong> to{' '}
-            <strong>Operational</strong> and its plan quotas are applied.
-          </p>
-        </div>
-      ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {activePlans.length === 0 ? (
             <InlineNotification
@@ -184,7 +158,6 @@ export function ProvisionModal({ open, planId, onClose }: Props) {
             </div>
           )}
         </div>
-      )}
     </Modal>
   )
 }

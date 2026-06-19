@@ -10,7 +10,6 @@ interface ActionsApi {
   suspend: (targets: Deployment | Deployment[]) => void
   grace: (targets: Deployment | Deployment[]) => void
   resume: (targets: Deployment | Deployment[]) => void
-  rotateSecret: (dep: Deployment) => void
   deleteDeployment: (dep: Deployment, onDeleted?: () => void) => void
   markPaid: (invoice: Invoice) => void
   markOverdue: (invoice: Invoice) => void
@@ -37,7 +36,7 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
 
   const [stateChange, setStateChange] = useState<{ mode: 'suspend' | 'grace'; targets: Deployment[] } | null>(null)
   const [typed, setTyped] = useState<
-    { kind: 'delete' | 'rotate'; dep: Deployment; onDeleted?: () => void } | null
+    { kind: 'delete'; dep: Deployment; onDeleted?: () => void } | null
   >(null)
   const [overdue, setOverdue] = useState<Invoice | null>(null)
 
@@ -56,7 +55,6 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
           list.length === 1 ? list[0].name : undefined,
         )
       },
-      rotateSecret: (dep) => setTyped({ kind: 'rotate', dep }),
       deleteDeployment: (dep, onDeleted) => setTyped({ kind: 'delete', dep, onDeleted }),
       markPaid: (invoice) => {
         const s = useStore.getState()
@@ -117,28 +115,6 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
           open
           onClose={() => setStateChange(null)}
           onConfirm={handleStateConfirm}
-        />
-      )}
-
-      {typed?.kind === 'rotate' && (
-        <TypedConfirmModal
-          open
-          title={`Rotate control secret for ${typed.dep.name}?`}
-          label={typed.dep.subdomain}
-          confirmWord={typed.dep.name}
-          confirmLabel="Rotate secret"
-          body={
-            <p>
-              Rotating immediately invalidates the previous secret. Any caller using the old secret will be
-              rejected until updated.
-            </p>
-          }
-          onClose={() => setTyped(null)}
-          onConfirm={async () => {
-            const suffix = await useStore.getState().rotateSecret(typed.dep.id)
-            if (suffix) toast.success('Control secret rotated', `New secret ends …${suffix}`)
-            setTyped(null)
-          }}
         />
       )}
 

@@ -241,8 +241,6 @@ function activitySentence(ev: ActivityEvent): ReactNode {
       return <>{ent(ev.invoice_id)} marked paid{ev.message ? ` — ${ev.message}` : ''}</>
     case 'quota':
       return <>{ent(ev.deployment_id)} {ev.message}</>
-    case 'rotate':
-      return <>{ent(ev.deployment_id)} control secret rotated{ev.message ? ` → ${ev.message}` : ''} · by {ev.by}</>
   }
 }
 

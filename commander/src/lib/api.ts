@@ -92,7 +92,7 @@ export const authApi = {
   logout: () => api('/auth/logout', { method: 'POST' }),
 }
 
-// Pulls a deploy's real usage rollups (proxied from its signed /control/usage) for the Usage tab.
+// A package's real usage rollups (core_usage_rollups, queried in-process by package_id) for the Usage tab.
 export function deploymentUsage(
   id: string,
   params: { period?: 'hour' | 'day'; from?: string; to?: string } = {},
@@ -105,8 +105,8 @@ export function deploymentUsage(
   return api<{ data: UsageRollup[] }>(`/deployments/${id}/usage${q ? `?${q}` : ''}`)
 }
 
-// Pulls a deploy's real recent request logs (proxied from its signed /control/logs, tagged with
-// deployment_id) for the Logs view. No real-time stream — fetch on demand / poll.
+// A package's real recent request logs (core_request_logs, queried in-process by package_id, tagged
+// with deployment_id) for the Logs view. No real-time stream — fetch on demand / poll.
 export function deploymentLogs(
   id: string,
   params: { limit?: number; since?: string; status_class?: 2 | 3 | 4 | 5 } = {},

@@ -1,6 +1,8 @@
 # Snake Laravel API
 
-API modular sobre Laravel 13. Un despliegue sirve exactamente un paquete de negocio (mas Core), seleccionado por la variable de entorno `API_PACKAGE`. Cada cliente/suscripcion se despliega en su propio subdominio con su propio `.env` y su propia base de datos.
+API modular sobre Laravel 13. **Un solo despliegue (una app + una base de datos) sirve TODOS los paquetes de negocio**, resueltos por subdominio en cada request: `{paquete}.dominio.com`. El Commander (panel de operador) da de alta clientes y paquetes y los provisiona en un paso, sin scripts de host.
+
+> **Modelo centralizado.** Anteriormente cada paquete/cliente era un despliegue aislado con su propia BD (orquestado por `subscription.sh`). Ahora es **una app centralizada**: el paquete activo se resuelve por el `Host` del request, no por despliegue. `API_PACKAGE` vacío = centralizado (carga todos los paquetes); fijarlo bloquea la app a un único paquete (deploy aislado / tests).
 
 ## Stack
 
@@ -8,7 +10,8 @@ API modular sobre Laravel 13. Un despliegue sirve exactamente un paquete de nego
 - **Laravel Sanctum** — Autenticacion Bearer tokens
 - **Spatie Laravel Permission** — Roles y permisos
 - **Scramble** — Documentacion OpenAPI auto-generada con RapiDoc UI
-- **Docker** — PHP-FPM (Alpine) + Nginx + MariaDB
+- **Docker** — PHP-FPM (Alpine) + Nginx (vhost wildcard) + MariaDB
+- **Commander** — SPA React (Carbon) operador en `commander.<BASE_DOMAIN>`
 
 ## Puesta en marcha desde cero
 
@@ -17,12 +20,19 @@ Solo necesitas Docker (composer, PHP y migraciones corren dentro del contenedor)
 ```bash
 git clone <repo> && cd snake-laravel-api
 cp .env.example .env          # puertos, dominios (ajusta si quieres)
-bash scripts/setup-ssl.sh     # certs nginx con mkcert (se auto-descarga si falta)
-docker compose up -d          # build + composer install + APP_KEY + migrate, todo automatico
-curl -k https://localhost:8443/api/v1   # health check
+cp src/.env.example src/.env  # API_PACKAGE vacio (centralizado) + BD compartida
+bash scripts/setup-ssl.sh     # cert wildcard *.BASE_DOMAIN con mkcert (se auto-descarga si falta)
+docker compose up -d          # build + composer install + APP_KEY + migrate (todos los paquetes), automatico
+curl -k https://localhost:8443/api/v1   # health check (Core, agnostico de paquete)
 ```
 
-La instancia principal arranca agnostica (sin paquete, BD sqlite). Para servir un paquete: crea uno (`docker compose exec app php artisan make:package MiPaquete`) y levanta una suscripcion (ver "Simulacion local de suscripciones") o define `API_PACKAGE` en `src/.env`.
+El entrypoint migra Core + **todos** los paquetes en disco sobre la BD compartida. Para que el panel de operador tenga un admin, siémbralo una vez:
+
+```bash
+docker compose exec app php artisan core:seed --package=Commander --force   # admin@snake.com / secret1234
+```
+
+Luego, desde el Commander (`https://commander.<BASE_DOMAIN>`), creas un plan y das de alta un paquete para un cliente: eso lo provisiona en vivo (ver "Provisioning").
 
 ## Estructura del proyecto
 
@@ -36,50 +46,29 @@ src/
 ├── packages/
 │   ├── Core/                   # Paquete base (siempre activo)
 │   │   ├── app/
-│   │   │   ├── Console/
-│   │   │   │   ├── Commands/   # core:migrate, core:seed, make:package, 35+ make:*
-│   │   │   │   └── Concerns/   # Traits para generadores y resolucion de paquete
-│   │   │   ├── Exceptions/
-│   │   │   │   └── CorePackageConfigurationException.php
+│   │   │   ├── Console/        # core:migrate, core:seed, make:package, 35+ make:*
 │   │   │   ├── Http/
-│   │   │   │   └── Controllers/
-│   │   │   │       ├── CoreBaseApiController.php   # CRUD abstracto con permisos
-│   │   │   │       ├── CoreAuthController.php      # Login, Logout, Me (bearer)
-│   │   │   │       ├── CoreHealthController.php    # Health check
-│   │   │   │       └── CoreUsersController.php     # Users REST API
+│   │   │   │   ├── Controllers/
+│   │   │   │   │   ├── CoreBaseApiController.php   # CRUD abstracto con permisos
+│   │   │   │   │   ├── CoreAuthController.php      # Login/Logout/Me (scoped por paquete)
+│   │   │   │   │   ├── CoreHealthController.php    # Health check
+│   │   │   │   │   └── CoreUsersController.php     # Users REST (scoped por paquete)
+│   │   │   │   └── Middleware/
+│   │   │   │       ├── CoreResolvePackageFromHostMiddleware.php  # subdominio -> paquete activo
+│   │   │   │       ├── CoreMeteringMiddleware.php  # registra cada request (por paquete)
+│   │   │   │       └── CoreEnsureActiveMiddleware.php  # kill-switch 402 (por paquete)
 │   │   │   ├── Models/
-│   │   │   │   └── CoreUserModel.php               # User con roles y tokens
-│   │   │   ├── Providers/
-│   │   │   │   ├── CoreServiceProvider.php         # Orquestador principal
-│   │   │   │   ├── CoreRouteServiceProvider.php    # Rutas Core + paquete activo
-│   │   │   │   ├── CoreConsoleServiceProvider.php  # Comandos y seeders
-│   │   │   │   └── CoreScrambleServiceProvider.php # OpenAPI docs
-│   │   │   ├── Scramble/                           # Transformers OpenAPI
-│   │   │   └── Support/
-│   │   │       ├── CorePackageDiscoverySupport.php # Auto-descubrimiento
-│   │   │       ├── CorePackageSelectorSupport.php  # Paquete activo (API_PACKAGE)
-│   │   │       └── CoreTemplateRendererSupport.php # Renderizado de templates
+│   │   │   │   ├── CorePackageModel.php            # registro core_packages (identidad + estado)
+│   │   │   │   └── CoreUserModel.php               # User con package_id, roles y tokens
+│   │   │   ├── Providers/                          # Service providers (orquestacion, rutas, consola, docs)
+│   │   │   ├── Services/                           # estado, metering, cuotas
+│   │   │   └── Support/                            # descubrimiento, selector, paquete activo
 │   │   ├── config/             # core, auth, cors, permission, sanctum, scramble
-│   │   ├── database/
-│   │   │   ├── migrations/     # Roles, schema base, tokens
-│   │   │   └── seeders/        # Rol admin, permisos, usuario admin
-│   │   ├── resources/
-│   │   │   ├── templates/      # Templates para make:package
-│   │   │   └── views/          # Vista RapiDoc personalizada
-│   │   └── routes/
-│   │       └── api.php         # Ruta Core: health check
-│   └── MiPaquete/              # Paquete de negocio (creado con make:package)
-│       ├── app/
-│       │   ├── Providers/MiPaqueteServiceProvider.php
-│       │   └── Http/Controllers/
-│       ├── config/
-│       ├── database/
-│       │   ├── migrations/     # Tablas de negocio propias
-│       │   └── seeders/
-│       └── routes/
-│           └── api.php         # Rutas del paquete (auth + negocio)
-├── routes/
-│   └── web.php
+│   │   ├── database/migrations + seeders
+│   │   └── routes/api.php       # Core: health check
+│   ├── Commander/              # Panel de operador (clientes, planes, provisioning, estado)
+│   └── Shop / Blog / Crm ...   # Paquetes de negocio (creados con make:package)
+├── routes/web.php
 └── tests/
 ```
 
@@ -87,95 +76,91 @@ src/
 
 ### Concepto general
 
-Monolito modular: **un despliegue = un cliente = un paquete = una base de datos**. Toda la logica de negocio vive dentro de `packages/`, no en `app/`.
+Monolito modular centralizado: **una app + una BD sirven todos los paquetes**. Toda la logica de negocio vive en `packages/`, no en `app/`.
 
-- **Core** es el paquete base, siempre activo. Provee la infraestructura: autenticacion, CRUD base, permisos, descubrimiento automatico y scaffolding.
-- El paquete activo se define en `.env` con `API_PACKAGE` (ej. `API_PACKAGE=MiPaquete`). Solo se cargan Core + ese paquete: providers, configs, rutas, migraciones y seeders del resto de paquetes en disco se ignoran.
-- La base de datos es la conexion estandar de Laravel (`DB_*` en `.env`). No hay conexiones dinamicas ni resolucion externa.
+- **Core** es el paquete base, siempre activo. Provee infraestructura: autenticacion, CRUD base, permisos, descubrimiento automatico, scaffolding, metering, cuotas y kill-switch.
+- Los paquetes de negocio se sirven cada uno en su subdominio `{paquete}.<BASE_DOMAIN>`. El paquete activo del request lo resuelve `CoreResolvePackageFromHostMiddleware` por el `Host`.
+- La base de datos es la conexion estandar de Laravel (`DB_*`), **compartida** por Core y todos los paquetes. Las tablas Core (`users`, control-plane) referencian el paquete via `package_id` (FK a `core_packages`).
 
 ### Resolucion del paquete activo
 
-Al arrancar, `CoreServiceProvider` valida `API_PACKAGE`:
+Al arrancar, `CoreServiceProvider` carga los paquetes segun `API_PACKAGE`:
 
 | Valor | Comportamiento |
 |-------|----------------|
-| `API_PACKAGE=MiPaquete` (existe `packages/MiPaquete/`) | Carga Core + MiPaquete |
-| `API_PACKAGE=` (vacio o ausente) | Carga solo Core (health + docs) |
-| `API_PACKAGE=NoExiste` | Falla en boot con `CorePackageConfigurationException` y mensaje claro (HTTP y artisan) |
+| `API_PACKAGE=` (vacio) | **Centralizado**: carga Core + TODOS los paquetes. El paquete activo se resuelve por subdominio en cada request. |
+| `API_PACKAGE=Shop` (existe `packages/Shop/`) | **Lock**: carga solo Core + Shop, rutas planas (deploy aislado de un paquete / tests). |
+| `API_PACKAGE=NoExiste` | Falla en boot con `CorePackageConfigurationException` y mensaje claro. |
 
-El valor se lee via `config('core.package')` (definido en `packages/Core/config/core.php`), compatible con `config:cache`.
+En centralizado, las rutas de cada paquete se envuelven en `Route::domain('{sub}.<BASE_DOMAIN>')`; las de Core (health/docs) se registran globales (cualquier host). Un subdominio solo "esta vivo" si existe su fila en `core_packages` (creada al provisionar); si no, `404`.
 
-### Despliegue multi-cliente (IONOS VPS)
+### `core_packages`: registro de instancias
 
-Cada suscripcion/cliente = un subdominio = una copia desplegada con su propio `.env`:
+Tabla central. Una fila por paquete provisionado: `name` (StudlyCase, = directorio en `packages/`), `subdomain` (snake), y el **estado runtime** (`active|grace|suspended` + reason/message/grace_until). Reemplaza al antiguo singleton `core_package_state`. El resto de tablas Core usa `package_id` (FK).
+
+### Identidad por paquete
+
+`users.package_id` (FK a `core_packages`); unique `(package_id, email)`. Cada subdominio tiene su propio espacio de usuarios: `admin@snake.com` puede existir en Shop y Blog por separado. El login filtra por el paquete del subdominio; un token Sanctum de un paquete se rechaza (401) en otro subdominio. Los usuarios del operador (Commander) tienen `package_id = NULL`.
+
+### Despliegue (IONOS Ubuntu 24.04, sin Plesk)
+
+Un solo despliegue sirve todo:
 
 ```
-cliente1.midominio.com  ->  .env: API_PACKAGE=MiPaquete,  DB_DATABASE=cliente1
-cliente2.midominio.com  ->  .env: API_PACKAGE=MiPaquete,  DB_DATABASE=cliente2
-otro.midominio.com      ->  .env: API_PACKAGE=OtroPaquete, DB_DATABASE=otro
+*.dominio.com  ->  A-record wildcard  ->  el unico servidor
+   shop.dominio.com      -> paquete Shop
+   blog.dominio.com      -> paquete Blog
+   commander.dominio.com -> panel de operador
+   api.dominio.com       -> health/docs (Core, agnostico)
 ```
 
-Nota: si usas `php artisan config:cache` / `route:cache` en produccion, los valores quedan horneados. Tras cambiar `API_PACKAGE` o `DB_*`, ejecuta `php artisan optimize:clear` y vuelve a cachear.
+Deploy / actualizar:
 
-### Simulacion local de suscripciones (Docker + WSL2)
+```bash
+git pull && composer install --no-dev -o
+php artisan migrate --force            # Core + todos los paquetes (BD compartida)
+php artisan config:cache route:cache   # route:cache hornea BASE_DOMAIN; re-cachear en cada deploy
+```
 
-Para probar el modelo de produccion sin VPS: una sola stack Docker simula N suscripciones. Cada cliente es un subdominio `<cliente>.<BASE_DOMAIN>` con su propio contenedor PHP-FPM (misma imagen y mismo `src/` montado, configurado solo por variables de entorno: `API_PACKAGE`, `DB_*`...), su base de datos MariaDB y su vhost nginx.
+- **DNS**: A-record wildcard `*.dominio.com` -> IP del servidor.
+- **TLS**: cert wildcard `*.dominio.com` (Let's Encrypt **DNS-01** — requerido para wildcards; hook de la API DNS de IONOS para certbot).
+- **nginx**: un vhost wildcard `server_name *.dominio.com` -> un upstream FPM. Un paquete nuevo: vivo tras `git pull` (sus rutas se registran en boot) + provisioning (crea la fila + migra/siembra); cero paso de infra.
+
+### Local con subdominios (Docker + WSL2)
+
+Una sola stack Docker (app + nginx + db + commander-web) replica produccion 1:1. nginx sirve un vhost wildcard `*.<BASE_DOMAIN>`.
 
 **Requisitos:**
 
-1. `BASE_DOMAIN` definido en el `.env` raiz (default `snake.test`; evita `.local`, colisiona con mDNS).
-2. Certificado wildcard: `bash scripts/setup-ssl.sh` (genera `*.BASE_DOMAIN` con mkcert; si no esta instalado se auto-descarga a `~/.local/bin`). En WSL el script pide **una sola elevacion UAC** que deja Windows configurado para siempre: importa la CA de mkcert al store de maquina (navegador confia sin dialogos) y concede a tu usuario permiso de escritura sobre el hosts de Windows, de modo que `subscription.sh` añade/quita subdominios sin volver a pedir permisos. (Nota: ese permiso permite a procesos de tu usuario editar el hosts sin UAC — compromiso aceptable en una maquina de desarrollo.)
-3. Stack principal arrancada al menos una vez (`docker compose up -d`) para que exista la imagen.
+1. `BASE_DOMAIN` en el `.env` raiz (default `snake.test`; evita `.local`, colisiona con mDNS).
+2. Certificado wildcard: `bash scripts/setup-ssl.sh` (genera `*.BASE_DOMAIN` con mkcert; auto-descarga si falta; en WSL importa la CA al store de Windows con una sola ventana UAC para el candado verde).
+3. **Resolver `*.<BASE_DOMAIN>` -> 127.0.0.1** para que el navegador abra los subdominios. Ejecuta `bash scripts/dns-wildcard.sh` (configura dnsmasq donde existe; si no, imprime la config de Acrylic/hosts). Opciones:
+   - **Wildcard (recomendado, 1:1 con prod):** dnsmasq (Linux/WSL) o Acrylic DNS (Windows) con `address=/snake.test/127.0.0.1`.
+   - **Simple:** anadir cada subdominio al hosts de Windows (`C:\Windows\System32\drivers\etc\hosts`): `127.0.0.1  api.snake.test commander.snake.test shop.snake.test blog.snake.test ...` (son pocos y conocidos: uno por paquete).
 
-**Uso:**
-
-```bash
-bash scripts/subscription.sh add cliente1 MiPaquete   # alta completa
-bash scripts/subscription.sh list                     # listado y estado
-bash scripts/subscription.sh remove cliente1 --drop-db
-```
-
-`add` hace todo el ciclo: crea BD + usuario MariaDB, genera el bloque de servicio en `docker-compose.clients.yml` (gitignored, regenerado desde `docker/clients/*.env`), genera el vhost nginx, levanta el contenedor (el entrypoint migra Core + paquete automaticamente), ejecuta seeders, y añade el subdominio al hosts de Windows (directo, sin UAC, gracias a la elevacion unica de `setup-ssl.sh`; sin ese permiso, cae a una ventana UAC puntual o imprime la linea para añadir a mano).
-
-**Credenciales de BD por suscripcion**: database, usuario y password son el nombre del paquete en snake_case (`MiPaquete` → `mi_paquete`). Por eso cada paquete admite una sola suscripcion. El root de MariaDB corre sin password (`MARIADB_ALLOW_EMPTY_ROOT_PASSWORD`) — todo esto es SOLO para local; en produccion cada deploy define credenciales reales en su `.env`.
-
-**Aislamiento por suscripcion:**
-
-- BD y usuario MariaDB propios (cache de Laravel incluida: `CACHE_STORE=database`).
-- `bootstrap/cache` aislado por contenedor (volumen anonimo).
-- Logs por contenedor (`LOG_CHANNEL=stderr`): `docker compose logs -f app-<cliente>`.
-- Shell de una instancia: `docker compose exec app-<cliente> bash` (artisan opera contra SU BD: `docker compose exec app-<cliente> php artisan tinker`). Ojo: `src/` es el mismo bind mount en todas — editar codigo afecta a todas las instancias; lo aislado son las variables de entorno y la BD.
-- `storage/` se comparte entre contenedores pero no guarda estado por cliente (sin sesiones — auth Bearer — y cache en BD).
-
-**Advertencias:**
-
-- El wildcard cubre un solo nivel (`a.snake.test` si, `a.b.snake.test` no) y no el apex.
-- Solo se edita el hosts de Windows (fuente de verdad): WSL lo copia a su `/etc/hosts` en cada arranque. Hasta reiniciar WSL, dentro de WSL prueba con `curl --resolve <cliente>.snake.test:8443:127.0.0.1 ...` (el navegador de Windows funciona al instante).
-- `APP_KEY` se comparte entre suscripciones (un solo `src/.env`); en produccion cada deploy tiene la suya.
-- Los volumenes anonimos huerfanos se limpian con `docker volume prune`.
+Dentro de WSL, hasta tener DNS, prueba con `curl --resolve <sub>.snake.test:8443:127.0.0.1 ...`.
 
 ### Override de configuracion
 
-- Core se aplica primero, el paquete activo despues → **el paquete gana**.
-- Si el nombre del archivo config coincide con uno global de Laravel (`auth`, `cors`, `session`, etc.), sobreescribe la config global via `array_replace_recursive`.
-- Si no coincide, se registra con namespace: `config('mipaquete.archivo.key')`.
+- Core se aplica primero. **Solo Core puede escribir claves globales de Laravel** (`auth`, `cors`, `scramble`...): con todos los paquetes cargados a la vez, permitir overrides globales desde paquetes de negocio causaria colisiones no deterministas.
+- Las configs de los paquetes de negocio van **siempre namespaced**: `config('shop.archivo.key')`.
 
 ### Rutas
 
-Core y el paquete activo se registran ambos bajo el prefijo `/api/v1`, Core primero. En colision exacta (mismo metodo + URI) gana la ruta del paquete; en patrones solapados no identicos gana el primero registrado.
+- **Centralizado**: las rutas de cada paquete bajo `Route::domain('{sub}.<BASE_DOMAIN>')->prefix('api/v1')`. Las de Core (health) son globales (cualquier host). El Commander en `commander.<BASE_DOMAIN>`.
+- **Lock** (`API_PACKAGE` fijo): rutas planas bajo `/api/v1`, Core primero.
 
 ## Rutas API
 
 | Metodo | Ruta | Descripcion | Auth |
 |--------|------|-------------|------|
-| `GET` | `/api/v1/` | Health check (Core) | - |
+| `GET` | `/api/v1/` | Health check (Core, cualquier host) | - |
 | `GET` | `/api/v1/docs` | Documentacion OpenAPI (RapiDoc UI) | - |
-| `GET` | `/api/v1/docs.json` | Especificacion OpenAPI JSON | - |
-| `POST` | `/api/v1/auth/login` | Login (devuelve Bearer token) | - |
-| `POST` | `/api/v1/auth/logout` | Logout (revoca token) | Sanctum |
-| `GET` | `/api/v1/auth/me` | Usuario actual con roles y permisos | Sanctum |
-| `*` | `/api/v1/users` | CRUD usuarios (apiResource) | Sanctum |
-| `*` | `/api/v1/{...}` | Rutas de negocio del paquete activo | Sanctum |
+| `POST` | `{sub}.dom/api/v1/auth/login` | Login del paquete del subdominio (Bearer token) | - |
+| `POST` | `{sub}.dom/api/v1/auth/logout` | Logout (revoca token) | Sanctum |
+| `GET` | `{sub}.dom/api/v1/auth/me` | Usuario actual con roles y permisos | Sanctum |
+| `*` | `{sub}.dom/api/v1/users` | CRUD usuarios (scoped al paquete) | Sanctum |
+| `*` | `{sub}.dom/api/v1/{...}` | Rutas de negocio del paquete del subdominio | Sanctum |
 
 ## Autenticacion
 
@@ -183,94 +168,100 @@ Sanctum en modo **Bearer token exclusivamente**. No hay modo stateful ni sesione
 
 **Flujo de login:**
 
-1. `POST /api/v1/auth/login` con `email` y `password`
-2. Se busca el usuario en la BD del despliegue
+1. `POST {sub}.dom/api/v1/auth/login` con `email` y `password`
+2. Se busca el usuario **del paquete del subdominio** (`whereNull(package_id)` en el host del operador)
 3. Si las credenciales son validas, se genera un token Sanctum
 4. Se devuelve `{ token, token_type: "Bearer", user, token_id }`
 
-**Opciones adicionales en login:**
-
-- `name` — nombre del token (default: `login`)
-- `abilities` — array de abilities del token (default: `["*"]`)
-- `expires_at` — fecha de expiracion del token
+Un token solo vale en su subdominio: usarlo en otro paquete devuelve 401. El panel de operador (`commander.<BASE_DOMAIN>`) solo acepta usuarios de operador (`package_id NULL`).
 
 ## Descubrimiento automatico
 
-`CoreServiceProvider` descubre recursos de Core + el paquete activo (el resto de `packages/` se ignora):
+`CoreServiceProvider` descubre recursos de Core + los paquetes a cargar (todos en centralizado, o solo el de `API_PACKAGE` en lock):
 
 | Recurso | Patron glob | Accion |
 |---------|-------------|--------|
 | Providers | `packages/*/app/Providers/*ServiceProvider.php` | Registra en el container |
-| Configs | `packages/*/config/*.php` | Merge o override global |
-| Rutas | `packages/*/routes/api.php` | Todas en `/api/v1/` (Core primero) |
+| Configs | `packages/*/config/*.php` | Namespaced (globales solo de Core) |
+| Rutas | `packages/*/routes/api.php` | `Route::domain` por subdominio (Core globales) |
 | Migraciones | `packages/*/database/migrations/` | Carga paths |
 | Seeders | `packages/*/database/seeders/*DatabaseSeeder.php` | Ejecuta con `core:seed` |
 
+## Provisioning (dar de alta un paquete)
+
+El **codigo** de un paquete viaja por git (lo programas en local con `make:package` y haces deploy). El Commander instancia un paquete **existente** en un paso, in-process:
+
+`POST /provisioning` (en `commander.<BASE_DOMAIN>`, con `plan_id` + cliente nuevo/existente):
+
+1. Crea/resuelve cliente + suscripcion.
+2. Crea la fila `core_packages` (la instancia: enciende el subdominio).
+3. Corre `core:migrate --package=<X>` sobre la BD compartida (idempotente) + `core:seed --package=<X>` (admin del paquete).
+4. Activa + escribe las cuotas del plan.
+
+Sin `host_command`, sin `subscription.sh`. El subdominio queda vivo al terminar.
+
 ## Comandos Artisan
 
-### Gestion de paquetes
+### Gestion de paquetes (desarrollo)
 
 ```bash
-# Crear un nuevo paquete (scaffold completo)
-php artisan make:package NombrePaquete
-
-# Eliminar un paquete (rechaza eliminar el API_PACKAGE activo)
-php artisan remove:package NombrePaquete
+php artisan make:package NombrePaquete       # scaffold completo de un paquete nuevo (local)
+php artisan remove:package NombrePaquete      # eliminar
+composer dump-autoload
 ```
-
-Tras crear/eliminar: `composer dump-autoload`. Para activar un paquete: `API_PACKAGE=NombrePaquete` en `.env`.
 
 ### Base de datos
 
-Los comandos `core:*` operan sobre la conexion default del `.env` y por defecto usan el paquete de `API_PACKAGE` (la opcion `--package` es opcional y debe coincidir con el activo).
-
 ```bash
-# Migraciones (Core + paquete activo)
-php artisan core:migrate
-
-# Migraciones con seed
+php artisan core:migrate                       # Core + paquete(s)
 php artisan core:migrate --seed
-
-# Fresh (drop + re-migrate)
-php artisan core:migrate --fresh
-
-# Rollback
+php artisan core:migrate --package=Shop        # un paquete concreto (centralizado)
 php artisan core:migrate --rollback
-
-# Refresh (rollback + migrate)
 php artisan core:migrate:refresh
-
-# Seeders
-php artisan core:seed
-
-# Seeder especifico
-php artisan core:seed --class=MiPaqueteProductSeeder
+php artisan core:seed --package=Shop
 ```
 
 ### Control plane (estado, metering, cuotas)
 
-Cada deploy mide su uso y conoce su estado. Detalle completo en [`docs/CONTROL-PLANE.md`](docs/CONTROL-PLANE.md).
+Todo in-process (Commander y deploys viven en la misma app/BD). Detalle en [`docs/CONTROL-PLANE.md`](docs/CONTROL-PLANE.md).
 
 ```bash
-php artisan core:status                       # estado del deploy + cuotas
-php artisan core:status --set=suspended --reason=manual --message="Pago pendiente"   # kill-switch (402)
-php artisan core:usage:rollup --prune         # agrega metricas crudas en rollups hora/dia
-php artisan core:quota:measure                # mide disco/requests/usuarios y aplica on_exceed
+php artisan core:status                       # estado + cuotas (por paquete activo)
+php artisan core:usage:rollup --prune         # agrega core_request_logs en rollups hora/dia (por package)
+php artisan core:quota:measure                # mide disco/requests/usuarios por package y aplica on_exceed
 ```
 
-- Estados: `active` | `grace` (sirve con headers `X-Package-Status`) | `suspended` (402 en rutas de negocio; health, docs y `/control` siguen respondiendo).
-- Metering por request en `core_request_logs` (middleware terminable, cero latencia con FPM) + rollups en `core_usage_rollups`.
-- Endpoints de gestion remota `/api/v1/control/*` (firma HMAC, para el Commander): solo existen si `CORE_CONTROL_SECRET` esta definido.
+- Estados por paquete: `active` | `grace` (headers `X-Package-Status`) | `suspended` (402 en rutas de negocio; health y docs siguen respondiendo).
+- Metering por request en `core_request_logs` (middleware terminable, cero latencia con FPM, columna `package_id`) + rollups en `core_usage_rollups`.
+- El Commander cambia el estado de un paquete escribiendo `core_packages` directamente (sin HMAC): `POST /deployments/{id}/suspend|grace|resume`.
 
 ### Generadores package-aware
 
-Todos los comandos `make:*` soportan `--package` para generar codigo dentro de un paquete:
+Todos los `make:*` soportan `--package`:
 
 ```bash
-php artisan make:model MiModelo --package=MiPaquete
-php artisan make:controller MiController --package=MiPaquete
-php artisan make:migration create_products_table --package=MiPaquete
-php artisan make:seeder ProductSeeder --package=MiPaquete
+php artisan make:model MiModelo --package=Shop
+php artisan make:controller MiController --package=Shop
+php artisan make:migration create_products_table --package=Shop
+```
+
+## CoreBaseApiController
+
+Controlador abstracto con CRUD completo:
+
+- Verificacion de permisos por accion (`indexPermission`, `storePermission`, etc.)
+- Carga de relaciones via `?with=relation1,relation2`
+- Validacion con reglas interpolables (`unique:users,email,{id}`)
+- Form Requests custom (`storeRequestClass`, `updateRequestClass`)
+
+```php
+class MiController extends CoreBaseApiController
+{
+    protected string $modelClass = MiModelo::class;
+    protected string $indexPermission = 'index mi-recurso';
+    protected array $allowedWith = ['relacion'];
+    protected array $validationRulesStore = ['campo' => 'required|string'];
+}
 ```
 
 ## Convencion de un paquete
@@ -279,61 +270,28 @@ php artisan make:seeder ProductSeeder --package=MiPaquete
 packages/MiPaquete/
 ├── app/
 │   ├── Providers/MiPaqueteServiceProvider.php
-│   ├── Http/
-│   │   └── Controllers/
-│   │       ├── MiPaqueteAuthController.php     # Extiende CoreAuthController
-│   │       └── MiPaqueteUsersController.php    # Extiende CoreUsersController
-│   ├── Models/
-│   ├── Services/
-│   └── Jobs/
-├── config/
-│   └── scramble.php      # (opcional) personaliza docs
-├── database/
-│   ├── migrations/       # Tablas de negocio propias
-│   └── seeders/MiPaqueteDatabaseSeeder.php
-├── routes/
-│   └── api.php           # Rutas: auth (heredadas) + negocio
-└── tests/
+│   ├── Http/Controllers/
+│   │   ├── MiPaqueteAuthController.php     # Extiende CoreAuthController
+│   │   └── MiPaqueteUsersController.php    # Extiende CoreUsersController
+│   ├── Models/  Services/  Jobs/
+├── config/scramble.php   # (opcional) docs
+├── database/migrations + seeders/MiPaqueteDatabaseSeeder.php
+└── routes/api.php        # auth (heredada) + negocio
 ```
-
-Cada paquete genera su propio `AuthController` y `UsersController` que extienden los de Core. Esto permite personalizar la logica de autenticacion o usuarios por cliente si es necesario.
 
 ## Migraciones del Core
 
-Se ejecutan junto con las del paquete activo sobre la BD del despliegue:
+Sobre la BD compartida:
 
-1. **Roles y permisos** — Tablas de Spatie Permission (`roles`, `permissions`, `model_has_roles`, etc.)
-2. **Schema base** — `users`, `sessions`, `cache`, `jobs`, `failed_jobs`, `password_reset_tokens`
-3. **Tokens** — `personal_access_tokens` de Sanctum
+1. **core_packages** — registro de instancias + estado runtime.
+2. **Roles y permisos** — Spatie Permission.
+3. **Schema base** — `users` (con `package_id`), `sessions`, `cache`, `jobs`...
+4. **Tokens** — `personal_access_tokens` de Sanctum.
+5. **Control plane** — `core_request_logs`, `core_usage_rollups`, `core_quota_metrics` (todas con `package_id`).
 
 ### Seeder por defecto
 
-- Rol: `admin`
-- Permisos: `index`, `show`, `create`, `update`, `delete` sobre `users`
-- Usuario admin: `admin@snake.com` / `secret1234`
-
-## CoreBaseApiController
-
-Controlador abstracto que provee CRUD completo con:
-
-- Verificacion de permisos por accion (`indexPermission`, `storePermission`, etc.)
-- Carga de relaciones via query param `?with=relation1,relation2`
-- Validacion con reglas interpolables (`unique:users,email,{id}`)
-- Soporte para Form Requests custom (`storeRequestClass`, `updateRequestClass`)
-
-Los controladores solo necesitan definir propiedades:
-
-```php
-class MiController extends CoreBaseApiController
-{
-    protected string $modelClass = MiModelo::class;
-    protected string $indexPermission = 'index mi-recurso';
-    protected array $allowedWith = ['relacion'];
-    protected array $validationRulesStore = [
-        'campo' => 'required|string',
-    ];
-}
-```
+- Rol `admin`, permisos sobre `users`, usuario admin `admin@snake.com` / `secret1234` (con el `package_id` del paquete sembrado; NULL para el operador).
 
 ## Variables de entorno
 
@@ -341,61 +299,48 @@ class MiController extends CoreBaseApiController
 APP_NAME=SnakeLaravelApi
 APP_ENV=local
 APP_DEBUG=true
-APP_URL=http://localhost
+APP_URL=https://api.snake.test
 
-# Paquete activo de este deploy (un paquete por despliegue)
-API_PACKAGE=MiPaquete
+# Vacio = centralizado (sirve todos los paquetes por subdominio).
+# Fijar (ej. Shop) bloquea la app a un unico paquete.
+API_PACKAGE=
+BASE_DOMAIN=snake.test
 
+# BD compartida (MariaDB): una sola BD para Core + todos los paquetes.
 DB_CONNECTION=mysql
 DB_HOST=db
 DB_PORT=3306
-DB_DATABASE=laravel
-DB_USERNAME=laravel
-DB_PASSWORD=root
+DB_DATABASE=snake
+DB_USERNAME=snake
+DB_PASSWORD=snake
 ```
-
-`API_PACKAGE` selecciona el paquete de negocio. `DB_*` es la unica base de datos del despliegue: framework, usuarios, tokens, roles y tablas de negocio.
 
 ## Docker
 
 ```bash
-# Levantar el entorno
 docker compose up -d
-
-# El entrypoint automaticamente (con flock: N contenedores arrancando a la
-# vez no se pisan al mutar el src/ compartido):
-# 1. Crea .env si no existe
-# 2. Instala dependencias (composer install)
-# 3. Genera APP_KEY si esta vacio
-# 4. Fija permisos de storage/cache/database (ug+rwX, sin tocar modos de git)
-# 5. Crea database/database.sqlite si la conexion es sqlite y falta
-# 6. Ejecuta migraciones (Core + paquete activo via API_PACKAGE)
-# 7. Inicia PHP-FPM
 ```
 
-### Servicios
+Servicios:
 
 | Servicio | Imagen | Puerto |
 |----------|--------|--------|
-| `app` | `php:8.3-fpm-alpine` | 9000 (interno) |
-| `nginx` | `nginx:alpine` | `${HTTP_PORT:-80}:80` y `${HTTPS_PORT:-443}:443` (8080/8443 en local) |
-| `db` | `mariadb:latest` | `${DB_PORT:-3306}:3306` (3307 en local) |
+| `app` | `php:8.3-fpm-alpine` (un solo contenedor, sirve todos los paquetes) | 9000 (interno) |
+| `nginx` | `nginx:alpine` (vhost wildcard `*.${BASE_DOMAIN}`) | `${HTTP_PORT:-80}:80` y `${HTTPS_PORT:-443}:443` (8080/8443 en local) |
+| `db` | `mariadb:latest` (crea la BD compartida `snake` en init) | `${DB_PORT:-3306}:3306` (3307 en local) |
+| `commander-web` | `node:24-alpine` (SPA en `commander.<BASE_DOMAIN>`) | 80 (interno) |
+
+El entrypoint: crea `.env` si falta, `composer install`, `APP_KEY`, fija permisos, y migra Core + todos los paquetes sobre la BD compartida. Luego PHP-FPM.
 
 ## Desarrollo local
 
 ```bash
 cd src
-
-# Setup inicial
-composer setup
-
-# Servidor de desarrollo
-composer dev
-
-# Tests
-composer test
+composer setup   # install + key + migrate
+composer dev     # servidor de desarrollo
+composer test    # tests
 ```
 
 ## Documentacion API
 
-Accede a `/api/v1/docs` para ver la documentacion interactiva generada por Scramble con RapiDoc UI. La especificacion OpenAPI esta disponible en `/api/v1/docs.json`.
+`{sub}.dom/api/v1/docs` (RapiDoc UI, Scramble) y la spec en `/api/v1/docs.json`.
