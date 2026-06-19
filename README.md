@@ -195,7 +195,7 @@ El **codigo** de un paquete viaja por git (lo programas en local con `make:packa
 
 1. Crea/resuelve cliente + suscripcion.
 2. Crea la fila `core_packages` (la instancia: enciende el subdominio).
-3. **Crea la BD del paquete** (`CREATE DATABASE`) y corre `core:migrate --connection=tenant --db=<bd> --package=<X>` (base Laravel + negocio) + `core:seed` (admin del paquete) **en esa BD**.
+3. **Crea la BD del paquete** (`CREATE DATABASE`) y corre `core:migrate --connection=tenant --package=<X>` (base Laravel + negocio; BD = snake(package)) + `core:seed` (admin del paquete) **en esa BD**.
 4. Activa + escribe las cuotas del plan (en la central).
 
 Sin `host_command`, sin `subscription.sh`. El subdominio queda vivo al terminar. De-provisionar (`DELETE /deployments/{id}`) hace `DROP DATABASE` + limpia la central.
@@ -213,10 +213,11 @@ composer dump-autoload
 ### Base de datos
 
 ```bash
-php artisan core:migrate --connection=central                          # registro + control-plane + commander + base operador
-php artisan core:migrate --connection=tenant --db=shop --package=Shop   # base + negocio en la BD del paquete
-php artisan core:seed    --connection=tenant --db=shop --package=Shop   # admin + seeders del paquete (en su BD)
+php artisan core:migrate --connection=central                  # registro + control-plane + commander + base operador
+php artisan core:migrate --connection=tenant --package=Shop    # base + negocio en la BD del paquete (BD = snake(package))
+php artisan core:seed    --connection=tenant --package=Shop    # admin + seeders del paquete (en su BD)
 php artisan core:migrate --connection=central --rollback
+# package = BD por convencion: --db solo si quieres un nombre de BD distinto
 # (normalmente las BD de paquete las gestiona el provisioning del Commander, no a mano)
 ```
 
@@ -286,7 +287,7 @@ Separadas en `packages/Core/database/migrations/{central,tenant}` por su destino
 - **tenant/** (corre en la central para el operador Y en CADA BD de paquete): Roles/permisos (Spatie), schema base (`users`, `sessions`, `cache`, `jobs`...), tokens Sanctum.
 - **negocio**: `packages/{Pkg}/database/migrations/` (solo en la BD del paquete).
 
-`core:migrate --connection=central` corre central+tenant-base+commander; el provisioning corre `--connection=tenant --db=<bd> --package=<X>` (tenant-base + negocio) en la BD del paquete.
+`core:migrate --connection=central` corre central+tenant-base+commander; el provisioning corre `--connection=tenant --package=<X>` (tenant-base + negocio) en la BD del paquete (BD = snake(package); convencion package = BD).
 
 ### Seeder por defecto
 

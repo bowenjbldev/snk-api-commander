@@ -5,6 +5,7 @@ namespace Packages\Core\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Packages\Core\Console\Concerns\CorePackageDatabaseSupport;
 use Packages\Core\Database\Seeders\CorePackagesDatabaseSeeder;
 
@@ -14,8 +15,8 @@ class CoreSeedCommand extends Command
 
     protected $signature = 'core:seed
         {--connection= : Conexion destino (central|tenant); por defecto la default de la app}
-        {--db= : Nombre de la BD del tenant (con --connection=tenant)}
         {--package= : Target package (defaults to API_PACKAGE, e.g. Shop)}
+        {--db= : Nombre de la BD del tenant (por defecto snake(package); convencion package = BD)}
         {--class= : Specific seeder class to run}
         {--force : Force the operation to run in production}';
 
@@ -23,9 +24,12 @@ class CoreSeedCommand extends Command
 
     public function handle(): int
     {
+        $package = $this->resolvePackageForConsole();
         $connection = $this->option('connection');
 
-        if ($connection === 'tenant' && ($db = trim((string) $this->option('db'))) !== '') {
+        if ($connection === 'tenant') {
+            // Convencion: package = BD. --db solo para un nombre distinto al de snake(package).
+            $db = trim((string) $this->option('db')) ?: Str::snake($package);
             config(['database.connections.tenant.database' => $db]);
             DB::purge('tenant');
         }
@@ -42,7 +46,6 @@ class CoreSeedCommand extends Command
             return self::SUCCESS;
         }
 
-        $package = $this->resolvePackageForConsole();
         CorePackagesDatabaseSeeder::$targetPackage = $package;
 
         $this->info("Running seeders for [{$package}]...");

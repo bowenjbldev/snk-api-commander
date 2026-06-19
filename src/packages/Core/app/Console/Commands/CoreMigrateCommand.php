@@ -5,6 +5,7 @@ namespace Packages\Core\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Packages\Core\Console\Concerns\CorePackageDatabaseSupport;
 
 /**
@@ -18,8 +19,8 @@ class CoreMigrateCommand extends Command
 
     protected $signature = 'core:migrate
         {--connection=central : Conexion destino: central | tenant}
-        {--db= : Nombre de la BD del tenant (obligatorio con --connection=tenant)}
         {--package= : Package de negocio para las migraciones de tenant (ej. Shop)}
+        {--db= : Nombre de la BD del tenant (por defecto snake(package); convencion package = BD)}
         {--seed : Run seeders after migrating}
         {--fresh : Drop all tables and re-run all migrations}
         {--rollback : Rollback the last batch of migrations}
@@ -40,17 +41,14 @@ class CoreMigrateCommand extends Command
         $package = null;
 
         if ($connection === 'tenant') {
-            $db = trim((string) $this->option('db'));
-
-            if ($db === '') {
-                $this->fail('--db=<database> es obligatorio con --connection=tenant.');
-            }
+            // Convencion: package = BD. --db solo si quieres un nombre distinto al de snake(package).
+            $package = $this->resolvePackageForConsole();
+            $db = trim((string) $this->option('db')) ?: Str::snake($package);
 
             // Apunta la conexion tenant a la BD del package antes de migrar.
             config(['database.connections.tenant.database' => $db]);
             DB::purge('tenant');
 
-            $package = $this->resolvePackageForConsole();
             $paths = [
                 'packages/Core/database/migrations/tenant',          // base Laravel del tenant
                 "packages/{$package}/database/migrations",            // negocio del package

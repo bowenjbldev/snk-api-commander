@@ -177,8 +177,9 @@ class CommanderProvisioningController extends CoreBaseApiController
                 "CREATE DATABASE IF NOT EXISTS `{$database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
             );
 
-            Artisan::call('core:migrate', ['--connection' => 'tenant', '--db' => $database, '--package' => $package, '--force' => true]);
-            Artisan::call('core:seed', ['--connection' => 'tenant', '--db' => $database, '--package' => $package, '--force' => true]);
+            // package = BD por convencion: el comando deriva la BD de --package (snake).
+            Artisan::call('core:migrate', ['--connection' => 'tenant', '--package' => $package, '--force' => true]);
+            Artisan::call('core:seed', ['--connection' => 'tenant', '--package' => $package, '--force' => true]);
         }
 
         return response()->json([
