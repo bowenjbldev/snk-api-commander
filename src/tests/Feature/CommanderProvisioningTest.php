@@ -17,6 +17,23 @@ class CommanderProvisioningTest extends CommanderTestCase
 {
     use RefreshDatabase;
 
+    /** Paquete fixture: provisioning solo exige is_dir(packages/<Pkg>); en sqlite no migra la BD tenant. */
+    private const FIXTURE_PACKAGE = 'Demo';
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        @mkdir(base_path('packages/'.self::FIXTURE_PACKAGE), 0777, true);
+    }
+
+    protected function tearDown(): void
+    {
+        @rmdir(base_path('packages/'.self::FIXTURE_PACKAGE));
+
+        parent::tearDown();
+    }
+
     private function admin(): CoreUserModel
     {
         $this->seed(CoreDatabaseSeeder::class);
@@ -25,11 +42,11 @@ class CommanderProvisioningTest extends CommanderTestCase
         return CoreUserModel::where('email', 'admin@snake.com')->firstOrFail();
     }
 
-    /** A plan for a REAL package that ships on disk (Shop), so provisioning can migrate + seed it. */
+    /** Plan de un paquete que existe en disco (fixture Demo), para que provisioning lo de de alta. */
     private function plan(): PlanModel
     {
         return PlanModel::create([
-            'id' => 'shop-pro', 'package' => 'Shop', 'name' => 'Pro', 'price_monthly' => 49,
+            'id' => 'demo-pro', 'package' => self::FIXTURE_PACKAGE, 'name' => 'Pro', 'price_monthly' => 49,
             'q_requests_day' => 100000, 'q_disk_db_mb' => 2048, 'q_users_total' => 50,
         ]);
     }
@@ -40,7 +57,7 @@ class CommanderProvisioningTest extends CommanderTestCase
         $this->plan();
 
         $res = $this->actingAs($admin, 'sanctum')->postJson('/api/v1/provisioning', [
-            'plan_id' => 'shop-pro',
+            'plan_id' => 'demo-pro',
             'client' => [
                 'id' => 'acme', 'name' => 'Acme Inc', 'email' => 'hi@acme.com',
                 'billing_email' => 'billing@acme.com', 'tax_id' => 'ESB12345678',
@@ -52,15 +69,15 @@ class CommanderProvisioningTest extends CommanderTestCase
         $res->assertStatus(201);
         // One-step: live immediately, no host_command, state sourced from packages.
         $res->assertJsonPath('deployment.state.status', 'active');
-        $res->assertJsonPath('deployment.package', 'Shop');
+        $res->assertJsonPath('deployment.package', 'Demo');
         $res->assertJsonPath('deployment.subscription.plan', 'Pro');
         $res->assertJsonMissingPath('host_command');
 
         // Instance row (packages) created + active + its own database name → subdomain is live.
-        $cp = PackageModel::where('subdomain', 'shop')->first();
+        $cp = PackageModel::where('subdomain', 'demo')->first();
         $this->assertNotNull($cp);
         $this->assertSame('active', $cp->getRawOriginal('status'));
-        $this->assertSame('shop', $cp->database); // BD propia del package
+        $this->assertSame('demo', $cp->database); // BD propia del package
 
         // Client created with full billing.
         $client = ClientModel::find('acme');
@@ -69,7 +86,7 @@ class CommanderProvisioningTest extends CommanderTestCase
         $this->assertSame('ES', $client->country);
 
         // Deployment + subscription + quotas (SPA mirror) from the plan.
-        $dep = DeploymentModel::find('shop');
+        $dep = DeploymentModel::find('demo');
         $this->assertNotNull($dep->subscription_id);
         $this->assertSame($cp->id, $dep->package_id);
         $this->assertCount(4, $dep->quotas);
@@ -83,7 +100,7 @@ class CommanderProvisioningTest extends CommanderTestCase
 
         // Nota: la BD del package (su base Laravel + negocio + admin) se crea con CREATE DATABASE +
         // core:migrate --connection=tenant, que sqlite no soporta; se omite en tests y se verifica
-        // en vivo (shop/blog como BDs separadas).
+        // en vivo (demo/blog como BDs separadas).
     }
 
     public function test_provisioning_requires_permission(): void
@@ -97,7 +114,7 @@ class CommanderProvisioningTest extends CommanderTestCase
         ]);
 
         $this->actingAs($user, 'sanctum')->postJson('/api/v1/provisioning', [
-            'plan_id' => 'shop-pro',
+            'plan_id' => 'demo-pro',
             'client' => ['id' => 'acme', 'name' => 'Acme', 'email' => 'a@a.com'],
         ])->assertStatus(403);
     }
@@ -123,12 +140,12 @@ class CommanderProvisioningTest extends CommanderTestCase
 
         ClientModel::create(['id' => 'x', 'name' => 'X', 'email' => 'x@x.test', 'status' => 'active']);
         DeploymentModel::create([
-            'id' => 'shop', 'name' => 'shop', 'subdomain' => 'shop.snake.test', 'client_id' => 'x',
-            'package' => 'Shop', 'version' => 'v1.0.0', 'base_url' => 'https://shop.snake.test/api/v1',
+            'id' => 'demo', 'name' => 'demo', 'subdomain' => 'demo.snake.test', 'client_id' => 'x',
+            'package' => 'Demo', 'version' => 'v1.0.0', 'base_url' => 'https://demo.snake.test/api/v1',
         ]);
 
         $this->actingAs($admin, 'sanctum')->postJson('/api/v1/provisioning', [
-            'plan_id' => 'shop-pro',
+            'plan_id' => 'demo-pro',
             'client' => ['id' => 'acme', 'name' => 'Acme', 'email' => 'a@a.com'],
         ])->assertStatus(409);
     }
