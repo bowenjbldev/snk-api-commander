@@ -6,28 +6,24 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Packages\Core\Console\Concerns\CorePackageDatabaseSupport;
 
 /**
- * Multi-tenant: migra sobre la conexion CENTRAL (registro + control-plane + commander + base del
- * operador) o sobre la conexion TENANT de un package (su base Laravel + sus tablas de negocio,
- * en su propia BD). El provisioning usa --connection=tenant --db=<bd> --package=<Pkg>.
+ * Multi-tenant. La presencia de --package decide el destino (convencion package = BD):
+ *   - SIN --package  -> CENTRAL (BD commander): registro + control-plane + commander + base operador.
+ *   - CON --package   -> TENANT (BD = snake(package)): base Laravel del tenant + tablas de negocio.
+ * El provisioning usa `core:migrate --package=Shop`; el deploy usa `core:migrate` (central).
  */
 class CoreMigrateCommand extends Command
 {
-    use CorePackageDatabaseSupport;
-
     protected $signature = 'core:migrate
-        {--connection=central : Conexion destino: central | tenant}
-        {--package= : Package de negocio para las migraciones de tenant (ej. Shop)}
-        {--db= : Nombre de la BD del tenant (por defecto snake(package); convencion package = BD)}
+        {--package= : Package de negocio -> migracion de TENANT (BD = snake(package)). Sin --package = CENTRAL.}
         {--seed : Run seeders after migrating}
         {--fresh : Drop all tables and re-run all migrations}
         {--rollback : Rollback the last batch of migrations}
         {--step= : Number of migrations to rollback}
         {--force : Force the operation to run in production}';
 
-    protected $description = 'Run Core + package migrations on the central or a tenant database';
+    protected $description = 'Run migrations on the central database or on a package\'s tenant database';
 
     private const CENTRAL_PATHS = [
         'packages/Core/database/migrations/central',   // core_packages + control-plane
@@ -37,23 +33,20 @@ class CoreMigrateCommand extends Command
 
     public function handle(): int
     {
-        $connection = (string) ($this->option('connection') ?: 'central');
-        $package = null;
+        $package = $this->resolvePackage();
 
-        if ($connection === 'tenant') {
-            // Convencion: package = BD. --db solo si quieres un nombre distinto al de snake(package).
-            $package = $this->resolvePackageForConsole();
-            $db = trim((string) $this->option('db')) ?: Str::snake($package);
-
-            // Apunta la conexion tenant a la BD del package antes de migrar.
-            config(['database.connections.tenant.database' => $db]);
+        if ($package !== null) {
+            // TENANT: apunta la conexion a la BD del package (snake) antes de migrar.
+            $connection = 'tenant';
+            config(['database.connections.tenant.database' => Str::snake($package)]);
             DB::purge('tenant');
 
             $paths = [
-                'packages/Core/database/migrations/tenant',          // base Laravel del tenant
-                "packages/{$package}/database/migrations",            // negocio del package
+                'packages/Core/database/migrations/tenant',
+                "packages/{$package}/database/migrations",
             ];
         } else {
+            $connection = 'central';
             $paths = self::CENTRAL_PATHS;
         }
 
@@ -82,13 +75,31 @@ class CoreMigrateCommand extends Command
         Artisan::call('migrate', $args, $this->output);
 
         if ($this->option('seed')) {
-            Artisan::call('core:seed', [
-                '--connection' => $connection,
-                '--package' => $package ?? 'Commander',
-                '--force' => (bool) $this->option('force'),
-            ], $this->output);
+            $seedArgs = ['--force' => (bool) $this->option('force')];
+            if ($package !== null) {
+                $seedArgs['--package'] = $package;
+            }
+            Artisan::call('core:seed', $seedArgs, $this->output);
         }
 
         return self::SUCCESS;
+    }
+
+    /** --package validado (StudlyCase + existe en disco), o null = central. */
+    private function resolvePackage(): ?string
+    {
+        $raw = trim((string) $this->option('package'));
+
+        if ($raw === '') {
+            return null;
+        }
+
+        $package = Str::studly($raw);
+
+        if (! is_dir(base_path("packages/{$package}"))) {
+            $this->fail("Package [{$package}] no existe en packages/.");
+        }
+
+        return $package;
     }
 }

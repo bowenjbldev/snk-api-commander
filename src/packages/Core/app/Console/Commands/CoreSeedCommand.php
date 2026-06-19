@@ -6,38 +6,36 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Packages\Core\Console\Concerns\CorePackageDatabaseSupport;
 use Packages\Core\Database\Seeders\CorePackagesDatabaseSeeder;
 
+/**
+ * Igual que core:migrate: --package -> TENANT (BD = snake(package)); sin --package -> CENTRAL
+ * (operador: seeders de Core + Commander en la BD central).
+ */
 class CoreSeedCommand extends Command
 {
-    use CorePackageDatabaseSupport;
-
     protected $signature = 'core:seed
-        {--connection= : Conexion destino (central|tenant); por defecto la default de la app}
-        {--package= : Target package (defaults to API_PACKAGE, e.g. Shop)}
-        {--db= : Nombre de la BD del tenant (por defecto snake(package); convencion package = BD)}
+        {--package= : Package -> TENANT (BD = snake(package)). Sin --package = CENTRAL (operador).}
         {--class= : Specific seeder class to run}
         {--force : Force the operation to run in production}';
 
-    protected $description = 'Run Core + package seeders on the central or a tenant database';
+    protected $description = 'Run seeders on the central database or on a package\'s tenant database';
 
     public function handle(): int
     {
-        $package = $this->resolvePackageForConsole();
-        $connection = $this->option('connection');
+        $package = $this->resolvePackage();
 
-        if ($connection === 'tenant') {
-            // Convencion: package = BD. --db solo para un nombre distinto al de snake(package).
-            $db = trim((string) $this->option('db')) ?: Str::snake($package);
-            config(['database.connections.tenant.database' => $db]);
+        if ($package !== null) {
+            $connection = 'tenant';
+            config(['database.connections.tenant.database' => Str::snake($package)]);
             DB::purge('tenant');
+            $target = $package;
+        } else {
+            $connection = 'central';
+            $target = 'Commander'; // el operador vive en la central
         }
 
-        $args = ['--force' => (bool) $this->option('force')];
-        if ($connection) {
-            $args['--database'] = $connection; // db:seed corre los seeders sobre esta conexion
-        }
+        $args = ['--force' => (bool) $this->option('force'), '--database' => $connection];
 
         if ($this->option('class')) {
             $this->info("Running seeder [{$this->option('class')}]...");
@@ -46,13 +44,31 @@ class CoreSeedCommand extends Command
             return self::SUCCESS;
         }
 
-        CorePackagesDatabaseSeeder::$targetPackage = $package;
+        CorePackagesDatabaseSeeder::$targetPackage = $target;
 
-        $this->info("Running seeders for [{$package}]...");
+        $this->info("Running seeders for [{$target}] on [{$connection}]...");
         Artisan::call('db:seed', $args, $this->output);
 
         CorePackagesDatabaseSeeder::$targetPackage = null;
 
         return self::SUCCESS;
+    }
+
+    /** --package validado (StudlyCase + existe en disco), o null = central. */
+    private function resolvePackage(): ?string
+    {
+        $raw = trim((string) $this->option('package'));
+
+        if ($raw === '') {
+            return null;
+        }
+
+        $package = Str::studly($raw);
+
+        if (! is_dir(base_path("packages/{$package}"))) {
+            $this->fail("Package [{$package}] no existe en packages/.");
+        }
+
+        return $package;
     }
 }

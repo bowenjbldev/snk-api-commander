@@ -26,10 +26,10 @@ docker compose up -d          # build + composer install + APP_KEY + migrate cen
 curl -k https://localhost:8443/api/v1   # health check (Core, agnostico de paquete)
 ```
 
-El entrypoint migra el deploy **central** (`core:migrate --connection=central`): registro, control-plane, commander y la base del operador. Las BD de cada paquete las crea el provisioning. Para que el panel de operador tenga un admin, siémbralo una vez:
+El entrypoint migra el deploy **central** (`core:migrate`, sin `--package`): registro, control-plane, commander y la base del operador. Las BD de cada paquete las crea el provisioning. Para que el panel de operador tenga un admin, siémbralo una vez:
 
 ```bash
-docker compose exec app php artisan core:seed --connection=central --package=Commander --force   # admin@snake.com / secret1234
+docker compose exec app php artisan core:seed --force   # central; admin@snake.com / secret1234
 ```
 
 Luego, desde el Commander (`https://commander.<BASE_DOMAIN>`), creas un plan y das de alta un paquete para un cliente: eso lo provisiona en vivo (ver "Provisioning").
@@ -118,7 +118,7 @@ Deploy / actualizar:
 
 ```bash
 git pull && composer install --no-dev -o
-php artisan core:migrate --connection=central --force   # central (las BD de paquete las crea el provisioning)
+php artisan core:migrate --force   # central (sin --package; las BD de paquete las crea el provisioning)
 php artisan config:cache route:cache   # route:cache hornea BASE_DOMAIN; re-cachear en cada deploy
 ```
 
@@ -195,7 +195,7 @@ El **codigo** de un paquete viaja por git (lo programas en local con `make:packa
 
 1. Crea/resuelve cliente + suscripcion.
 2. Crea la fila `core_packages` (la instancia: enciende el subdominio).
-3. **Crea la BD del paquete** (`CREATE DATABASE`) y corre `core:migrate --connection=tenant --package=<X>` (base Laravel + negocio; BD = snake(package)) + `core:seed` (admin del paquete) **en esa BD**.
+3. **Crea la BD del paquete** (`CREATE DATABASE`) y corre `core:migrate --package=<X>` (base Laravel + negocio; BD = snake(package)) + `core:seed --package=<X>` (admin del paquete) **en esa BD**.
 4. Activa + escribe las cuotas del plan (en la central).
 
 Sin `host_command`, sin `subscription.sh`. El subdominio queda vivo al terminar. De-provisionar (`DELETE /deployments/{id}`) hace `DROP DATABASE` + limpia la central.
@@ -213,11 +213,12 @@ composer dump-autoload
 ### Base de datos
 
 ```bash
-php artisan core:migrate --connection=central                  # registro + control-plane + commander + base operador
-php artisan core:migrate --connection=tenant --package=Shop    # base + negocio en la BD del paquete (BD = snake(package))
-php artisan core:seed    --connection=tenant --package=Shop    # admin + seeders del paquete (en su BD)
-php artisan core:migrate --connection=central --rollback
-# package = BD por convencion: --db solo si quieres un nombre de BD distinto
+php artisan core:migrate                  # CENTRAL: registro + control-plane + commander + base operador
+php artisan core:seed                     # CENTRAL: admin + permisos del operador
+php artisan core:migrate --package=Shop   # TENANT: base + negocio en la BD del paquete (BD = snake(package))
+php artisan core:seed    --package=Shop   # TENANT: admin + seeders del paquete (en su BD)
+php artisan core:migrate --rollback       # rollback de la central
+# Regla: --package => tenant (BD=snake(package)); sin --package => central.
 # (normalmente las BD de paquete las gestiona el provisioning del Commander, no a mano)
 ```
 
@@ -287,7 +288,7 @@ Separadas en `packages/Core/database/migrations/{central,tenant}` por su destino
 - **tenant/** (corre en la central para el operador Y en CADA BD de paquete): Roles/permisos (Spatie), schema base (`users`, `sessions`, `cache`, `jobs`...), tokens Sanctum.
 - **negocio**: `packages/{Pkg}/database/migrations/` (solo en la BD del paquete).
 
-`core:migrate --connection=central` corre central+tenant-base+commander; el provisioning corre `--connection=tenant --package=<X>` (tenant-base + negocio) en la BD del paquete (BD = snake(package); convencion package = BD).
+`core:migrate` (sin `--package`) corre central+tenant-base+commander; el provisioning corre `core:migrate --package=<X>` (tenant-base + negocio) en la BD del paquete. Regla: `--package` ⟹ tenant (BD = snake(package)); sin `--package` ⟹ central.
 
 ### Seeder por defecto
 
@@ -332,7 +333,7 @@ Servicios:
 | `db` | `mariadb:latest` (crea la BD central `commander` en init; las de paquete las crea el provisioning) | `${DB_PORT:-3306}:3306` (3307 en local) |
 | `commander-web` | `node:24-alpine` (SPA en `commander.<BASE_DOMAIN>`) | 80 (interno) |
 
-El entrypoint: crea `.env` si falta, `composer install`, `APP_KEY`, fija permisos, y migra la **central** (`core:migrate --connection=central`). Luego PHP-FPM.
+El entrypoint: crea `.env` si falta, `composer install`, `APP_KEY`, fija permisos, y migra la **central** (`core:migrate`, sin `--package`). Luego PHP-FPM.
 
 ## Desarrollo local
 

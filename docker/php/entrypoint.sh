@@ -53,7 +53,7 @@ php artisan config:clear
 # Migra el deploy CENTRAL (registro core_packages + control-plane + commander + base del operador).
 # Las BD de cada package las crea/migra el provisioning (CREATE DATABASE + core:migrate tenant).
 echo "Running central migrations..."
-php artisan core:migrate --connection=central --force
+php artisan core:migrate --force
 
 # Limpiar cache (requiere DB, va después de migrate)
 echo "Clearing application cache..."
