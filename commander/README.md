@@ -5,8 +5,7 @@ Single-operator admin panel for the SnakeCloud platform — remote control
 usage, quotas, request logs) for subscription-based REST API deployments.
 
 Standalone **Vite + React + TypeScript** SPA built with **IBM Carbon Design System
-v11** (`@carbon/react`) and `@carbon/charts-react`, faithfully recreating the design
-handoff in `../docs/design/design_handoff_snakecloud_cms/`.
+v11** (`@carbon/react`) and `@carbon/charts-react`.
 
 ## Run
 
@@ -56,10 +55,10 @@ built relative to app-load time so grace countdowns tick live and relative ages
 stay correct. All mutations (suspend/grace/resume, inline quota edits, invoice
 mark-paid/overdue enforcement, secret rotation, CRUD) update the store in place.
 
-There is **no backend wiring** yet. The domain types in `src/store/types.ts` mirror
-the deploy-side `core_*` tables (see `../docs/CONTROL-PLANE.md`) so a future swap
-from fixtures to the signed `/control` HMAC API is a data-source change, not a model
-change. A future `Commander` deploy can serve `commander/dist` without moving this source.
+The domain types in `src/store/types.ts` mirror the backend `commander_*` tables, so
+moving the data source from fixtures to the Commander REST API is a data-source change,
+not a model change. A future `Commander` deploy can serve `commander/dist` without moving
+this source.
 
 ## Architecture
 
