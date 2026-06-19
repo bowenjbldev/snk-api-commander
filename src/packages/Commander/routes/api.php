@@ -25,15 +25,14 @@ Route::middleware(['api'])->group(function () {
         Route::apiResource('clients', CommanderClientsController::class);
         Route::apiResource('plans', CommanderPlansController::class);
 
-        // Client-first provisioning: create a desired subscription (client + plan → pending deployment)
+        // Client-first provisioning: crea cliente + suscripcion + instancia (core_packages) en un paso
         Route::post('provisioning', [CommanderProvisioningController::class, 'store']);
 
-        // Signed /control proxy — operator state actions + live mirror sync (push to each deploy)
+        // Acciones de estado del operador: in-process directo sobre core_packages (sin HMAC/HTTP).
         Route::post('deployments/{id}/suspend', [CommanderDeploymentsController::class, 'suspend']);
         Route::post('deployments/{id}/grace', [CommanderDeploymentsController::class, 'grace']);
         Route::post('deployments/{id}/resume', [CommanderDeploymentsController::class, 'resume']);
-        Route::post('deployments/{id}/sync', [CommanderDeploymentsController::class, 'sync']);
-        Route::post('deployments/{id}/rotate-secret', [CommanderDeploymentsController::class, 'rotateSecret']);
+        // Uso y logs reales del package: query directo a core_usage_rollups / core_request_logs.
         Route::get('deployments/{id}/usage', [CommanderDeploymentsController::class, 'usage']);
         Route::get('deployments/{id}/logs', [CommanderDeploymentsController::class, 'logs']);
         Route::apiResource('deployments', CommanderDeploymentsController::class);

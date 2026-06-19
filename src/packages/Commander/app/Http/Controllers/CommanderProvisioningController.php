@@ -6,6 +6,7 @@ use Carbon\CarbonImmutable;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Packages\Commander\Models\ClientModel;
@@ -14,7 +15,16 @@ use Packages\Commander\Models\PlanModel;
 use Packages\Commander\Models\QuotaModel;
 use Packages\Commander\Models\SubscriptionModel;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
+use Packages\Core\Models\CorePackageModel;
+use Packages\Core\Models\CoreQuotaMetricModel;
+use Packages\Core\Support\CoreActivePackageSupport;
 
+/**
+ * Client-first provisioning, EN UN PASO e in-process: registra CLIENTE (nuevo o existente) + PLAN,
+ * crea la instancia (fila core_packages = subdominio activo), su suscripcion y cuotas, migra las
+ * tablas del package sobre la BD compartida y siembra su admin. No hay host_command ni script: el
+ * codigo del package ya viaja por git; aqui solo se da de alta la instancia.
+ */
 #[Group('Provisioning')]
 class CommanderProvisioningController extends CoreBaseApiController
 {
@@ -28,12 +38,6 @@ class CommanderProvisioningController extends CoreBaseApiController
         'users_total' => 'count',
     ];
 
-    /**
-     * Client-first provisioning: from the Commander, register a CLIENT (new or existing) and associate
-     * a catalog PLAN. Creates the desired subscription as a 'provisioning' deployment + its subscription
-     * + quota rows (limits from the plan). The real environment is NOT created here — the operator runs
-     * `subscription.sh add <Package> --client=<id>` on the host, which activates this deployment.
-     */
     public function store(Request $request): JsonResponse
     {
         if ($response = $this->requirePermission(self::PROVISION_PERMISSION)) {
@@ -67,11 +71,16 @@ class CommanderProvisioningController extends CoreBaseApiController
         }
 
         $plan = PlanModel::findOrFail($data['plan_id']);
-        $package = $plan->package;
+        $package = Str::studly($plan->package);
         $subdomain = $data['subdomain'] ?? Str::of($package)->snake()->replace('_', '-')->toString();
         $deploymentId = $subdomain;
 
-        if (DeploymentModel::whereKey($deploymentId)->exists()) {
+        // El codigo del package debe existir en disco (viaja por git, no se genera aqui).
+        if (! is_dir(base_path("packages/{$package}"))) {
+            return response()->json(['error' => "Package code '{$package}' is not deployed."], 422);
+        }
+
+        if (DeploymentModel::whereKey($deploymentId)->exists() || CorePackageModel::where('subdomain', $subdomain)->exists()) {
             return response()->json(['error' => "A deployment '{$deploymentId}' already exists."], 409);
         }
 
@@ -79,11 +88,10 @@ class CommanderProvisioningController extends CoreBaseApiController
             return response()->json(['error' => "Client '{$data['client']['id']}' already exists."], 422);
         }
 
-        $baseDomain = (string) config('commander.commander.base_domain', 'snake.test');
+        $baseDomain = (string) config('core.base_domain', 'snake.test');
         $fqdn = "{$subdomain}.{$baseDomain}";
-        $plannedBaseUrl = "https://{$fqdn}/api/v1";
 
-        $deployment = DB::transaction(function () use ($data, $plan, $package, $subdomain, $deploymentId, $fqdn, $plannedBaseUrl) {
+        [$deployment, $corePackage] = DB::transaction(function () use ($data, $plan, $package, $subdomain, $deploymentId, $fqdn) {
             $now = CarbonImmutable::now();
 
             $clientId = $data['client_id'] ?? null;
@@ -99,6 +107,15 @@ class CommanderProvisioningController extends CoreBaseApiController
                 $clientId = $c['id'];
             }
 
+            // Instancia: la fila core_packages enciende el subdominio (la resuelve el middleware por host).
+            $corePackage = CorePackageModel::create([
+                'name' => $package,
+                'subdomain' => $subdomain,
+                'status' => 'active',
+                'changed_by' => 'operator',
+                'changed_at' => $now,
+            ]);
+
             $subscriptionId = 'sub_' . Str::lower(Str::random(20));
 
             $deployment = DeploymentModel::create([
@@ -106,18 +123,13 @@ class CommanderProvisioningController extends CoreBaseApiController
                 'name' => $deploymentId,
                 'subdomain' => $fqdn,
                 'client_id' => $clientId,
+                'package_id' => $corePackage->id,
                 'package' => $package,
-                'version' => 'pending',
-                'base_url' => $plannedBaseUrl, // planned; the host overwrites with the real one on activation
-                'control_secret' => null,
+                'version' => '1.0.0',
+                'base_url' => "https://{$fqdn}/api/v1",
                 'subscription_id' => $subscriptionId,
                 'requests_24h' => 0,
                 'quota_health' => 0,
-                'status' => 'provisioning',
-                'reason' => null,
-                'message' => 'Awaiting host provisioning.',
-                'changed_by' => 'operator',
-                'changed_at' => $now,
             ]);
 
             SubscriptionModel::create([
@@ -132,6 +144,7 @@ class CommanderProvisioningController extends CoreBaseApiController
             ]);
 
             foreach ($plan->quotaLimits() as $metric => $limit) {
+                // Espejo para el SPA (tab de cuotas del Commander)…
                 QuotaModel::create([
                     'id' => "{$deploymentId}:{$metric}",
                     'deployment_id' => $deploymentId,
@@ -141,14 +154,34 @@ class CommanderProvisioningController extends CoreBaseApiController
                     'on_exceed' => $limit !== null ? 'suspend' : 'none',
                     'unit' => self::QUOTA_UNITS[$metric] ?? 'count',
                 ]);
+
+                // …y la fila real que el medidor de cuotas de Core hace cumplir, por package.
+                CoreQuotaMetricModel::create([
+                    'package_id' => $corePackage->id,
+                    'metric_key' => $metric,
+                    'limit_value' => $limit,
+                    'current_value' => 0,
+                    'on_exceed' => $limit !== null ? 'suspend' : 'none',
+                ]);
             }
 
-            return $deployment;
+            return [$deployment, $corePackage];
         });
 
+        // Migra las tablas del package sobre la BD compartida y siembra su admin (DDL fuera de la
+        // transaccion). El seeder estampa el package_id activo en el admin → identidad por package.
+        $active = app(CoreActivePackageSupport::class);
+        $active->set($corePackage);
+
+        try {
+            Artisan::call('core:migrate', ['--package' => $package, '--force' => true]);
+            Artisan::call('core:seed', ['--package' => $package, '--force' => true]);
+        } finally {
+            $active->forget();
+        }
+
         return response()->json([
-            'deployment' => $deployment->load(['client', 'subscription', 'quotas']),
-            'host_command' => "bash scripts/subscription.sh add {$package} --client={$deployment->client_id}",
+            'deployment' => $deployment->fresh()->load(['client', 'subscription', 'quotas', 'corePackage']),
         ], 201);
     }
 }

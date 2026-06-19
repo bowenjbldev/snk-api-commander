@@ -6,14 +6,20 @@ use Carbon\CarbonImmutable;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Packages\Commander\Exceptions\CommanderControlException;
 use Packages\Commander\Models\ActivityEventModel;
 use Packages\Commander\Models\DeploymentModel;
-use Packages\Commander\Services\CommanderControlClient;
-use Packages\Commander\Services\CommanderDeploymentSyncService;
+use Packages\Core\Enums\CorePackageStatusEnum;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
+use Packages\Core\Models\CoreUsageRollupModel;
+use Packages\Core\Services\CorePackageStateService;
 
+/**
+ * In-process (misma app/BD): las acciones de estado escriben directamente la fila core_packages
+ * del package via CorePackageStateService; uso y logs se leen de core_usage_rollups /
+ * core_request_logs filtrando por package_id. Sin HMAC, sin HTTP, sin mirror.
+ */
 #[Group('Deployments')]
 class CommanderDeploymentsController extends CoreBaseApiController
 {
@@ -25,7 +31,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
     protected string $updatePermission = 'update deployments';
     protected string $destroyPermission = 'delete deployments';
 
-    protected array $allowedWith = ['client', 'subscription', 'quotas'];
+    protected array $allowedWith = ['client', 'subscription', 'quotas', 'corePackage'];
 
     protected array $validationRulesStore = [
         'id' => 'required|string|max:64|unique:commander_deployments,id',
@@ -35,7 +41,6 @@ class CommanderDeploymentsController extends CoreBaseApiController
         'package' => 'required|string|max:255',
         'version' => 'required|string|max:32',
         'base_url' => 'required|string|max:255',
-        'status' => 'nullable|in:active,grace,suspended,provisioning',
     ];
 
     protected array $validationRulesUpdate = [
@@ -45,19 +50,16 @@ class CommanderDeploymentsController extends CoreBaseApiController
         'package' => 'nullable|string|max:255',
         'version' => 'nullable|string|max:32',
         'base_url' => 'nullable|string|max:255',
-        'status' => 'nullable|in:active,grace,suspended,provisioning',
     ];
 
     /** Operator state actions are guarded by a dedicated control permission, not plain CRUD update. */
     private const CONTROL_PERMISSION = 'control deployments';
 
-    public function __construct(
-        private readonly CommanderControlClient $control,
-        private readonly CommanderDeploymentSyncService $sync,
-    ) {
+    public function __construct(private readonly CorePackageStateService $state)
+    {
     }
 
-    /** Push a suspension (402) to the deploy, then mirror the returned state locally. */
+    /** Suspend (402) the package: write core_packages directly. */
     public function suspend(Request $request, $id = null): JsonResponse
     {
         if ($response = $this->requirePermission(self::CONTROL_PERMISSION)) {
@@ -73,19 +75,21 @@ class CommanderDeploymentsController extends CoreBaseApiController
             'message' => 'nullable|string|max:280',
         ]);
 
-        try {
-            $result = $this->control->setState($deployment, 'suspended', $data['reason'], $data['message'] ?? null, null);
-        } catch (CommanderControlException $e) {
-            return $this->controlError($e);
-        }
+        $this->state->set(
+            CorePackageStatusEnum::Suspended,
+            $data['reason'],
+            $data['message'] ?? null,
+            null,
+            'operator',
+            $deployment->package_id,
+        );
 
-        $this->mirrorEchoedState($deployment, $result);
         $this->recordActivity('suspend', $deployment, $data['reason'], $data['message'] ?? null);
 
-        return response()->json($deployment->fresh());
+        return response()->json($deployment->fresh()->load('corePackage'));
     }
 
-    /** Push a time-boxed grace period to the deploy (grace_until from ISO or grace_hours). */
+    /** Grace period (time-boxed) for the package. */
     public function grace(Request $request, $id = null): JsonResponse
     {
         if ($response = $this->requirePermission(self::CONTROL_PERMISSION)) {
@@ -105,21 +109,23 @@ class CommanderDeploymentsController extends CoreBaseApiController
 
         $graceUntil = isset($data['grace_until'])
             ? CarbonImmutable::parse($data['grace_until'])
-            : CarbonImmutable::now()->addHours((int) ($data['grace_hours'] ?? config('commander.commander.operator.default_grace_hours', 72)));
+            : CarbonImmutable::now()->addHours((int) ($data['grace_hours'] ?? config('core.quotas.grace_hours', 72)));
 
-        try {
-            $result = $this->control->setState($deployment, 'grace', $data['reason'], $data['message'] ?? null, $graceUntil);
-        } catch (CommanderControlException $e) {
-            return $this->controlError($e);
-        }
+        $this->state->set(
+            CorePackageStatusEnum::Grace,
+            $data['reason'],
+            $data['message'] ?? null,
+            $graceUntil,
+            'operator',
+            $deployment->package_id,
+        );
 
-        $this->mirrorEchoedState($deployment, $result);
         $this->recordActivity('grace', $deployment, $data['reason'], $data['message'] ?? null);
 
-        return response()->json($deployment->fresh());
+        return response()->json($deployment->fresh()->load('corePackage'));
     }
 
-    /** Restore the deploy to active and clear reason/message/grace. */
+    /** Restore the package to active. */
     public function resume(Request $request, $id = null): JsonResponse
     {
         if ($response = $this->requirePermission(self::CONTROL_PERMISSION)) {
@@ -130,39 +136,21 @@ class CommanderDeploymentsController extends CoreBaseApiController
             return response()->json(['error' => 'Record not found'], 404);
         }
 
-        try {
-            $result = $this->control->setState($deployment, 'active', null, null, null);
-        } catch (CommanderControlException $e) {
-            return $this->controlError($e);
-        }
+        $this->state->set(
+            CorePackageStatusEnum::Active,
+            null,
+            null,
+            null,
+            'operator',
+            $deployment->package_id,
+        );
 
-        $this->mirrorEchoedState($deployment, $result);
         $this->recordActivity('resume', $deployment, null, null);
 
-        return response()->json($deployment->fresh());
+        return response()->json($deployment->fresh()->load('corePackage'));
     }
 
-    /** Pull live state + quotas + last-24h usage from the deploy into the local mirror. */
-    public function sync(Request $request, $id = null): JsonResponse
-    {
-        if ($response = $this->requirePermission(self::CONTROL_PERMISSION)) {
-            return $response;
-        }
-
-        if (($deployment = $this->findModel($id)) === null) {
-            return response()->json(['error' => 'Record not found'], 404);
-        }
-
-        try {
-            $fresh = $this->sync->sync($deployment);
-        } catch (CommanderControlException $e) {
-            return $this->controlError($e);
-        }
-
-        return response()->json($fresh->load('quotas'));
-    }
-
-    /** Proxy the deploy's real usage rollups (core_usage_rollups) for the Usage-tab charts. */
+    /** Real usage rollups (core_usage_rollups) for the package, for the Usage-tab charts. */
     public function usage(Request $request, $id = null): JsonResponse
     {
         if ($response = $this->requirePermission($this->showPermission)) {
@@ -180,23 +168,18 @@ class CommanderDeploymentsController extends CoreBaseApiController
             'per_page' => 'nullable|integer|min:1|max:1000',
         ]);
 
-        $query = array_filter([
-            'period' => $data['period'] ?? 'hour',
-            'from' => $data['from'] ?? null,
-            'to' => $data['to'] ?? null,
-            'per_page' => $data['per_page'] ?? 1000,
-        ], static fn ($v) => $v !== null);
+        $rollups = CoreUsageRollupModel::query()
+            ->where('package_id', $deployment->package_id)
+            ->where('period', $data['period'] ?? 'hour')
+            ->when(isset($data['from']), fn ($q) => $q->where('period_start', '>=', $data['from']))
+            ->when(isset($data['to']), fn ($q) => $q->where('period_start', '<=', $data['to']))
+            ->orderBy('period_start')
+            ->paginate($data['per_page'] ?? 1000);
 
-        try {
-            $usage = $this->control->getUsage($deployment, $query);
-        } catch (CommanderControlException $e) {
-            return $this->controlError($e);
-        }
-
-        return response()->json($usage);
+        return response()->json($rollups);
     }
 
-    /** Proxy the deploy's real request logs (core_request_logs) for the Logs view. */
+    /** Real request logs (core_request_logs) for the package, for the Logs view. */
     public function logs(Request $request, $id = null): JsonResponse
     {
         if ($response = $this->requirePermission($this->showPermission)) {
@@ -213,78 +196,21 @@ class CommanderDeploymentsController extends CoreBaseApiController
             'status_class' => 'nullable|integer|in:2,3,4,5',
         ]);
 
-        $query = array_filter([
-            'limit' => $data['limit'] ?? 100,
-            'since' => $data['since'] ?? null,
-            'status_class' => $data['status_class'] ?? null,
-        ], static fn ($v) => $v !== null);
+        $rows = DB::table('core_request_logs')
+            ->where('package_id', $deployment->package_id)
+            ->when(isset($data['since']), fn ($q) => $q->where('occurred_at', '>=', $data['since']))
+            ->when(isset($data['status_class']), function ($q) use ($data) {
+                $base = ((int) $data['status_class']) * 100;
 
-        try {
-            $logs = $this->control->getLogs($deployment, $query);
-        } catch (CommanderControlException $e) {
-            return $this->controlError($e);
-        }
-
-        // Tag each row with the deployment id so the SPA receives complete LogEntry objects.
-        $rows = array_map(
-            static fn ($row) => array_merge((array) $row, ['deployment_id' => $deployment->id]),
-            (array) ($logs['data'] ?? []),
-        );
+                return $q->where('status', '>=', $base)->where('status', '<', $base + 100);
+            })
+            ->orderByDesc('occurred_at')
+            ->limit($data['limit'] ?? 100)
+            ->get()
+            ->map(fn ($row) => array_merge((array) $row, ['deployment_id' => $deployment->id]))
+            ->all();
 
         return response()->json(['data' => $rows]);
-    }
-
-    /** Generate a new control secret, deliver it to the deploy (signed with the old one), then adopt it. */
-    public function rotateSecret(Request $request, $id = null): JsonResponse
-    {
-        if ($response = $this->requirePermission(self::CONTROL_PERMISSION)) {
-            return $response;
-        }
-
-        if (($deployment = $this->findModel($id)) === null) {
-            return response()->json(['error' => 'Record not found'], 404);
-        }
-
-        $new = 'sk_ctl_live_' . bin2hex(random_bytes(12));
-
-        try {
-            // send() signs with the row's CURRENT secret (read before we change it below).
-            $this->control->rotateSecret($deployment, $new);
-        } catch (CommanderControlException $e) {
-            return $this->controlError($e);
-        }
-
-        // Remote accepted → adopt locally. Inconsistency window (wider than just this save): if the
-        // deploy committed $new but its 2xx was lost (timeout), send() throws → 502 above and we never
-        // adopt $new, leaving the Commander on the old secret while the deploy is on $new. A failing
-        // save() here has the same end state. Recovery in both cases is to re-provision the deployment.
-        $deployment->control_secret = $new;
-        $deployment->control_secret_rotated_at = CarbonImmutable::now();
-        $deployment->save();
-
-        $this->recordActivity('rotate', $deployment, null, '…' . substr($new, -4));
-
-        return response()->json($deployment->fresh());
-    }
-
-    /**
-     * Mirror the deploy's echoed state after a successful control call. A 2xx without a populated state
-     * envelope (shouldn't happen with Core, but the contract tolerates it) would otherwise leave a stale
-     * mirror behind a 200; fall through to a full sync so the response reflects live state.
-     */
-    private function mirrorEchoedState(DeploymentModel $deployment, array $result): void
-    {
-        if (($result['state'] ?? []) !== []) {
-            $this->sync->applyState($deployment, $result['state']);
-
-            return;
-        }
-
-        try {
-            $this->sync->sync($deployment);
-        } catch (CommanderControlException) {
-            // best-effort refresh; the remote action already succeeded, leave the mirror as-is
-        }
     }
 
     private function recordActivity(string $kind, DeploymentModel $deployment, ?string $reason, ?string $message): void
@@ -299,14 +225,5 @@ class CommanderDeploymentsController extends CoreBaseApiController
             'by' => auth()->user()?->name ?? 'operator',
             'message' => $message,
         ]);
-    }
-
-    private function controlError(CommanderControlException $e): JsonResponse
-    {
-        return response()->json([
-            'error' => 'Control plane call failed.',
-            'detail' => $e->getMessage(),
-            'remote_status' => $e->remoteStatus,
-        ], 502);
     }
 }

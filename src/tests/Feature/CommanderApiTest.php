@@ -8,10 +8,11 @@ use Packages\Commander\Models\ClientModel;
 use Packages\Commander\Models\DeploymentModel;
 use Packages\Commander\Models\QuotaModel;
 use Packages\Core\Database\Seeders\CoreDatabaseSeeder;
+use Packages\Core\Models\CorePackageModel;
 use Packages\Core\Models\CoreUserModel;
-use Tests\TestCase;
+use Tests\CommanderTestCase;
 
-class CommanderApiTest extends TestCase
+class CommanderApiTest extends CommanderTestCase
 {
     use RefreshDatabase;
 
@@ -51,13 +52,18 @@ class CommanderApiTest extends TestCase
             'id' => 'kestrel', 'name' => 'Kestrel Logistics', 'company' => 'Kestrel Logistics Co',
             'email' => 'it@kestrel.test', 'status' => 'active',
         ]);
+
+        // State now lives on the core_packages row, referenced by package_id.
+        $package = CorePackageModel::create([
+            'name' => 'TrackingApi', 'subdomain' => 'kestrel-track', 'status' => 'grace',
+            'reason' => 'payment_overdue', 'message' => null,
+            'grace_until' => now()->addHours(48), 'changed_by' => 'operator', 'changed_at' => now(),
+        ]);
+
         DeploymentModel::create([
-            'id' => 'kestrel-track', 'name' => 'kestrel-track', 'subdomain' => 'kestrel-track.test',
-            'client_id' => 'kestrel', 'package' => 'tracking-api', 'version' => 'v2.9.3',
-            'base_url' => 'https://kestrel-track.test/api/v1',
-            'control_secret' => 'sk_ctl_live_aaaaaaaa3f2a',
-            'status' => 'grace', 'reason' => 'payment_overdue',
-            'grace_until' => now()->addHours(48), 'changed_by' => 'operator',
+            'id' => 'kestrel-track', 'name' => 'kestrel-track', 'subdomain' => 'kestrel-track.snake.test',
+            'client_id' => 'kestrel', 'package_id' => $package->id, 'package' => 'TrackingApi', 'version' => 'v2.9.3',
+            'base_url' => 'https://kestrel-track.snake.test/api/v1',
         ]);
         foreach (['requests_day', 'disk_db_mb', 'disk_storage_mb', 'users_total'] as $metric) {
             QuotaModel::create([
@@ -71,17 +77,45 @@ class CommanderApiTest extends TestCase
         $res->assertOk();
         $body = $res->json();
 
-        // Nested state object (not flat columns).
+        // Nested state object (sourced from core_packages, not flat columns).
         $this->assertSame('grace', $body['state']['status']);
         $this->assertSame('payment_overdue', $body['state']['reason']);
         $this->assertNotNull($body['state']['grace_until']);
 
-        // Secret never leaks; only the 4-char suffix is exposed.
-        $this->assertSame('3f2a', $body['control_secret_suffix']);
+        // No HMAC secret anywhere in the in-process model.
         $this->assertArrayNotHasKey('control_secret', $body);
+        $this->assertArrayNotHasKey('control_secret_suffix', $body);
 
         // Relations resolve.
         $this->assertSame('Kestrel Logistics', $body['client']['name']);
         $this->assertCount(4, $body['quotas']);
+    }
+
+    public function test_state_actions_write_core_packages_in_process(): void
+    {
+        $admin = $this->admin();
+
+        $package = CorePackageModel::create(['name' => 'Shop', 'subdomain' => 'shop', 'status' => 'active']);
+        ClientModel::create(['id' => 'c', 'name' => 'C', 'email' => 'c@c.test', 'status' => 'active']);
+        DeploymentModel::create([
+            'id' => 'shop', 'name' => 'shop', 'subdomain' => 'shop.snake.test', 'client_id' => 'c',
+            'package_id' => $package->id, 'package' => 'Shop', 'version' => '1.0.0',
+            'base_url' => 'https://shop.snake.test/api/v1',
+        ]);
+
+        // Suspend → writes the core_packages row directly (no HMAC/HTTP).
+        $this->actingAs($admin, 'sanctum')
+            ->postJson('/api/v1/deployments/shop/suspend', ['reason' => 'payment_overdue', 'message' => 'pay up'])
+            ->assertOk()
+            ->assertJsonPath('state.status', 'suspended')
+            ->assertJsonPath('state.reason', 'payment_overdue');
+        $this->assertSame('suspended', $package->fresh()->getRawOriginal('status'));
+
+        // Resume → back to active.
+        $this->actingAs($admin, 'sanctum')
+            ->postJson('/api/v1/deployments/shop/resume')
+            ->assertOk()
+            ->assertJsonPath('state.status', 'active');
+        $this->assertSame('active', $package->fresh()->getRawOriginal('status'));
     }
 }

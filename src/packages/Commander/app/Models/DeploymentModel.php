@@ -5,6 +5,7 @@ namespace Packages\Commander\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Packages\Core\Models\CorePackageModel;
 
 class DeploymentModel extends Model
 {
@@ -16,55 +17,46 @@ class DeploymentModel extends Model
 
     protected $guarded = [];
 
-    // Never expose the raw secret or the flat state columns; the SPA shape uses a nested
-    // `state` object + `control_secret_suffix` (both appended below).
     protected $hidden = [
-        'control_secret',
-        'status',
-        'reason',
-        'message',
-        'grace_until',
-        'changed_by',
-        'changed_at',
+        'package_id',
+        'core_package', // relacion interna (estado); el SPA usa `package` (string) y `state`
     ];
 
+    // SPA shape: nested `state` object, ahora leido de core_packages (fuente de verdad).
     protected $appends = [
         'state',
-        'control_secret_suffix',
     ];
 
     protected function casts(): array
     {
         return [
-            'control_secret' => 'encrypted',
-            'control_secret_rotated_at' => 'datetime',
             'last_seen' => 'datetime',
-            'grace_until' => 'datetime',
-            'changed_at' => 'datetime',
             'requests_24h' => 'integer',
             'quota_health' => 'float',
         ];
     }
 
-    /** Nested deploy state matching the SPA's DeploymentState type. */
+    /** Estado runtime del package (core_packages), con la forma DeploymentState del SPA. */
     public function getStateAttribute(): array
     {
+        $package = $this->relationLoaded('corePackage')
+            ? $this->getRelation('corePackage')
+            : ($this->package_id !== null ? $this->corePackage()->first() : null);
+
         return [
-            'status' => $this->attributes['status'] ?? 'active',
-            'reason' => $this->attributes['reason'] ?? null,
-            'message' => $this->attributes['message'] ?? null,
-            'grace_until' => optional($this->grace_until)->toISOString(),
-            'changed_by' => $this->attributes['changed_by'] ?? null,
-            'changed_at' => optional($this->changed_at)->toISOString(),
+            'status' => $package?->getRawOriginal('status') ?? 'active',
+            'reason' => $package?->reason,
+            'message' => $package?->message,
+            'grace_until' => optional($package?->grace_until)->toISOString(),
+            'changed_by' => $package?->changed_by,
+            'changed_at' => optional($package?->changed_at)->toISOString(),
         ];
     }
 
-    /** Last 4 chars of the (decrypted) control secret — never the full value. */
-    public function getControlSecretSuffixAttribute(): ?string
+    /** Relacion con la instancia/estado (core_packages). Nombre distinto de la columna `package`. */
+    public function corePackage(): BelongsTo
     {
-        $secret = $this->control_secret;
-
-        return $secret ? substr($secret, -4) : null;
+        return $this->belongsTo(CorePackageModel::class, 'package_id');
     }
 
     public function client(): BelongsTo
