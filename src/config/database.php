@@ -123,7 +123,8 @@ return [
             'driver' => env('COMMANDER_DB_DRIVER', 'mysql'), // sqlite en tests
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
-            'database' => env('COMMANDER_DB_DATABASE', 'commander'),
+            // La BD del operador siempre se llama 'commander'; solo en tests (sqlite) es :memory:.
+            'database' => env('COMMANDER_DB_DRIVER', 'mysql') === 'sqlite' ? ':memory:' : 'commander',
             'username' => env('DB_USERNAME', 'root'),
             'password' => env('DB_PASSWORD', ''),
             'charset' => 'utf8mb4',
@@ -140,7 +141,8 @@ return [
             'driver' => env('TENANT_DB_DRIVER', env('COMMANDER_DB_DRIVER', 'mysql')),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
-            'database' => env('COMMANDER_DB_DATABASE', 'commander'),
+            // Placeholder: la BD real del tenant se fija en runtime. En tests (sqlite) es :memory:.
+            'database' => env('TENANT_DB_DRIVER', env('COMMANDER_DB_DRIVER', 'mysql')) === 'sqlite' ? ':memory:' : 'commander',
             'username' => env('DB_USERNAME', 'root'),
             'password' => env('DB_PASSWORD', ''),
             'charset' => 'utf8mb4',

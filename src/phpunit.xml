@@ -29,7 +29,6 @@
         <!-- Multi-tenant en tests: commander y tenant son sqlite :memory: (no hay MariaDB). -->
         <env name="DB_CONNECTION" value="commander"/>
         <env name="COMMANDER_DB_DRIVER" value="sqlite"/>
-        <env name="COMMANDER_DB_DATABASE" value=":memory:"/>
         <env name="TENANT_DB_DRIVER" value="sqlite"/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
