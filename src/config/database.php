@@ -120,7 +120,7 @@ return [
         // 'central': registro (core_packages), commander_*, control-plane y la base del operador.
         // Necesita un usuario con acceso a todas las BD + CREATE DATABASE (local: root).
         'central' => [
-            'driver' => 'mysql',
+            'driver' => env('CENTRAL_DB_DRIVER', 'mysql'), // sqlite en tests
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
             'database' => env('CENTRAL_DB_DATABASE', 'commander'),
@@ -137,7 +137,7 @@ return [
         // 'tenant': BD del package activo; 'database' se fija en runtime
         // (CoreResolvePackageFromHostMiddleware / provisioning). El valor aqui es solo placeholder.
         'tenant' => [
-            'driver' => 'mysql',
+            'driver' => env('TENANT_DB_DRIVER', env('CENTRAL_DB_DRIVER', 'mysql')),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
             'database' => env('CENTRAL_DB_DATABASE', 'commander'),

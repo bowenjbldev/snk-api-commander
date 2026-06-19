@@ -119,17 +119,31 @@ class CommanderApiTest extends CommanderTestCase
         $this->assertSame('active', $package->fresh()->getRawOriginal('status'));
     }
 
-    public function test_operator_panel_rejects_tenant_credentials(): void
+    public function test_deprovision_removes_central_rows(): void
     {
-        $this->admin(); // seeds the shared 'admin' role + Commander permissions
+        $admin = $this->admin();
 
-        $package = CorePackageModel::create(['name' => 'Shop', 'subdomain' => 'shop', 'status' => 'active']);
-        $tenant = CoreUserModel::create([
-            'package_id' => $package->id, 'email' => 'admin@snake.com', 'name' => 'Shop Admin', 'password' => 'secret1234',
+        $package = CorePackageModel::create(['name' => 'Shop', 'subdomain' => 'shop', 'database' => 'shop', 'status' => 'active']);
+        ClientModel::create(['id' => 'c', 'name' => 'C', 'email' => 'c@c.test', 'status' => 'active']);
+        DeploymentModel::create([
+            'id' => 'shop', 'name' => 'shop', 'subdomain' => 'shop.snake.test', 'client_id' => 'c',
+            'package_id' => $package->id, 'package' => 'Shop', 'version' => '1.0.0',
+            'base_url' => 'https://shop.snake.test/api/v1',
         ]);
-        $tenant->assignRole('admin'); // even with the (globally shared) admin role…
+        QuotaModel::create([
+            'id' => 'shop:requests_day', 'deployment_id' => 'shop', 'metric_key' => 'requests_day',
+            'current_value' => 0, 'limit_value' => 100, 'on_exceed' => 'suspend', 'unit' => 'count',
+        ]);
 
-        // …a tenant token must not reach the operator panel (package_id != null → 403).
-        $this->actingAs($tenant, 'sanctum')->getJson('/api/v1/deployments')->assertStatus(403);
+        // De-provision: en MariaDB hace DROP DATABASE; aqui (sqlite) limpia las filas centrales.
+        $this->actingAs($admin, 'sanctum')->deleteJson('/api/v1/deployments/shop')->assertOk();
+
+        $this->assertNull(DeploymentModel::find('shop'));
+        $this->assertNull(CorePackageModel::find($package->id));
+        $this->assertCount(0, QuotaModel::where('deployment_id', 'shop')->get());
     }
+
+    // Nota: el aislamiento operador↔tenant ya no necesita middleware: con BD por package, el token
+    // de un tenant vive en SU BD y no existe en la central -> 401 automatico. Se verifica en vivo
+    // (no se puede modelar con una sola sqlite en tests).
 }

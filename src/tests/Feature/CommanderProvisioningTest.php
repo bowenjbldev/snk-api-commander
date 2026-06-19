@@ -56,10 +56,11 @@ class CommanderProvisioningTest extends CommanderTestCase
         $res->assertJsonPath('deployment.subscription.plan', 'Pro');
         $res->assertJsonMissingPath('host_command');
 
-        // Instance row (core_packages) created + active → subdomain is live.
+        // Instance row (core_packages) created + active + its own database name → subdomain is live.
         $cp = CorePackageModel::where('subdomain', 'shop')->first();
         $this->assertNotNull($cp);
         $this->assertSame('active', $cp->getRawOriginal('status'));
+        $this->assertSame('shop', $cp->database); // BD propia del package
 
         // Client created with full billing.
         $client = ClientModel::find('acme');
@@ -76,12 +77,13 @@ class CommanderProvisioningTest extends CommanderTestCase
         $this->assertSame('suspend', $dep->quotas->firstWhere('metric_key', 'requests_day')->on_exceed);
         $this->assertNull($dep->quotas->firstWhere('metric_key', 'disk_storage_mb')->limit_value);
 
-        // Real enforcement rows (core_quota_metrics) seeded per package.
+        // Real enforcement rows (core_quota_metrics) seeded per package (central).
         $this->assertSame(100000, (int) CoreQuotaMetricModel::where('package_id', $cp->id)
             ->where('metric_key', 'requests_day')->value('limit_value'));
 
-        // The package's admin user is seeded scoped to the package (identity per package).
-        $this->assertNotNull(CoreUserModel::where('email', 'admin@snake.com')->where('package_id', $cp->id)->first());
+        // Nota: la BD del package (su base Laravel + negocio + admin) se crea con CREATE DATABASE +
+        // core:migrate --connection=tenant, que sqlite no soporta; se omite en tests y se verifica
+        // en vivo (shop/blog como BDs separadas).
     }
 
     public function test_provisioning_requires_permission(): void
