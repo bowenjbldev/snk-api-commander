@@ -117,7 +117,7 @@ return [
         ],
 
         // ── Multi-tenant: una BD por package + una commander ───────────────────
-        // 'commander': registro (packages), commander_*, control-plane y la base del operador.
+        // 'commander': registro, metering y operador (commander_*) + la base del operador.
         // Necesita un usuario con acceso a todas las BD + CREATE DATABASE (local: root).
         'commander' => [
             'driver' => env('COMMANDER_DB_DRIVER', 'mysql'), // sqlite en tests

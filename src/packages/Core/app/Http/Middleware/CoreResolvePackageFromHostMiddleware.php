@@ -5,6 +5,7 @@ namespace Packages\Core\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Packages\Commander\Models\CommanderPackageModel;
 use Packages\Core\Support\CoreActivePackageSupport;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -31,20 +32,19 @@ class CoreResolvePackageFromHostMiddleware
             abort(404);
         }
 
-        // El registro `packages` vive en la BD commander; se lee por query builder (su modelo
-        // CommanderPackageModel es de Commander y Core no lo importa). La conexion 'commander' es fija,
+        // El registro vive en la BD commander; CommanderPackageModel esta pinneado a esa conexion,
         // asi que resuelve aunque luego cambiemos la conexion default a la del tenant.
-        $package = DB::connection('commander')->table('commander_packages')->where('subdomain', $subdomain)->first();
+        $package = CommanderPackageModel::query()->where('subdomain', $subdomain)->first();
 
         if ($package === null) {
             abort(404); // subdominio no provisionado
         }
 
-        $this->active->set((int) $package->id);
+        $this->active->set($package);
 
         // Aislamiento FISICO: conmuta la conexion default a la BD del package. Bajo PHP-FPM cada
         // request es share-nothing, asi que el cambio vive solo en este request (no hay bleed).
-        // Las tablas de la BD commander (packages, control-plane, commander_*) van pinneadas a 'commander'.
+        // Las tablas de la BD commander (registro, metering y operador, todas commander_*) van pinneadas a 'commander'.
         // El token de un tenant ni existe en la BD de otro -> 401 automatico, sin check explicito.
         if (! empty($package->database)) {
             config(['database.connections.tenant.database' => $package->database]);

@@ -29,16 +29,16 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Control Plane (tenant self-management)
+    | Commander (el control plane del tenant)
     |--------------------------------------------------------------------------
     |
-    | Whether this deploy runs the tenant control plane: metering, kill-switch,
-    | quotas and the /control surface. Customer deploys leave it on; the operator
-    | panel (API_PACKAGE=Commander) turns it off — it manages tenants, it is not one.
+    | Whether this deploy runs the commander: metering, kill-switch y quotas.
+    | Customer deploys leave it on; the isolated operator panel
+    | (API_PACKAGE=Commander) turns it off — it manages tenants, it is not one.
     |
     */
 
-    'control_plane' => (bool) env('CORE_CONTROL_PLANE', true),
+    'commander' => (bool) env('CORE_COMMANDER', true),
 
     /*
     |--------------------------------------------------------------------------

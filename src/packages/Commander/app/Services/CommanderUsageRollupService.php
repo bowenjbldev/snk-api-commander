@@ -3,7 +3,7 @@
 namespace Packages\Commander\Services;
 
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\DB;
+use Packages\Commander\Models\CommanderRequestLogModel;
 use Packages\Commander\Models\CommanderUsageRollupModel;
 
 /**
@@ -55,7 +55,7 @@ class CommanderUsageRollupService
         $deleted = 0;
 
         do {
-            $affected = DB::connection('commander')->table('commander_request_logs')
+            $affected = CommanderRequestLogModel::query()
                 ->where('occurred_at', '<', $cutoff)
                 ->limit(self::PRUNE_BATCH)
                 ->delete();
@@ -74,7 +74,7 @@ class CommanderUsageRollupService
             return $this->truncate(CarbonImmutable::parse($last, 'UTC'), $period);
         }
 
-        $first = DB::connection('commander')->table('commander_request_logs')->min('occurred_at');
+        $first = CommanderRequestLogModel::query()->min('occurred_at');
 
         return $first !== null
             ? $this->truncate(CarbonImmutable::parse($first, 'UTC'), $period)
@@ -88,7 +88,7 @@ class CommanderUsageRollupService
         /** @var array<string, array{route: string, method: string, status_class: string, count: int, errors: int, dur_sum: int, durations: int[], req_bytes: int, resp_bytes: int, users: array<int|string, true>}> $groups */
         $groups = [];
 
-        DB::connection('commander')->table('commander_request_logs')
+        CommanderRequestLogModel::query()
             ->where('occurred_at', '>=', $bucket)
             ->where('occurred_at', '<', $bucketEnd)
             ->orderBy('id')

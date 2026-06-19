@@ -2,44 +2,48 @@
 
 namespace Packages\Core\Support;
 
-use Illuminate\Support\Facades\DB;
+use Packages\Commander\Models\CommanderPackageModel;
 
 /**
- * Id del package cuyo subdominio sirvio el request actual. Lo fija por request
+ * Resuelve el package cuyo subdominio sirvio el request actual. Lo fija por request
  * CoreResolvePackageFromHostMiddleware; fuera de un request HTTP (CLI, tests, deploy
- * de un solo package) cae a API_PACKAGE, resolviendo el id desde el registro `packages`.
- * NO acopla con el modelo del registro (vive en Commander): lo lee por query builder
- * sobre la conexion 'commander'. Singleton: el valor vive durante el request.
+ * de un solo package) cae a API_PACKAGE, de modo que el codigo que corre sin host
+ * tambien resuelve un package. Singleton: el valor vive durante el request.
  */
 class CoreActivePackageSupport
 {
-    private ?int $id = null;
+    private ?CommanderPackageModel $package = null;
 
     private bool $resolved = false;
 
-    public function set(?int $packageId): void
+    public function set(?CommanderPackageModel $package): void
     {
-        $this->id = $packageId;
+        $this->package = $package;
         $this->resolved = true;
     }
 
     public function forget(): void
     {
-        $this->id = null;
+        $this->package = null;
         $this->resolved = false;
+    }
+
+    public function current(): ?CommanderPackageModel
+    {
+        if (! $this->resolved) {
+            $this->package = $this->resolveFromEnvironment();
+            $this->resolved = true;
+        }
+
+        return $this->package;
     }
 
     public function id(): ?int
     {
-        if (! $this->resolved) {
-            $this->id = $this->resolveFromEnvironment();
-            $this->resolved = true;
-        }
-
-        return $this->id;
+        return $this->current()?->getKey();
     }
 
-    private function resolveFromEnvironment(): ?int
+    private function resolveFromEnvironment(): ?CommanderPackageModel
     {
         $name = CorePackageSelectorSupport::activePackageName();
 
@@ -48,9 +52,7 @@ class CoreActivePackageSupport
         }
 
         try {
-            $id = DB::connection('commander')->table('commander_packages')->where('name', $name)->value('id');
-
-            return $id !== null ? (int) $id : null;
+            return CommanderPackageModel::query()->where('name', $name)->first();
         } catch (\Throwable) {
             return null; // tabla aun no migrada
         }

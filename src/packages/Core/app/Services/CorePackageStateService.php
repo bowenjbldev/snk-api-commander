@@ -5,17 +5,16 @@ namespace Packages\Core\Services;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
+use Packages\Commander\Models\CommanderPackageModel;
 use Packages\Core\Enums\CorePackageStatusEnum;
 use Packages\Core\Support\CoreActivePackageSupport;
 use Packages\Core\Support\CorePackageStateData;
 
 /**
  * Estado runtime por package (active|grace|suspended), guardado como columnas de la fila
- * `packages` (BD commander). El package activo se resuelve del request (CoreActivePackageSupport)
- * o se pasa explicito (Commander, medidor de cuotas por package). Lee/escribe por query builder
- * sobre la conexion 'commander': el modelo del registro vive en Commander y Core no lo importa.
- * Los lectores usan current(), que cachea la fila por core.state.cache_ttl.
+ * `commander_packages`. El package activo se resuelve del request (CoreActivePackageSupport)
+ * o se pasa explicito (Commander, medidor de cuotas por package). Lee/escribe via
+ * CommanderPackageModel. Los lectores usan current(), que cachea la fila por core.state.cache_ttl.
  */
 class CorePackageStateService
 {
@@ -31,17 +30,15 @@ class CorePackageStateService
             $this->cacheKey($packageId),
             (int) config('core.state.cache_ttl', 30),
             function () use ($packageId): array {
-                $row = $packageId !== null
-                    ? DB::connection('commander')->table('commander_packages')->where('id', $packageId)->first()
-                    : null;
+                $row = $packageId !== null ? CommanderPackageModel::query()->find($packageId) : null;
 
                 return [
-                    'status' => $row->status ?? CorePackageStatusEnum::Active->value,
-                    'reason' => $row->reason ?? null,
-                    'message' => $row->message ?? null,
-                    'grace_until' => $row->grace_until ?? null,
-                    'changed_by' => $row->changed_by ?? null,
-                    'changed_at' => $row->changed_at ?? null,
+                    'status' => $row?->getRawOriginal('status') ?? CorePackageStatusEnum::Active->value,
+                    'reason' => $row?->reason,
+                    'message' => $row?->message,
+                    'grace_until' => $row?->grace_until?->toIso8601String(),
+                    'changed_by' => $row?->changed_by,
+                    'changed_at' => $row?->changed_at?->toIso8601String(),
                 ];
             }
         );
@@ -71,7 +68,7 @@ class CorePackageStateService
             return $this->current(null);
         }
 
-        DB::connection('commander')->table('commander_packages')->where('id', $packageId)->update([
+        CommanderPackageModel::query()->whereKey($packageId)->update([
             'status' => $status->value,
             'reason' => $reason,
             'message' => $message,

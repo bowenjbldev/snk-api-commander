@@ -6,8 +6,11 @@ use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Packages\Commander\Models\CommanderDeploymentModel;
-use Packages\Commander\Models\CommanderUsageSnapshotModel;
 use Packages\Commander\Models\CommanderQuotaMetricModel;
+use Packages\Commander\Models\CommanderQuotaModel;
+use Packages\Commander\Models\CommanderRequestLogModel;
+use Packages\Commander\Models\CommanderUsageRollupModel;
+use Packages\Commander\Models\CommanderUsageSnapshotModel;
 
 /**
  * Refresca los campos denormalizados que el dashboard/lista del Commander leen
@@ -29,12 +32,12 @@ class CommanderRefreshCommand extends Command
         foreach ($deployments as $dep) {
             $pid = $dep->package_id;
 
-            $requests24h = (int) DB::connection('commander')->table('commander_request_logs')
+            $requests24h = (int) CommanderRequestLogModel::query()
                 ->where('package_id', $pid)
                 ->where('occurred_at', '>=', $since24)
                 ->count();
 
-            $lastSeen = DB::connection('commander')->table('commander_request_logs')->where('package_id', $pid)->max('occurred_at');
+            $lastSeen = CommanderRequestLogModel::query()->where('package_id', $pid)->max('occurred_at');
 
             $worst = 0.0;
             foreach (CommanderQuotaMetricModel::query()->where('package_id', $pid)->get() as $m) {
@@ -43,7 +46,7 @@ class CommanderRefreshCommand extends Command
                 }
 
                 // Refleja el valor medido (commander_quota_metrics) en el espejo que lee el SPA.
-                DB::connection('commander')->table('commander_quotas')
+                CommanderQuotaModel::query()
                     ->where('id', $dep->id . ':' . $m->metric_key)
                     ->update([
                         'current_value' => $m->current_value,
@@ -60,7 +63,7 @@ class CommanderRefreshCommand extends Command
 
             // Snapshots para el grafico de plataforma: suma los rollups por bucket de este package.
             foreach (['hour', 'day'] as $period) {
-                $buckets = DB::connection('commander')->table('commander_usage_rollups')
+                $buckets = CommanderUsageRollupModel::query()
                     ->where('package_id', $pid)
                     ->where('period', $period)
                     ->groupBy('period_start')

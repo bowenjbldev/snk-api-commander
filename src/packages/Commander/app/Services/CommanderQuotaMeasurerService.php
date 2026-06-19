@@ -5,9 +5,10 @@ namespace Packages\Commander\Services;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Packages\Commander\Models\CommanderQuotaMetricModel;
-use Packages\Core\Enums\CorePackageStatusEnum;
 use Packages\Commander\Models\CommanderPackageModel;
+use Packages\Commander\Models\CommanderQuotaMetricModel;
+use Packages\Commander\Models\CommanderRequestLogModel;
+use Packages\Core\Enums\CorePackageStatusEnum;
 use Packages\Core\Services\CorePackageStateService;
 use Packages\Core\Support\CoreActivePackageSupport;
 
@@ -58,7 +59,7 @@ class CommanderQuotaMeasurerService
 
         foreach ($byPackage as $packageId => $metrics) {
             $package = $packageId !== null ? CommanderPackageModel::query()->find($packageId) : null;
-            $this->active->set($package?->getKey());
+            $this->active->set($package);
 
             // Apunta la conexion 'tenant' a la BD del package para medir lo LOCAL (users, tamaño BD).
             // requests_day y las escrituras de commander_quota_metrics siguen yendo a 'commander'.
@@ -201,7 +202,7 @@ class CommanderQuotaMeasurerService
     private function measureRequestsToday(?int $packageId): int
     {
         // Nota: con sample_rate < 1 esto infra-cuenta; escalar 1/sample_rate si se usa sampling.
-        return (int) DB::connection('commander')->table('commander_request_logs')
+        return (int) CommanderRequestLogModel::query()
             ->where('occurred_at', '>=', CarbonImmutable::now('UTC')->startOfDay())
             ->when($packageId !== null, fn ($q) => $q->where('package_id', $packageId))
             ->count();

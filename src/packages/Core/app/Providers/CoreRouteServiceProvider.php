@@ -43,9 +43,9 @@ class CoreRouteServiceProvider extends ServiceProvider
 
         $router->pushMiddlewareToGroup('api', 'throttle:api');
 
-        // Metering + kill-switch son control plane de tenant: solo en deploys gestionados.
-        // El Commander (operador, no tenant) apaga el control plane y no los engancha.
-        if (config('core.control_plane', true)) {
+        // Metering + kill-switch son el commander del tenant: solo en deploys gestionados.
+        // El panel del operador (no tenant) lo apaga y no los engancha.
+        if (config('core.commander', true)) {
             // Metering el primero (outermost): registra tambien los 429 del throttle y los 402 del kill-switch.
             $router->prependMiddlewareToGroup('api', \Packages\Core\Http\Middleware\CoreMeteringMiddleware::class);
             // Kill-switch tras throttle y antes del auth de ruta.

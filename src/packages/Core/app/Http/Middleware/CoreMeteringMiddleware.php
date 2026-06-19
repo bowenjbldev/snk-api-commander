@@ -4,8 +4,8 @@ namespace Packages\Core\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Packages\Commander\Models\CommanderRequestLogModel;
 use Packages\Core\Support\CoreActivePackageSupport;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -63,7 +63,7 @@ class CoreMeteringMiddleware
 
             $route = $request->route()?->uri();
 
-            DB::connection('commander')->table('commander_request_logs')->insert([
+            CommanderRequestLogModel::query()->insert([
                 'package_id' => $packageId,
                 'occurred_at' => now('UTC'),
                 'method' => $request->method(),

@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 
 /**
  * Multi-tenant. La presencia de --package decide el destino (convencion package = BD):
- *   - SIN --package  -> COMMANDER (BD commander): registro + control-plane + commander_* + base operador.
+ *   - SIN --package  -> COMMANDER (BD commander): registro + metering + operador (commander_*) + base operador.
  *   - CON --package   -> TENANT (BD = snake(package)): base Laravel del tenant + tablas de negocio.
  * El provisioning usa `core:migrate --package=Shop`; el deploy usa `core:migrate` (commander).
  */
@@ -27,7 +27,7 @@ class CoreMigrateCommand extends Command
 
     private const COMMANDER_PATHS = [
         'packages/Core/database/migrations',           // base Laravel del operador (compartida con tenants)
-        'packages/Commander/database/migrations',      // registro (packages) + control-plane + commander_*
+        'packages/Commander/database/migrations',      // registro (packages) + commander + commander_*
     ];
 
     public function handle(): int

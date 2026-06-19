@@ -10,13 +10,14 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Packages\Commander\Models\CommanderActivityEventModel;
 use Packages\Commander\Models\CommanderDeploymentModel;
+use Packages\Commander\Models\CommanderQuotaMetricModel;
 use Packages\Commander\Models\CommanderQuotaModel;
+use Packages\Commander\Models\CommanderRequestLogModel;
 use Packages\Commander\Models\CommanderSubscriptionModel;
+use Packages\Commander\Models\CommanderUsageRollupModel;
 use Packages\Commander\Models\CommanderUsageSnapshotModel;
 use Packages\Core\Enums\CorePackageStatusEnum;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
-use Packages\Commander\Models\CommanderQuotaMetricModel;
-use Packages\Commander\Models\CommanderUsageRollupModel;
 use Packages\Core\Services\CorePackageStateService;
 
 /**
@@ -200,7 +201,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
             'status_class' => 'nullable|integer|in:2,3,4,5',
         ]);
 
-        $rows = DB::connection('commander')->table('commander_request_logs')
+        $rows = CommanderRequestLogModel::query()
             ->where('package_id', $deployment->package_id)
             ->when(isset($data['since']), fn ($q) => $q->where('occurred_at', '>=', $data['since']))
             ->when(isset($data['status_class']), function ($q) use ($data) {
@@ -211,7 +212,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
             ->orderByDesc('occurred_at')
             ->limit($data['limit'] ?? 100)
             ->get()
-            ->map(fn ($row) => array_merge((array) $row, ['deployment_id' => $deployment->id]))
+            ->map(fn ($row) => array_merge($row->toArray(), ['deployment_id' => $deployment->id]))
             ->all();
 
         return response()->json(['data' => $rows]);
@@ -239,7 +240,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
             if ($package !== null) {
                 CommanderQuotaMetricModel::where('package_id', $package->id)->delete();
                 CommanderUsageRollupModel::where('package_id', $package->id)->delete();
-                DB::connection('commander')->table('commander_request_logs')->where('package_id', $package->id)->delete();
+                CommanderRequestLogModel::query()->where('package_id', $package->id)->delete();
             }
 
             $deployment->delete();

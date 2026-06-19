@@ -1,6 +1,6 @@
 # Snake Laravel API
 
-API modular sobre Laravel 13. **Un solo despliegue (una app) sirve TODOS los paquetes de negocio**, resueltos por subdominio en cada request: `{paquete}.dominio.com`. Multi-tenant por **base de datos**: una BD commander (`commander`) con el registro + el panel de operador + el control-plane, y **una BD propia por paquete** (`shop`, `blog`...) con sus tablas de negocio + su base Laravel (users/roles/tokens). El Commander da de alta clientes y paquetes y los provisiona en un paso (crea la BD incluida), sin scripts de host.
+API modular sobre Laravel 13. **Un solo despliegue (una app) sirve TODOS los paquetes de negocio**, resueltos por subdominio en cada request: `{paquete}.dominio.com`. Multi-tenant por **base de datos**: una BD commander (`commander`) con el registro + el panel de operador + el metering, y **una BD propia por paquete** (`shop`, `blog`...) con sus tablas de negocio + su base Laravel (users/roles/tokens). El Commander da de alta clientes y paquetes y los provisiona en un paso (crea la BD incluida), sin scripts de host.
 
 > **Modelo centralizado.** Anteriormente cada paquete/cliente era un despliegue aislado con su propia BD (orquestado por `subscription.sh`). Ahora es **una app centralizada**: el paquete activo se resuelve por el `Host` del request, no por despliegue. `API_PACKAGE` vacío = centralizado (carga todos los paquetes); fijarlo bloquea la app a un único paquete (deploy aislado / tests).
 
@@ -26,7 +26,7 @@ docker compose up -d          # build + composer install + APP_KEY + migrate com
 curl -k https://localhost:8443/api/v1   # health check (Core, agnostico de paquete)
 ```
 
-El entrypoint migra el deploy **commander** (`core:migrate`, sin `--package`): registro, control-plane, commander y la base del operador. Las BD de cada paquete las crea el provisioning. Para que el panel de operador tenga un admin, siémbralo una vez:
+El entrypoint migra el deploy **commander** (`core:migrate`, sin `--package`): registro, metering, panel del operador y la base Laravel. Las BD de cada paquete las crea el provisioning. Para que el panel de operador tenga un admin, siémbralo una vez:
 
 ```bash
 docker compose exec app php artisan core:seed --force   # commander; admin@snake.com / secret1234
@@ -80,7 +80,7 @@ Monolito modular centralizado, multi-tenant por BD: **una app sirve todos los pa
 
 - **Core** es el paquete base, siempre activo. Provee infraestructura: autenticacion, CRUD base, permisos, descubrimiento automatico, scaffolding, metering, cuotas y kill-switch.
 - Los paquetes de negocio se sirven cada uno en su subdominio `{paquete}.<BASE_DOMAIN>`. El paquete activo del request lo resuelve `CoreResolvePackageFromHostMiddleware` por el `Host`.
-- **Una BD por paquete** (aislamiento fisico). Conexiones: `commander` (fija, BD `commander`) + `tenant` (BD dinamica). El default es `commander`; en un subdominio de negocio, `CoreResolvePackageFromHostMiddleware` conmuta la conexion default a la BD del paquete (`packages.database`). Seguro bajo PHP-FPM (cada request es share-nothing). Las tablas de la BD commander (registro, control-plane, `commander_*`) van pinneadas a `commander`; el control-plane sigue indexado por `package_id`. Los `users` NO llevan `package_id`: el aislamiento es por BD.
+- **Una BD por paquete** (aislamiento fisico). Conexiones: `commander` (fija, BD `commander`) + `tenant` (BD dinamica). El default es `commander`; en un subdominio de negocio, `CoreResolvePackageFromHostMiddleware` conmuta la conexion default a la BD del paquete (`packages.database`). Seguro bajo PHP-FPM (cada request es share-nothing). Las tablas de la BD commander (registro, metering, operador — todas `commander_*`) van pinneadas a `commander`; el metering sigue indexado por `package_id`. Los `users` NO llevan `package_id`: el aislamiento es por BD.
 
 ### Resolucion del paquete activo
 
@@ -96,7 +96,7 @@ En centralizado, las rutas de cada paquete se envuelven en `Route::domain('{sub}
 
 ### `commander_packages`: registro de instancias
 
-Tabla del registro, en la BD `commander`. Una fila por paquete provisionado: `name` (StudlyCase, = directorio en `packages/`), `subdomain` (snake), **`database`** (su BD propia), y el **estado runtime** (`active|grace|suspended` + reason/message/grace_until). El middleware la lee para saber a que BD conectar. Reemplaza al antiguo singleton `core_package_state`. El control-plane usa `package_id` (FK a `commander_packages`).
+Tabla del registro, en la BD `commander`. Una fila por paquete provisionado: `name` (StudlyCase, = directorio en `packages/`), `subdomain` (snake), **`database`** (su BD propia), y el **estado runtime** (`active|grace|suspended` + reason/message/grace_until). El middleware la lee para saber a que BD conectar. Reemplaza al antiguo singleton `core_package_state`. El metering usa `package_id` (FK a `commander_packages`).
 
 ### Identidad por paquete
 
@@ -213,7 +213,7 @@ composer dump-autoload
 ### Base de datos
 
 ```bash
-php artisan core:migrate                  # COMMANDER: registro + control-plane + commander + base operador
+php artisan core:migrate                  # COMMANDER: registro + metering + operador + base operador
 php artisan core:seed                     # COMMANDER: admin + permisos del operador
 php artisan core:migrate --package=Shop   # TENANT: base + negocio en la BD del paquete (BD = snake(package))
 php artisan core:seed    --package=Shop   # TENANT: admin + seeders del paquete (en su BD)
@@ -290,7 +290,7 @@ packages/MiPaquete/
 ## Migraciones
 
 - **Core** (`packages/Core/database/migrations/`, primer nivel): solo la **base Laravel**, que corre en la commander (para el operador) Y en CADA BD de paquete: roles/permisos (Spatie), schema base (`users`, `sessions`, `cache`, `jobs`...), tokens Sanctum.
-- **Commander** (`packages/Commander/database/migrations/`, tablas `commander_*`): el registro `commander_packages` + el control-plane (`commander_request_logs`, `commander_usage_rollups`, `commander_quota_metrics`, por `package_id`) + el panel del operador (`commander_clients`, `commander_deployments`...). Solo en la BD `commander`.
+- **Commander** (`packages/Commander/database/migrations/`, tablas `commander_*`): el registro `commander_packages` + el metering (`commander_request_logs`, `commander_usage_rollups`, `commander_quota_metrics`, por `package_id`) + el panel del operador (`commander_clients`, `commander_deployments`...). Solo en la BD `commander`.
 - **Negocio**: `packages/{Pkg}/database/migrations/` (solo en la BD del paquete).
 
 `core:migrate` (sin `--package`) corre la base + las del Commander en la BD `commander`; el provisioning corre `core:migrate --package=<X>` (base + negocio) en la BD del paquete. Regla: `--package` ⟹ tenant (BD = snake(package)); sin `--package` ⟹ commander.

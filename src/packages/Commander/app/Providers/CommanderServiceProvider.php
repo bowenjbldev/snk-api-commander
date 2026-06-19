@@ -15,15 +15,15 @@ class CommanderServiceProvider extends ServiceProvider
     public function register(): void
     {
         // Solo cuando el Commander es el package ÚNICO del deploy (API_PACKAGE=Commander, panel
-        // del operador aislado) apaga el control plane de Core (metering/kill-switch/cuotas). En
+        // del operador aislado) apaga el commander de Core (metering/kill-switch/cuotas). En
         // modo centralizado (API_PACKAGE vacio) el Commander es un package mas y NO debe apagar el
-        // control plane del resto de tenants. Bajo tests se mantiene ON (la suite ejercita core_*).
+        // commander del resto de tenants. Bajo tests se mantiene ON (la suite ejercita commander_*).
         $locked = CorePackageSelectorSupport::activePackageName();
 
         if (! $this->app->runningUnitTests()
             && $locked !== null
             && strcasecmp($locked, 'Commander') === 0) {
-            config(['core.control_plane' => false]);
+            config(['core.commander' => false]);
         }
     }
 
@@ -37,7 +37,7 @@ class CommanderServiceProvider extends ServiceProvider
                 CommanderQuotaMeasureCommand::class,
             ]);
 
-            // KPIs del dashboard + analitica del control-plane frescos (cron corre schedule:run).
+            // KPIs del dashboard + snapshots de uso frescos (cron corre schedule:run).
             $this->app->booted(function (): void {
                 $schedule = $this->app->make(Schedule::class);
                 $schedule->command('commander:refresh')->everyTenMinutes()->withoutOverlapping();

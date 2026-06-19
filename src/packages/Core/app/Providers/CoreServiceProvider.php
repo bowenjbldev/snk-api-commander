@@ -68,7 +68,7 @@ class CoreServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // Migraciones del deploy COMMANDER (conexion default = commander): base del operador
-        // (roles/users/tokens) + registro (packages) + control-plane + commander_*. Las de NEGOCIO
+        // (roles/users/tokens) + registro + metering + operador (commander_*). Las de NEGOCIO
         // de cada package NO se auto-cargan: las corre el provisioning sobre la conexion del tenant
         // (core:migrate --package=Pkg), nunca sobre la commander.
         $paths = array_filter([
