@@ -58,7 +58,7 @@ src/
 │   │   │   │       ├── CoreMeteringMiddleware.php  # registra cada request (por paquete)
 │   │   │   │       └── CoreEnsureActiveMiddleware.php  # kill-switch 402 (por paquete)
 │   │   │   ├── Models/
-│   │   │   │   ├── CorePackageModel.php            # registro core_packages (identidad + estado)
+│   │   │   │   ├── CorePackageModel.php            # registro packages (identidad + estado)
 │   │   │   │   └── CoreUserModel.php               # User (en la BD del paquete), roles y tokens
 │   │   │   ├── Providers/                          # Service providers (orquestacion, rutas, consola, docs)
 │   │   │   ├── Services/                           # estado, metering, cuotas
@@ -80,7 +80,7 @@ Monolito modular centralizado, multi-tenant por BD: **una app sirve todos los pa
 
 - **Core** es el paquete base, siempre activo. Provee infraestructura: autenticacion, CRUD base, permisos, descubrimiento automatico, scaffolding, metering, cuotas y kill-switch.
 - Los paquetes de negocio se sirven cada uno en su subdominio `{paquete}.<BASE_DOMAIN>`. El paquete activo del request lo resuelve `CoreResolvePackageFromHostMiddleware` por el `Host`.
-- **Una BD por paquete** (aislamiento fisico). Conexiones: `central` (fija, BD `commander`) + `tenant` (BD dinamica). El default es `central`; en un subdominio de negocio, `CoreResolvePackageFromHostMiddleware` conmuta la conexion default a la BD del paquete (`core_packages.database`). Seguro bajo PHP-FPM (cada request es share-nothing). Las tablas centrales (registro, control-plane, `commander_*`) van pinneadas a `central`; el control-plane sigue indexado por `package_id`. Los `users` NO llevan `package_id`: el aislamiento es por BD.
+- **Una BD por paquete** (aislamiento fisico). Conexiones: `central` (fija, BD `commander`) + `tenant` (BD dinamica). El default es `central`; en un subdominio de negocio, `CoreResolvePackageFromHostMiddleware` conmuta la conexion default a la BD del paquete (`packages.database`). Seguro bajo PHP-FPM (cada request es share-nothing). Las tablas centrales (registro, control-plane, `commander_*`) van pinneadas a `central`; el control-plane sigue indexado por `package_id`. Los `users` NO llevan `package_id`: el aislamiento es por BD.
 
 ### Resolucion del paquete activo
 
@@ -92,11 +92,11 @@ Al arrancar, `CoreServiceProvider` carga los paquetes segun `API_PACKAGE`:
 | `API_PACKAGE=Shop` (existe `packages/Shop/`) | **Lock**: carga solo Core + Shop, rutas planas (deploy aislado de un paquete / tests). |
 | `API_PACKAGE=NoExiste` | Falla en boot con `CorePackageConfigurationException` y mensaje claro. |
 
-En centralizado, las rutas de cada paquete se envuelven en `Route::domain('{sub}.<BASE_DOMAIN>')`; las de Core (health/docs) se registran globales (cualquier host). Un subdominio solo "esta vivo" si existe su fila en `core_packages` (creada al provisionar); si no, `404`.
+En centralizado, las rutas de cada paquete se envuelven en `Route::domain('{sub}.<BASE_DOMAIN>')`; las de Core (health/docs) se registran globales (cualquier host). Un subdominio solo "esta vivo" si existe su fila en `packages` (creada al provisionar); si no, `404`.
 
-### `core_packages`: registro de instancias
+### `packages`: registro de instancias
 
-Tabla del registro, en la BD `central`. Una fila por paquete provisionado: `name` (StudlyCase, = directorio en `packages/`), `subdomain` (snake), **`database`** (su BD propia), y el **estado runtime** (`active|grace|suspended` + reason/message/grace_until). El middleware la lee para saber a que BD conectar. Reemplaza al antiguo singleton `core_package_state`. El control-plane usa `package_id` (FK a `core_packages`).
+Tabla del registro, en la BD `central`. Una fila por paquete provisionado: `name` (StudlyCase, = directorio en `packages/`), `subdomain` (snake), **`database`** (su BD propia), y el **estado runtime** (`active|grace|suspended` + reason/message/grace_until). El middleware la lee para saber a que BD conectar. Reemplaza al antiguo singleton `core_package_state`. El control-plane usa `package_id` (FK a `packages`).
 
 ### Identidad por paquete
 
@@ -194,7 +194,7 @@ El **codigo** de un paquete viaja por git (lo programas en local con `make:packa
 `POST /provisioning` (en `commander.<BASE_DOMAIN>`, con `plan_id` + cliente nuevo/existente):
 
 1. Crea/resuelve cliente + suscripcion.
-2. Crea la fila `core_packages` (la instancia: enciende el subdominio).
+2. Crea la fila `packages` (la instancia: enciende el subdominio).
 3. **Crea la BD del paquete** (`CREATE DATABASE`) y corre `core:migrate --package=<X>` (base Laravel + negocio; BD = snake(package)) + `core:seed --package=<X>` (admin del paquete) **en esa BD**.
 4. Activa + escribe las cuotas del plan (en la central).
 
@@ -228,13 +228,13 @@ Todo in-process (Commander y deploys viven en la misma app/BD). Detalle en [`doc
 
 ```bash
 php artisan core:status                       # estado + cuotas (por paquete activo)
-php artisan core:usage:rollup --prune         # agrega core_request_logs en rollups hora/dia (por package)
+php artisan core:usage:rollup --prune         # agrega request_logs en rollups hora/dia (por package)
 php artisan core:quota:measure                # mide disco/requests/usuarios por package y aplica on_exceed
 ```
 
 - Estados por paquete: `active` | `grace` (headers `X-Package-Status`) | `suspended` (402 en rutas de negocio; health y docs siguen respondiendo).
-- Metering por request en `core_request_logs` (middleware terminable, cero latencia con FPM, columna `package_id`) + rollups en `core_usage_rollups`.
-- El Commander cambia el estado de un paquete escribiendo `core_packages` directamente (sin HMAC): `POST /deployments/{id}/suspend|grace|resume`.
+- Metering por request en `request_logs` (middleware terminable, cero latencia con FPM, columna `package_id`) + rollups en `usage_rollups`.
+- El Commander cambia el estado de un paquete escribiendo `packages` directamente (sin HMAC): `POST /deployments/{id}/suspend|grace|resume`.
 
 ### Generadores package-aware
 
@@ -284,7 +284,7 @@ packages/MiPaquete/
 
 Separadas en `packages/Core/database/migrations/{central,tenant}` por su destino:
 
-- **central/** (BD `commander`): `core_packages` (registro) + control-plane (`core_request_logs`, `core_usage_rollups`, `core_quota_metrics`, por `package_id`). Mas las `commander_*`.
+- **central/** (BD `commander`): `packages` (registro) + control-plane (`request_logs`, `usage_rollups`, `quota_metrics`, por `package_id`). Mas las `commander_*`.
 - **tenant/** (corre en la central para el operador Y en CADA BD de paquete): Roles/permisos (Spatie), schema base (`users`, `sessions`, `cache`, `jobs`...), tokens Sanctum.
 - **negocio**: `packages/{Pkg}/database/migrations/` (solo en la BD del paquete).
 

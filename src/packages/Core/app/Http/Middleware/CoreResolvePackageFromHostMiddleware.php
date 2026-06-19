@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Modo centralizado: resuelve el package del subdominio ({sub}.{BASE_DOMAIN}) y lo fija
  * como activo del request (lo leen state, metering y cuotas). Subdominio sin fila en
- * core_packages (no provisionado) => 404. Ademas corta con 401 un token Sanctum emitido
+ * packages (no provisionado) => 404. Ademas corta con 401 un token Sanctum emitido
  * para OTRO package: aislamiento de identidad entre subdominios.
  *
  * Va el primero del grupo de cada package de negocio, antes que metering, para que el
@@ -44,7 +44,7 @@ class CoreResolvePackageFromHostMiddleware
 
         // Aislamiento FISICO: conmuta la conexion default a la BD del package. Bajo PHP-FPM cada
         // request es share-nothing, asi que el cambio vive solo en este request (no hay bleed).
-        // Las tablas centrales (core_packages, control-plane, commander_*) van pinneadas a 'central'.
+        // Las tablas centrales (packages, control-plane, commander_*) van pinneadas a 'central'.
         // El token de un tenant ni existe en la BD de otro -> 401 automatico, sin check explicito.
         if (! empty($package->database)) {
             config(['database.connections.tenant.database' => $package->database]);

@@ -48,7 +48,7 @@ class CoreQuotaMeasurerService
         $results = [];
 
         // Agrupa por package: fija el contexto activo de cada grupo para que enforce()
-        // (state->set/current) apunte a la fila core_packages correcta.
+        // (state->set/current) apunte a la fila packages correcta.
         $byPackage = CoreQuotaMetricModel::query()
             ->orderBy('package_id')
             ->orderBy('metric_key')
@@ -60,7 +60,7 @@ class CoreQuotaMeasurerService
             $this->active->set($package);
 
             // Apunta la conexion 'tenant' a la BD del package para medir lo LOCAL (users, tamaño BD).
-            // requests_day y las escrituras de core_quota_metrics siguen yendo a 'central'.
+            // requests_day y las escrituras de quota_metrics siguen yendo a 'central'.
             if (! empty($package?->database)) {
                 config(['database.connections.tenant.database' => $package->database]);
                 DB::purge('tenant');
@@ -200,7 +200,7 @@ class CoreQuotaMeasurerService
     private function measureRequestsToday(?int $packageId): int
     {
         // Nota: con sample_rate < 1 esto infra-cuenta; escalar 1/sample_rate si se usa sampling.
-        return (int) DB::connection('central')->table('core_request_logs')
+        return (int) DB::connection('central')->table('request_logs')
             ->where('occurred_at', '>=', CarbonImmutable::now('UTC')->startOfDay())
             ->when($packageId !== null, fn ($q) => $q->where('package_id', $packageId))
             ->count();

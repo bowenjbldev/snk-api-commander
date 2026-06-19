@@ -20,7 +20,7 @@ use Packages\Core\Models\CoreQuotaMetricModel;
 
 /**
  * Client-first provisioning, EN UN PASO e in-process: registra CLIENTE (nuevo o existente) + PLAN,
- * crea la instancia (fila core_packages = subdominio activo), su suscripcion y cuotas, migra las
+ * crea la instancia (fila packages = subdominio activo), su suscripcion y cuotas, migra las
  * tablas del package sobre la BD compartida y siembra su admin. No hay host_command ni script: el
  * codigo del package ya viaja por git; aqui solo se da de alta la instancia.
  */
@@ -107,7 +107,7 @@ class CommanderProvisioningController extends CoreBaseApiController
                 $clientId = $c['id'];
             }
 
-            // Instancia: la fila core_packages enciende el subdominio (la resuelve el middleware por host).
+            // Instancia: la fila packages enciende el subdominio (la resuelve el middleware por host).
             $corePackage = CorePackageModel::create([
                 'name' => $package,
                 'subdomain' => $subdomain,

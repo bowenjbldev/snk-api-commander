@@ -20,9 +20,9 @@ use Packages\Core\Models\CoreUsageRollupModel;
 use Packages\Core\Services\CorePackageStateService;
 
 /**
- * In-process (misma app/BD): las acciones de estado escriben directamente la fila core_packages
- * del package via CorePackageStateService; uso y logs se leen de core_usage_rollups /
- * core_request_logs filtrando por package_id. Sin HMAC, sin HTTP, sin mirror.
+ * In-process (misma app/BD): las acciones de estado escriben directamente la fila packages
+ * del package via CorePackageStateService; uso y logs se leen de usage_rollups /
+ * request_logs filtrando por package_id. Sin HMAC, sin HTTP, sin mirror.
  */
 #[Group('Deployments')]
 class CommanderDeploymentsController extends CoreBaseApiController
@@ -63,7 +63,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
     {
     }
 
-    /** Suspend (402) the package: write core_packages directly. */
+    /** Suspend (402) the package: write packages directly. */
     public function suspend(Request $request, $id = null): JsonResponse
     {
         if ($response = $this->requirePermission(self::CONTROL_PERMISSION)) {
@@ -154,7 +154,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
         return response()->json($deployment->fresh()->load('corePackage'));
     }
 
-    /** Real usage rollups (core_usage_rollups) for the package, for the Usage-tab charts. */
+    /** Real usage rollups (usage_rollups) for the package, for the Usage-tab charts. */
     public function usage(Request $request, $id = null): JsonResponse
     {
         if ($response = $this->requirePermission($this->showPermission)) {
@@ -183,7 +183,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
         return response()->json($rollups);
     }
 
-    /** Real request logs (core_request_logs) for the package, for the Logs view. */
+    /** Real request logs (request_logs) for the package, for the Logs view. */
     public function logs(Request $request, $id = null): JsonResponse
     {
         if ($response = $this->requirePermission($this->showPermission)) {
@@ -200,7 +200,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
             'status_class' => 'nullable|integer|in:2,3,4,5',
         ]);
 
-        $rows = DB::connection('central')->table('core_request_logs')
+        $rows = DB::connection('central')->table('request_logs')
             ->where('package_id', $deployment->package_id)
             ->when(isset($data['since']), fn ($q) => $q->where('occurred_at', '>=', $data['since']))
             ->when(isset($data['status_class']), function ($q) use ($data) {
@@ -239,7 +239,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
             if ($package !== null) {
                 CoreQuotaMetricModel::where('package_id', $package->id)->delete();
                 CoreUsageRollupModel::where('package_id', $package->id)->delete();
-                DB::connection('central')->table('core_request_logs')->where('package_id', $package->id)->delete();
+                DB::connection('central')->table('request_logs')->where('package_id', $package->id)->delete();
             }
 
             $deployment->delete();

@@ -8,12 +8,12 @@ use Illuminate\Support\Facades\Schema;
  * Registro de instancias de package provisionadas. Una fila por subdominio servido
  * (creada por el Commander al dar de alta). Absorbe el antiguo core_package_state:
  * el estado runtime (active|grace|suspended) son columnas de esta fila. El resto de
- * tablas Core (users, control-plane) referencian core_packages.id via package_id.
+ * tablas Core (users, control-plane) referencian packages.id via package_id.
  */
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('core_packages', function (Blueprint $table) {
+        Schema::create('packages', function (Blueprint $table) {
             $table->id();
             $table->string('name', 100)->unique();       // StudlyCase, = directorio en packages/
             $table->string('subdomain', 100)->unique();  // snake-case, = host {sub}.{BASE_DOMAIN}
@@ -30,6 +30,6 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::dropIfExists('core_packages');
+        Schema::dropIfExists('packages');
     }
 };

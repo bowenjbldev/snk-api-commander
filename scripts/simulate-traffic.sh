@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # -----------------------------------------------------------------------------
 # Genera trafico autenticado realista contra un deploy (tenant) para alimentar
-# el metering de Core (core_request_logs) y ver Logs/Usage reales en el Commander.
+# el metering de Core (request_logs) y ver Logs/Usage reales en el Commander.
 # Mezcla CRUD del paquete con algunos errores (404/422) para variar metodos/status.
 #
 # Uso:   bash scripts/simulate-traffic.sh <subdominio> [iteraciones]

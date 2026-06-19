@@ -12,7 +12,7 @@ use Packages\Core\Support\CorePackageStateData;
 
 /**
  * Unico propietario del estado runtime por package (active|grace|suspended), guardado
- * como columnas de la fila core_packages. El package activo se resuelve del request
+ * como columnas de la fila packages. El package activo se resuelve del request
  * (CoreActivePackageSupport) o se pasa explicito (Commander, medidor de cuotas por
  * package). Los lectores usan current(), que cachea la fila por core.state.cache_ttl.
  */

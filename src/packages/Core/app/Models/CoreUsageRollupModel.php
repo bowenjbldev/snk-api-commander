@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class CoreUsageRollupModel extends Model
 {
-    protected $table = 'core_usage_rollups';
+    protected $table = 'usage_rollups';
 
     protected $connection = 'central';
 

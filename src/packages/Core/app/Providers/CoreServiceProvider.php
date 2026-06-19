@@ -67,7 +67,7 @@ class CoreServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // Migraciones del deploy CENTRAL (conexion default = central): registro (core_packages) +
+        // Migraciones del deploy CENTRAL (conexion default = central): registro (packages) +
         // control-plane + commander_* + base del operador (roles/users/tokens). Las de NEGOCIO de
         // cada package NO se auto-cargan: las corre el provisioning sobre la conexion del tenant
         // (core:migrate --connection=tenant), nunca sobre la central.

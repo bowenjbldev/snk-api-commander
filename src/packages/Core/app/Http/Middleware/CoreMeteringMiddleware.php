@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Registra cada request en core_request_logs DESPUES de enviar la respuesta
+ * Registra cada request en request_logs DESPUES de enviar la respuesta
  * (terminable: con FPM la respuesta ya salio, cero latencia para el cliente).
  * Va el primero del grupo 'api' para registrar tambien los 429 del throttle
  * y los 402 del kill-switch. Un fallo aqui JAMAS rompe el request.
@@ -63,7 +63,7 @@ class CoreMeteringMiddleware
 
             $route = $request->route()?->uri();
 
-            DB::connection('central')->table('core_request_logs')->insert([
+            DB::connection('central')->table('request_logs')->insert([
                 'package_id' => $packageId,
                 'occurred_at' => now('UTC'),
                 'method' => $request->method(),

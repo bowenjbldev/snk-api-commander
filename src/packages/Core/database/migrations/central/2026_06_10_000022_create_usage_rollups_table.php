@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('core_usage_rollups', function (Blueprint $table) {
+        Schema::create('usage_rollups', function (Blueprint $table) {
             $table->id();
             $table->foreignId('package_id')->nullable()->index();
             $table->string('period', 8); // hour|day
@@ -28,13 +28,13 @@ return new class extends Migration {
             // package_id en la unique: dos packages con rutas identicas no deben colisionar en el upsert.
             $table->unique(
                 ['package_id', 'period', 'period_start', 'route', 'method', 'status_class'],
-                'core_usage_rollups_bucket_unique'
+                'usage_rollups_bucket_unique'
             );
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('core_usage_rollups');
+        Schema::dropIfExists('usage_rollups');
     }
 };

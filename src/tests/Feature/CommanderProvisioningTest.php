@@ -50,13 +50,13 @@ class CommanderProvisioningTest extends CommanderTestCase
         ]);
 
         $res->assertStatus(201);
-        // One-step: live immediately, no host_command, state sourced from core_packages.
+        // One-step: live immediately, no host_command, state sourced from packages.
         $res->assertJsonPath('deployment.state.status', 'active');
         $res->assertJsonPath('deployment.package', 'Shop');
         $res->assertJsonPath('deployment.subscription.plan', 'Pro');
         $res->assertJsonMissingPath('host_command');
 
-        // Instance row (core_packages) created + active + its own database name → subdomain is live.
+        // Instance row (packages) created + active + its own database name → subdomain is live.
         $cp = CorePackageModel::where('subdomain', 'shop')->first();
         $this->assertNotNull($cp);
         $this->assertSame('active', $cp->getRawOriginal('status'));
@@ -77,7 +77,7 @@ class CommanderProvisioningTest extends CommanderTestCase
         $this->assertSame('suspend', $dep->quotas->firstWhere('metric_key', 'requests_day')->on_exceed);
         $this->assertNull($dep->quotas->firstWhere('metric_key', 'disk_storage_mb')->limit_value);
 
-        // Real enforcement rows (core_quota_metrics) seeded per package (central).
+        // Real enforcement rows (quota_metrics) seeded per package (central).
         $this->assertSame(100000, (int) CoreQuotaMetricModel::where('package_id', $cp->id)
             ->where('metric_key', 'requests_day')->value('limit_value'));
 

@@ -53,7 +53,7 @@ class CommanderApiTest extends CommanderTestCase
             'email' => 'it@kestrel.test', 'status' => 'active',
         ]);
 
-        // State now lives on the core_packages row, referenced by package_id.
+        // State now lives on the packages row, referenced by package_id.
         $package = CorePackageModel::create([
             'name' => 'TrackingApi', 'subdomain' => 'kestrel-track', 'status' => 'grace',
             'reason' => 'payment_overdue', 'message' => null,
@@ -77,7 +77,7 @@ class CommanderApiTest extends CommanderTestCase
         $res->assertOk();
         $body = $res->json();
 
-        // Nested state object (sourced from core_packages, not flat columns).
+        // Nested state object (sourced from packages, not flat columns).
         $this->assertSame('grace', $body['state']['status']);
         $this->assertSame('payment_overdue', $body['state']['reason']);
         $this->assertNotNull($body['state']['grace_until']);
@@ -91,7 +91,7 @@ class CommanderApiTest extends CommanderTestCase
         $this->assertCount(4, $body['quotas']);
     }
 
-    public function test_state_actions_write_core_packages_in_process(): void
+    public function test_state_actions_write_packages_in_process(): void
     {
         $admin = $this->admin();
 
@@ -103,7 +103,7 @@ class CommanderApiTest extends CommanderTestCase
             'base_url' => 'https://shop.snake.test/api/v1',
         ]);
 
-        // Suspend → writes the core_packages row directly (no HMAC/HTTP).
+        // Suspend → writes the packages row directly (no HMAC/HTTP).
         $this->actingAs($admin, 'sanctum')
             ->postJson('/api/v1/deployments/shop/suspend', ['reason' => 'payment_overdue', 'message' => 'pay up'])
             ->assertOk()

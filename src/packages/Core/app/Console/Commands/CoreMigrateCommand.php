@@ -26,7 +26,7 @@ class CoreMigrateCommand extends Command
     protected $description = 'Run migrations on the central database or on a package\'s tenant database';
 
     private const CENTRAL_PATHS = [
-        'packages/Core/database/migrations/central',   // core_packages + control-plane
+        'packages/Core/database/migrations/central',   // packages + control-plane
         'packages/Core/database/migrations/tenant',    // base Laravel del operador
         'packages/Commander/database/migrations',      // commander_*
     ];

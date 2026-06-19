@@ -117,7 +117,7 @@ return [
         ],
 
         // ── Multi-tenant: una BD por package + una central ───────────────────
-        // 'central': registro (core_packages), commander_*, control-plane y la base del operador.
+        // 'central': registro (packages), commander_*, control-plane y la base del operador.
         // Necesita un usuario con acceso a todas las BD + CREATE DATABASE (local: root).
         'central' => [
             'driver' => env('CENTRAL_DB_DRIVER', 'mysql'), // sqlite en tests

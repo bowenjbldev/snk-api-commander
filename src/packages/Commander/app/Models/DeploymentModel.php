@@ -24,7 +24,7 @@ class DeploymentModel extends Model
         'core_package', // relacion interna (estado); el SPA usa `package` (string) y `state`
     ];
 
-    // SPA shape: nested `state` object, ahora leido de core_packages (fuente de verdad).
+    // SPA shape: nested `state` object, ahora leido de packages (fuente de verdad).
     protected $appends = [
         'state',
     ];
@@ -38,7 +38,7 @@ class DeploymentModel extends Model
         ];
     }
 
-    /** Estado runtime del package (core_packages), con la forma DeploymentState del SPA. */
+    /** Estado runtime del package (packages), con la forma DeploymentState del SPA. */
     public function getStateAttribute(): array
     {
         $package = $this->relationLoaded('corePackage')
@@ -55,7 +55,7 @@ class DeploymentModel extends Model
         ];
     }
 
-    /** Relacion con la instancia/estado (core_packages). Nombre distinto de la columna `package`. */
+    /** Relacion con la instancia/estado (packages). Nombre distinto de la columna `package`. */
     public function corePackage(): BelongsTo
     {
         return $this->belongsTo(CorePackageModel::class, 'package_id');

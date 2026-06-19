@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Packages\Core\Models\CoreUsageRollupModel;
 
 /**
- * Agrega core_request_logs en buckets cerrados (UTC) de hora o dia.
+ * Agrega request_logs en buckets cerrados (UTC) de hora o dia.
  * Idempotente: unique key (period, period_start, route, method, status_class)
  * + upsert; el ultimo bucket procesado se recalcula en cada pasada para
  * absorber escrituras tardias del terminate().
@@ -55,7 +55,7 @@ class CoreUsageRollupService
         $deleted = 0;
 
         do {
-            $affected = DB::connection('central')->table('core_request_logs')
+            $affected = DB::connection('central')->table('request_logs')
                 ->where('occurred_at', '<', $cutoff)
                 ->limit(self::PRUNE_BATCH)
                 ->delete();
@@ -74,7 +74,7 @@ class CoreUsageRollupService
             return $this->truncate(CarbonImmutable::parse($last, 'UTC'), $period);
         }
 
-        $first = DB::connection('central')->table('core_request_logs')->min('occurred_at');
+        $first = DB::connection('central')->table('request_logs')->min('occurred_at');
 
         return $first !== null
             ? $this->truncate(CarbonImmutable::parse($first, 'UTC'), $period)
@@ -88,7 +88,7 @@ class CoreUsageRollupService
         /** @var array<string, array{route: string, method: string, status_class: string, count: int, errors: int, dur_sum: int, durations: int[], req_bytes: int, resp_bytes: int, users: array<int|string, true>}> $groups */
         $groups = [];
 
-        DB::connection('central')->table('core_request_logs')
+        DB::connection('central')->table('request_logs')
             ->where('occurred_at', '>=', $bucket)
             ->where('occurred_at', '<', $bucketEnd)
             ->orderBy('id')
