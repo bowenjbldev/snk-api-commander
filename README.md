@@ -136,8 +136,19 @@ Dentro de WSL, hasta tener DNS, prueba con `curl --resolve <sub>.snake.test:8443
 
 ### Override de configuracion
 
-- Core se aplica primero. **Solo Core puede escribir claves globales de Laravel** (`auth`, `cors`, `scramble`...): con todos los paquetes cargados a la vez, permitir overrides globales desde paquetes de negocio causaria colisiones no deterministas.
+- Core se aplica primero. **Solo Core puede escribir claves globales de Laravel** (`auth`, `cors`, `scramble`...) en boot: con todos los paquetes cargados a la vez, permitir overrides globales desde paquetes de negocio causaria colisiones no deterministas.
 - Las configs de los paquetes de negocio van **siempre namespaced**: `config('shop.archivo.key')`.
+
+#### Override de una clave GLOBAL por paquete (en runtime)
+
+Si un paquete necesita un valor distinto en una clave **global** del framework, crea un config con el **nombre de esa clave del skeleton** (`app`, `session`, `cache`, `mail`...) y declara solo lo que cambia (se fusiona con `array_replace_recursive`). Para overridear `app.name`:
+
+```php
+// packages/Shop/config/app.php
+return ['name' => 'Shop'];
+```
+
+El discovery lo carga namespaced (`shop.app`); `CoreApplyPackageConfigMiddleware` (global, **pre-routing**) resuelve el paquete por `Host` y **fusiona** ese config sobre la clave global `app` **solo en los requests de ese subdominio** (FPM share-nothing: muere al acabar el request). Aplica a config leida durante el request (incluida la pre-routing como `session`), no a la leida en boot/providers.
 
 ### Rutas
 

@@ -7,16 +7,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Packages\Commander\Models\CommanderPackageModel;
 use Packages\Core\Support\CoreActivePackageSupport;
+use Packages\Core\Support\CorePackageSelectorSupport;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Modo centralizado: resuelve el package del subdominio ({sub}.{BASE_DOMAIN}) y lo fija
  * como activo del request (lo leen state, metering y cuotas). Subdominio sin fila en
- * packages (no provisionado) => 404. Ademas corta con 401 un token Sanctum emitido
- * para OTRO package: aislamiento de identidad entre subdominios.
+ * commander_packages (no provisionado) => 404.
  *
- * Va el primero del grupo de cada package de negocio, antes que metering, para que el
- * registro de uso ya tenga el package resuelto.
+ * Va el primero del grupo de cada package de negocio, antes que metering. Reusa el package
+ * que ya resolvio CoreApplyPackageConfigMiddleware (global, pre-routing); si no esta, lo
+ * resuelve aqui (fallback) para no depender de el.
  */
 class CoreResolvePackageFromHostMiddleware
 {
@@ -26,15 +27,17 @@ class CoreResolvePackageFromHostMiddleware
 
     public function handle(Request $request, Closure $next): Response
     {
-        $subdomain = $this->subdomainFromHost($request->getHost());
+        $package = $request->attributes->get('core_active_package');
 
-        if ($subdomain === null) {
-            abort(404);
+        if (! $package instanceof CommanderPackageModel) {
+            // El registro vive en la BD commander; CommanderPackageModel esta pinneado a esa
+            // conexion, asi que resuelve aunque luego cambiemos la conexion default a la del tenant.
+            $subdomain = CorePackageSelectorSupport::subdomainFromHost($request->getHost());
+
+            $package = $subdomain !== null
+                ? CommanderPackageModel::query()->where('subdomain', $subdomain)->first()
+                : null;
         }
-
-        // El registro vive en la BD commander; CommanderPackageModel esta pinneado a esa conexion,
-        // asi que resuelve aunque luego cambiemos la conexion default a la del tenant.
-        $package = CommanderPackageModel::query()->where('subdomain', $subdomain)->first();
 
         if ($package === null) {
             abort(404); // subdominio no provisionado
@@ -44,7 +47,6 @@ class CoreResolvePackageFromHostMiddleware
 
         // Aislamiento FISICO: conmuta la conexion default a la BD del package. Bajo PHP-FPM cada
         // request es share-nothing, asi que el cambio vive solo en este request (no hay bleed).
-        // Las tablas de la BD commander (registro, metering y operador, todas commander_*) van pinneadas a 'commander'.
         // El token de un tenant ni existe en la BD de otro -> 401 automatico, sin check explicito.
         if (! empty($package->database)) {
             config(['database.connections.tenant.database' => $package->database]);
@@ -53,25 +55,5 @@ class CoreResolvePackageFromHostMiddleware
         }
 
         return $next($request);
-    }
-
-    private function subdomainFromHost(string $host): ?string
-    {
-        $base = (string) config('core.base_domain');
-
-        if ($base === '' || $host === $base) {
-            return null;
-        }
-
-        $suffix = '.' . $base;
-
-        if (! str_ends_with($host, $suffix)) {
-            return null;
-        }
-
-        $sub = substr($host, 0, -strlen($suffix));
-
-        // Wildcard de un solo nivel: a.base si, a.b.base no.
-        return ($sub === '' || str_contains($sub, '.')) ? null : $sub;
     }
 }

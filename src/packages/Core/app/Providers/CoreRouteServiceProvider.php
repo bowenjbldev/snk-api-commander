@@ -41,6 +41,12 @@ class CoreRouteServiceProvider extends ServiceProvider
     {
         $router = $this->app->make(Router::class);
 
+        // GLOBAL (pre-routing): aplica los overrides de config global del package del subdominio
+        // antes del routing y del StartSession. Se engancha en el Kernel HTTP desde Core (no se
+        // toca el skeleton bootstrap/app.php). Ver packages/{Pkg}/config/overrides.php.
+        $this->app->make(\Illuminate\Contracts\Http\Kernel::class)
+            ->prependMiddleware(\Packages\Core\Http\Middleware\CoreApplyPackageConfigMiddleware::class);
+
         $router->pushMiddlewareToGroup('api', 'throttle:api');
 
         // Metering + kill-switch son el commander del tenant: solo en deploys gestionados.
