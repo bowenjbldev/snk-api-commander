@@ -1,6 +1,6 @@
 # Snake Laravel API
 
-API modular sobre Laravel 13. **Un solo despliegue (una app + una base de datos) sirve TODOS los paquetes de negocio**, resueltos por subdominio en cada request: `{paquete}.dominio.com`. El Commander (panel de operador) da de alta clientes y paquetes y los provisiona en un paso, sin scripts de host.
+API modular sobre Laravel 13. **Un solo despliegue (una app) sirve TODOS los paquetes de negocio**, resueltos por subdominio en cada request: `{paquete}.dominio.com`. Multi-tenant por **base de datos**: una BD central (`commander`) con el registro + el panel de operador + el control-plane, y **una BD propia por paquete** (`shop`, `blog`...) con sus tablas de negocio + su base Laravel (users/roles/tokens). El Commander da de alta clientes y paquetes y los provisiona en un paso (crea la BD incluida), sin scripts de host.
 
 > **Modelo centralizado.** Anteriormente cada paquete/cliente era un despliegue aislado con su propia BD (orquestado por `subscription.sh`). Ahora es **una app centralizada**: el paquete activo se resuelve por el `Host` del request, no por despliegue. `API_PACKAGE` vacío = centralizado (carga todos los paquetes); fijarlo bloquea la app a un único paquete (deploy aislado / tests).
 
@@ -20,16 +20,16 @@ Solo necesitas Docker (composer, PHP y migraciones corren dentro del contenedor)
 ```bash
 git clone <repo> && cd snake-laravel-api
 cp .env.example .env          # puertos, dominios (ajusta si quieres)
-cp src/.env.example src/.env  # API_PACKAGE vacio (centralizado) + BD compartida
+cp src/.env.example src/.env  # API_PACKAGE vacio (centralizado) + BD central + root multi-BD
 bash scripts/setup-ssl.sh     # cert wildcard *.BASE_DOMAIN con mkcert (se auto-descarga si falta)
-docker compose up -d          # build + composer install + APP_KEY + migrate (todos los paquetes), automatico
+docker compose up -d          # build + composer install + APP_KEY + migrate central, automatico
 curl -k https://localhost:8443/api/v1   # health check (Core, agnostico de paquete)
 ```
 
-El entrypoint migra Core + **todos** los paquetes en disco sobre la BD compartida. Para que el panel de operador tenga un admin, siémbralo una vez:
+El entrypoint migra el deploy **central** (`core:migrate --connection=central`): registro, control-plane, commander y la base del operador. Las BD de cada paquete las crea el provisioning. Para que el panel de operador tenga un admin, siémbralo una vez:
 
 ```bash
-docker compose exec app php artisan core:seed --package=Commander --force   # admin@snake.com / secret1234
+docker compose exec app php artisan core:seed --connection=central --package=Commander --force   # admin@snake.com / secret1234
 ```
 
 Luego, desde el Commander (`https://commander.<BASE_DOMAIN>`), creas un plan y das de alta un paquete para un cliente: eso lo provisiona en vivo (ver "Provisioning").
@@ -59,7 +59,7 @@ src/
 │   │   │   │       └── CoreEnsureActiveMiddleware.php  # kill-switch 402 (por paquete)
 │   │   │   ├── Models/
 │   │   │   │   ├── CorePackageModel.php            # registro core_packages (identidad + estado)
-│   │   │   │   └── CoreUserModel.php               # User con package_id, roles y tokens
+│   │   │   │   └── CoreUserModel.php               # User (en la BD del paquete), roles y tokens
 │   │   │   ├── Providers/                          # Service providers (orquestacion, rutas, consola, docs)
 │   │   │   ├── Services/                           # estado, metering, cuotas
 │   │   │   └── Support/                            # descubrimiento, selector, paquete activo
@@ -76,11 +76,11 @@ src/
 
 ### Concepto general
 
-Monolito modular centralizado: **una app + una BD sirven todos los paquetes**. Toda la logica de negocio vive en `packages/`, no en `app/`.
+Monolito modular centralizado, multi-tenant por BD: **una app sirve todos los paquetes, cada uno con su propia base de datos**. Toda la logica de negocio vive en `packages/`, no en `app/`.
 
 - **Core** es el paquete base, siempre activo. Provee infraestructura: autenticacion, CRUD base, permisos, descubrimiento automatico, scaffolding, metering, cuotas y kill-switch.
 - Los paquetes de negocio se sirven cada uno en su subdominio `{paquete}.<BASE_DOMAIN>`. El paquete activo del request lo resuelve `CoreResolvePackageFromHostMiddleware` por el `Host`.
-- La base de datos es la conexion estandar de Laravel (`DB_*`), **compartida** por Core y todos los paquetes. Las tablas Core (`users`, control-plane) referencian el paquete via `package_id` (FK a `core_packages`).
+- **Una BD por paquete** (aislamiento fisico). Conexiones: `central` (fija, BD `commander`) + `tenant` (BD dinamica). El default es `central`; en un subdominio de negocio, `CoreResolvePackageFromHostMiddleware` conmuta la conexion default a la BD del paquete (`core_packages.database`). Seguro bajo PHP-FPM (cada request es share-nothing). Las tablas centrales (registro, control-plane, `commander_*`) van pinneadas a `central`; el control-plane sigue indexado por `package_id`. Los `users` NO llevan `package_id`: el aislamiento es por BD.
 
 ### Resolucion del paquete activo
 
@@ -96,11 +96,11 @@ En centralizado, las rutas de cada paquete se envuelven en `Route::domain('{sub}
 
 ### `core_packages`: registro de instancias
 
-Tabla central. Una fila por paquete provisionado: `name` (StudlyCase, = directorio en `packages/`), `subdomain` (snake), y el **estado runtime** (`active|grace|suspended` + reason/message/grace_until). Reemplaza al antiguo singleton `core_package_state`. El resto de tablas Core usa `package_id` (FK).
+Tabla del registro, en la BD `central`. Una fila por paquete provisionado: `name` (StudlyCase, = directorio en `packages/`), `subdomain` (snake), **`database`** (su BD propia), y el **estado runtime** (`active|grace|suspended` + reason/message/grace_until). El middleware la lee para saber a que BD conectar. Reemplaza al antiguo singleton `core_package_state`. El control-plane usa `package_id` (FK a `core_packages`).
 
 ### Identidad por paquete
 
-`users.package_id` (FK a `core_packages`); unique `(package_id, email)`. Cada subdominio tiene su propio espacio de usuarios: `admin@snake.com` puede existir en Shop y Blog por separado. El login filtra por el paquete del subdominio; un token Sanctum de un paquete se rechaza (401) en otro subdominio. Los usuarios del operador (Commander) tienen `package_id = NULL`.
+Aislamiento **fisico**: cada paquete tiene su propia tabla `users` + `personal_access_tokens` en su propia BD; el operador, las suyas en la central. `admin@snake.com` existe en Shop y Blog por separado (BDs distintas). Un token de un paquete simplemente **no existe** en la BD de otro → 401 automatico, sin codigo de comprobacion. No hay `users.package_id` ni middleware de aislamiento: lo da la separacion de BD.
 
 ### Despliegue (IONOS Ubuntu 24.04, sin Plesk)
 
@@ -118,7 +118,7 @@ Deploy / actualizar:
 
 ```bash
 git pull && composer install --no-dev -o
-php artisan migrate --force            # Core + todos los paquetes (BD compartida)
+php artisan core:migrate --connection=central --force   # central (las BD de paquete las crea el provisioning)
 php artisan config:cache route:cache   # route:cache hornea BASE_DOMAIN; re-cachear en cada deploy
 ```
 
@@ -169,11 +169,11 @@ Sanctum en modo **Bearer token exclusivamente**. No hay modo stateful ni sesione
 **Flujo de login:**
 
 1. `POST {sub}.dom/api/v1/auth/login` con `email` y `password`
-2. Se busca el usuario **del paquete del subdominio** (`whereNull(package_id)` en el host del operador)
-3. Si las credenciales son validas, se genera un token Sanctum
+2. Se busca el usuario en la **BD del subdominio** (la conexion ya conmuto); el operador, en la central
+3. Si las credenciales son validas, se genera un token Sanctum (en esa misma BD)
 4. Se devuelve `{ token, token_type: "Bearer", user, token_id }`
 
-Un token solo vale en su subdominio: usarlo en otro paquete devuelve 401. El panel de operador (`commander.<BASE_DOMAIN>`) solo acepta usuarios de operador (`package_id NULL`).
+Un token solo vale en su subdominio: en otra BD no existe → 401. El panel de operador (`commander.<BASE_DOMAIN>`) corre sobre la central, asi que un token de tenant tampoco entra ahi.
 
 ## Descubrimiento automatico
 
@@ -195,10 +195,10 @@ El **codigo** de un paquete viaja por git (lo programas en local con `make:packa
 
 1. Crea/resuelve cliente + suscripcion.
 2. Crea la fila `core_packages` (la instancia: enciende el subdominio).
-3. Corre `core:migrate --package=<X>` sobre la BD compartida (idempotente) + `core:seed --package=<X>` (admin del paquete).
-4. Activa + escribe las cuotas del plan.
+3. **Crea la BD del paquete** (`CREATE DATABASE`) y corre `core:migrate --connection=tenant --db=<bd> --package=<X>` (base Laravel + negocio) + `core:seed` (admin del paquete) **en esa BD**.
+4. Activa + escribe las cuotas del plan (en la central).
 
-Sin `host_command`, sin `subscription.sh`. El subdominio queda vivo al terminar.
+Sin `host_command`, sin `subscription.sh`. El subdominio queda vivo al terminar. De-provisionar (`DELETE /deployments/{id}`) hace `DROP DATABASE` + limpia la central.
 
 ## Comandos Artisan
 
@@ -213,12 +213,11 @@ composer dump-autoload
 ### Base de datos
 
 ```bash
-php artisan core:migrate                       # Core + paquete(s)
-php artisan core:migrate --seed
-php artisan core:migrate --package=Shop        # un paquete concreto (centralizado)
-php artisan core:migrate --rollback
-php artisan core:migrate:refresh
-php artisan core:seed --package=Shop
+php artisan core:migrate --connection=central                          # registro + control-plane + commander + base operador
+php artisan core:migrate --connection=tenant --db=shop --package=Shop   # base + negocio en la BD del paquete
+php artisan core:seed    --connection=tenant --db=shop --package=Shop   # admin + seeders del paquete (en su BD)
+php artisan core:migrate --connection=central --rollback
+# (normalmente las BD de paquete las gestiona el provisioning del Commander, no a mano)
 ```
 
 ### Control plane (estado, metering, cuotas)
@@ -281,17 +280,17 @@ packages/MiPaquete/
 
 ## Migraciones del Core
 
-Sobre la BD compartida:
+Separadas en `packages/Core/database/migrations/{central,tenant}` por su destino:
 
-1. **core_packages** — registro de instancias + estado runtime.
-2. **Roles y permisos** — Spatie Permission.
-3. **Schema base** — `users` (con `package_id`), `sessions`, `cache`, `jobs`...
-4. **Tokens** — `personal_access_tokens` de Sanctum.
-5. **Control plane** — `core_request_logs`, `core_usage_rollups`, `core_quota_metrics` (todas con `package_id`).
+- **central/** (BD `commander`): `core_packages` (registro) + control-plane (`core_request_logs`, `core_usage_rollups`, `core_quota_metrics`, por `package_id`). Mas las `commander_*`.
+- **tenant/** (corre en la central para el operador Y en CADA BD de paquete): Roles/permisos (Spatie), schema base (`users`, `sessions`, `cache`, `jobs`...), tokens Sanctum.
+- **negocio**: `packages/{Pkg}/database/migrations/` (solo en la BD del paquete).
+
+`core:migrate --connection=central` corre central+tenant-base+commander; el provisioning corre `--connection=tenant --db=<bd> --package=<X>` (tenant-base + negocio) en la BD del paquete.
 
 ### Seeder por defecto
 
-- Rol `admin`, permisos sobre `users`, usuario admin `admin@snake.com` / `secret1234` (con el `package_id` del paquete sembrado; NULL para el operador).
+- Rol `admin`, permisos sobre `users`, usuario admin `admin@snake.com` / `secret1234` (uno por BD: el del operador en la central, el de cada paquete en su BD).
 
 ## Variables de entorno
 
@@ -306,13 +305,15 @@ APP_URL=https://api.snake.test
 API_PACKAGE=
 BASE_DOMAIN=snake.test
 
-# BD compartida (MariaDB): una sola BD para Core + todos los paquetes.
-DB_CONNECTION=mysql
+# Multi-tenant: default=central; cada subdominio conmuta a su BD (tenant).
+# root (sin password) es necesario para acceder a todas las BD + CREATE DATABASE (SOLO local).
+DB_CONNECTION=central
 DB_HOST=db
 DB_PORT=3306
-DB_DATABASE=snake
-DB_USERNAME=snake
-DB_PASSWORD=snake
+CENTRAL_DB_DATABASE=commander
+DB_USERNAME=root
+DB_PASSWORD=
+# En tests: CENTRAL_DB_DRIVER=sqlite / TENANT_DB_DRIVER=sqlite (sin MariaDB).
 ```
 
 ## Docker
@@ -327,10 +328,10 @@ Servicios:
 |----------|--------|--------|
 | `app` | `php:8.3-fpm-alpine` (un solo contenedor, sirve todos los paquetes) | 9000 (interno) |
 | `nginx` | `nginx:alpine` (vhost wildcard `*.${BASE_DOMAIN}`) | `${HTTP_PORT:-80}:80` y `${HTTPS_PORT:-443}:443` (8080/8443 en local) |
-| `db` | `mariadb:latest` (crea la BD compartida `snake` en init) | `${DB_PORT:-3306}:3306` (3307 en local) |
+| `db` | `mariadb:latest` (crea la BD central `commander` en init; las de paquete las crea el provisioning) | `${DB_PORT:-3306}:3306` (3307 en local) |
 | `commander-web` | `node:24-alpine` (SPA en `commander.<BASE_DOMAIN>`) | 80 (interno) |
 
-El entrypoint: crea `.env` si falta, `composer install`, `APP_KEY`, fija permisos, y migra Core + todos los paquetes sobre la BD compartida. Luego PHP-FPM.
+El entrypoint: crea `.env` si falta, `composer install`, `APP_KEY`, fija permisos, y migra la **central** (`core:migrate --connection=central`). Luego PHP-FPM.
 
 ## Desarrollo local
 
