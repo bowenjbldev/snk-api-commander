@@ -8,6 +8,8 @@ class CoreQuotaMetricModel extends Model
 {
     protected $table = 'core_quota_metrics';
 
+    protected $connection = 'central';
+
     protected $guarded = [];
 
     protected function casts(): array

@@ -9,6 +9,8 @@ class UsageSnapshotModel extends Model
 {
     protected $table = 'commander_usage_snapshots';
 
+    protected $connection = 'central';
+
     public $incrementing = false;
 
     protected $keyType = 'string';

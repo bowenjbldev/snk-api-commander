@@ -10,8 +10,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Packages\Commander\Models\ActivityEventModel;
 use Packages\Commander\Models\DeploymentModel;
+use Packages\Commander\Models\QuotaModel;
+use Packages\Commander\Models\SubscriptionModel;
+use Packages\Commander\Models\UsageSnapshotModel;
 use Packages\Core\Enums\CorePackageStatusEnum;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
+use Packages\Core\Models\CoreQuotaMetricModel;
 use Packages\Core\Models\CoreUsageRollupModel;
 use Packages\Core\Services\CorePackageStateService;
 
@@ -196,7 +200,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
             'status_class' => 'nullable|integer|in:2,3,4,5',
         ]);
 
-        $rows = DB::table('core_request_logs')
+        $rows = DB::connection('central')->table('core_request_logs')
             ->where('package_id', $deployment->package_id)
             ->when(isset($data['since']), fn ($q) => $q->where('occurred_at', '>=', $data['since']))
             ->when(isset($data['status_class']), function ($q) use ($data) {
@@ -211,6 +215,43 @@ class CommanderDeploymentsController extends CoreBaseApiController
             ->all();
 
         return response()->json(['data' => $rows]);
+    }
+
+    /** De-provision: borra la BD del package (DROP DATABASE) y todo su rastro en la central. */
+    public function destroy($id = null): JsonResponse
+    {
+        if ($response = $this->requirePermission($this->destroyPermission)) {
+            return $response;
+        }
+
+        if (($deployment = $this->findModel($id)) === null) {
+            return response()->json(['error' => 'Record not found'], 404);
+        }
+
+        $package = $deployment->corePackage;
+        $database = $package?->database;
+
+        DB::connection('central')->transaction(function () use ($deployment, $package) {
+            QuotaModel::where('deployment_id', $deployment->id)->delete();
+            UsageSnapshotModel::where('deployment_id', $deployment->id)->delete();
+            SubscriptionModel::where('deployment_id', $deployment->id)->delete();
+
+            if ($package !== null) {
+                CoreQuotaMetricModel::where('package_id', $package->id)->delete();
+                CoreUsageRollupModel::where('package_id', $package->id)->delete();
+                DB::connection('central')->table('core_request_logs')->where('package_id', $package->id)->delete();
+            }
+
+            $deployment->delete();
+            $package?->delete();
+        });
+
+        // DROP DATABASE fuera de la transaccion (DDL). sqlite no aplica.
+        if (! empty($database) && DB::connection('central')->getDriverName() !== 'sqlite') {
+            DB::connection('central')->statement("DROP DATABASE IF EXISTS `{$database}`");
+        }
+
+        return response()->json(['message' => 'Deployment de-provisioned.']);
     }
 
     private function recordActivity(string $kind, DeploymentModel $deployment, ?string $reason, ?string $message): void

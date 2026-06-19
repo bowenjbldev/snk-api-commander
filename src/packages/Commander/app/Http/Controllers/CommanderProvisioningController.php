@@ -17,7 +17,6 @@ use Packages\Commander\Models\SubscriptionModel;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Core\Models\CorePackageModel;
 use Packages\Core\Models\CoreQuotaMetricModel;
-use Packages\Core\Support\CoreActivePackageSupport;
 
 /**
  * Client-first provisioning, EN UN PASO e in-process: registra CLIENTE (nuevo o existente) + PLAN,
@@ -74,6 +73,7 @@ class CommanderProvisioningController extends CoreBaseApiController
         $package = Str::studly($plan->package);
         $subdomain = $data['subdomain'] ?? Str::of($package)->snake()->replace('_', '-')->toString();
         $deploymentId = $subdomain;
+        $database = Str::snake($package); // BD propia del package (multi-tenant), ej. Shop -> shop
 
         // El codigo del package debe existir en disco (viaja por git, no se genera aqui).
         if (! is_dir(base_path("packages/{$package}"))) {
@@ -91,7 +91,7 @@ class CommanderProvisioningController extends CoreBaseApiController
         $baseDomain = (string) config('core.base_domain', 'snake.test');
         $fqdn = "{$subdomain}.{$baseDomain}";
 
-        [$deployment, $corePackage] = DB::transaction(function () use ($data, $plan, $package, $subdomain, $deploymentId, $fqdn) {
+        [$deployment, $corePackage] = DB::connection('central')->transaction(function () use ($data, $plan, $package, $subdomain, $deploymentId, $fqdn, $database) {
             $now = CarbonImmutable::now();
 
             $clientId = $data['client_id'] ?? null;
@@ -111,6 +111,7 @@ class CommanderProvisioningController extends CoreBaseApiController
             $corePackage = CorePackageModel::create([
                 'name' => $package,
                 'subdomain' => $subdomain,
+                'database' => $database,
                 'status' => 'active',
                 'changed_by' => 'operator',
                 'changed_at' => $now,
@@ -168,16 +169,16 @@ class CommanderProvisioningController extends CoreBaseApiController
             return [$deployment, $corePackage];
         });
 
-        // Migra las tablas del package sobre la BD compartida y siembra su admin (DDL fuera de la
-        // transaccion). El seeder estampa el package_id activo en el admin → identidad por package.
-        $active = app(CoreActivePackageSupport::class);
-        $active->set($corePackage);
+        // Crea la BD propia del package y migra/siembra ahi (DDL fuera de la transaccion central):
+        // base Laravel del tenant + tablas de negocio + admin. Aislamiento fisico por BD.
+        // (sqlite no tiene CREATE DATABASE ni multi-schema: en tests solo se valida la parte central.)
+        if (DB::connection('central')->getDriverName() !== 'sqlite') {
+            DB::connection('central')->statement(
+                "CREATE DATABASE IF NOT EXISTS `{$database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+            );
 
-        try {
-            Artisan::call('core:migrate', ['--package' => $package, '--force' => true]);
-            Artisan::call('core:seed', ['--package' => $package, '--force' => true]);
-        } finally {
-            $active->forget();
+            Artisan::call('core:migrate', ['--connection' => 'tenant', '--db' => $database, '--package' => $package, '--force' => true]);
+            Artisan::call('core:seed', ['--connection' => 'tenant', '--db' => $database, '--package' => $package, '--force' => true]);
         }
 
         return response()->json([

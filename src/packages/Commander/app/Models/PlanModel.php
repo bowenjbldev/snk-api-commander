@@ -8,6 +8,8 @@ class PlanModel extends Model
 {
     protected $table = 'commander_plans';
 
+    protected $connection = 'central';
+
     public $incrementing = false;
 
     protected $keyType = 'string';

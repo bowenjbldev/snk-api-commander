@@ -11,6 +11,8 @@ class DeploymentModel extends Model
 {
     protected $table = 'commander_deployments';
 
+    protected $connection = 'central';
+
     public $incrementing = false;
 
     protected $keyType = 'string';

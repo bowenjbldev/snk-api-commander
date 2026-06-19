@@ -8,7 +8,6 @@ use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\Response;
 use Packages\Core\Models\CoreUserModel;
-use Packages\Core\Support\CoreActivePackageSupport;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -38,20 +37,10 @@ class CoreAuthController extends Controller
             return response()->json(['error' => 'Email and password are required'], 422);
         }
 
-        // Identidad por package: el login solo ve usuarios del subdominio resuelto.
-        // Sin package activo (host del operador/apex) solo ve usuarios de operador
-        // (package_id NULL) — un usuario de tenant nunca inicia sesion fuera de su subdominio.
-        $activePackageId = app(CoreActivePackageSupport::class)->id();
-
+        // Aislamiento por BD: el login corre contra la BD del subdominio (conexion ya conmutada por
+        // CoreResolvePackageFromHostMiddleware) o la central (operador). Solo busca por email.
         /** @var CoreUserModel|null $user */
-        $user = CoreUserModel::query()
-            ->where('email', $email)
-            ->when(
-                $activePackageId !== null,
-                fn ($q) => $q->where('package_id', $activePackageId),
-                fn ($q) => $q->whereNull('package_id'),
-            )
-            ->first();
+        $user = CoreUserModel::query()->where('email', $email)->first();
 
         $hash = $user?->password;
 

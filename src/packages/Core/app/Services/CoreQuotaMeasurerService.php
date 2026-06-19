@@ -5,7 +5,6 @@ namespace Packages\Core\Services;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Packages\Core\Enums\CorePackageStatusEnum;
 use Packages\Core\Models\CorePackageModel;
 use Packages\Core\Models\CoreQuotaMetricModel;
@@ -33,9 +32,10 @@ class CoreQuotaMeasurerService
             'disk_db_mb' => $this->measureDatabaseSizeMb($package),
             'disk_storage_mb' => $this->measureStorageSizeMb(),
             'requests_day' => $this->measureRequestsToday($packageId),
-            'users_total' => (int) DB::table('users')
-                ->when($packageId !== null, fn ($q) => $q->where('package_id', $packageId))
-                ->count(),
+            // users del package = todos los users de SU BD (la conexion 'tenant' ya apunta a ella).
+            'users_total' => ! empty($package?->database)
+                ? (int) DB::connection('tenant')->table('users')->count()
+                : 0,
             default => null,
         };
     }
@@ -58,6 +58,13 @@ class CoreQuotaMeasurerService
         foreach ($byPackage as $packageId => $metrics) {
             $package = $packageId !== null ? CorePackageModel::query()->find($packageId) : null;
             $this->active->set($package);
+
+            // Apunta la conexion 'tenant' a la BD del package para medir lo LOCAL (users, tamaño BD).
+            // requests_day y las escrituras de core_quota_metrics siguen yendo a 'central'.
+            if (! empty($package?->database)) {
+                config(['database.connections.tenant.database' => $package->database]);
+                DB::purge('tenant');
+            }
 
             foreach ($metrics as $metric) {
                 $value = $this->measure($metric->metric_key, $package);
@@ -149,25 +156,23 @@ class CoreQuotaMeasurerService
 
     private function measureDatabaseSizeMb(?CorePackageModel $package): ?int
     {
-        if ($package === null) {
+        if ($package === null || empty($package->database)) {
             return null;
         }
 
-        $connection = DB::connection();
+        // Aislamiento por BD: el tamaño = el de TODA la BD del package (information_schema es global,
+        // se consulta por la central). En sqlite (tests) no hay information_schema.
+        if (DB::connection('central')->getDriverName() === 'sqlite') {
+            return null;
+        }
 
-        // BD compartida: el "tamano de BD" del package = suma de SUS tablas (prefijo snake_).
-        // Solo MySQL/MariaDB exponen tamano por tabla; en sqlite no se puede acotar por package.
-        $prefix = Str::snake($package->name) . '_';
+        $row = DB::connection('central')->selectOne(
+            'SELECT ROUND(SUM(data_length + index_length) / 1048576) AS mb
+             FROM information_schema.tables WHERE table_schema = ?',
+            [$package->database]
+        );
 
-        return match ($connection->getDriverName()) {
-            'mysql', 'mariadb' => (int) ($connection->selectOne(
-                'SELECT ROUND(SUM(data_length + index_length) / 1048576) AS mb
-                 FROM information_schema.tables
-                 WHERE table_schema = DATABASE() AND table_name LIKE ?',
-                [$prefix . '%']
-            )->mb ?? 0),
-            default => null,
-        };
+        return (int) ($row->mb ?? 0);
     }
 
     private function measureStorageSizeMb(): int
@@ -195,7 +200,7 @@ class CoreQuotaMeasurerService
     private function measureRequestsToday(?int $packageId): int
     {
         // Nota: con sample_rate < 1 esto infra-cuenta; escalar 1/sample_rate si se usa sampling.
-        return (int) DB::table('core_request_logs')
+        return (int) DB::connection('central')->table('core_request_logs')
             ->where('occurred_at', '>=', CarbonImmutable::now('UTC')->startOfDay())
             ->when($packageId !== null, fn ($q) => $q->where('package_id', $packageId))
             ->count();

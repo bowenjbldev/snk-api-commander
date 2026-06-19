@@ -23,6 +23,11 @@ class CoreServiceProvider extends ServiceProvider
         // the state service, metering and quota measurer. Singleton = one value per request.
         $this->app->singleton(CoreActivePackageSupport::class);
 
+        // Multi-tenant: la cache de permisos de Spatie es por-request ('array'), no persistente.
+        // Con BD por package, una cache compartida (file) filtraria los permisos de un tenant a
+        // otra conexion; 'array' fuerza recargar de la conexion activa en cada request.
+        config(['permission.cache.store' => 'array']);
+
         // Fail loudly at boot (HTTP and artisan) if API_PACKAGE points to a missing package.
         CorePackageSelectorSupport::fromEnvironment(base_path('packages'))->activePackage();
 
@@ -62,9 +67,18 @@ class CoreServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        $migrationPaths = $this->discoverPackageMigrationPaths();
-        if ($migrationPaths !== []) {
-            $this->loadMigrationsFrom($migrationPaths);
+        // Migraciones del deploy CENTRAL (conexion default = central): registro (core_packages) +
+        // control-plane + commander_* + base del operador (roles/users/tokens). Las de NEGOCIO de
+        // cada package NO se auto-cargan: las corre el provisioning sobre la conexion del tenant
+        // (core:migrate --connection=tenant), nunca sobre la central.
+        $paths = array_filter([
+            base_path('packages/Core/database/migrations/central'),
+            base_path('packages/Core/database/migrations/tenant'),
+            base_path('packages/Commander/database/migrations'),
+        ], 'is_dir');
+
+        if ($paths !== []) {
+            $this->loadMigrationsFrom($paths);
         }
     }
 

@@ -12,13 +12,13 @@ use Packages\Commander\Http\Controllers\CommanderQuotasController;
 use Packages\Commander\Http\Controllers\CommanderSubscriptionsController;
 use Packages\Commander\Http\Controllers\CommanderUsageController;
 use Packages\Commander\Http\Controllers\CommanderUsersController;
-use Packages\Commander\Http\Middleware\CommanderOperatorMiddleware;
 
 Route::middleware(['api'])->group(function () {
     Route::post('auth/login', [CommanderAuthController::class, 'login'])->middleware('throttle:login');
 
-    // auth:sanctum + operador: rechaza tokens de tenant reutilizados en el panel.
-    Route::middleware(['auth:sanctum', CommanderOperatorMiddleware::class])->group(function () {
+    // El panel corre sobre la BD central (operador). Un token de tenant vive en SU BD, no en la
+    // central -> auth:sanctum no lo encuentra aqui -> 401 automatico (aislamiento por BD).
+    Route::middleware('auth:sanctum')->group(function () {
         Route::get('auth/me', [CommanderAuthController::class, 'me']);
         Route::post('auth/logout', [CommanderAuthController::class, 'logout']);
 

@@ -8,6 +8,8 @@ class CoreUsageRollupModel extends Model
 {
     protected $table = 'core_usage_rollups';
 
+    protected $connection = 'central';
+
     protected $guarded = [];
 
     protected function casts(): array

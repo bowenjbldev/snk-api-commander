@@ -13,6 +13,8 @@ class CorePackageModel extends Model
 {
     protected $table = 'core_packages';
 
+    protected $connection = 'central';
+
     protected $guarded = [];
 
     protected function casts(): array

@@ -17,6 +17,7 @@ return new class extends Migration {
             $table->id();
             $table->string('name', 100)->unique();       // StudlyCase, = directorio en packages/
             $table->string('subdomain', 100)->unique();  // snake-case, = host {sub}.{BASE_DOMAIN}
+            $table->string('database', 64)->nullable();  // BD del package (multi-tenant); la fija el provisioning
             $table->string('status', 20)->default('active'); // active|grace|suspended
             $table->string('reason', 100)->nullable();
             $table->text('message')->nullable();

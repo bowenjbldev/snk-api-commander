@@ -17,7 +17,7 @@ return [
     |
     */
 
-    'default' => env('DB_CONNECTION', 'sqlite'),
+    'default' => env('DB_CONNECTION', 'central'),
 
     /*
     |--------------------------------------------------------------------------
@@ -114,6 +114,41 @@ return [
             'prefix_indexes' => true,
             // 'encrypt' => env('DB_ENCRYPT', 'yes'),
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
+        ],
+
+        // ── Multi-tenant: una BD por package + una central ───────────────────
+        // 'central': registro (core_packages), commander_*, control-plane y la base del operador.
+        // Necesita un usuario con acceso a todas las BD + CREATE DATABASE (local: root).
+        'central' => [
+            'driver' => 'mysql',
+            'host' => env('DB_HOST', '127.0.0.1'),
+            'port' => env('DB_PORT', '3306'),
+            'database' => env('CENTRAL_DB_DATABASE', 'commander'),
+            'username' => env('DB_USERNAME', 'root'),
+            'password' => env('DB_PASSWORD', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+        ],
+
+        // 'tenant': BD del package activo; 'database' se fija en runtime
+        // (CoreResolvePackageFromHostMiddleware / provisioning). El valor aqui es solo placeholder.
+        'tenant' => [
+            'driver' => 'mysql',
+            'host' => env('DB_HOST', '127.0.0.1'),
+            'port' => env('DB_PORT', '3306'),
+            'database' => env('CENTRAL_DB_DATABASE', 'commander'),
+            'username' => env('DB_USERNAME', 'root'),
+            'password' => env('DB_PASSWORD', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
         ],
 
     ],

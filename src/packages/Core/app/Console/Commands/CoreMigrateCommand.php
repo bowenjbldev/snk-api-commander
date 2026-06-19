@@ -4,87 +4,92 @@ namespace Packages\Core\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Packages\Core\Console\Concerns\CorePackageDatabaseSupport;
 
+/**
+ * Multi-tenant: migra sobre la conexion CENTRAL (registro + control-plane + commander + base del
+ * operador) o sobre la conexion TENANT de un package (su base Laravel + sus tablas de negocio,
+ * en su propia BD). El provisioning usa --connection=tenant --db=<bd> --package=<Pkg>.
+ */
 class CoreMigrateCommand extends Command
 {
     use CorePackageDatabaseSupport;
 
     protected $signature = 'core:migrate
-        {--package= : Target package (defaults to API_PACKAGE, e.g. Shop)}
+        {--connection=central : Conexion destino: central | tenant}
+        {--db= : Nombre de la BD del tenant (obligatorio con --connection=tenant)}
+        {--package= : Package de negocio para las migraciones de tenant (ej. Shop)}
         {--seed : Run seeders after migrating}
         {--fresh : Drop all tables and re-run all migrations}
         {--rollback : Rollback the last batch of migrations}
         {--step= : Number of migrations to rollback}
         {--force : Force the operation to run in production}';
 
-    protected $description = 'Run Core + package migrations against the default database connection';
+    protected $description = 'Run Core + package migrations on the central or a tenant database';
+
+    private const CENTRAL_PATHS = [
+        'packages/Core/database/migrations/central',   // core_packages + control-plane
+        'packages/Core/database/migrations/tenant',    // base Laravel del operador
+        'packages/Commander/database/migrations',      // commander_*
+    ];
 
     public function handle(): int
     {
-        $package = $this->resolvePackageForConsole();
+        $connection = (string) ($this->option('connection') ?: 'central');
+        $package = null;
 
-        $paths = [
-            'packages/Core/database/migrations',
-            "packages/{$package}/database/migrations",
+        if ($connection === 'tenant') {
+            $db = trim((string) $this->option('db'));
+
+            if ($db === '') {
+                $this->fail('--db=<database> es obligatorio con --connection=tenant.');
+            }
+
+            // Apunta la conexion tenant a la BD del package antes de migrar.
+            config(['database.connections.tenant.database' => $db]);
+            DB::purge('tenant');
+
+            $package = $this->resolvePackageForConsole();
+            $paths = [
+                'packages/Core/database/migrations/tenant',          // base Laravel del tenant
+                "packages/{$package}/database/migrations",            // negocio del package
+            ];
+        } else {
+            $paths = self::CENTRAL_PATHS;
+        }
+
+        $args = [
+            '--path' => $paths,
+            '--database' => $connection, // nombre de CONEXION para artisan migrate
+            '--force' => (bool) $this->option('force'),
         ];
 
         if ($this->option('rollback')) {
-            return $this->runRollback($paths);
+            if ($this->option('step')) {
+                $args['--step'] = (int) $this->option('step');
+            }
+            Artisan::call('migrate:rollback', $args, $this->output);
+
+            return self::SUCCESS;
         }
 
         if ($this->option('fresh')) {
-            return $this->runFresh($paths);
+            Artisan::call('migrate:fresh', $args, $this->output);
+
+            return self::SUCCESS;
         }
 
-        return $this->runMigrate($paths, $package);
-    }
-
-    private function runMigrate(array $paths, string $package): int
-    {
-        $args = [
-            '--path' => $paths,
-            '--force' => $this->option('force'),
-        ];
-
-        $this->info("Running migrations for [{$package}]...");
+        $this->info("Running migrations on [{$connection}]" . ($package ? " for [{$package}]" : '') . '...');
         Artisan::call('migrate', $args, $this->output);
 
         if ($this->option('seed')) {
-            $this->info("Running seeders for [{$package}]...");
             Artisan::call('core:seed', [
-                '--package' => $package,
-                '--force' => $this->option('force'),
+                '--connection' => $connection,
+                '--package' => $package ?? 'Commander',
+                '--force' => (bool) $this->option('force'),
             ], $this->output);
         }
-
-        return self::SUCCESS;
-    }
-
-    private function runFresh(array $paths): int
-    {
-        $args = [
-            '--path' => $paths,
-            '--force' => $this->option('force'),
-        ];
-
-        Artisan::call('migrate:fresh', $args, $this->output);
-
-        return self::SUCCESS;
-    }
-
-    private function runRollback(array $paths): int
-    {
-        $args = [
-            '--path' => $paths,
-            '--force' => $this->option('force'),
-        ];
-
-        if ($this->option('step')) {
-            $args['--step'] = (int) $this->option('step');
-        }
-
-        Artisan::call('migrate:rollback', $args, $this->output);
 
         return self::SUCCESS;
     }

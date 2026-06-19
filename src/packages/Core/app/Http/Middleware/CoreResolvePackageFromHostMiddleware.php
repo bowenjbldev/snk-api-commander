@@ -4,7 +4,7 @@ namespace Packages\Core\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Laravel\Sanctum\PersonalAccessToken;
+use Illuminate\Support\Facades\DB;
 use Packages\Core\Models\CorePackageModel;
 use Packages\Core\Support\CoreActivePackageSupport;
 use Symfony\Component\HttpFoundation\Response;
@@ -32,6 +32,8 @@ class CoreResolvePackageFromHostMiddleware
             abort(404);
         }
 
+        // CorePackageModel esta pinneado a la conexion 'central', asi que esta query
+        // resuelve el registro aunque luego cambiemos la conexion default a la del tenant.
         $package = CorePackageModel::query()->where('subdomain', $subdomain)->first();
 
         if ($package === null) {
@@ -40,17 +42,14 @@ class CoreResolvePackageFromHostMiddleware
 
         $this->active->set($package);
 
-        // Aislamiento de identidad: un token de otro package no vale en este subdominio.
-        $token = $request->bearerToken();
-
-        if ($token !== null) {
-            $owner = PersonalAccessToken::findToken($token)?->tokenable;
-
-            if ($owner !== null
-                && $owner->package_id !== null
-                && (int) $owner->package_id !== (int) $package->getKey()) {
-                abort(401);
-            }
+        // Aislamiento FISICO: conmuta la conexion default a la BD del package. Bajo PHP-FPM cada
+        // request es share-nothing, asi que el cambio vive solo en este request (no hay bleed).
+        // Las tablas centrales (core_packages, control-plane, commander_*) van pinneadas a 'central'.
+        // El token de un tenant ni existe en la BD de otro -> 401 automatico, sin check explicito.
+        if (! empty($package->database)) {
+            config(['database.connections.tenant.database' => $package->database]);
+            DB::purge('tenant');
+            DB::setDefaultConnection('tenant');
         }
 
         return $next($request);

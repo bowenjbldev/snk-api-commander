@@ -50,10 +50,10 @@ fi
 echo "Clearing config cache..."
 php artisan config:clear
 
-# Ejecutar migraciones. Centralizado (API_PACKAGE vacio): Core + TODOS los packages
-# sobre la BD compartida. Con API_PACKAGE fijo: Core + ese package.
-echo "Running database migrations..."
-php artisan migrate --force
+# Migra el deploy CENTRAL (registro core_packages + control-plane + commander + base del operador).
+# Las BD de cada package las crea/migra el provisioning (CREATE DATABASE + core:migrate tenant).
+echo "Running central migrations..."
+php artisan core:migrate --connection=central --force
 
 # Limpiar cache (requiere DB, va después de migrate)
 echo "Clearing application cache..."

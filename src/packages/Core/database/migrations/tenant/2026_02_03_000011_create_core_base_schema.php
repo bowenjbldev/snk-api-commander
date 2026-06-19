@@ -17,22 +17,19 @@ return new class extends Migration
         Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('users');
 
+        // Aislamiento FISICO por BD: cada package tiene su propia tabla users en su propia BD,
+        // y la central tiene la del operador. Sin package_id (lo reemplaza la separacion de BD).
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            // Identidad por package: cada subdominio tiene su propio espacio de usuarios.
-            // Nullable = usuarios del operador (Commander/apex) sin package. FK a core_packages.
-            $table->foreignId('package_id')->nullable()->constrained('core_packages')->nullOnDelete();
             $table->string('name');
             $table->string('full_name', 255)->nullable();
             $table->string('company', 255)->nullable();
             $table->string('phone', 50)->nullable();
-            $table->string('email');
+            $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();
             $table->timestamps();
-            // Email unico POR package (admin@snake.com puede existir en Shop y Blog por separado).
-            $table->unique(['package_id', 'email']);
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {

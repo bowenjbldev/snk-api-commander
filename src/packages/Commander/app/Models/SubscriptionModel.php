@@ -9,6 +9,8 @@ class SubscriptionModel extends Model
 {
     protected $table = 'commander_subscriptions';
 
+    protected $connection = 'central';
+
     public $incrementing = false;
 
     protected $keyType = 'string';

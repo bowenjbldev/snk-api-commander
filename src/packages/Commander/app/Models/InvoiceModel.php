@@ -9,6 +9,8 @@ class InvoiceModel extends Model
 {
     protected $table = 'commander_invoices';
 
+    protected $connection = 'central';
+
     public $incrementing = false;
 
     protected $keyType = 'string';
