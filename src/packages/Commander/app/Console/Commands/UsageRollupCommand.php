@@ -1,19 +1,19 @@
 <?php
 
-namespace Packages\Core\Console\Commands;
+namespace Packages\Commander\Console\Commands;
 
 use Illuminate\Console\Command;
-use Packages\Core\Services\CoreUsageRollupService;
+use Packages\Commander\Services\UsageRollupService;
 
-class CoreUsageRollupCommand extends Command
+class UsageRollupCommand extends Command
 {
-    protected $signature = 'core:usage:rollup
+    protected $signature = 'commander:usage:rollup
         {--period=both : Periodos a agregar (hour|day|both)}
         {--prune : Elimina filas crudas mas antiguas que core.metering.retention_days}';
 
     protected $description = 'Agrega request_logs en rollups por hora/dia (idempotente)';
 
-    public function handle(CoreUsageRollupService $service): int
+    public function handle(UsageRollupService $service): int
     {
         $option = (string) $this->option('period');
         $periods = match ($option) {

@@ -1,13 +1,14 @@
 <?php
 
-namespace Packages\Core\Services;
+namespace Packages\Commander\Services;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Packages\Commander\Models\QuotaMetricModel;
 use Packages\Core\Enums\CorePackageStatusEnum;
 use Packages\Core\Models\CorePackageModel;
-use Packages\Core\Models\CoreQuotaMetricModel;
+use Packages\Core\Services\CorePackageStateService;
 use Packages\Core\Support\CoreActivePackageSupport;
 
 /**
@@ -16,7 +17,7 @@ use Packages\Core\Support\CoreActivePackageSupport;
  * por la propia metrica (reason quota_exceeded:<key>), nunca pisa una suspension manual
  * o del Commander. En una BD compartida cada metrica se mide acotada a su package.
  */
-class CoreQuotaMeasurerService
+class QuotaMeasurerService
 {
     public function __construct(
         private readonly CorePackageStateService $stateService,
@@ -41,7 +42,7 @@ class CoreQuotaMeasurerService
     }
 
     /**
-     * @return array<int, array{metric: CoreQuotaMetricModel, value: ?int, over: bool}>
+     * @return array<int, array{metric: QuotaMetricModel, value: ?int, over: bool}>
      */
     public function measureAll(bool $persist = true, bool $enforce = true): array
     {
@@ -49,7 +50,7 @@ class CoreQuotaMeasurerService
 
         // Agrupa por package: fija el contexto activo de cada grupo para que enforce()
         // (state->set/current) apunte a la fila packages correcta.
-        $byPackage = CoreQuotaMetricModel::query()
+        $byPackage = QuotaMetricModel::query()
             ->orderBy('package_id')
             ->orderBy('metric_key')
             ->get()
@@ -95,7 +96,7 @@ class CoreQuotaMeasurerService
         return $results;
     }
 
-    public function enforce(CoreQuotaMetricModel $metric): void
+    public function enforce(QuotaMetricModel $metric): void
     {
         $reason = "quota_exceeded:{$metric->metric_key}";
         $state = $this->stateService->current();

@@ -227,9 +227,9 @@ php artisan core:migrate --rollback       # rollback de la commander
 Todo in-process (Commander y deploys viven en la misma app/BD). Detalle en [`docs/CONTROL-PLANE.md`](docs/CONTROL-PLANE.md).
 
 ```bash
-php artisan core:status                       # estado + cuotas (por paquete activo)
-php artisan core:usage:rollup --prune         # agrega request_logs en rollups hora/dia (por package)
-php artisan core:quota:measure                # mide disco/requests/usuarios por package y aplica on_exceed
+php artisan commander:status                       # estado + cuotas (por paquete activo)
+php artisan commander:usage:rollup --prune         # agrega request_logs en rollups hora/dia (por package)
+php artisan commander:quota:measure                # mide disco/requests/usuarios por package y aplica on_exceed
 ```
 
 - Estados por paquete: `active` | `grace` (headers `X-Package-Status`) | `suspended` (402 en rutas de negocio; health y docs siguen respondiendo).

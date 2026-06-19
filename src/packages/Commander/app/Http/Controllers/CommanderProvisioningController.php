@@ -16,7 +16,7 @@ use Packages\Commander\Models\QuotaModel;
 use Packages\Commander\Models\SubscriptionModel;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Core\Models\CorePackageModel;
-use Packages\Core\Models\CoreQuotaMetricModel;
+use Packages\Commander\Models\QuotaMetricModel;
 
 /**
  * Client-first provisioning, EN UN PASO e in-process: registra CLIENTE (nuevo o existente) + PLAN,
@@ -157,7 +157,7 @@ class CommanderProvisioningController extends CoreBaseApiController
                 ]);
 
                 // …y la fila real que el medidor de cuotas de Core hace cumplir, por package.
-                CoreQuotaMetricModel::create([
+                QuotaMetricModel::create([
                     'package_id' => $corePackage->id,
                     'metric_key' => $metric,
                     'limit_value' => $limit,

@@ -15,8 +15,8 @@ use Packages\Commander\Models\SubscriptionModel;
 use Packages\Commander\Models\UsageSnapshotModel;
 use Packages\Core\Enums\CorePackageStatusEnum;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
-use Packages\Core\Models\CoreQuotaMetricModel;
-use Packages\Core\Models\CoreUsageRollupModel;
+use Packages\Commander\Models\QuotaMetricModel;
+use Packages\Commander\Models\UsageRollupModel;
 use Packages\Core\Services\CorePackageStateService;
 
 /**
@@ -172,7 +172,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
             'per_page' => 'nullable|integer|min:1|max:1000',
         ]);
 
-        $rollups = CoreUsageRollupModel::query()
+        $rollups = UsageRollupModel::query()
             ->where('package_id', $deployment->package_id)
             ->where('period', $data['period'] ?? 'hour')
             ->when(isset($data['from']), fn ($q) => $q->where('period_start', '>=', $data['from']))
@@ -237,8 +237,8 @@ class CommanderDeploymentsController extends CoreBaseApiController
             SubscriptionModel::where('deployment_id', $deployment->id)->delete();
 
             if ($package !== null) {
-                CoreQuotaMetricModel::where('package_id', $package->id)->delete();
-                CoreUsageRollupModel::where('package_id', $package->id)->delete();
+                QuotaMetricModel::where('package_id', $package->id)->delete();
+                UsageRollupModel::where('package_id', $package->id)->delete();
                 DB::connection('commander')->table('request_logs')->where('package_id', $package->id)->delete();
             }
 

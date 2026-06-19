@@ -1,16 +1,16 @@
 <?php
 
-namespace Packages\Core\Console\Commands;
+namespace Packages\Commander\Console\Commands;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Packages\Core\Enums\CorePackageStatusEnum;
-use Packages\Core\Models\CoreQuotaMetricModel;
+use Packages\Commander\Models\QuotaMetricModel;
 use Packages\Core\Services\CorePackageStateService;
 
-class CoreStatusCommand extends Command
+class StatusCommand extends Command
 {
-    protected $signature = 'core:status
+    protected $signature = 'commander:status
         {--set= : Nuevo estado (active|grace|suspended)}
         {--reason= : Codigo de motivo (ej. manual, payment_overdue)}
         {--message= : Mensaje para el cliente (se devuelve en el 402)}
@@ -61,7 +61,7 @@ class CoreStatusCommand extends Command
             ['changed_by', $state->changedBy ?? '-'],
         ]);
 
-        $quotas = CoreQuotaMetricModel::query()->orderBy('metric_key')->get();
+        $quotas = QuotaMetricModel::query()->orderBy('metric_key')->get();
 
         if ($quotas->isNotEmpty()) {
             $this->table(

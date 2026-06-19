@@ -6,11 +6,8 @@ use Illuminate\Support\ServiceProvider;
 use Packages\Core\Console\Commands\CoreMakePackageCommand;
 use Packages\Core\Console\Commands\CoreMigrateCommand;
 use Packages\Core\Console\Commands\CoreMigrateRefreshCommand;
-use Packages\Core\Console\Commands\CoreQuotaMeasureCommand;
 use Packages\Core\Console\Commands\CoreRemovePackageCommand;
 use Packages\Core\Console\Commands\CoreSeedCommand;
-use Packages\Core\Console\Commands\CoreStatusCommand;
-use Packages\Core\Console\Commands\CoreUsageRollupCommand;
 
 class CoreConsoleServiceProvider extends ServiceProvider
 {
@@ -82,19 +79,5 @@ class CoreConsoleServiceProvider extends ServiceProvider
             \Packages\Core\Console\Commands\Make\CoreTraitMakeCommand::class,
             \Packages\Core\Console\Commands\Make\CoreViewMakeCommand::class,
         ]);
-    }
-
-    public function boot(): void
-    {
-        // Control-plane commands are tenant-only. Gate in boot(), NOT register(): the Commander flips
-        // core.control_plane=false during the register phase, AFTER this provider's register() runs, so
-        // a register()-time read would still see the default true and wrongly register them.
-        if ($this->app->runningInConsole() && config('core.control_plane', true)) {
-            $this->commands([
-                CoreStatusCommand::class,
-                CoreUsageRollupCommand::class,
-                CoreQuotaMeasureCommand::class,
-            ]);
-        }
     }
 }

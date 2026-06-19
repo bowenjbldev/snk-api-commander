@@ -5,6 +5,9 @@ namespace Packages\Commander\Providers;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\ServiceProvider;
 use Packages\Commander\Console\Commands\CommanderRefreshCommand;
+use Packages\Commander\Console\Commands\QuotaMeasureCommand;
+use Packages\Commander\Console\Commands\StatusCommand;
+use Packages\Commander\Console\Commands\UsageRollupCommand;
 use Packages\Core\Support\CorePackageSelectorSupport;
 
 class CommanderServiceProvider extends ServiceProvider
@@ -27,14 +30,19 @@ class CommanderServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if ($this->app->runningInConsole()) {
-            $this->commands([CommanderRefreshCommand::class]);
+            $this->commands([
+                CommanderRefreshCommand::class,
+                StatusCommand::class,
+                UsageRollupCommand::class,
+                QuotaMeasureCommand::class,
+            ]);
 
-            // Mantiene los KPIs del dashboard frescos (cron corre schedule:run).
+            // KPIs del dashboard + analitica del control-plane frescos (cron corre schedule:run).
             $this->app->booted(function (): void {
-                $this->app->make(Schedule::class)
-                    ->command('commander:refresh')
-                    ->everyTenMinutes()
-                    ->withoutOverlapping();
+                $schedule = $this->app->make(Schedule::class);
+                $schedule->command('commander:refresh')->everyTenMinutes()->withoutOverlapping();
+                $schedule->command('commander:usage:rollup --prune')->hourly()->withoutOverlapping();
+                $schedule->command('commander:quota:measure')->everySixHours()->withoutOverlapping();
             });
         }
     }

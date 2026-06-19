@@ -1,10 +1,10 @@
 <?php
 
-namespace Packages\Core\Services;
+namespace Packages\Commander\Services;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
-use Packages\Core\Models\CoreUsageRollupModel;
+use Packages\Commander\Models\UsageRollupModel;
 
 /**
  * Agrega request_logs en buckets cerrados (UTC) de hora o dia.
@@ -15,7 +15,7 @@ use Packages\Core\Models\CoreUsageRollupModel;
  * El dia se calcula SIEMPRE desde la tabla cruda (los p95 no componen desde
  * los buckets de hora), por eso la retencion debe ser >= 2 dias.
  */
-class CoreUsageRollupService
+class UsageRollupService
 {
     private const CHUNK = 2000;
     private const PRUNE_BATCH = 5000;
@@ -68,7 +68,7 @@ class CoreUsageRollupService
     private function windowStart(string $period): ?CarbonImmutable
     {
         // Reprocesa desde el ultimo bucket agregado (upsert lo hace seguro)
-        $last = CoreUsageRollupModel::query()->where('period', $period)->max('period_start');
+        $last = UsageRollupModel::query()->where('period', $period)->max('period_start');
 
         if ($last !== null) {
             return $this->truncate(CarbonImmutable::parse($last, 'UTC'), $period);
@@ -157,7 +157,7 @@ class CoreUsageRollupService
             ];
         }
 
-        CoreUsageRollupModel::query()->upsert(
+        UsageRollupModel::query()->upsert(
             $rows,
             ['package_id', 'period', 'period_start', 'route', 'method', 'status_class'],
             [

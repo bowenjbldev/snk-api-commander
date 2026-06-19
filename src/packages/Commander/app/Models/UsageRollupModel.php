@@ -1,10 +1,10 @@
 <?php
 
-namespace Packages\Core\Models;
+namespace Packages\Commander\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class CoreUsageRollupModel extends Model
+class UsageRollupModel extends Model
 {
     protected $table = 'usage_rollups';
 

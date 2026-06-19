@@ -9,7 +9,7 @@ use Packages\Commander\Models\DeploymentModel;
 use Packages\Commander\Models\PlanModel;
 use Packages\Core\Database\Seeders\CoreDatabaseSeeder;
 use Packages\Core\Models\CorePackageModel;
-use Packages\Core\Models\CoreQuotaMetricModel;
+use Packages\Commander\Models\QuotaMetricModel;
 use Packages\Core\Models\CoreUserModel;
 use Tests\CommanderTestCase;
 
@@ -78,7 +78,7 @@ class CommanderProvisioningTest extends CommanderTestCase
         $this->assertNull($dep->quotas->firstWhere('metric_key', 'disk_storage_mb')->limit_value);
 
         // Real enforcement rows (quota_metrics) seeded per package (commander).
-        $this->assertSame(100000, (int) CoreQuotaMetricModel::where('package_id', $cp->id)
+        $this->assertSame(100000, (int) QuotaMetricModel::where('package_id', $cp->id)
             ->where('metric_key', 'requests_day')->value('limit_value'));
 
         // Nota: la BD del package (su base Laravel + negocio + admin) se crea con CREATE DATABASE +

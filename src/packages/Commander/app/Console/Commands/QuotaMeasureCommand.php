@@ -1,18 +1,18 @@
 <?php
 
-namespace Packages\Core\Console\Commands;
+namespace Packages\Commander\Console\Commands;
 
 use Illuminate\Console\Command;
-use Packages\Core\Services\CoreQuotaMeasurerService;
+use Packages\Commander\Services\QuotaMeasurerService;
 
-class CoreQuotaMeasureCommand extends Command
+class QuotaMeasureCommand extends Command
 {
-    protected $signature = 'core:quota:measure
+    protected $signature = 'commander:quota:measure
         {--dry-run : Mide y muestra sin persistir ni aplicar acciones}';
 
     protected $description = 'Mide las metricas de cuota y aplica on_exceed (warn/suspend)';
 
-    public function handle(CoreQuotaMeasurerService $service): int
+    public function handle(QuotaMeasurerService $service): int
     {
         $dryRun = (bool) $this->option('dry-run');
         $results = $service->measureAll(persist: !$dryRun, enforce: !$dryRun);

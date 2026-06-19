@@ -7,7 +7,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Packages\Commander\Models\DeploymentModel;
 use Packages\Commander\Models\UsageSnapshotModel;
-use Packages\Core\Models\CoreQuotaMetricModel;
+use Packages\Commander\Models\QuotaMetricModel;
 
 /**
  * Refresca los campos denormalizados que el dashboard/lista del Commander leen
@@ -37,7 +37,7 @@ class CommanderRefreshCommand extends Command
             $lastSeen = DB::connection('commander')->table('request_logs')->where('package_id', $pid)->max('occurred_at');
 
             $worst = 0.0;
-            foreach (CoreQuotaMetricModel::query()->where('package_id', $pid)->get() as $m) {
+            foreach (QuotaMetricModel::query()->where('package_id', $pid)->get() as $m) {
                 if ($m->limit_value !== null && $m->limit_value > 0) {
                     $worst = max($worst, $m->current_value / $m->limit_value);
                 }

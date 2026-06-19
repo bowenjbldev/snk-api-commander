@@ -1,10 +1,10 @@
 <?php
 
-namespace Packages\Core\Models;
+namespace Packages\Commander\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class CoreQuotaMetricModel extends Model
+class QuotaMetricModel extends Model
 {
     protected $table = 'quota_metrics';
 
