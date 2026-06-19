@@ -5,28 +5,37 @@ namespace Packages\Core\Services;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Packages\Core\Enums\CorePackageStatusEnum;
+use Packages\Core\Models\CorePackageModel;
 use Packages\Core\Models\CoreQuotaMetricModel;
+use Packages\Core\Support\CoreActivePackageSupport;
 
 /**
- * Mide las metricas de cuota y aplica la accion on_exceed. La unica via de
- * suspension es CorePackageStateService; el auto-heal solo revierte
- * suspensiones causadas por la propia metrica (reason quota_exceeded:<key>),
- * nunca pisa una suspension manual o del Commander.
+ * Mide las metricas de cuota POR package y aplica la accion on_exceed. La unica via de
+ * suspension es CorePackageStateService; el auto-heal solo revierte suspensiones causadas
+ * por la propia metrica (reason quota_exceeded:<key>), nunca pisa una suspension manual
+ * o del Commander. En una BD compartida cada metrica se mide acotada a su package.
  */
 class CoreQuotaMeasurerService
 {
-    public function __construct(private readonly CorePackageStateService $stateService)
-    {
+    public function __construct(
+        private readonly CorePackageStateService $stateService,
+        private readonly CoreActivePackageSupport $active,
+    ) {
     }
 
-    public function measure(string $metricKey): ?int
+    public function measure(string $metricKey, ?CorePackageModel $package = null): ?int
     {
+        $packageId = $package?->getKey();
+
         return match ($metricKey) {
-            'disk_db_mb' => $this->measureDatabaseSizeMb(),
+            'disk_db_mb' => $this->measureDatabaseSizeMb($package),
             'disk_storage_mb' => $this->measureStorageSizeMb(),
-            'requests_day' => $this->measureRequestsToday(),
-            'users_total' => (int) DB::table('users')->count(),
+            'requests_day' => $this->measureRequestsToday($packageId),
+            'users_total' => (int) DB::table('users')
+                ->when($packageId !== null, fn ($q) => $q->where('package_id', $packageId))
+                ->count(),
             default => null,
         };
     }
@@ -38,28 +47,43 @@ class CoreQuotaMeasurerService
     {
         $results = [];
 
-        foreach (CoreQuotaMetricModel::query()->orderBy('metric_key')->get() as $metric) {
-            $value = $this->measure($metric->metric_key);
+        // Agrupa por package: fija el contexto activo de cada grupo para que enforce()
+        // (state->set/current) apunte a la fila core_packages correcta.
+        $byPackage = CoreQuotaMetricModel::query()
+            ->orderBy('package_id')
+            ->orderBy('metric_key')
+            ->get()
+            ->groupBy('package_id');
 
-            // Set the measured value in memory first so enforce() always sees fresh data; only the DB
-            // write is gated on $persist (enforcing on a stale current_value would mis-decide suspend/heal).
-            if ($value !== null) {
-                $metric->current_value = $value;
+        foreach ($byPackage as $packageId => $metrics) {
+            $package = $packageId !== null ? CorePackageModel::query()->find($packageId) : null;
+            $this->active->set($package);
 
-                if ($persist) {
-                    $metric->measured_at = now();
-                    $metric->save();
+            foreach ($metrics as $metric) {
+                $value = $this->measure($metric->metric_key, $package);
+
+                // Set the measured value in memory first so enforce() always sees fresh data; only the DB
+                // write is gated on $persist (enforcing on a stale current_value would mis-decide suspend/heal).
+                if ($value !== null) {
+                    $metric->current_value = $value;
+
+                    if ($persist) {
+                        $metric->measured_at = now();
+                        $metric->save();
+                    }
                 }
+
+                $over = $value !== null && $metric->limit_value !== null && $value > $metric->limit_value;
+
+                if ($enforce && $value !== null) {
+                    $this->enforce($metric);
+                }
+
+                $results[] = ['metric' => $metric, 'value' => $value, 'over' => $over];
             }
-
-            $over = $value !== null && $metric->limit_value !== null && $value > $metric->limit_value;
-
-            if ($enforce && $value !== null) {
-                $this->enforce($metric);
-            }
-
-            $results[] = ['metric' => $metric, 'value' => $value, 'over' => $over];
         }
+
+        $this->active->forget();
 
         return $results;
     }
@@ -123,33 +147,27 @@ class CoreQuotaMeasurerService
         }
     }
 
-    private function measureDatabaseSizeMb(): ?int
+    private function measureDatabaseSizeMb(?CorePackageModel $package): ?int
     {
+        if ($package === null) {
+            return null;
+        }
+
         $connection = DB::connection();
+
+        // BD compartida: el "tamano de BD" del package = suma de SUS tablas (prefijo snake_).
+        // Solo MySQL/MariaDB exponen tamano por tabla; en sqlite no se puede acotar por package.
+        $prefix = Str::snake($package->name) . '_';
 
         return match ($connection->getDriverName()) {
             'mysql', 'mariadb' => (int) ($connection->selectOne(
                 'SELECT ROUND(SUM(data_length + index_length) / 1048576) AS mb
-                 FROM information_schema.tables WHERE table_schema = DATABASE()'
+                 FROM information_schema.tables
+                 WHERE table_schema = DATABASE() AND table_name LIKE ?',
+                [$prefix . '%']
             )->mb ?? 0),
-            'sqlite' => $this->measureSqliteSizeMb($connection->getConfig('database')),
             default => null,
         };
-    }
-
-    private function measureSqliteSizeMb(?string $path): ?int
-    {
-        if ($path === null || $path === ':memory:' || !is_file($path)) {
-            return null;
-        }
-
-        $bytes = (int) filesize($path);
-
-        if (is_file($path . '-wal')) {
-            $bytes += (int) filesize($path . '-wal');
-        }
-
-        return (int) round($bytes / 1048576);
     }
 
     private function measureStorageSizeMb(): int
@@ -174,11 +192,12 @@ class CoreQuotaMeasurerService
         return (int) round($bytes / 1048576);
     }
 
-    private function measureRequestsToday(): int
+    private function measureRequestsToday(?int $packageId): int
     {
         // Nota: con sample_rate < 1 esto infra-cuenta; escalar 1/sample_rate si se usa sampling.
         return (int) DB::table('core_request_logs')
             ->where('occurred_at', '>=', CarbonImmutable::now('UTC')->startOfDay())
+            ->when($packageId !== null, fn ($q) => $q->where('package_id', $packageId))
             ->count();
     }
 }

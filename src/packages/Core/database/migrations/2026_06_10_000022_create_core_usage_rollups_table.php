@@ -7,13 +7,9 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        // Control-plane table: tenant deploys only (Commander sets core.control_plane=false).
-        if (! config('core.control_plane', true)) {
-            return;
-        }
-
         Schema::create('core_usage_rollups', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('package_id')->nullable()->index();
             $table->string('period', 8); // hour|day
             $table->timestamp('period_start');
             // '' como centinela de "sin ruta" (404): NULL rompe la unique en MySQL
@@ -29,8 +25,9 @@ return new class extends Migration {
             $table->unsignedInteger('unique_users')->default(0);
             $table->timestamps();
 
+            // package_id en la unique: dos packages con rutas identicas no deben colisionar en el upsert.
             $table->unique(
-                ['period', 'period_start', 'route', 'method', 'status_class'],
+                ['package_id', 'period', 'period_start', 'route', 'method', 'status_class'],
                 'core_usage_rollups_bucket_unique'
             );
         });

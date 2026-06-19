@@ -9,7 +9,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Http\Request;
+use Packages\Core\Http\Middleware\CoreResolvePackageFromHostMiddleware;
 use Packages\Core\Support\CorePackageDiscoverySupport;
+use Packages\Core\Support\CorePackageSelectorSupport;
 
 class CoreRouteServiceProvider extends ServiceProvider
 {
@@ -57,7 +59,7 @@ class CoreRouteServiceProvider extends ServiceProvider
             $discovery = CorePackageDiscoverySupport::fromEnvironment(base_path('packages'));
 
             $coreFiles = [];
-            $packageFiles = [];
+            $packageFiles = []; // module => route file
 
             foreach ($discovery->discoverRouteFiles() as $routeFile) {
                 $module = $discovery->moduleNameFromRouteFile($routeFile);
@@ -67,14 +69,44 @@ class CoreRouteServiceProvider extends ServiceProvider
                     continue;
                 }
 
-                $packageFiles[] = $routeFile;
+                $packageFiles[$module] = $routeFile;
             }
 
-            // Core first, active package last: on identical method+URI the package wins.
-            foreach ([...$coreFiles, ...$packageFiles] as $routeFile) {
-                Route::prefix('api/v1')
-                    ->middleware(['api'])
-                    ->group($routeFile);
+            // Lock de un solo package (deploy aislado / tests): rutas planas, Core primero.
+            // En colision exacta gana el package (se registra despues).
+            if (CorePackageSelectorSupport::activePackageName() !== null) {
+                foreach ([...$coreFiles, ...array_values($packageFiles)] as $routeFile) {
+                    Route::prefix('api/v1')
+                        ->middleware(['api'])
+                        ->group($routeFile);
+                }
+
+                return;
+            }
+
+            // Centralizado: cada package bajo su propio subdominio {sub}.{BASE_DOMAIN}.
+            $base = (string) config('core.base_domain');
+
+            foreach ($packageFiles as $module => $routeFile) {
+                $subdomain = CorePackageSelectorSupport::packageToSubdomain($module);
+                $isCommander = strcasecmp($module, 'Commander') === 0;
+
+                // Solo las apps de negocio resuelven package por host. El Commander (operador)
+                // no es un tenant: sin resolutor (su contexto queda sin package activo).
+                $middleware = $isCommander
+                    ? ['api']
+                    : [CoreResolvePackageFromHostMiddleware::class, 'api'];
+
+                Route::domain($subdomain . '.' . $base)
+                    ->prefix('api/v1')
+                    ->middleware($middleware)
+                    ->group(function () use ($coreFiles, $routeFile): void {
+                        foreach ($coreFiles as $coreFile) {
+                            require $coreFile;
+                        }
+
+                        require $routeFile;
+                    });
             }
         });
     }

@@ -8,18 +8,22 @@ use Packages\Commander\Console\Commands\CommanderDeregisterDeployCommand;
 use Packages\Commander\Console\Commands\CommanderProvisionEnvCommand;
 use Packages\Commander\Console\Commands\CommanderRegisterDeployCommand;
 use Packages\Commander\Console\Commands\CommanderSyncDeploysCommand;
+use Packages\Core\Support\CorePackageSelectorSupport;
 
 class CommanderServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // The Commander is the operator panel, not a managed tenant: turn off Core's control plane
-        // (metering, kill-switch, quotas and the /control surface) for this deploy. Declared here in
-        // the package — NOT by Core sniffing API_PACKAGE — so Core stays agnostic of business-package
-        // names. register() runs before CoreRouteServiceProvider::boot() reads the flag, so it sees it.
-        // Kept ON under tests: the suite runs as the Commander and must exercise Core's control plane
-        // machinery (signing, rotation, the core_* tables), which the gate would otherwise strip.
-        if (! $this->app->runningUnitTests()) {
+        // Solo cuando el Commander es el package ÚNICO del deploy (API_PACKAGE=Commander, panel
+        // del operador aislado) apaga el control plane de Core (metering/kill-switch/cuotas). En
+        // modo centralizado (API_PACKAGE vacio) el Commander es un package mas y NO debe apagar el
+        // control plane del resto de tenants. Bajo tests se mantiene ON (la suite corre como
+        // Commander y ejercita las tablas core_*).
+        $locked = CorePackageSelectorSupport::activePackageName();
+
+        if (! $this->app->runningUnitTests()
+            && $locked !== null
+            && strcasecmp($locked, 'Commander') === 0) {
             config(['core.control_plane' => false]);
         }
     }

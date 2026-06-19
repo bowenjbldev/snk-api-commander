@@ -5,9 +5,13 @@ namespace Packages\Core\Models;
 use Illuminate\Database\Eloquent\Model;
 use Packages\Core\Enums\CorePackageStatusEnum;
 
-class CorePackageStateModel extends Model
+/**
+ * Registro de un package provisionado (core_packages). Identidad (name/subdomain) +
+ * estado runtime (status/reason/grace_until...). Reemplaza al singleton core_package_state.
+ */
+class CorePackageModel extends Model
 {
-    protected $table = 'core_package_state';
+    protected $table = 'core_packages';
 
     protected $guarded = [];
 
@@ -16,7 +20,7 @@ class CorePackageStateModel extends Model
         return [
             'status' => CorePackageStatusEnum::class,
             'grace_until' => 'datetime',
-            'control_secret' => 'encrypted',
+            'changed_at' => 'datetime',
         ];
     }
 }

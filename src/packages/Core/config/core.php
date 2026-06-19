@@ -16,6 +16,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Base Domain
+    |--------------------------------------------------------------------------
+    |
+    | Dominio raiz del despliegue centralizado. En modo centralizado (API_PACKAGE
+    | vacio) cada package se sirve en {subdominio}.{base_domain} y el package se
+    | resuelve por host. Debe coincidir con BASE_DOMAIN de la infra (nginx/DNS).
+    |
+    */
+
+    'base_domain' => env('BASE_DOMAIN', 'snake.test'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Control Plane (tenant self-management)
     |--------------------------------------------------------------------------
     |
@@ -39,23 +52,7 @@ return [
 
     'state' => [
         'cache_ttl' => (int) env('CORE_STATE_CACHE_TTL', 30),
-        'cache_key' => 'core:package_state',
-        'exempt_paths' => ['api/v1', 'api/v1/control/*'],
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Remote Control (Commander -> deploy)
-    |--------------------------------------------------------------------------
-    |
-    | Endpoints /api/v1/control/* firmados con HMAC-SHA256. Sin secreto, las
-    | rutas no se registran (superficie cerrada por defecto).
-    |
-    */
-
-    'control' => [
-        'secret' => env('CORE_CONTROL_SECRET'),
-        'clock_skew_seconds' => (int) env('CORE_CONTROL_CLOCK_SKEW', 300),
+        'exempt_paths' => ['api/v1'],
     ],
 
     /*

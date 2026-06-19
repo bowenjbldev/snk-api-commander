@@ -61,9 +61,33 @@ final class CorePackageSelectorSupport
             return true;
         }
 
-        $active = self::activePackageName();
+        // API_PACKAGE actua como lock OPCIONAL de un solo package (deploy aislado / tests).
+        // Vacio = modo centralizado: se cargan TODOS los packages (la seleccion por request
+        // la hace el routing por subdominio, no el boot).
+        $locked = self::activePackageName();
 
-        return $active !== null && strcasecmp($module, $active) === 0;
+        if ($locked === null) {
+            return true;
+        }
+
+        return strcasecmp($module, $locked) === 0;
+    }
+
+    /**
+     * StudlyCase package name -> subdominio snake con guiones (MiPaquete -> mi-paquete).
+     * Debe coincidir con subscription.sh y el provisioning del Commander.
+     */
+    public static function packageToSubdomain(string $package): string
+    {
+        return str_replace('_', '-', Str::snake($package));
+    }
+
+    /**
+     * Inverso: subdominio -> nombre de package StudlyCase (mi-paquete -> MiPaquete).
+     */
+    public static function subdomainToPackage(string $subdomain): string
+    {
+        return Str::studly(str_replace('-', '_', $subdomain));
     }
 
     /**

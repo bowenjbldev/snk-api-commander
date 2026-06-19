@@ -5,6 +5,7 @@ namespace Packages\Core\Database\Seeders;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Packages\Core\Models\CoreUserModel;
+use Packages\Core\Support\CoreActivePackageSupport;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -36,9 +37,11 @@ class CoreDatabaseSeeder extends Seeder
         // Assign permissions to roles
         $admin->givePermissionTo($allPermissions);
 
-        // Create admin user
+        // Create admin user, scoped to the active package (null = operator/apex).
+        $activePackageId = app(CoreActivePackageSupport::class)->id();
+
         $user = CoreUserModel::firstOrCreate(
-            ['email' => 'admin@snake.com'],
+            ['email' => 'admin@snake.com', 'package_id' => $activePackageId],
             [
                 'name' => 'Admin User',
                 'full_name' => 'Admin User',

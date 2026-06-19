@@ -10,7 +10,9 @@ use Dedoc\Scramble\Attributes\QueryParameter;
 use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Packages\Core\Models\CoreUserModel;
+use Packages\Core\Support\CoreActivePackageSupport;
 
 #[Group('Users')]
 class CoreUsersController extends CoreBaseApiController
@@ -73,9 +75,15 @@ class CoreUsersController extends CoreBaseApiController
             return $response;
         }
 
+        $activePackageId = app(CoreActivePackageSupport::class)->id();
+
         $data = $request->all();
-        if ($this->validationRulesStore !== []) {
-            $validator = validator($data, $this->validationRulesStore, $this->validationMessages);
+        $rules = $this->validationRulesStore;
+        // Email unico POR package, no global (admin@snake.com puede repetirse entre subdominios).
+        $rules['email'] = ['required', 'email', 'max:255', Rule::unique('users', 'email')
+            ->where(fn ($q) => $q->where('package_id', $activePackageId))];
+        if ($rules !== []) {
+            $validator = validator($data, $rules, $this->validationMessages);
             if ($validator->fails()) {
                 return response()->json($validator->errors(), 422);
             }
@@ -85,6 +93,7 @@ class CoreUsersController extends CoreBaseApiController
         $role = $data['role'];
         unset($data['role']);
 
+        $data['package_id'] = $activePackageId;
         $user = CoreUserModel::create($data);
         $user->assignRole($role);
 
@@ -135,9 +144,14 @@ class CoreUsersController extends CoreBaseApiController
             return response()->json(['error' => 'Record not found'], 404);
         }
 
+        $activePackageId = app(CoreActivePackageSupport::class)->id();
+
         $data = $request->all();
         if ($this->validationRulesUpdate !== []) {
             $rules = $this->interpolateRules($this->validationRulesUpdate, $id);
+            $rules['email'] = ['nullable', 'email', 'max:255', Rule::unique('users', 'email')
+                ->ignore($id)
+                ->where(fn ($q) => $q->where('package_id', $activePackageId))];
             $validator = validator($data, $rules, $this->validationMessages);
             if ($validator->fails()) {
                 return response()->json($validator->errors(), 422);

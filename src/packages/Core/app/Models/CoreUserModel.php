@@ -23,6 +23,7 @@ class CoreUserModel extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
+        'package_id',
         'name',
         'email',
         'full_name',
@@ -59,6 +60,11 @@ class CoreUserModel extends Authenticatable
                 $model->name = $model->full_name;
             }
         });
+    }
+
+    public function package()
+    {
+        return $this->belongsTo(CorePackageModel::class, 'package_id');
     }
 
     public function setPasswordAttribute($value): void

@@ -6,6 +6,7 @@ use Illuminate\Contracts\Debug\ExceptionHandler as ExceptionHandlerContract;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Arr;
+use Packages\Core\Support\CoreActivePackageSupport;
 use Packages\Core\Support\CorePackageDiscoverySupport;
 use Packages\Core\Support\CorePackageSelectorSupport;
 
@@ -17,6 +18,10 @@ class CoreServiceProvider extends ServiceProvider
     {
         // 1. Active package config must exist before any discovery runs.
         $this->mergeConfigFrom(base_path('packages/Core/config/core.php'), 'core');
+
+        // Per-request active package (set by CoreResolvePackageFromHostMiddleware), shared by
+        // the state service, metering and quota measurer. Singleton = one value per request.
+        $this->app->singleton(CoreActivePackageSupport::class);
 
         // Fail loudly at boot (HTTP and artisan) if API_PACKAGE points to a missing package.
         CorePackageSelectorSupport::fromEnvironment(base_path('packages'))->activePackage();

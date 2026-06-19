@@ -7,15 +7,12 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        // Control-plane table: tenant deploys only (Commander sets core.control_plane=false).
-        if (! config('core.control_plane', true)) {
-            return;
-        }
-
         Schema::create('core_request_logs', function (Blueprint $table) {
             $table->id();
-            // Unico indice ademas del PK: tabla write-heavy; occurred_at sirve
-            // tanto al barrido del rollup como a la poda por retencion.
+            // Package que sirvio el request (resuelto por subdominio). Index, sin FK:
+            // tabla write-heavy, integridad referencial menos critica que el coste por insert.
+            $table->foreignId('package_id')->nullable()->index();
+            // occurred_at indexado: sirve tanto al barrido del rollup como a la poda por retencion.
             $table->timestamp('occurred_at')->index();
             $table->string('method', 8);
             $table->string('route', 191)->nullable();

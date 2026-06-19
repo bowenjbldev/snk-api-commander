@@ -69,7 +69,11 @@ final class CorePackageDiscoverySupport
             if ($moduleKey === 'core' && $fileKey === 'core') {
                 continue;
             }
-            $key = $this->shouldUseGlobalConfigKey($fileKey)
+            // Solo Core puede escribir claves globales de Laravel (auth, cors, scramble...).
+            // Con TODOS los packages cargados a la vez, permitir overrides globales desde
+            // packages de negocio causaria colisiones no deterministas (gana el ultimo).
+            // Sus configs van SIEMPRE namespaced (shop.sanctum, shop.scramble...).
+            $key = ($moduleKey === 'core' && $this->shouldUseGlobalConfigKey($fileKey))
                 ? $fileKey
                 : $moduleKey . '.' . $fileKey;
 

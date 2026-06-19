@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Packages\Core\Support\CoreActivePackageSupport;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -22,6 +23,10 @@ class CoreMeteringMiddleware
     {
         // Fallback de inicio si LARAVEL_START no estuviese definido
         $request->attributes->set('core_metering_start', microtime(true));
+
+        // El package activo ya lo fijo CoreResolvePackageFromHostMiddleware (que va antes).
+        // Se captura aqui (no en terminate) para registrar el package resuelto del request.
+        $request->attributes->set('core_metering_package_id', app(CoreActivePackageSupport::class)->id());
 
         return $next($request);
     }
@@ -45,6 +50,13 @@ class CoreMeteringMiddleware
                 return;
             }
 
+            $packageId = $request->attributes->get('core_metering_package_id');
+
+            // Sin package resuelto (panel del operador / apex) no es trafico de tenant: no se mide.
+            if ($packageId === null) {
+                return;
+            }
+
             $start = defined('LARAVEL_START')
                 ? LARAVEL_START
                 : (float) $request->attributes->get('core_metering_start', microtime(true));
@@ -52,6 +64,7 @@ class CoreMeteringMiddleware
             $route = $request->route()?->uri();
 
             DB::table('core_request_logs')->insert([
+                'package_id' => $packageId,
                 'occurred_at' => now('UTC'),
                 'method' => $request->method(),
                 // route column is string(191); truncate so a long URI can't raise "Data too long".

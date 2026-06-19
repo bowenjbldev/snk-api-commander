@@ -6,23 +6,31 @@ use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Cache;
 use Packages\Core\Enums\CorePackageStatusEnum;
-use Packages\Core\Models\CorePackageStateModel;
+use Packages\Core\Models\CorePackageModel;
+use Packages\Core\Support\CoreActivePackageSupport;
 use Packages\Core\Support\CorePackageStateData;
 
 /**
- * Unico propietario del estado del deploy. Todo lo que suspende o reactiva
- * (CLI, cuotas, Commander via /control) pasa por set(); los lectores usan current()
- * que cachea la fila durante core.state.cache_ttl segundos.
+ * Unico propietario del estado runtime por package (active|grace|suspended), guardado
+ * como columnas de la fila core_packages. El package activo se resuelve del request
+ * (CoreActivePackageSupport) o se pasa explicito (Commander, medidor de cuotas por
+ * package). Los lectores usan current(), que cachea la fila por core.state.cache_ttl.
  */
 class CorePackageStateService
 {
-    public function current(): CorePackageStateData
+    public function __construct(private readonly CoreActivePackageSupport $active)
     {
+    }
+
+    public function current(?int $packageId = null): CorePackageStateData
+    {
+        $packageId ??= $this->active->id();
+
         $raw = Cache::remember(
-            (string) config('core.state.cache_key', 'core:package_state'),
+            $this->cacheKey($packageId),
             (int) config('core.state.cache_ttl', 30),
-            function (): array {
-                $row = CorePackageStateModel::query()->find(1);
+            function () use ($packageId): array {
+                $row = $packageId !== null ? CorePackageModel::query()->find($packageId) : null;
 
                 return [
                     'status' => $row?->getRawOriginal('status') ?? CorePackageStatusEnum::Active->value,
@@ -30,6 +38,7 @@ class CorePackageStateService
                     'message' => $row?->message,
                     'grace_until' => $row?->grace_until?->toIso8601String(),
                     'changed_by' => $row?->changed_by,
+                    'changed_at' => $row?->changed_at?->toIso8601String(),
                 ];
             }
         );
@@ -40,6 +49,7 @@ class CorePackageStateService
             message: $raw['message'],
             graceUntil: $raw['grace_until'] !== null ? CarbonImmutable::parse($raw['grace_until']) : null,
             changedBy: $raw['changed_by'],
+            changedAt: $raw['changed_at'] !== null ? CarbonImmutable::parse($raw['changed_at']) : null,
         );
     }
 
@@ -49,20 +59,31 @@ class CorePackageStateService
         ?string $message = null,
         ?CarbonInterface $graceUntil = null,
         string $changedBy = 'cli',
+        ?int $packageId = null,
     ): CorePackageStateData {
-        CorePackageStateModel::query()->updateOrCreate(
-            ['id' => 1],
-            [
-                'status' => $status,
-                'reason' => $reason,
-                'message' => $message,
-                'grace_until' => $status === CorePackageStatusEnum::Grace ? $graceUntil : null,
-                'changed_by' => $changedBy,
-            ]
-        );
+        $packageId ??= $this->active->id();
 
-        Cache::forget((string) config('core.state.cache_key', 'core:package_state'));
+        if ($packageId === null) {
+            // Sin package provisionado en contexto (p.ej. host del operador): nada que persistir.
+            return $this->current(null);
+        }
 
-        return $this->current();
+        CorePackageModel::query()->whereKey($packageId)->update([
+            'status' => $status->value,
+            'reason' => $reason,
+            'message' => $message,
+            'grace_until' => $status === CorePackageStatusEnum::Grace ? $graceUntil : null,
+            'changed_by' => $changedBy,
+            'changed_at' => CarbonImmutable::now(),
+        ]);
+
+        Cache::forget($this->cacheKey($packageId));
+
+        return $this->current($packageId);
+    }
+
+    private function cacheKey(?int $packageId): string
+    {
+        return 'core:package_state:'.($packageId ?? 'none');
     }
 }

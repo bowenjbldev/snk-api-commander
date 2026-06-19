@@ -96,9 +96,11 @@ class CoreUsageRollupService
                 foreach ($rows as $row) {
                     $route = $row->route ?? '';
                     $class = intdiv((int) $row->status, 100) . 'xx';
-                    $key = $route . '|' . $row->method . '|' . $class;
+                    $packageId = $row->package_id;
+                    $key = ($packageId ?? '') . '|' . $route . '|' . $row->method . '|' . $class;
 
                     $groups[$key] ??= [
+                        'package_id' => $packageId,
                         'route' => $route,
                         'method' => $row->method,
                         'status_class' => $class,
@@ -137,6 +139,7 @@ class CoreUsageRollupService
             $p95 = $g['durations'][(int) floor(0.95 * (count($g['durations']) - 1))];
 
             $rows[] = [
+                'package_id' => $g['package_id'],
                 'period' => $period,
                 'period_start' => $bucket,
                 'route' => $g['route'],
@@ -156,7 +159,7 @@ class CoreUsageRollupService
 
         CoreUsageRollupModel::query()->upsert(
             $rows,
-            ['period', 'period_start', 'route', 'method', 'status_class'],
+            ['package_id', 'period', 'period_start', 'route', 'method', 'status_class'],
             [
                 'request_count', 'error_count', 'avg_duration_ms', 'p95_duration_ms',
                 'total_request_bytes', 'total_response_bytes', 'unique_users', 'updated_at',
