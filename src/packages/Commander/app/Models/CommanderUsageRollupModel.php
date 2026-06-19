@@ -4,22 +4,18 @@ namespace Packages\Commander\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class ActivityEventModel extends Model
+class CommanderUsageRollupModel extends Model
 {
-    protected $table = 'commander_activity_events';
+    protected $table = 'commander_usage_rollups';
 
     protected $connection = 'commander';
-
-    public $incrementing = false;
-
-    protected $keyType = 'string';
 
     protected $guarded = [];
 
     protected function casts(): array
     {
         return [
-            'at' => 'datetime',
+            'period_start' => 'datetime',
         ];
     }
 }

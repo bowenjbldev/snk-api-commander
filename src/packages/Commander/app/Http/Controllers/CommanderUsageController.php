@@ -7,7 +7,7 @@ use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
-use Packages\Commander\Models\UsageSnapshotModel;
+use Packages\Commander\Models\CommanderUsageSnapshotModel;
 
 /**
  * Platform-wide usage read for the Dashboard/Usage charts. Aggregates the local
@@ -31,7 +31,7 @@ class CommanderUsageController extends CoreBaseApiController
         $period = $data['period'] ?? 'hour';
         $since = CarbonImmutable::now()->subHours((int) ($data['hours'] ?? 48));
 
-        $rows = UsageSnapshotModel::query()
+        $rows = CommanderUsageSnapshotModel::query()
             ->where('period', $period)
             ->where('period_start', '>=', $since)
             ->orderBy('period_start')

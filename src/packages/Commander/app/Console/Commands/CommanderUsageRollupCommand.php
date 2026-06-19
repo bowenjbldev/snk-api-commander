@@ -3,9 +3,9 @@
 namespace Packages\Commander\Console\Commands;
 
 use Illuminate\Console\Command;
-use Packages\Commander\Services\UsageRollupService;
+use Packages\Commander\Services\CommanderUsageRollupService;
 
-class UsageRollupCommand extends Command
+class CommanderUsageRollupCommand extends Command
 {
     protected $signature = 'commander:usage:rollup
         {--period=both : Periodos a agregar (hour|day|both)}
@@ -13,7 +13,7 @@ class UsageRollupCommand extends Command
 
     protected $description = 'Agrega commander_request_logs en rollups por hora/dia (idempotente)';
 
-    public function handle(UsageRollupService $service): int
+    public function handle(CommanderUsageRollupService $service): int
     {
         $option = (string) $this->option('period');
         $periods = match ($option) {

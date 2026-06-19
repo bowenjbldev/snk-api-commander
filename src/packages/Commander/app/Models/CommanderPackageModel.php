@@ -9,7 +9,7 @@ use Packages\Core\Enums\CorePackageStatusEnum;
  * Registro de un package provisionado (packages). Identidad (name/subdomain) +
  * estado runtime (status/reason/grace_until...). Reemplaza al singleton core_package_state.
  */
-class PackageModel extends Model
+class CommanderPackageModel extends Model
 {
     protected $table = 'commander_packages';
 

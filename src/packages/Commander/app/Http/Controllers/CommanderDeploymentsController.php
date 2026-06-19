@@ -8,15 +8,15 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Packages\Commander\Models\ActivityEventModel;
-use Packages\Commander\Models\DeploymentModel;
-use Packages\Commander\Models\QuotaModel;
-use Packages\Commander\Models\SubscriptionModel;
-use Packages\Commander\Models\UsageSnapshotModel;
+use Packages\Commander\Models\CommanderActivityEventModel;
+use Packages\Commander\Models\CommanderDeploymentModel;
+use Packages\Commander\Models\CommanderQuotaModel;
+use Packages\Commander\Models\CommanderSubscriptionModel;
+use Packages\Commander\Models\CommanderUsageSnapshotModel;
 use Packages\Core\Enums\CorePackageStatusEnum;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
-use Packages\Commander\Models\QuotaMetricModel;
-use Packages\Commander\Models\UsageRollupModel;
+use Packages\Commander\Models\CommanderQuotaMetricModel;
+use Packages\Commander\Models\CommanderUsageRollupModel;
 use Packages\Core\Services\CorePackageStateService;
 
 /**
@@ -27,7 +27,7 @@ use Packages\Core\Services\CorePackageStateService;
 #[Group('Deployments')]
 class CommanderDeploymentsController extends CoreBaseApiController
 {
-    protected string $modelClass = DeploymentModel::class;
+    protected string $modelClass = CommanderDeploymentModel::class;
 
     protected string $indexPermission = 'index deployments';
     protected string $showPermission = 'show deployments';
@@ -172,7 +172,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
             'per_page' => 'nullable|integer|min:1|max:1000',
         ]);
 
-        $rollups = UsageRollupModel::query()
+        $rollups = CommanderUsageRollupModel::query()
             ->where('package_id', $deployment->package_id)
             ->where('period', $data['period'] ?? 'hour')
             ->when(isset($data['from']), fn ($q) => $q->where('period_start', '>=', $data['from']))
@@ -232,13 +232,13 @@ class CommanderDeploymentsController extends CoreBaseApiController
         $database = $package?->database;
 
         DB::connection('commander')->transaction(function () use ($deployment, $package) {
-            QuotaModel::where('deployment_id', $deployment->id)->delete();
-            UsageSnapshotModel::where('deployment_id', $deployment->id)->delete();
-            SubscriptionModel::where('deployment_id', $deployment->id)->delete();
+            CommanderQuotaModel::where('deployment_id', $deployment->id)->delete();
+            CommanderUsageSnapshotModel::where('deployment_id', $deployment->id)->delete();
+            CommanderSubscriptionModel::where('deployment_id', $deployment->id)->delete();
 
             if ($package !== null) {
-                QuotaMetricModel::where('package_id', $package->id)->delete();
-                UsageRollupModel::where('package_id', $package->id)->delete();
+                CommanderQuotaMetricModel::where('package_id', $package->id)->delete();
+                CommanderUsageRollupModel::where('package_id', $package->id)->delete();
                 DB::connection('commander')->table('commander_request_logs')->where('package_id', $package->id)->delete();
             }
 
@@ -254,9 +254,9 @@ class CommanderDeploymentsController extends CoreBaseApiController
         return response()->json(['message' => 'Deployment de-provisioned.']);
     }
 
-    private function recordActivity(string $kind, DeploymentModel $deployment, ?string $reason, ?string $message): void
+    private function recordActivity(string $kind, CommanderDeploymentModel $deployment, ?string $reason, ?string $message): void
     {
-        ActivityEventModel::create([
+        CommanderActivityEventModel::create([
             'id' => 'act_' . Str::random(24),
             'at' => CarbonImmutable::now(),
             'kind' => $kind,

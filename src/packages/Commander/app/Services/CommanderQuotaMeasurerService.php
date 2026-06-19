@@ -5,9 +5,9 @@ namespace Packages\Commander\Services;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Packages\Commander\Models\QuotaMetricModel;
+use Packages\Commander\Models\CommanderQuotaMetricModel;
 use Packages\Core\Enums\CorePackageStatusEnum;
-use Packages\Commander\Models\PackageModel;
+use Packages\Commander\Models\CommanderPackageModel;
 use Packages\Core\Services\CorePackageStateService;
 use Packages\Core\Support\CoreActivePackageSupport;
 
@@ -17,7 +17,7 @@ use Packages\Core\Support\CoreActivePackageSupport;
  * por la propia metrica (reason quota_exceeded:<key>), nunca pisa una suspension manual
  * o del Commander. En una BD compartida cada metrica se mide acotada a su package.
  */
-class QuotaMeasurerService
+class CommanderQuotaMeasurerService
 {
     public function __construct(
         private readonly CorePackageStateService $stateService,
@@ -25,7 +25,7 @@ class QuotaMeasurerService
     ) {
     }
 
-    public function measure(string $metricKey, ?PackageModel $package = null): ?int
+    public function measure(string $metricKey, ?CommanderPackageModel $package = null): ?int
     {
         $packageId = $package?->getKey();
 
@@ -42,7 +42,7 @@ class QuotaMeasurerService
     }
 
     /**
-     * @return array<int, array{metric: QuotaMetricModel, value: ?int, over: bool}>
+     * @return array<int, array{metric: CommanderQuotaMetricModel, value: ?int, over: bool}>
      */
     public function measureAll(bool $persist = true, bool $enforce = true): array
     {
@@ -50,14 +50,14 @@ class QuotaMeasurerService
 
         // Agrupa por package: fija el contexto activo de cada grupo para que enforce()
         // (state->set/current) apunte a la fila packages correcta.
-        $byPackage = QuotaMetricModel::query()
+        $byPackage = CommanderQuotaMetricModel::query()
             ->orderBy('package_id')
             ->orderBy('metric_key')
             ->get()
             ->groupBy('package_id');
 
         foreach ($byPackage as $packageId => $metrics) {
-            $package = $packageId !== null ? PackageModel::query()->find($packageId) : null;
+            $package = $packageId !== null ? CommanderPackageModel::query()->find($packageId) : null;
             $this->active->set($package?->getKey());
 
             // Apunta la conexion 'tenant' a la BD del package para medir lo LOCAL (users, tamaño BD).
@@ -96,7 +96,7 @@ class QuotaMeasurerService
         return $results;
     }
 
-    public function enforce(QuotaMetricModel $metric): void
+    public function enforce(CommanderQuotaMetricModel $metric): void
     {
         $reason = "quota_exceeded:{$metric->metric_key}";
         $state = $this->stateService->current();
@@ -155,7 +155,7 @@ class QuotaMeasurerService
         }
     }
 
-    private function measureDatabaseSizeMb(?PackageModel $package): ?int
+    private function measureDatabaseSizeMb(?CommanderPackageModel $package): ?int
     {
         if ($package === null || empty($package->database)) {
             return null;

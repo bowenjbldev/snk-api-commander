@@ -5,7 +5,7 @@ namespace Packages\Commander\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class UsageSnapshotModel extends Model
+class CommanderUsageSnapshotModel extends Model
 {
     protected $table = 'commander_usage_snapshots';
 
@@ -28,6 +28,6 @@ class UsageSnapshotModel extends Model
 
     public function deployment(): BelongsTo
     {
-        return $this->belongsTo(DeploymentModel::class, 'deployment_id');
+        return $this->belongsTo(CommanderDeploymentModel::class, 'deployment_id');
     }
 }

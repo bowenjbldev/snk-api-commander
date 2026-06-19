@@ -4,12 +4,12 @@ namespace Packages\Commander\Http\Controllers;
 
 use Dedoc\Scramble\Attributes\Group;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
-use Packages\Commander\Models\ClientModel;
+use Packages\Commander\Models\CommanderClientModel;
 
 #[Group('Clients')]
 class CommanderClientsController extends CoreBaseApiController
 {
-    protected string $modelClass = ClientModel::class;
+    protected string $modelClass = CommanderClientModel::class;
 
     protected string $indexPermission = 'index clients';
     protected string $showPermission = 'show clients';

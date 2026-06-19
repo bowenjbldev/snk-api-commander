@@ -32,7 +32,7 @@ class CoreResolvePackageFromHostMiddleware
         }
 
         // El registro `packages` vive en la BD commander; se lee por query builder (su modelo
-        // PackageModel es de Commander y Core no lo importa). La conexion 'commander' es fija,
+        // CommanderPackageModel es de Commander y Core no lo importa). La conexion 'commander' es fija,
         // asi que resuelve aunque luego cambiemos la conexion default a la del tenant.
         $package = DB::connection('commander')->table('commander_packages')->where('subdomain', $subdomain)->first();
 

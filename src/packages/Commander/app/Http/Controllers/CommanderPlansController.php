@@ -3,13 +3,13 @@
 namespace Packages\Commander\Http\Controllers;
 
 use Dedoc\Scramble\Attributes\Group;
-use Packages\Commander\Models\PlanModel;
+use Packages\Commander\Models\CommanderPlanModel;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 
 #[Group('Plans')]
 class CommanderPlansController extends CoreBaseApiController
 {
-    protected string $modelClass = PlanModel::class;
+    protected string $modelClass = CommanderPlanModel::class;
 
     protected string $indexPermission = 'index plans';
     protected string $showPermission = 'show plans';

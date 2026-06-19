@@ -4,12 +4,12 @@ namespace Packages\Commander\Http\Controllers;
 
 use Dedoc\Scramble\Attributes\Group;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
-use Packages\Commander\Models\SubscriptionModel;
+use Packages\Commander\Models\CommanderSubscriptionModel;
 
 #[Group('Subscriptions')]
 class CommanderSubscriptionsController extends CoreBaseApiController
 {
-    protected string $modelClass = SubscriptionModel::class;
+    protected string $modelClass = CommanderSubscriptionModel::class;
 
     protected string $indexPermission = 'index subscriptions';
     protected string $showPermission = 'show subscriptions';

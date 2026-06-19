@@ -5,7 +5,7 @@ namespace Packages\Commander\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class ClientModel extends Model
+class CommanderClientModel extends Model
 {
     protected $table = 'commander_clients';
 
@@ -19,16 +19,16 @@ class ClientModel extends Model
 
     public function deployments(): HasMany
     {
-        return $this->hasMany(DeploymentModel::class, 'client_id');
+        return $this->hasMany(CommanderDeploymentModel::class, 'client_id');
     }
 
     public function subscriptions(): HasMany
     {
-        return $this->hasMany(SubscriptionModel::class, 'client_id');
+        return $this->hasMany(CommanderSubscriptionModel::class, 'client_id');
     }
 
     public function invoices(): HasMany
     {
-        return $this->hasMany(InvoiceModel::class, 'client_id');
+        return $this->hasMany(CommanderInvoiceModel::class, 'client_id');
     }
 }

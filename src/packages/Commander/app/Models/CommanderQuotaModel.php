@@ -5,9 +5,9 @@ namespace Packages\Commander\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class SubscriptionModel extends Model
+class CommanderQuotaModel extends Model
 {
-    protected $table = 'commander_subscriptions';
+    protected $table = 'commander_quotas';
 
     protected $connection = 'commander';
 
@@ -20,19 +20,14 @@ class SubscriptionModel extends Model
     protected function casts(): array
     {
         return [
-            'price_monthly' => 'float',
-            'auto_suspend' => 'boolean',
-            'started_at' => 'datetime',
+            'current_value' => 'integer',
+            'limit_value' => 'integer',
+            'exceeded_at' => 'datetime',
         ];
-    }
-
-    public function client(): BelongsTo
-    {
-        return $this->belongsTo(ClientModel::class, 'client_id');
     }
 
     public function deployment(): BelongsTo
     {
-        return $this->belongsTo(DeploymentModel::class, 'deployment_id');
+        return $this->belongsTo(CommanderDeploymentModel::class, 'deployment_id');
     }
 }

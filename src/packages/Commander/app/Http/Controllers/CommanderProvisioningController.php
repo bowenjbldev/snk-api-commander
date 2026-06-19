@@ -9,14 +9,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Packages\Commander\Models\ClientModel;
-use Packages\Commander\Models\DeploymentModel;
-use Packages\Commander\Models\PlanModel;
-use Packages\Commander\Models\QuotaModel;
-use Packages\Commander\Models\SubscriptionModel;
+use Packages\Commander\Models\CommanderClientModel;
+use Packages\Commander\Models\CommanderDeploymentModel;
+use Packages\Commander\Models\CommanderPlanModel;
+use Packages\Commander\Models\CommanderQuotaModel;
+use Packages\Commander\Models\CommanderSubscriptionModel;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
-use Packages\Commander\Models\PackageModel;
-use Packages\Commander\Models\QuotaMetricModel;
+use Packages\Commander\Models\CommanderPackageModel;
+use Packages\Commander\Models\CommanderQuotaMetricModel;
 
 /**
  * Client-first provisioning, EN UN PASO e in-process: registra CLIENTE (nuevo o existente) + PLAN,
@@ -69,7 +69,7 @@ class CommanderProvisioningController extends CoreBaseApiController
             return response()->json(['error' => 'Provide client_id or a client object.'], 422);
         }
 
-        $plan = PlanModel::findOrFail($data['plan_id']);
+        $plan = CommanderPlanModel::findOrFail($data['plan_id']);
         $package = Str::studly($plan->package);
         $subdomain = $data['subdomain'] ?? Str::of($package)->snake()->replace('_', '-')->toString();
         $deploymentId = $subdomain;
@@ -80,11 +80,11 @@ class CommanderProvisioningController extends CoreBaseApiController
             return response()->json(['error' => "Package code '{$package}' is not deployed."], 422);
         }
 
-        if (DeploymentModel::whereKey($deploymentId)->exists() || PackageModel::where('subdomain', $subdomain)->exists()) {
+        if (CommanderDeploymentModel::whereKey($deploymentId)->exists() || CommanderPackageModel::where('subdomain', $subdomain)->exists()) {
             return response()->json(['error' => "A deployment '{$deploymentId}' already exists."], 409);
         }
 
-        if (! empty($data['client']) && ClientModel::whereKey($data['client']['id'])->exists()) {
+        if (! empty($data['client']) && CommanderClientModel::whereKey($data['client']['id'])->exists()) {
             return response()->json(['error' => "Client '{$data['client']['id']}' already exists."], 422);
         }
 
@@ -97,7 +97,7 @@ class CommanderProvisioningController extends CoreBaseApiController
             $clientId = $data['client_id'] ?? null;
             if ($clientId === null) {
                 $c = $data['client'];
-                ClientModel::create(array_merge(
+                CommanderClientModel::create(array_merge(
                     ['id' => $c['id'], 'name' => $c['name'], 'email' => $c['email'], 'status' => 'active'],
                     array_intersect_key($c, array_flip([
                         'company', 'phone', 'billing_email', 'tax_id', 'address_line1',
@@ -108,7 +108,7 @@ class CommanderProvisioningController extends CoreBaseApiController
             }
 
             // Instancia: la fila packages enciende el subdominio (la resuelve el middleware por host).
-            $corePackage = PackageModel::create([
+            $corePackage = CommanderPackageModel::create([
                 'name' => $package,
                 'subdomain' => $subdomain,
                 'database' => $database,
@@ -119,7 +119,7 @@ class CommanderProvisioningController extends CoreBaseApiController
 
             $subscriptionId = 'sub_' . Str::lower(Str::random(20));
 
-            $deployment = DeploymentModel::create([
+            $deployment = CommanderDeploymentModel::create([
                 'id' => $deploymentId,
                 'name' => $deploymentId,
                 'subdomain' => $fqdn,
@@ -133,7 +133,7 @@ class CommanderProvisioningController extends CoreBaseApiController
                 'quota_health' => 0,
             ]);
 
-            SubscriptionModel::create([
+            CommanderSubscriptionModel::create([
                 'id' => $subscriptionId,
                 'client_id' => $clientId,
                 'deployment_id' => $deploymentId,
@@ -146,7 +146,7 @@ class CommanderProvisioningController extends CoreBaseApiController
 
             foreach ($plan->quotaLimits() as $metric => $limit) {
                 // Espejo para el SPA (tab de cuotas del Commander)…
-                QuotaModel::create([
+                CommanderQuotaModel::create([
                     'id' => "{$deploymentId}:{$metric}",
                     'deployment_id' => $deploymentId,
                     'metric_key' => $metric,
@@ -157,7 +157,7 @@ class CommanderProvisioningController extends CoreBaseApiController
                 ]);
 
                 // …y la fila real que el medidor de cuotas de Core hace cumplir, por package.
-                QuotaMetricModel::create([
+                CommanderQuotaMetricModel::create([
                     'package_id' => $corePackage->id,
                     'metric_key' => $metric,
                     'limit_value' => $limit,

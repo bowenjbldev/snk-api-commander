@@ -58,8 +58,8 @@ src/
 │   │   │   │       ├── CoreMeteringMiddleware.php  # registra cada request (por paquete)
 │   │   │   │       └── CoreEnsureActiveMiddleware.php  # kill-switch 402 (por paquete)
 │   │   │   ├── Models/
-│   │   │   │   ├── CorePackageModel.php            # registro packages (identidad + estado)
 │   │   │   │   └── CoreUserModel.php               # User (en la BD del paquete), roles y tokens
+│   │   │   │                                       # (el registro vive en Commander: CommanderPackageModel)
 │   │   │   ├── Providers/                          # Service providers (orquestacion, rutas, consola, docs)
 │   │   │   ├── Services/                           # estado, metering, cuotas
 │   │   │   └── Support/                            # descubrimiento, selector, paquete activo
@@ -267,6 +267,13 @@ class MiController extends CoreBaseApiController
 
 ## Convencion de un paquete
 
+**Cada clase lleva el nombre del paquete como prefijo** (StudlyCase): en `MiPaquete` →
+`MiPaqueteClientModel`, `MiPaqueteAuthController`, `MiPaqueteServiceProvider`,
+`MiPaqueteQuotaMeasurerService`, etc. Aplica a models, controllers, providers, services,
+commands y seeders. Asi el nombre del fichero/clase identifica sin ambiguedad el paquete en
+el editor (Core → `Core*`, Commander → `Commander*`). Los generadores `make:*` ya scaffolan
+con el prefijo a partir de `--package`.
+
 ```
 packages/MiPaquete/
 ├── app/
@@ -280,15 +287,13 @@ packages/MiPaquete/
 └── routes/api.php        # auth (heredada) + negocio
 ```
 
-## Migraciones del Core
+## Migraciones
 
-Separadas en `packages/Core/database/migrations/{commander,tenant}` por su destino:
+- **Core** (`packages/Core/database/migrations/`, primer nivel): solo la **base Laravel**, que corre en la commander (para el operador) Y en CADA BD de paquete: roles/permisos (Spatie), schema base (`users`, `sessions`, `cache`, `jobs`...), tokens Sanctum.
+- **Commander** (`packages/Commander/database/migrations/`, tablas `commander_*`): el registro `commander_packages` + el control-plane (`commander_request_logs`, `commander_usage_rollups`, `commander_quota_metrics`, por `package_id`) + el panel del operador (`commander_clients`, `commander_deployments`...). Solo en la BD `commander`.
+- **Negocio**: `packages/{Pkg}/database/migrations/` (solo en la BD del paquete).
 
-- **commander/** (BD `commander`): `commander_packages` (registro) + control-plane (`commander_request_logs`, `commander_usage_rollups`, `commander_quota_metrics`, por `package_id`). Mas las `commander_*`.
-- **tenant/** (corre en la commander para el operador Y en CADA BD de paquete): Roles/permisos (Spatie), schema base (`users`, `sessions`, `cache`, `jobs`...), tokens Sanctum.
-- **negocio**: `packages/{Pkg}/database/migrations/` (solo en la BD del paquete).
-
-`core:migrate` (sin `--package`) corre commander+tenant-base+commander; el provisioning corre `core:migrate --package=<X>` (tenant-base + negocio) en la BD del paquete. Regla: `--package` ⟹ tenant (BD = snake(package)); sin `--package` ⟹ commander.
+`core:migrate` (sin `--package`) corre la base + las del Commander en la BD `commander`; el provisioning corre `core:migrate --package=<X>` (base + negocio) en la BD del paquete. Regla: `--package` ⟹ tenant (BD = snake(package)); sin `--package` ⟹ commander.
 
 ### Seeder por defecto
 

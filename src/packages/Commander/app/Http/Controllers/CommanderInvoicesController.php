@@ -4,12 +4,12 @@ namespace Packages\Commander\Http\Controllers;
 
 use Dedoc\Scramble\Attributes\Group;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
-use Packages\Commander\Models\InvoiceModel;
+use Packages\Commander\Models\CommanderInvoiceModel;
 
 #[Group('Invoices')]
 class CommanderInvoicesController extends CoreBaseApiController
 {
-    protected string $modelClass = InvoiceModel::class;
+    protected string $modelClass = CommanderInvoiceModel::class;
 
     protected string $indexPermission = 'index invoices';
     protected string $showPermission = 'show invoices';

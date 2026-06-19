@@ -4,12 +4,12 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Packages\Commander\Database\Seeders\CommanderDatabaseSeeder;
-use Packages\Commander\Models\ClientModel;
-use Packages\Commander\Models\DeploymentModel;
-use Packages\Commander\Models\PlanModel;
+use Packages\Commander\Models\CommanderClientModel;
+use Packages\Commander\Models\CommanderDeploymentModel;
+use Packages\Commander\Models\CommanderPlanModel;
 use Packages\Core\Database\Seeders\CoreDatabaseSeeder;
-use Packages\Commander\Models\PackageModel;
-use Packages\Commander\Models\QuotaMetricModel;
+use Packages\Commander\Models\CommanderPackageModel;
+use Packages\Commander\Models\CommanderQuotaMetricModel;
 use Packages\Core\Models\CoreUserModel;
 use Tests\CommanderTestCase;
 
@@ -43,9 +43,9 @@ class CommanderProvisioningTest extends CommanderTestCase
     }
 
     /** Plan de un paquete que existe en disco (fixture Demo), para que provisioning lo de de alta. */
-    private function plan(): PlanModel
+    private function plan(): CommanderPlanModel
     {
-        return PlanModel::create([
+        return CommanderPlanModel::create([
             'id' => 'demo-pro', 'package' => self::FIXTURE_PACKAGE, 'name' => 'Pro', 'price_monthly' => 49,
             'q_requests_day' => 100000, 'q_disk_db_mb' => 2048, 'q_users_total' => 50,
         ]);
@@ -74,19 +74,19 @@ class CommanderProvisioningTest extends CommanderTestCase
         $res->assertJsonMissingPath('host_command');
 
         // Instance row (packages) created + active + its own database name → subdomain is live.
-        $cp = PackageModel::where('subdomain', 'demo')->first();
+        $cp = CommanderPackageModel::where('subdomain', 'demo')->first();
         $this->assertNotNull($cp);
         $this->assertSame('active', $cp->getRawOriginal('status'));
         $this->assertSame('demo', $cp->database); // BD propia del package
 
         // Client created with full billing.
-        $client = ClientModel::find('acme');
+        $client = CommanderClientModel::find('acme');
         $this->assertSame('billing@acme.com', $client->billing_email);
         $this->assertSame('ESB12345678', $client->tax_id);
         $this->assertSame('ES', $client->country);
 
         // Deployment + subscription + quotas (SPA mirror) from the plan.
-        $dep = DeploymentModel::find('demo');
+        $dep = CommanderDeploymentModel::find('demo');
         $this->assertNotNull($dep->subscription_id);
         $this->assertSame($cp->id, $dep->package_id);
         $this->assertCount(4, $dep->quotas);
@@ -95,7 +95,7 @@ class CommanderProvisioningTest extends CommanderTestCase
         $this->assertNull($dep->quotas->firstWhere('metric_key', 'disk_storage_mb')->limit_value);
 
         // Real enforcement rows (quota_metrics) seeded per package (commander).
-        $this->assertSame(100000, (int) QuotaMetricModel::where('package_id', $cp->id)
+        $this->assertSame(100000, (int) CommanderQuotaMetricModel::where('package_id', $cp->id)
             ->where('metric_key', 'requests_day')->value('limit_value'));
 
         // Nota: la BD del package (su base Laravel + negocio + admin) se crea con CREATE DATABASE +
@@ -122,7 +122,7 @@ class CommanderProvisioningTest extends CommanderTestCase
     public function test_provisioning_rejects_package_without_code(): void
     {
         $admin = $this->admin();
-        PlanModel::create([
+        CommanderPlanModel::create([
             'id' => 'ghost-pro', 'package' => 'Ghost', 'name' => 'Pro', 'price_monthly' => 10,
         ]);
 
@@ -138,8 +138,8 @@ class CommanderProvisioningTest extends CommanderTestCase
         $admin = $this->admin();
         $this->plan();
 
-        ClientModel::create(['id' => 'x', 'name' => 'X', 'email' => 'x@x.test', 'status' => 'active']);
-        DeploymentModel::create([
+        CommanderClientModel::create(['id' => 'x', 'name' => 'X', 'email' => 'x@x.test', 'status' => 'active']);
+        CommanderDeploymentModel::create([
             'id' => 'demo', 'name' => 'demo', 'subdomain' => 'demo.snake.test', 'client_id' => 'x',
             'package' => 'Demo', 'version' => 'v1.0.0', 'base_url' => 'https://demo.snake.test/api/v1',
         ]);

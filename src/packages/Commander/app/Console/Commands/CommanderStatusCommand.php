@@ -5,10 +5,10 @@ namespace Packages\Commander\Console\Commands;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Packages\Core\Enums\CorePackageStatusEnum;
-use Packages\Commander\Models\QuotaMetricModel;
+use Packages\Commander\Models\CommanderQuotaMetricModel;
 use Packages\Core\Services\CorePackageStateService;
 
-class StatusCommand extends Command
+class CommanderStatusCommand extends Command
 {
     protected $signature = 'commander:status
         {--set= : Nuevo estado (active|grace|suspended)}
@@ -61,7 +61,7 @@ class StatusCommand extends Command
             ['changed_by', $state->changedBy ?? '-'],
         ]);
 
-        $quotas = QuotaMetricModel::query()->orderBy('metric_key')->get();
+        $quotas = CommanderQuotaMetricModel::query()->orderBy('metric_key')->get();
 
         if ($quotas->isNotEmpty()) {
             $this->table(

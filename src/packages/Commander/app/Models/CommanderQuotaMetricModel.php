@@ -4,7 +4,7 @@ namespace Packages\Commander\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class QuotaMetricModel extends Model
+class CommanderQuotaMetricModel extends Model
 {
     protected $table = 'commander_quota_metrics';
 

@@ -5,9 +5,9 @@ namespace Packages\Commander\Console\Commands;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Packages\Commander\Models\DeploymentModel;
-use Packages\Commander\Models\UsageSnapshotModel;
-use Packages\Commander\Models\QuotaMetricModel;
+use Packages\Commander\Models\CommanderDeploymentModel;
+use Packages\Commander\Models\CommanderUsageSnapshotModel;
+use Packages\Commander\Models\CommanderQuotaMetricModel;
 
 /**
  * Refresca los campos denormalizados que el dashboard/lista del Commander leen
@@ -23,7 +23,7 @@ class CommanderRefreshCommand extends Command
 
     public function handle(): int
     {
-        $deployments = DeploymentModel::query()->whereNotNull('package_id')->get();
+        $deployments = CommanderDeploymentModel::query()->whereNotNull('package_id')->get();
         $since24 = CarbonImmutable::now()->subDay();
 
         foreach ($deployments as $dep) {
@@ -37,7 +37,7 @@ class CommanderRefreshCommand extends Command
             $lastSeen = DB::connection('commander')->table('commander_request_logs')->where('package_id', $pid)->max('occurred_at');
 
             $worst = 0.0;
-            foreach (QuotaMetricModel::query()->where('package_id', $pid)->get() as $m) {
+            foreach (CommanderQuotaMetricModel::query()->where('package_id', $pid)->get() as $m) {
                 if ($m->limit_value !== null && $m->limit_value > 0) {
                     $worst = max($worst, $m->current_value / $m->limit_value);
                 }
@@ -72,7 +72,7 @@ class CommanderRefreshCommand extends Command
 
                 foreach ($buckets as $b) {
                     $start = CarbonImmutable::parse($b->period_start);
-                    UsageSnapshotModel::query()->updateOrCreate(
+                    CommanderUsageSnapshotModel::query()->updateOrCreate(
                         ['id' => $dep->id . ':' . $period . ':' . $start->getTimestamp()],
                         [
                             'deployment_id' => $dep->id,

@@ -3,16 +3,16 @@
 namespace Packages\Commander\Console\Commands;
 
 use Illuminate\Console\Command;
-use Packages\Commander\Services\QuotaMeasurerService;
+use Packages\Commander\Services\CommanderQuotaMeasurerService;
 
-class QuotaMeasureCommand extends Command
+class CommanderQuotaMeasureCommand extends Command
 {
     protected $signature = 'commander:quota:measure
         {--dry-run : Mide y muestra sin persistir ni aplicar acciones}';
 
     protected $description = 'Mide las metricas de cuota y aplica on_exceed (warn/suspend)';
 
-    public function handle(QuotaMeasurerService $service): int
+    public function handle(CommanderQuotaMeasurerService $service): int
     {
         $dryRun = (bool) $this->option('dry-run');
         $results = $service->measureAll(persist: !$dryRun, enforce: !$dryRun);

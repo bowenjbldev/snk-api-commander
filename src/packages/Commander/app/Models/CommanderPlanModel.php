@@ -4,7 +4,7 @@ namespace Packages\Commander\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class PlanModel extends Model
+class CommanderPlanModel extends Model
 {
     protected $table = 'commander_plans';
 

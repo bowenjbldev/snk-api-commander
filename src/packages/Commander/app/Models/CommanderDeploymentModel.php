@@ -5,9 +5,9 @@ namespace Packages\Commander\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Packages\Commander\Models\PackageModel;
+use Packages\Commander\Models\CommanderPackageModel;
 
-class DeploymentModel extends Model
+class CommanderDeploymentModel extends Model
 {
     protected $table = 'commander_deployments';
 
@@ -58,21 +58,21 @@ class DeploymentModel extends Model
     /** Relacion con la instancia/estado (packages). Nombre distinto de la columna `package`. */
     public function corePackage(): BelongsTo
     {
-        return $this->belongsTo(PackageModel::class, 'package_id');
+        return $this->belongsTo(CommanderPackageModel::class, 'package_id');
     }
 
     public function client(): BelongsTo
     {
-        return $this->belongsTo(ClientModel::class, 'client_id');
+        return $this->belongsTo(CommanderClientModel::class, 'client_id');
     }
 
     public function subscription(): BelongsTo
     {
-        return $this->belongsTo(SubscriptionModel::class, 'subscription_id');
+        return $this->belongsTo(CommanderSubscriptionModel::class, 'subscription_id');
     }
 
     public function quotas(): HasMany
     {
-        return $this->hasMany(QuotaModel::class, 'deployment_id');
+        return $this->hasMany(CommanderQuotaModel::class, 'deployment_id');
     }
 }
