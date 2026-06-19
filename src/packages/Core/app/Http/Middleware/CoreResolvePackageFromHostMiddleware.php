@@ -5,7 +5,6 @@ namespace Packages\Core\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Packages\Core\Models\CorePackageModel;
 use Packages\Core\Support\CoreActivePackageSupport;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -32,15 +31,16 @@ class CoreResolvePackageFromHostMiddleware
             abort(404);
         }
 
-        // CorePackageModel esta pinneado a la conexion 'commander', asi que esta query
-        // resuelve el registro aunque luego cambiemos la conexion default a la del tenant.
-        $package = CorePackageModel::query()->where('subdomain', $subdomain)->first();
+        // El registro `packages` vive en la BD commander; se lee por query builder (su modelo
+        // PackageModel es de Commander y Core no lo importa). La conexion 'commander' es fija,
+        // asi que resuelve aunque luego cambiemos la conexion default a la del tenant.
+        $package = DB::connection('commander')->table('packages')->where('subdomain', $subdomain)->first();
 
         if ($package === null) {
             abort(404); // subdominio no provisionado
         }
 
-        $this->active->set($package);
+        $this->active->set((int) $package->id);
 
         // Aislamiento FISICO: conmuta la conexion default a la BD del package. Bajo PHP-FPM cada
         // request es share-nothing, asi que el cambio vive solo en este request (no hay bleed).

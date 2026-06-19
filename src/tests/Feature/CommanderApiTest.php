@@ -8,7 +8,7 @@ use Packages\Commander\Models\ClientModel;
 use Packages\Commander\Models\DeploymentModel;
 use Packages\Commander\Models\QuotaModel;
 use Packages\Core\Database\Seeders\CoreDatabaseSeeder;
-use Packages\Core\Models\CorePackageModel;
+use Packages\Commander\Models\PackageModel;
 use Packages\Core\Models\CoreUserModel;
 use Tests\CommanderTestCase;
 
@@ -54,7 +54,7 @@ class CommanderApiTest extends CommanderTestCase
         ]);
 
         // State now lives on the packages row, referenced by package_id.
-        $package = CorePackageModel::create([
+        $package = PackageModel::create([
             'name' => 'TrackingApi', 'subdomain' => 'kestrel-track', 'status' => 'grace',
             'reason' => 'payment_overdue', 'message' => null,
             'grace_until' => now()->addHours(48), 'changed_by' => 'operator', 'changed_at' => now(),
@@ -95,7 +95,7 @@ class CommanderApiTest extends CommanderTestCase
     {
         $admin = $this->admin();
 
-        $package = CorePackageModel::create(['name' => 'Shop', 'subdomain' => 'shop', 'status' => 'active']);
+        $package = PackageModel::create(['name' => 'Shop', 'subdomain' => 'shop', 'status' => 'active']);
         ClientModel::create(['id' => 'c', 'name' => 'C', 'email' => 'c@c.test', 'status' => 'active']);
         DeploymentModel::create([
             'id' => 'shop', 'name' => 'shop', 'subdomain' => 'shop.snake.test', 'client_id' => 'c',
@@ -123,7 +123,7 @@ class CommanderApiTest extends CommanderTestCase
     {
         $admin = $this->admin();
 
-        $package = CorePackageModel::create(['name' => 'Shop', 'subdomain' => 'shop', 'database' => 'shop', 'status' => 'active']);
+        $package = PackageModel::create(['name' => 'Shop', 'subdomain' => 'shop', 'database' => 'shop', 'status' => 'active']);
         ClientModel::create(['id' => 'c', 'name' => 'C', 'email' => 'c@c.test', 'status' => 'active']);
         DeploymentModel::create([
             'id' => 'shop', 'name' => 'shop', 'subdomain' => 'shop.snake.test', 'client_id' => 'c',
@@ -139,7 +139,7 @@ class CommanderApiTest extends CommanderTestCase
         $this->actingAs($admin, 'sanctum')->deleteJson('/api/v1/deployments/shop')->assertOk();
 
         $this->assertNull(DeploymentModel::find('shop'));
-        $this->assertNull(CorePackageModel::find($package->id));
+        $this->assertNull(PackageModel::find($package->id));
         $this->assertCount(0, QuotaModel::where('deployment_id', 'shop')->get());
     }
 

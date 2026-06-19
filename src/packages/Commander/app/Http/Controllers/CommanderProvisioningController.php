@@ -15,7 +15,7 @@ use Packages\Commander\Models\PlanModel;
 use Packages\Commander\Models\QuotaModel;
 use Packages\Commander\Models\SubscriptionModel;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
-use Packages\Core\Models\CorePackageModel;
+use Packages\Commander\Models\PackageModel;
 use Packages\Commander\Models\QuotaMetricModel;
 
 /**
@@ -80,7 +80,7 @@ class CommanderProvisioningController extends CoreBaseApiController
             return response()->json(['error' => "Package code '{$package}' is not deployed."], 422);
         }
 
-        if (DeploymentModel::whereKey($deploymentId)->exists() || CorePackageModel::where('subdomain', $subdomain)->exists()) {
+        if (DeploymentModel::whereKey($deploymentId)->exists() || PackageModel::where('subdomain', $subdomain)->exists()) {
             return response()->json(['error' => "A deployment '{$deploymentId}' already exists."], 409);
         }
 
@@ -108,7 +108,7 @@ class CommanderProvisioningController extends CoreBaseApiController
             }
 
             // Instancia: la fila packages enciende el subdominio (la resuelve el middleware por host).
-            $corePackage = CorePackageModel::create([
+            $corePackage = PackageModel::create([
                 'name' => $package,
                 'subdomain' => $subdomain,
                 'database' => $database,

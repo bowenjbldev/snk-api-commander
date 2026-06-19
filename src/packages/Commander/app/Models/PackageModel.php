@@ -1,6 +1,6 @@
 <?php
 
-namespace Packages\Core\Models;
+namespace Packages\Commander\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Packages\Core\Enums\CorePackageStatusEnum;
@@ -9,7 +9,7 @@ use Packages\Core\Enums\CorePackageStatusEnum;
  * Registro de un package provisionado (packages). Identidad (name/subdomain) +
  * estado runtime (status/reason/grace_until...). Reemplaza al singleton core_package_state.
  */
-class CorePackageModel extends Model
+class PackageModel extends Model
 {
     protected $table = 'packages';
 

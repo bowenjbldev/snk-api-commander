@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Packages\Commander\Models\QuotaMetricModel;
 use Packages\Core\Enums\CorePackageStatusEnum;
-use Packages\Core\Models\CorePackageModel;
+use Packages\Commander\Models\PackageModel;
 use Packages\Core\Services\CorePackageStateService;
 use Packages\Core\Support\CoreActivePackageSupport;
 
@@ -25,7 +25,7 @@ class QuotaMeasurerService
     ) {
     }
 
-    public function measure(string $metricKey, ?CorePackageModel $package = null): ?int
+    public function measure(string $metricKey, ?PackageModel $package = null): ?int
     {
         $packageId = $package?->getKey();
 
@@ -57,8 +57,8 @@ class QuotaMeasurerService
             ->groupBy('package_id');
 
         foreach ($byPackage as $packageId => $metrics) {
-            $package = $packageId !== null ? CorePackageModel::query()->find($packageId) : null;
-            $this->active->set($package);
+            $package = $packageId !== null ? PackageModel::query()->find($packageId) : null;
+            $this->active->set($package?->getKey());
 
             // Apunta la conexion 'tenant' a la BD del package para medir lo LOCAL (users, tamaño BD).
             // requests_day y las escrituras de quota_metrics siguen yendo a 'commander'.
@@ -155,7 +155,7 @@ class QuotaMeasurerService
         }
     }
 
-    private function measureDatabaseSizeMb(?CorePackageModel $package): ?int
+    private function measureDatabaseSizeMb(?PackageModel $package): ?int
     {
         if ($package === null || empty($package->database)) {
             return null;

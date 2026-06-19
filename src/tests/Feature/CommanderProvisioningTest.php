@@ -8,7 +8,7 @@ use Packages\Commander\Models\ClientModel;
 use Packages\Commander\Models\DeploymentModel;
 use Packages\Commander\Models\PlanModel;
 use Packages\Core\Database\Seeders\CoreDatabaseSeeder;
-use Packages\Core\Models\CorePackageModel;
+use Packages\Commander\Models\PackageModel;
 use Packages\Commander\Models\QuotaMetricModel;
 use Packages\Core\Models\CoreUserModel;
 use Tests\CommanderTestCase;
@@ -57,7 +57,7 @@ class CommanderProvisioningTest extends CommanderTestCase
         $res->assertJsonMissingPath('host_command');
 
         // Instance row (packages) created + active + its own database name → subdomain is live.
-        $cp = CorePackageModel::where('subdomain', 'shop')->first();
+        $cp = PackageModel::where('subdomain', 'shop')->first();
         $this->assertNotNull($cp);
         $this->assertSame('active', $cp->getRawOriginal('status'));
         $this->assertSame('shop', $cp->database); // BD propia del package

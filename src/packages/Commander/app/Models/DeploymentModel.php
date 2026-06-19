@@ -5,7 +5,7 @@ namespace Packages\Commander\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Packages\Core\Models\CorePackageModel;
+use Packages\Commander\Models\PackageModel;
 
 class DeploymentModel extends Model
 {
@@ -58,7 +58,7 @@ class DeploymentModel extends Model
     /** Relacion con la instancia/estado (packages). Nombre distinto de la columna `package`. */
     public function corePackage(): BelongsTo
     {
-        return $this->belongsTo(CorePackageModel::class, 'package_id');
+        return $this->belongsTo(PackageModel::class, 'package_id');
     }
 
     public function client(): BelongsTo
