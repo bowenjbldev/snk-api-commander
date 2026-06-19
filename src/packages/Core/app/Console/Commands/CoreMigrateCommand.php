@@ -26,7 +26,7 @@ class CoreMigrateCommand extends Command
     protected $description = 'Run migrations on the commander database or on a package\'s tenant database';
 
     private const COMMANDER_PATHS = [
-        'packages/Core/database/migrations/tenant',    // base Laravel del operador (compartida con tenants)
+        'packages/Core/database/migrations',           // base Laravel del operador (compartida con tenants)
         'packages/Commander/database/migrations',      // registro (packages) + control-plane + commander_*
     ];
 
@@ -41,7 +41,7 @@ class CoreMigrateCommand extends Command
             DB::purge('tenant');
 
             $paths = [
-                'packages/Core/database/migrations/tenant',
+                'packages/Core/database/migrations',
                 "packages/{$package}/database/migrations",
             ];
         } else {

@@ -72,7 +72,7 @@ class CoreServiceProvider extends ServiceProvider
         // de cada package NO se auto-cargan: las corre el provisioning sobre la conexion del tenant
         // (core:migrate --package=Pkg), nunca sobre la commander.
         $paths = array_filter([
-            base_path('packages/Core/database/migrations/tenant'),
+            base_path('packages/Core/database/migrations'),
             base_path('packages/Commander/database/migrations'),
         ], 'is_dir');
 
