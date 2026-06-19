@@ -16,13 +16,23 @@ class CoreConsoleServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        if (!$this->app->runningInConsole()) {
-            return;
-        }
-
+        // Seeder binding + comandos operacionales: tambien deben existir en HTTP, porque el
+        // provisioning del Commander llama core:migrate / core:seed via Artisan::call durante
+        // un request. $this->commands() difiere el registro al arrancar Artisan (on-demand en HTTP).
         $this->app->bind(\Database\Seeders\DatabaseSeeder::class, function ($app) {
             return $app->make(\Packages\Core\Database\Seeders\CorePackagesDatabaseSeeder::class);
         });
+
+        $this->commands([
+            CoreMigrateCommand::class,
+            CoreMigrateRefreshCommand::class,
+            CoreSeedCommand::class,
+        ]);
+
+        // Generadores make:* y scaffolding: solo en consola (no se usan desde HTTP).
+        if (!$this->app->runningInConsole()) {
+            return;
+        }
 
         $this->app->singleton(\Packages\Core\Console\Commands\Make\CoreMigrationMakeCommand::class, function ($app) {
             return new \Packages\Core\Console\Commands\Make\CoreMigrationMakeCommand(
@@ -34,9 +44,6 @@ class CoreConsoleServiceProvider extends ServiceProvider
         $this->commands([
             CoreMakePackageCommand::class,
             CoreRemovePackageCommand::class,
-            CoreMigrateCommand::class,
-            CoreMigrateRefreshCommand::class,
-            CoreSeedCommand::class,
             \Packages\Core\Console\Commands\Make\CoreCacheTableMakeCommand::class,
             \Packages\Core\Console\Commands\Make\CoreCastMakeCommand::class,
             \Packages\Core\Console\Commands\Make\CoreChannelMakeCommand::class,

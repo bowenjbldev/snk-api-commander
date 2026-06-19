@@ -87,6 +87,15 @@ class CoreRouteServiceProvider extends ServiceProvider
             // Centralizado: cada package bajo su propio subdominio {sub}.{BASE_DOMAIN}.
             $base = (string) config('core.base_domain');
 
+            // Rutas de Core (health/docs) GLOBALES: cualquier host (api.{BASE_DOMAIN}, localhost,
+            // monitorizacion). Son agnosticas de package; el resolutor no aplica. El health queda
+            // exento del kill-switch (core.state.exempt_paths) y no se mide (metering skip sin package).
+            foreach ($coreFiles as $coreFile) {
+                Route::prefix('api/v1')
+                    ->middleware(['api'])
+                    ->group($coreFile);
+            }
+
             foreach ($packageFiles as $module => $routeFile) {
                 $subdomain = CorePackageSelectorSupport::packageToSubdomain($module);
                 $isCommander = strcasecmp($module, 'Commander') === 0;
@@ -100,13 +109,7 @@ class CoreRouteServiceProvider extends ServiceProvider
                 Route::domain($subdomain . '.' . $base)
                     ->prefix('api/v1')
                     ->middleware($middleware)
-                    ->group(function () use ($coreFiles, $routeFile): void {
-                        foreach ($coreFiles as $coreFile) {
-                            require $coreFile;
-                        }
-
-                        require $routeFile;
-                    });
+                    ->group($routeFile);
             }
         });
     }

@@ -39,13 +39,18 @@ class CoreAuthController extends Controller
         }
 
         // Identidad por package: el login solo ve usuarios del subdominio resuelto.
-        // Sin package activo (host del operador/apex) no se filtra.
+        // Sin package activo (host del operador/apex) solo ve usuarios de operador
+        // (package_id NULL) — un usuario de tenant nunca inicia sesion fuera de su subdominio.
         $activePackageId = app(CoreActivePackageSupport::class)->id();
 
         /** @var CoreUserModel|null $user */
         $user = CoreUserModel::query()
             ->where('email', $email)
-            ->when($activePackageId !== null, fn ($q) => $q->where('package_id', $activePackageId))
+            ->when(
+                $activePackageId !== null,
+                fn ($q) => $q->where('package_id', $activePackageId),
+                fn ($q) => $q->whereNull('package_id'),
+            )
             ->first();
 
         $hash = $user?->password;

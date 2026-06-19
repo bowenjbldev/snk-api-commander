@@ -50,7 +50,8 @@ fi
 echo "Clearing config cache..."
 php artisan config:clear
 
-# Ejecutar migraciones (Core + paquete activo via API_PACKAGE)
+# Ejecutar migraciones. Centralizado (API_PACKAGE vacio): Core + TODOS los packages
+# sobre la BD compartida. Con API_PACKAGE fijo: Core + ese package.
 echo "Running database migrations..."
 php artisan migrate --force
 

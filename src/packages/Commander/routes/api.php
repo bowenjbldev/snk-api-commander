@@ -12,11 +12,13 @@ use Packages\Commander\Http\Controllers\CommanderQuotasController;
 use Packages\Commander\Http\Controllers\CommanderSubscriptionsController;
 use Packages\Commander\Http\Controllers\CommanderUsageController;
 use Packages\Commander\Http\Controllers\CommanderUsersController;
+use Packages\Commander\Http\Middleware\CommanderOperatorMiddleware;
 
 Route::middleware(['api'])->group(function () {
     Route::post('auth/login', [CommanderAuthController::class, 'login'])->middleware('throttle:login');
 
-    Route::middleware('auth:sanctum')->group(function () {
+    // auth:sanctum + operador: rechaza tokens de tenant reutilizados en el panel.
+    Route::middleware(['auth:sanctum', CommanderOperatorMiddleware::class])->group(function () {
         Route::get('auth/me', [CommanderAuthController::class, 'me']);
         Route::post('auth/logout', [CommanderAuthController::class, 'logout']);
 

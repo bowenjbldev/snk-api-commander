@@ -62,14 +62,16 @@ services:
     networks:
       - app-network
 
-  # MariaDB Service
+  # MariaDB Service — UNA base de datos compartida para TODOS los packages (centralizado).
   db:
     image: mariadb:latest
     restart: unless-stopped
     environment:
-      # Root sin password: SOLO local. Las BDs de suscripciones las crea
-      # scripts/subscription.sh con sus propias credenciales por paquete.
+      # Root sin password + BD/usuario unicos: SOLO local. En init crea la BD compartida.
       MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "yes"
+      MARIADB_DATABASE: ${DB_DATABASE:-snake}
+      MARIADB_USER: ${DB_USERNAME:-snake}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-snake}
     ports:
       - "${DB_PORT:-3306}:3306"
     healthcheck:

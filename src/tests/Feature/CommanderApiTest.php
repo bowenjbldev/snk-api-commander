@@ -118,4 +118,18 @@ class CommanderApiTest extends CommanderTestCase
             ->assertJsonPath('state.status', 'active');
         $this->assertSame('active', $package->fresh()->getRawOriginal('status'));
     }
+
+    public function test_operator_panel_rejects_tenant_credentials(): void
+    {
+        $this->admin(); // seeds the shared 'admin' role + Commander permissions
+
+        $package = CorePackageModel::create(['name' => 'Shop', 'subdomain' => 'shop', 'status' => 'active']);
+        $tenant = CoreUserModel::create([
+            'package_id' => $package->id, 'email' => 'admin@snake.com', 'name' => 'Shop Admin', 'password' => 'secret1234',
+        ]);
+        $tenant->assignRole('admin'); // even with the (globally shared) admin role…
+
+        // …a tenant token must not reach the operator panel (package_id != null → 403).
+        $this->actingAs($tenant, 'sanctum')->getJson('/api/v1/deployments')->assertStatus(403);
+    }
 }
