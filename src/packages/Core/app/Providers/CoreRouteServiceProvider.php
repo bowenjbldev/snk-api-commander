@@ -72,18 +72,6 @@ class CoreRouteServiceProvider extends ServiceProvider
                 $packageFiles[$module] = $routeFile;
             }
 
-            // Lock de un solo package (deploy aislado / tests): rutas planas, Core primero.
-            // En colision exacta gana el package (se registra despues).
-            if (CorePackageSelectorSupport::activePackageName() !== null) {
-                foreach ([...$coreFiles, ...array_values($packageFiles)] as $routeFile) {
-                    Route::prefix('api/v1')
-                        ->middleware(['api'])
-                        ->group($routeFile);
-                }
-
-                return;
-            }
-
             // Centralizado: cada package bajo su propio subdominio {sub}.{BASE_DOMAIN}.
             $base = (string) config('core.base_domain');
 

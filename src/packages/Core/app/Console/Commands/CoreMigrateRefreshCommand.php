@@ -11,7 +11,7 @@ class CoreMigrateRefreshCommand extends Command
     use CorePackageDatabaseSupport;
 
     protected $signature = 'core:migrate:refresh
-        {--package= : Target package (defaults to API_PACKAGE, e.g. Shop)}
+        {--package= : Target package (required, e.g. Shop)}
         {--seed : Run seeders after refreshing}
         {--force : Force the operation to run in production}';
 

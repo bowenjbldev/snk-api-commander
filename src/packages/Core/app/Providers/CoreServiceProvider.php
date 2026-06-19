@@ -8,7 +8,6 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Arr;
 use Packages\Core\Support\CoreActivePackageSupport;
 use Packages\Core\Support\CorePackageDiscoverySupport;
-use Packages\Core\Support\CorePackageSelectorSupport;
 
 class CoreServiceProvider extends ServiceProvider
 {
@@ -27,9 +26,6 @@ class CoreServiceProvider extends ServiceProvider
         // Con BD por package, una cache compartida (file) filtraria los permisos de un tenant a
         // otra conexion; 'array' fuerza recargar de la conexion activa en cada request.
         config(['permission.cache.store' => 'array']);
-
-        // Fail loudly at boot (HTTP and artisan) if API_PACKAGE points to a missing package.
-        CorePackageSelectorSupport::fromEnvironment(base_path('packages'))->activePackage();
 
         // 2. Core Framework Overrides
         $this->app->afterResolving(ExceptionHandlerContract::class, function (ExceptionHandlerContract $handler): void {

@@ -5,7 +5,6 @@ namespace Packages\Core\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
-use Packages\Core\Support\CorePackageSelectorSupport;
 
 use function Laravel\Prompts\confirm;
 
@@ -33,13 +32,6 @@ class CoreRemovePackageCommand extends Command
 
         if ($package === 'Core') {
             $this->error('Package name "Core" is protected and cannot be removed.');
-            return self::FAILURE;
-        }
-
-        $active = CorePackageSelectorSupport::activePackageName();
-
-        if ($active !== null && strcasecmp($package, $active) === 0) {
-            $this->error("Package [{$package}] is the active API_PACKAGE. Change API_PACKAGE in .env first.");
             return self::FAILURE;
         }
 

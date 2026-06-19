@@ -59,7 +59,7 @@ class CoreMakePackageCommand extends Command
         $this->dumpAutoload();
 
         $this->info("Package {$package} created at {$targetPath}");
-        $this->line("Set API_PACKAGE={$package} in .env to activate it.");
+        $this->line("Provisionalo desde el Commander para servirlo en su subdominio (crea su BD), o migra su BD con: php artisan core:migrate --package={$package}");
 
         return self::SUCCESS;
     }

@@ -5,16 +5,14 @@ namespace Packages\Core\Support;
 final class CorePackageDiscoverySupport
 {
     private string $packagesBasePath;
-    private CorePackageSelectorSupport $selector;
     /**
      * @var string[]|null
      */
     private ?array $globalConfigKeys = null;
 
-    public function __construct(string $packagesBasePath, ?CorePackageSelectorSupport $selector = null)
+    public function __construct(string $packagesBasePath)
     {
         $this->packagesBasePath = $packagesBasePath;
-        $this->selector = $selector ?? CorePackageSelectorSupport::fromEnvironment($packagesBasePath);
     }
 
     public static function fromEnvironment(string $packagesBasePath): self
@@ -174,15 +172,16 @@ final class CorePackageDiscoverySupport
      */
     private function filterPathsByLoadableModule(array $paths, int $levelsUp, bool $allowCore = true): array
     {
-        return array_values(array_filter($paths, function (string $path) use ($levelsUp, $allowCore): bool {
-            $module = $this->moduleFromPath($path, $levelsUp);
+        // Siempre centralizado: se cargan todos los packages. Solo se excluye Core cuando el
+        // llamante lo pide (su provider/recursos se registran explicitamente, no por descubrimiento).
+        if ($allowCore) {
+            return array_values($paths);
+        }
 
-            if (!$allowCore && strcasecmp($module, 'Core') === 0) {
-                return false;
-            }
-
-            return $this->selector->shouldLoad($module);
-        }));
+        return array_values(array_filter(
+            $paths,
+            fn (string $path): bool => strcasecmp($this->moduleFromPath($path, $levelsUp), 'Core') !== 0,
+        ));
     }
 
     private function moduleFromPath(string $path, int $levelsUp): string

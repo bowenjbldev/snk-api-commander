@@ -4,24 +4,12 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Active Package
-    |--------------------------------------------------------------------------
-    |
-    | The business package served by this deployment. One deployment serves
-    | exactly one package (plus Core). Leave empty to boot Core only.
-    |
-    */
-
-    'package' => env('API_PACKAGE'),
-
-    /*
-    |--------------------------------------------------------------------------
     | Base Domain
     |--------------------------------------------------------------------------
     |
-    | Dominio raiz del despliegue centralizado. En modo centralizado (API_PACKAGE
-    | vacio) cada package se sirve en {subdominio}.{base_domain} y el package se
-    | resuelve por host. Debe coincidir con BASE_DOMAIN de la infra (nginx/DNS).
+    | Dominio raiz del despliegue centralizado: cada package se sirve en
+    | {subdominio}.{base_domain} y el package se resuelve por host en cada request.
+    | Debe coincidir con BASE_DOMAIN de la infra (nginx/DNS).
     |
     */
 
@@ -32,9 +20,9 @@ return [
     | Commander (el control plane del tenant)
     |--------------------------------------------------------------------------
     |
-    | Whether this deploy runs the commander: metering, kill-switch y quotas.
-    | Customer deploys leave it on; the isolated operator panel
-    | (API_PACKAGE=Commander) turns it off — it manages tenants, it is not one.
+    | Whether this deploy runs the commander control plane: metering, kill-switch
+    | y quotas (default on). Apagable con CORE_COMMANDER=false en deploys que no
+    | deban medir ni aplicar cuotas.
     |
     */
 

@@ -20,7 +20,6 @@
     <php>
         <env name="APP_ENV" value="testing"/>
         <!-- Vacio = modo centralizado (load-all + routing por subdominio), como en produccion. -->
-        <env name="API_PACKAGE" value=""/>
         <env name="BASE_DOMAIN" value="snake.test"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>

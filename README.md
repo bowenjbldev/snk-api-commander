@@ -2,7 +2,7 @@
 
 API modular sobre Laravel 13. **Un solo despliegue (una app) sirve TODOS los paquetes de negocio**, resueltos por subdominio en cada request: `{paquete}.dominio.com`. Multi-tenant por **base de datos**: una BD commander (`commander`) con el registro + el panel de operador + el metering, y **una BD propia por paquete** (`shop`, `blog`...) con sus tablas de negocio + su base Laravel (users/roles/tokens). El Commander da de alta clientes y paquetes y los provisiona en un paso (crea la BD incluida), sin scripts de host.
 
-> **Modelo centralizado.** Anteriormente cada paquete/cliente era un despliegue aislado con su propia BD (orquestado por `subscription.sh`). Ahora es **una app centralizada**: el paquete activo se resuelve por el `Host` del request, no por despliegue. `API_PACKAGE` vacío = centralizado (carga todos los paquetes); fijarlo bloquea la app a un único paquete (deploy aislado / tests).
+> **Modelo centralizado.** Anteriormente cada paquete/cliente era un despliegue aislado con su propia BD (orquestado por `subscription.sh`). Ahora es **una app centralizada**: una sola instancia carga todos los paquetes y el paquete activo se resuelve por el `Host` de cada request (no por despliegue), conmutando a la BD de ese paquete.
 
 ## Stack
 
@@ -20,7 +20,7 @@ Solo necesitas Docker (composer, PHP y migraciones corren dentro del contenedor)
 ```bash
 git clone <repo> && cd snake-laravel-api
 cp .env.example .env          # puertos, dominios (ajusta si quieres)
-cp src/.env.example src/.env  # API_PACKAGE vacio (centralizado) + BD commander + root multi-BD
+cp src/.env.example src/.env  # BD commander + root multi-BD (centralizado)
 bash scripts/setup-ssl.sh     # cert wildcard *.BASE_DOMAIN con mkcert (se auto-descarga si falta)
 docker compose up -d          # build + composer install + APP_KEY + migrate commander, automatico
 curl -k https://localhost:8443/api/v1   # health check (Core, agnostico de paquete)
@@ -84,15 +84,9 @@ Monolito modular centralizado, multi-tenant por BD: **una app sirve todos los pa
 
 ### Resolucion del paquete activo
 
-Al arrancar, `CoreServiceProvider` carga los paquetes segun `API_PACKAGE`:
+Al arrancar, `CoreServiceProvider` descubre y carga **Core + TODOS los paquetes** de `packages/` (providers, configs namespaced, rutas). El paquete activo NO se elige en boot: lo resuelve `CoreResolvePackageFromHostMiddleware` por el `Host` de cada request, y conmuta la conexion a la BD de ese paquete.
 
-| Valor | Comportamiento |
-|-------|----------------|
-| `API_PACKAGE=` (vacio) | **Centralizado**: carga Core + TODOS los paquetes. El paquete activo se resuelve por subdominio en cada request. |
-| `API_PACKAGE=Shop` (existe `packages/Shop/`) | **Lock**: carga solo Core + Shop, rutas planas (deploy aislado de un paquete / tests). |
-| `API_PACKAGE=NoExiste` | Falla en boot con `CorePackageConfigurationException` y mensaje claro. |
-
-En centralizado, las rutas de cada paquete se envuelven en `Route::domain('{sub}.<BASE_DOMAIN>')`; las de Core (health/docs) se registran globales (cualquier host). Un subdominio solo "esta vivo" si existe su fila en `commander_packages` (creada al provisionar); si no, `404`.
+Las rutas de cada paquete se envuelven en `Route::domain('{sub}.<BASE_DOMAIN>')`; las de Core (health/docs) se registran globales (cualquier host). Un subdominio solo "esta vivo" si existe su fila en `commander_packages` (creada al provisionar); si no, `404`.
 
 ### `commander_packages`: registro de instancias
 
@@ -147,8 +141,7 @@ Dentro de WSL, hasta tener DNS, prueba con `curl --resolve <sub>.snake.test:8443
 
 ### Rutas
 
-- **Centralizado**: las rutas de cada paquete bajo `Route::domain('{sub}.<BASE_DOMAIN>')->prefix('api/v1')`. Las de Core (health) son globales (cualquier host). El Commander en `commander.<BASE_DOMAIN>`.
-- **Lock** (`API_PACKAGE` fijo): rutas planas bajo `/api/v1`, Core primero.
+- Las rutas de cada paquete bajo `Route::domain('{sub}.<BASE_DOMAIN>')->prefix('api/v1')`. Las de Core (health) son globales (cualquier host). El Commander en `commander.<BASE_DOMAIN>`.
 
 ## Rutas API
 
@@ -177,7 +170,7 @@ Un token solo vale en su subdominio: en otra BD no existe → 401. El panel de o
 
 ## Descubrimiento automatico
 
-`CoreServiceProvider` descubre recursos de Core + los paquetes a cargar (todos en centralizado, o solo el de `API_PACKAGE` en lock):
+`CoreServiceProvider` descubre y carga los recursos de Core + de TODOS los paquetes:
 
 | Recurso | Patron glob | Accion |
 |---------|-------------|--------|
@@ -307,9 +300,6 @@ APP_ENV=local
 APP_DEBUG=true
 APP_URL=https://api.snake.test
 
-# Vacio = centralizado (sirve todos los paquetes por subdominio).
-# Fijar (ej. Shop) bloquea la app a un unico paquete.
-API_PACKAGE=
 BASE_DOMAIN=snake.test
 
 # Multi-tenant: default=commander; cada subdominio conmuta a su BD (tenant).
