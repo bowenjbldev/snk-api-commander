@@ -8,16 +8,18 @@ return new class extends Migration {
     public function up(): void
     {
         // Overlay de identidad/facturacion. El estado runtime (active|grace|suspended) NO vive aqui:
-        // vive en packages, referenciado por package_id. In-process (misma app/BD), sin HMAC.
+        // vive en commander_packages, referenciado por package_id. In-process (misma app/BD), sin HMAC.
         Schema::create('commander_deployments', function (Blueprint $table) {
             $table->string('id', 64)->primary(); // slug == name == subdomain
             $table->string('name');
             $table->string('subdomain');
             $table->string('client_id', 64);
-            $table->foreignId('package_id')->nullable(); // -> packages (estado autoritativo)
+            $table->foreignId('package_id')->nullable(); // -> commander_packages (estado autoritativo)
             $table->string('package');                   // nombre StudlyCase (denormalizado para el SPA)
             $table->string('version', 32);
-            $table->string('base_url');
+            // nullable: un deployment puede existir en estado 'provisioning' (alta deseada desde el
+            // Commander) antes de que el host provisione el entorno real y se conozca la base_url.
+            $table->string('base_url')->nullable();
             $table->string('subscription_id', 64)->nullable();
 
             $table->unsignedBigInteger('requests_24h')->default(0);
