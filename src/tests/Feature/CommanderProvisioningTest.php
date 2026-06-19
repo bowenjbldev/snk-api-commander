@@ -67,13 +67,12 @@ class CommanderProvisioningTest extends CommanderTestCase
         ]);
 
         $res->assertStatus(201);
-        // One-step: live immediately, no host_command, state sourced from packages.
+        // One-step: live immediately, state sourced from commander_packages.
         $res->assertJsonPath('deployment.state.status', 'active');
         $res->assertJsonPath('deployment.package', 'Demo');
         $res->assertJsonPath('deployment.subscription.plan', 'Pro');
-        $res->assertJsonMissingPath('host_command');
 
-        // Instance row (packages) created + active + its own database name → subdomain is live.
+        // Instance row (commander_packages) created + active + its own database name → subdomain is live.
         $cp = CommanderPackageModel::where('subdomain', 'demo')->first();
         $this->assertNotNull($cp);
         $this->assertSame('active', $cp->getRawOriginal('status'));

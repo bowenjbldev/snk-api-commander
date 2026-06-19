@@ -15,14 +15,13 @@ use Packages\Commander\Models\CommanderUsageSnapshotModel;
 /**
  * Refresca los campos denormalizados que el dashboard/lista del Commander leen
  * (requests_24h, quota_health, last_seen) y los snapshots de uso de plataforma,
- * recalculandolos IN-PROCESS desde las tablas core_* compartidas (mismo deploy/BD).
- * Reemplaza al antiguo commander:sync-deploys (que tiraba por HTTP firmado).
+ * recalculandolos IN-PROCESS desde las tablas commander_* (misma app/BD).
  */
 class CommanderRefreshCommand extends Command
 {
     protected $signature = 'commander:refresh';
 
-    protected $description = 'Refresh deployment KPIs + usage snapshots from the shared core_* tables (in-process)';
+    protected $description = 'Refresh deployment KPIs + usage snapshots from the commander_* tables (in-process)';
 
     public function handle(): int
     {

@@ -11,8 +11,8 @@ use Packages\Commander\Models\CommanderUsageSnapshotModel;
 
 /**
  * Platform-wide usage read for the Dashboard/Usage charts. Aggregates the local
- * commander_usage_snapshots cache (seeded + refreshed by deployment `sync`) so the charts render without
- * N live /control/usage calls.
+ * commander_usage_snapshots cache (seeded + refreshed by `commander:refresh`) so the charts render
+ * in one query.
  */
 #[Group('Usage')]
 class CommanderUsageController extends CoreBaseApiController

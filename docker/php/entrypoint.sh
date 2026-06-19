@@ -3,7 +3,7 @@ set -e
 
 # --- Seccion critica: muta archivos del bind mount compartido (./src) ---
 # flock sobre un archivo del mount compartido => exclusion entre N contenedores
-# (con varias suscripciones arrancando a la vez, solo uno instala/genera key).
+# (si varios contenedores arrancan a la vez, solo uno instala/genera key).
 mkdir -p storage/framework
 (
     flock 9

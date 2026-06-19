@@ -9,8 +9,8 @@ use Spatie\Permission\Models\Role;
 /**
  * Seeds ONLY the panel's authorization scaffolding: the Spatie permissions for each resource and the
  * `admin` role (granted to the admin user that CoreDatabaseSeeder creates). No business/demo data —
- * the registry starts empty and is filled with real data: deployments via `commander:register-deploy`
- * (scripts/subscription.sh), and clients/subscriptions/invoices via the panel's CRUD.
+ * the registry starts empty and is filled with real data: deployments via provisioning, and
+ * clients/subscriptions/invoices via the panel's CRUD.
  */
 class CommanderDatabaseSeeder extends Seeder
 {
@@ -29,7 +29,7 @@ class CommanderDatabaseSeeder extends Seeder
                 $names[] = "$action $resource";
             }
         }
-        // Custom: signed /control proxy actions (suspend/grace/resume/sync/rotate-secret).
+        // Custom: acciones de estado in-process (suspend/grace/resume).
         $names[] = 'control deployments';
         // Custom: create a desired subscription (client + plan → pending deployment) in one shot.
         $names[] = 'provision deployments';

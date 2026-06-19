@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Genera los certificados SSL locales que nginx necesita para arrancar:
 #   - Certificado para APP_DOMAIN (dominio principal, .env raiz)
-#   - Certificado wildcard *.BASE_DOMAIN (suscripciones locales)
+#   - Certificado wildcard *.BASE_DOMAIN (subdominios de package)
 #
 # Usa mkcert (certificados de confianza local, candado verde). Si no esta
 # instalado, lo descarga automaticamente a ~/.local/bin (solo necesita curl).
@@ -72,7 +72,7 @@ echo "Generating certificate for $DOMAIN..."
     -key-file  "$CERTS_DIR/$DOMAIN-key.pem" \
     "$DOMAIN"
 
-# Wildcard para suscripciones locales (<cliente>.<BASE_DOMAIN>)
+# Wildcard para los subdominios de package (<package>.<BASE_DOMAIN>)
 # Nota: cubre un solo nivel (a.snake.test si, a.b.snake.test no) y no el apex.
 if [ -n "${BASE_DOMAIN:-}" ]; then
     echo "Generating wildcard certificate for *.$BASE_DOMAIN..."

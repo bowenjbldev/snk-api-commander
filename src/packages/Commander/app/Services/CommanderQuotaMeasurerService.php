@@ -16,7 +16,7 @@ use Packages\Core\Support\CoreActivePackageSupport;
  * Mide las metricas de cuota POR package y aplica la accion on_exceed. La unica via de
  * suspension es CorePackageStateService; el auto-heal solo revierte suspensiones causadas
  * por la propia metrica (reason quota_exceeded:<key>), nunca pisa una suspension manual
- * o del Commander. En una BD compartida cada metrica se mide acotada a su package.
+ * o del Commander. Cada metrica se mide acotada a su package (conmutando a su BD).
  */
 class CommanderQuotaMeasurerService
 {

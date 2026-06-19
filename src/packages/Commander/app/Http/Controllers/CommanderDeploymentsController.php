@@ -21,9 +21,9 @@ use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Core\Services\CorePackageStateService;
 
 /**
- * In-process (misma app/BD): las acciones de estado escriben directamente la fila packages
- * del package via CorePackageStateService; uso y logs se leen de commander_usage_rollups /
- * commander_request_logs filtrando por package_id. Sin HMAC, sin HTTP, sin mirror.
+ * In-process (misma app/BD): las acciones de estado escriben directamente la fila commander_packages
+ * via CorePackageStateService; uso y logs se leen de commander_usage_rollups /
+ * commander_request_logs filtrando por package_id.
  */
 #[Group('Deployments')]
 class CommanderDeploymentsController extends CoreBaseApiController
@@ -64,7 +64,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
     {
     }
 
-    /** Suspend (402) the package: write packages directly. */
+    /** Suspend (402) the package: write commander_packages directly. */
     public function suspend(Request $request, $id = null): JsonResponse
     {
         if ($response = $this->requirePermission(self::CONTROL_PERMISSION)) {

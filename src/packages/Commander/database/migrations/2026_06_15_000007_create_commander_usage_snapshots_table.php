@@ -6,8 +6,8 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Local cache of each deploy's hourly usage (one row per deployment+period+bucket). Seeded for an
- * out-of-the-box dashboard; overwritten with real rollups when an operator runs `sync` on a live
- * deploy. Powers the platform charts on Dashboard/Usage without N live /control/usage calls.
+ * out-of-the-box dashboard; overwritten with real rollups by `commander:refresh`. Powers the platform charts
+ * on Dashboard/Usage.
  */
 return new class extends Migration {
     public function up(): void

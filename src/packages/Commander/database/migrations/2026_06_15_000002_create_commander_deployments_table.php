@@ -8,7 +8,7 @@ return new class extends Migration {
     public function up(): void
     {
         // Overlay de identidad/facturacion. El estado runtime (active|grace|suspended) NO vive aqui:
-        // vive en commander_packages, referenciado por package_id. In-process (misma app/BD), sin HMAC.
+        // vive en commander_packages, referenciado por package_id. In-process (misma app/BD).
         Schema::create('commander_deployments', function (Blueprint $table) {
             $table->string('id', 64)->primary(); // slug == name == subdomain
             $table->string('name');

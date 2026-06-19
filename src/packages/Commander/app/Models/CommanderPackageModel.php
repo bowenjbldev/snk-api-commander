@@ -7,7 +7,7 @@ use Packages\Core\Enums\CorePackageStatusEnum;
 
 /**
  * Registro de un package provisionado (packages). Identidad (name/subdomain) +
- * estado runtime (status/reason/grace_until...). Reemplaza al singleton core_package_state.
+ * estado runtime (status/reason/grace_until...).
  */
 class CommanderPackageModel extends Model
 {

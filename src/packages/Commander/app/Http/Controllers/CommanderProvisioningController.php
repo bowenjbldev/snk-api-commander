@@ -20,9 +20,9 @@ use Packages\Commander\Models\CommanderQuotaMetricModel;
 
 /**
  * Client-first provisioning, EN UN PASO e in-process: registra CLIENTE (nuevo o existente) + PLAN,
- * crea la instancia (fila packages = subdominio activo), su suscripcion y cuotas, migra las
- * tablas del package sobre la BD compartida y siembra su admin. No hay host_command ni script: el
- * codigo del package ya viaja por git; aqui solo se da de alta la instancia.
+ * crea la instancia (fila commander_packages = subdominio activo), su suscripcion y cuotas, migra
+ * las tablas del package sobre su BD propia y siembra su admin. El codigo del package ya viaja por
+ * git; aqui solo se da de alta la instancia.
  */
 #[Group('Provisioning')]
 class CommanderProvisioningController extends CoreBaseApiController

@@ -54,11 +54,6 @@ class CoreScrambleServiceProvider extends ServiceProvider
                 return false;
             }
 
-            // Los endpoints /control son maquina-a-maquina (Commander): fuera de docs publicas
-            if (Str::is('api/v1/control*', $route->uri)) {
-                return false;
-            }
-
             $docsConfig = config('scramble.docs', []);
             $docsPaths = array_filter([
                 $docsConfig['ui_path'] ?? null,

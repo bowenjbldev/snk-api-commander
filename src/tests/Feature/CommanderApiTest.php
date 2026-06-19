@@ -53,7 +53,7 @@ class CommanderApiTest extends CommanderTestCase
             'email' => 'it@kestrel.test', 'status' => 'active',
         ]);
 
-        // State now lives on the packages row, referenced by package_id.
+        // State now lives on the commander_packages row, referenced by package_id.
         $package = CommanderPackageModel::create([
             'name' => 'TrackingApi', 'subdomain' => 'kestrel-track', 'status' => 'grace',
             'reason' => 'payment_overdue', 'message' => null,
@@ -82,10 +82,6 @@ class CommanderApiTest extends CommanderTestCase
         $this->assertSame('payment_overdue', $body['state']['reason']);
         $this->assertNotNull($body['state']['grace_until']);
 
-        // No HMAC secret anywhere in the in-process model.
-        $this->assertArrayNotHasKey('control_secret', $body);
-        $this->assertArrayNotHasKey('control_secret_suffix', $body);
-
         // Relations resolve.
         $this->assertSame('Kestrel Logistics', $body['client']['name']);
         $this->assertCount(4, $body['quotas']);
@@ -103,7 +99,7 @@ class CommanderApiTest extends CommanderTestCase
             'base_url' => 'https://shop.snake.test/api/v1',
         ]);
 
-        // Suspend → writes the packages row directly (no HMAC/HTTP).
+        // Suspend → writes the commander_packages row directly.
         $this->actingAs($admin, 'sanctum')
             ->postJson('/api/v1/deployments/shop/suspend', ['reason' => 'payment_overdue', 'message' => 'pay up'])
             ->assertOk()

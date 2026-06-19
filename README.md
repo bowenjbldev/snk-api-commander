@@ -2,7 +2,7 @@
 
 API modular sobre Laravel 13. **Un solo despliegue (una app) sirve TODOS los paquetes de negocio**, resueltos por subdominio en cada request: `{paquete}.dominio.com`. Multi-tenant por **base de datos**: una BD commander (`commander`) con el registro + el panel de operador + el metering, y **una BD propia por paquete** (`shop`, `blog`...) con sus tablas de negocio + su base Laravel (users/roles/tokens). El Commander da de alta clientes y paquetes y los provisiona en un paso (crea la BD incluida), sin scripts de host.
 
-> **Modelo centralizado.** Anteriormente cada paquete/cliente era un despliegue aislado con su propia BD (orquestado por `subscription.sh`). Ahora es **una app centralizada**: una sola instancia carga todos los paquetes y el paquete activo se resuelve por el `Host` de cada request (no por despliegue), conmutando a la BD de ese paquete.
+> **Modelo centralizado.** Anteriormente cada paquete/cliente era un despliegue aislado con su propia BD (orquestado por un script de host). Ahora es **una app centralizada**: una sola instancia carga todos los paquetes y el paquete activo se resuelve por el `Host` de cada request (no por despliegue), conmutando a la BD de ese paquete.
 
 ## Stack
 
@@ -90,7 +90,7 @@ Las rutas de cada paquete se envuelven en `Route::domain('{sub}.<BASE_DOMAIN>')`
 
 ### `commander_packages`: registro de instancias
 
-Tabla del registro, en la BD `commander`. Una fila por paquete provisionado: `name` (StudlyCase, = directorio en `packages/`), `subdomain` (snake), **`database`** (su BD propia), y el **estado runtime** (`active|grace|suspended` + reason/message/grace_until). El middleware la lee para saber a que BD conectar. Reemplaza al antiguo singleton `core_package_state`. El metering usa `package_id` (FK a `commander_packages`).
+Tabla del registro, en la BD `commander`. Una fila por paquete provisionado: `name` (StudlyCase, = directorio en `packages/`), `subdomain` (snake), **`database`** (su BD propia), y el **estado runtime** (`active|grace|suspended` + reason/message/grace_until). El middleware la lee para saber a que BD conectar. El metering usa `package_id` (FK a `commander_packages`).
 
 ### Identidad por paquete
 
@@ -202,7 +202,7 @@ El **codigo** de un paquete viaja por git (lo programas en local con `make:packa
 3. **Crea la BD del paquete** (`CREATE DATABASE`) y corre `core:migrate --package=<X>` (base Laravel + negocio; BD = snake(package)) + `core:seed --package=<X>` (admin del paquete) **en esa BD**.
 4. Activa + escribe las cuotas del plan (en la commander).
 
-Sin `host_command`, sin `subscription.sh`. El subdominio queda vivo al terminar. De-provisionar (`DELETE /deployments/{id}`) hace `DROP DATABASE` + limpia la commander.
+El subdominio queda vivo al terminar. De-provisionar (`DELETE /deployments/{id}`) hace `DROP DATABASE` + limpia la commander.
 
 ## Comandos Artisan
 
@@ -238,7 +238,7 @@ php artisan commander:quota:measure                # mide disco/requests/usuario
 
 - Estados por paquete: `active` | `grace` (headers `X-Package-Status`) | `suspended` (402 en rutas de negocio; health y docs siguen respondiendo).
 - Metering por request en `commander_request_logs` (middleware terminable, cero latencia con FPM, columna `package_id`) + rollups en `commander_usage_rollups`.
-- El Commander cambia el estado de un paquete escribiendo `commander_packages` directamente (sin HMAC): `POST /deployments/{id}/suspend|grace|resume`.
+- El Commander cambia el estado de un paquete escribiendo `commander_packages` directamente: `POST /deployments/{id}/suspend|grace|resume`.
 
 ### Generadores package-aware
 

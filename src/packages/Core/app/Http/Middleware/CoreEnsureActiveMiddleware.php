@@ -9,7 +9,7 @@ use Packages\Core\Services\CorePackageStateService;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Kill-switch del deploy: lee core_package_state (cacheado) y corta con 402
+ * Kill-switch del deploy: lee el estado del package (commander_packages, cacheado) y corta con 402
  * cuando el estado efectivo es suspended. Grace deja pasar con headers de
  * aviso. Fail-open: cualquier fallo interno (tabla ausente pre-migrate,
  * cache caida) equivale a active.

@@ -19,9 +19,8 @@ return new class extends Migration {
             $table->timestamp('exceeded_at')->nullable();
             $table->timestamps();
 
-            // Una fila por (package, metrica). Las filas se crean al provisionar el package
-            // (CommanderProvisioningController), no aqui: en una BD compartida no hay un
-            // unico deploy cuyas cuotas sembrar al migrar.
+            // Una fila por (package, metrica). Las filas se crean al provisionar cada package
+            // (CommanderProvisioningController), no en la migracion (que solo crea la tabla).
             $table->unique(['package_id', 'metric_key']);
         });
     }
