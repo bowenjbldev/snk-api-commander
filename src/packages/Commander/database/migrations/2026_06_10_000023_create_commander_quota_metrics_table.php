@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('quota_metrics', function (Blueprint $table) {
+        Schema::create('commander_quota_metrics', function (Blueprint $table) {
             $table->id();
             $table->foreignId('package_id')->nullable()->index();
             $table->string('metric_key', 64);
@@ -28,6 +28,6 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::dropIfExists('quota_metrics');
+        Schema::dropIfExists('commander_quota_metrics');
     }
 };

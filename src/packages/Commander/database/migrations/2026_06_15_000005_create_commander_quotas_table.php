@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('commander_quota_metrics', function (Blueprint $table) {
+        Schema::create('commander_quotas', function (Blueprint $table) {
             $table->string('id', 96)->primary(); // "${deployment_id}:${metric_key}"
             $table->string('deployment_id', 64);
             $table->string('metric_key', 32); // requests_day|disk_db_mb|disk_storage_mb|users_total
@@ -24,6 +24,6 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::dropIfExists('commander_quota_metrics');
+        Schema::dropIfExists('commander_quotas');
     }
 };

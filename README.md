@@ -92,11 +92,11 @@ Al arrancar, `CoreServiceProvider` carga los paquetes segun `API_PACKAGE`:
 | `API_PACKAGE=Shop` (existe `packages/Shop/`) | **Lock**: carga solo Core + Shop, rutas planas (deploy aislado de un paquete / tests). |
 | `API_PACKAGE=NoExiste` | Falla en boot con `CorePackageConfigurationException` y mensaje claro. |
 
-En centralizado, las rutas de cada paquete se envuelven en `Route::domain('{sub}.<BASE_DOMAIN>')`; las de Core (health/docs) se registran globales (cualquier host). Un subdominio solo "esta vivo" si existe su fila en `packages` (creada al provisionar); si no, `404`.
+En centralizado, las rutas de cada paquete se envuelven en `Route::domain('{sub}.<BASE_DOMAIN>')`; las de Core (health/docs) se registran globales (cualquier host). Un subdominio solo "esta vivo" si existe su fila en `commander_packages` (creada al provisionar); si no, `404`.
 
-### `packages`: registro de instancias
+### `commander_packages`: registro de instancias
 
-Tabla del registro, en la BD `commander`. Una fila por paquete provisionado: `name` (StudlyCase, = directorio en `packages/`), `subdomain` (snake), **`database`** (su BD propia), y el **estado runtime** (`active|grace|suspended` + reason/message/grace_until). El middleware la lee para saber a que BD conectar. Reemplaza al antiguo singleton `core_package_state`. El control-plane usa `package_id` (FK a `packages`).
+Tabla del registro, en la BD `commander`. Una fila por paquete provisionado: `name` (StudlyCase, = directorio en `packages/`), `subdomain` (snake), **`database`** (su BD propia), y el **estado runtime** (`active|grace|suspended` + reason/message/grace_until). El middleware la lee para saber a que BD conectar. Reemplaza al antiguo singleton `core_package_state`. El control-plane usa `package_id` (FK a `commander_packages`).
 
 ### Identidad por paquete
 
@@ -194,7 +194,7 @@ El **codigo** de un paquete viaja por git (lo programas en local con `make:packa
 `POST /provisioning` (en `commander.<BASE_DOMAIN>`, con `plan_id` + cliente nuevo/existente):
 
 1. Crea/resuelve cliente + suscripcion.
-2. Crea la fila `packages` (la instancia: enciende el subdominio).
+2. Crea la fila `commander_packages` (la instancia: enciende el subdominio).
 3. **Crea la BD del paquete** (`CREATE DATABASE`) y corre `core:migrate --package=<X>` (base Laravel + negocio; BD = snake(package)) + `core:seed --package=<X>` (admin del paquete) **en esa BD**.
 4. Activa + escribe las cuotas del plan (en la commander).
 
@@ -233,8 +233,8 @@ php artisan commander:quota:measure                # mide disco/requests/usuario
 ```
 
 - Estados por paquete: `active` | `grace` (headers `X-Package-Status`) | `suspended` (402 en rutas de negocio; health y docs siguen respondiendo).
-- Metering por request en `request_logs` (middleware terminable, cero latencia con FPM, columna `package_id`) + rollups en `usage_rollups`.
-- El Commander cambia el estado de un paquete escribiendo `packages` directamente (sin HMAC): `POST /deployments/{id}/suspend|grace|resume`.
+- Metering por request en `commander_request_logs` (middleware terminable, cero latencia con FPM, columna `package_id`) + rollups en `commander_usage_rollups`.
+- El Commander cambia el estado de un paquete escribiendo `commander_packages` directamente (sin HMAC): `POST /deployments/{id}/suspend|grace|resume`.
 
 ### Generadores package-aware
 
@@ -284,7 +284,7 @@ packages/MiPaquete/
 
 Separadas en `packages/Core/database/migrations/{commander,tenant}` por su destino:
 
-- **commander/** (BD `commander`): `packages` (registro) + control-plane (`request_logs`, `usage_rollups`, `quota_metrics`, por `package_id`). Mas las `commander_*`.
+- **commander/** (BD `commander`): `commander_packages` (registro) + control-plane (`commander_request_logs`, `commander_usage_rollups`, `commander_quota_metrics`, por `package_id`). Mas las `commander_*`.
 - **tenant/** (corre en la commander para el operador Y en CADA BD de paquete): Roles/permisos (Spatie), schema base (`users`, `sessions`, `cache`, `jobs`...), tokens Sanctum.
 - **negocio**: `packages/{Pkg}/database/migrations/` (solo en la BD del paquete).
 

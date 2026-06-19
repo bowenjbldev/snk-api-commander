@@ -48,7 +48,7 @@ class CoreActivePackageSupport
         }
 
         try {
-            $id = DB::connection('commander')->table('packages')->where('name', $name)->value('id');
+            $id = DB::connection('commander')->table('commander_packages')->where('name', $name)->value('id');
 
             return $id !== null ? (int) $id : null;
         } catch (\Throwable) {

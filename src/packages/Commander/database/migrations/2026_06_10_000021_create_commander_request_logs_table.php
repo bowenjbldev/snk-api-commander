@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('request_logs', function (Blueprint $table) {
+        Schema::create('commander_request_logs', function (Blueprint $table) {
             $table->id();
             // Package que sirvio el request (resuelto por subdominio). Index, sin FK:
             // tabla write-heavy, integridad referencial menos critica que el coste por insert.
@@ -30,6 +30,6 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::dropIfExists('request_logs');
+        Schema::dropIfExists('commander_request_logs');
     }
 };

@@ -11,7 +11,7 @@ use Packages\Core\Enums\CorePackageStatusEnum;
  */
 class PackageModel extends Model
 {
-    protected $table = 'packages';
+    protected $table = 'commander_packages';
 
     protected $connection = 'commander';
 

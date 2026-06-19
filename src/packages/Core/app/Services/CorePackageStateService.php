@@ -32,7 +32,7 @@ class CorePackageStateService
             (int) config('core.state.cache_ttl', 30),
             function () use ($packageId): array {
                 $row = $packageId !== null
-                    ? DB::connection('commander')->table('packages')->where('id', $packageId)->first()
+                    ? DB::connection('commander')->table('commander_packages')->where('id', $packageId)->first()
                     : null;
 
                 return [
@@ -71,7 +71,7 @@ class CorePackageStateService
             return $this->current(null);
         }
 
-        DB::connection('commander')->table('packages')->where('id', $packageId)->update([
+        DB::connection('commander')->table('commander_packages')->where('id', $packageId)->update([
             'status' => $status->value,
             'reason' => $reason,
             'message' => $message,

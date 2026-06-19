@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('packages', function (Blueprint $table) {
+        Schema::create('commander_packages', function (Blueprint $table) {
             $table->id();
             $table->string('name', 100)->unique();       // StudlyCase, = directorio en packages/
             $table->string('subdomain', 100)->unique();  // snake-case, = host {sub}.{BASE_DOMAIN}
@@ -30,6 +30,6 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::dropIfExists('packages');
+        Schema::dropIfExists('commander_packages');
     }
 };

@@ -61,7 +61,7 @@ class QuotaMeasurerService
             $this->active->set($package?->getKey());
 
             // Apunta la conexion 'tenant' a la BD del package para medir lo LOCAL (users, tamaño BD).
-            // requests_day y las escrituras de quota_metrics siguen yendo a 'commander'.
+            // requests_day y las escrituras de commander_quota_metrics siguen yendo a 'commander'.
             if (! empty($package?->database)) {
                 config(['database.connections.tenant.database' => $package->database]);
                 DB::purge('tenant');
@@ -201,7 +201,7 @@ class QuotaMeasurerService
     private function measureRequestsToday(?int $packageId): int
     {
         // Nota: con sample_rate < 1 esto infra-cuenta; escalar 1/sample_rate si se usa sampling.
-        return (int) DB::connection('commander')->table('request_logs')
+        return (int) DB::connection('commander')->table('commander_request_logs')
             ->where('occurred_at', '>=', CarbonImmutable::now('UTC')->startOfDay())
             ->when($packageId !== null, fn ($q) => $q->where('package_id', $packageId))
             ->count();

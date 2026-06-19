@@ -21,8 +21,8 @@ use Packages\Core\Services\CorePackageStateService;
 
 /**
  * In-process (misma app/BD): las acciones de estado escriben directamente la fila packages
- * del package via CorePackageStateService; uso y logs se leen de usage_rollups /
- * request_logs filtrando por package_id. Sin HMAC, sin HTTP, sin mirror.
+ * del package via CorePackageStateService; uso y logs se leen de commander_usage_rollups /
+ * commander_request_logs filtrando por package_id. Sin HMAC, sin HTTP, sin mirror.
  */
 #[Group('Deployments')]
 class CommanderDeploymentsController extends CoreBaseApiController
@@ -154,7 +154,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
         return response()->json($deployment->fresh()->load('corePackage'));
     }
 
-    /** Real usage rollups (usage_rollups) for the package, for the Usage-tab charts. */
+    /** Real usage rollups (commander_usage_rollups) for the package, for the Usage-tab charts. */
     public function usage(Request $request, $id = null): JsonResponse
     {
         if ($response = $this->requirePermission($this->showPermission)) {
@@ -183,7 +183,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
         return response()->json($rollups);
     }
 
-    /** Real request logs (request_logs) for the package, for the Logs view. */
+    /** Real request logs (commander_request_logs) for the package, for the Logs view. */
     public function logs(Request $request, $id = null): JsonResponse
     {
         if ($response = $this->requirePermission($this->showPermission)) {
@@ -200,7 +200,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
             'status_class' => 'nullable|integer|in:2,3,4,5',
         ]);
 
-        $rows = DB::connection('commander')->table('request_logs')
+        $rows = DB::connection('commander')->table('commander_request_logs')
             ->where('package_id', $deployment->package_id)
             ->when(isset($data['since']), fn ($q) => $q->where('occurred_at', '>=', $data['since']))
             ->when(isset($data['status_class']), function ($q) use ($data) {
@@ -239,7 +239,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
             if ($package !== null) {
                 QuotaMetricModel::where('package_id', $package->id)->delete();
                 UsageRollupModel::where('package_id', $package->id)->delete();
-                DB::connection('commander')->table('request_logs')->where('package_id', $package->id)->delete();
+                DB::connection('commander')->table('commander_request_logs')->where('package_id', $package->id)->delete();
             }
 
             $deployment->delete();

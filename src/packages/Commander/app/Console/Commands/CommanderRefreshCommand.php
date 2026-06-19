@@ -29,12 +29,12 @@ class CommanderRefreshCommand extends Command
         foreach ($deployments as $dep) {
             $pid = $dep->package_id;
 
-            $requests24h = (int) DB::connection('commander')->table('request_logs')
+            $requests24h = (int) DB::connection('commander')->table('commander_request_logs')
                 ->where('package_id', $pid)
                 ->where('occurred_at', '>=', $since24)
                 ->count();
 
-            $lastSeen = DB::connection('commander')->table('request_logs')->where('package_id', $pid)->max('occurred_at');
+            $lastSeen = DB::connection('commander')->table('commander_request_logs')->where('package_id', $pid)->max('occurred_at');
 
             $worst = 0.0;
             foreach (QuotaMetricModel::query()->where('package_id', $pid)->get() as $m) {
@@ -42,8 +42,8 @@ class CommanderRefreshCommand extends Command
                     $worst = max($worst, $m->current_value / $m->limit_value);
                 }
 
-                // Refleja el valor medido (quota_metrics) en el espejo que lee el SPA.
-                DB::connection('commander')->table('commander_quota_metrics')
+                // Refleja el valor medido (commander_quota_metrics) en el espejo que lee el SPA.
+                DB::connection('commander')->table('commander_quotas')
                     ->where('id', $dep->id . ':' . $m->metric_key)
                     ->update([
                         'current_value' => $m->current_value,
@@ -60,7 +60,7 @@ class CommanderRefreshCommand extends Command
 
             // Snapshots para el grafico de plataforma: suma los rollups por bucket de este package.
             foreach (['hour', 'day'] as $period) {
-                $buckets = DB::connection('commander')->table('usage_rollups')
+                $buckets = DB::connection('commander')->table('commander_usage_rollups')
                     ->where('package_id', $pid)
                     ->where('period', $period)
                     ->groupBy('period_start')

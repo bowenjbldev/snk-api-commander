@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class QuotaModel extends Model
 {
-    protected $table = 'commander_quota_metrics';
+    protected $table = 'commander_quotas';
 
     protected $connection = 'commander';
 

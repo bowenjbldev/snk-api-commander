@@ -11,7 +11,7 @@ class UsageRollupCommand extends Command
         {--period=both : Periodos a agregar (hour|day|both)}
         {--prune : Elimina filas crudas mas antiguas que core.metering.retention_days}';
 
-    protected $description = 'Agrega request_logs en rollups por hora/dia (idempotente)';
+    protected $description = 'Agrega commander_request_logs en rollups por hora/dia (idempotente)';
 
     public function handle(UsageRollupService $service): int
     {

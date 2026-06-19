@@ -34,7 +34,7 @@ Route::middleware(['api'])->group(function () {
         Route::post('deployments/{id}/suspend', [CommanderDeploymentsController::class, 'suspend']);
         Route::post('deployments/{id}/grace', [CommanderDeploymentsController::class, 'grace']);
         Route::post('deployments/{id}/resume', [CommanderDeploymentsController::class, 'resume']);
-        // Uso y logs reales del package: query directo a usage_rollups / request_logs.
+        // Uso y logs reales del package: query directo a commander_usage_rollups / commander_request_logs.
         Route::get('deployments/{id}/usage', [CommanderDeploymentsController::class, 'usage']);
         Route::get('deployments/{id}/logs', [CommanderDeploymentsController::class, 'logs']);
         Route::apiResource('deployments', CommanderDeploymentsController::class);

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class QuotaMetricModel extends Model
 {
-    protected $table = 'quota_metrics';
+    protected $table = 'commander_quota_metrics';
 
     protected $connection = 'commander';
 
