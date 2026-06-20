@@ -6,7 +6,7 @@ import { useStore } from '../store/store'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 
 interface Cmd {
-  id: string
+  id: string | number
   label: string
   sublabel: string
   kind: 'Package' | 'Deployment' | 'Client' | 'Invoice'
@@ -30,7 +30,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       ...packages.map((p) => ({ id: p.name, label: p.label ?? p.name, sublabel: p.name, kind: 'Package' as const, to: `/packages/${p.name}` })),
       ...deployments.map((d) => ({ id: d.id, label: d.name, sublabel: d.subdomain, kind: 'Deployment' as const, to: `/packages/${d.package}` })),
       ...clients.map((c) => ({ id: c.id, label: c.name, sublabel: c.company, kind: 'Client' as const, to: '/clients' })),
-      ...invoices.map((i) => ({ id: i.id, label: i.id, sublabel: i.deployment_id, kind: 'Invoice' as const, to: '/invoices' })),
+      ...invoices.map((i) => ({ id: i.id, label: i.number, sublabel: String(i.deployment_id), kind: 'Invoice' as const, to: '/invoices' })),
     ],
     [packages, deployments, clients, invoices],
   )

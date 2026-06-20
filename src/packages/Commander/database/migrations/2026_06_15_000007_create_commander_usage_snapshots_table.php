@@ -13,8 +13,8 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('commander_usage_snapshots', function (Blueprint $table) {
-            $table->string('id', 96)->primary(); // "${deployment_id}:${period}:${epoch}"
-            $table->string('deployment_id', 64);
+            $table->id();
+            $table->unsignedBigInteger('deployment_id');
             $table->string('period', 8); // hour|day
             $table->timestamp('period_start');
             $table->unsignedBigInteger('request_count')->default(0);
@@ -22,7 +22,9 @@ return new class extends Migration {
             $table->timestamps();
 
             $table->index('deployment_id');
-            $table->index(['period', 'period_start']);
+            // Un snapshot por (deployment, period, bucket) — antes era el id compuesto, ahora UNIQUE.
+            // Nombre explícito (el autogenerado supera el límite de 64 chars de MySQL).
+            $table->unique(['deployment_id', 'period', 'period_start'], 'cmd_snapshot_dep_period_unique');
         });
     }
 

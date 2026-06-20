@@ -124,7 +124,7 @@ export function Dashboard() {
     for (const q of quotas) {
       if (q.limit_value != null && q.current_value / q.limit_value > 1) {
         items.push({
-          tone: 'red', sev: 'QUOTA OVER', entity: q.deployment_id,
+          tone: 'red', sev: 'QUOTA OVER', entity: String(q.deployment_id),
           desc: <>{q.metric_key} at {formatPercent(q.current_value / q.limit_value)} of limit</>,
           cta: 'Review quota →', to: '/quotas',
         })
@@ -142,7 +142,7 @@ export function Dashboard() {
     for (const i of invoices) {
       if (i.status === 'overdue') {
         items.push({
-          tone: 'red', sev: 'OVERDUE', entity: i.id,
+          tone: 'red', sev: 'OVERDUE', entity: i.number,
           desc: <>{formatCurrency(i.amount)} — linked {i.deployment_id} {i.enforcement === 'suspended' ? 'suspended' : 'in grace'}</>,
           cta: 'Open invoice →', to: '/invoices',
         })
@@ -277,7 +277,7 @@ function dotColor(kind: ActivityEvent['kind']): string {
 }
 
 function activitySentence(ev: ActivityEvent): ReactNode {
-  const ent = (s?: string) => <span className="scns-mono" style={{ color: 'var(--cds-link-primary)' }}>{s}</span>
+  const ent = (s?: string | number) => <span className="scns-mono" style={{ color: 'var(--cds-link-primary)' }}>{s}</span>
   switch (ev.kind) {
     case 'suspend':
       return <>{ent(ev.deployment_id)} suspended — {ev.reason} · by {ev.by}</>

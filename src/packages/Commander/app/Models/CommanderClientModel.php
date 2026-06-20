@@ -11,11 +11,12 @@ class CommanderClientModel extends Model
 
     protected $connection = 'commander';
 
-    public $incrementing = false;
-
-    protected $keyType = 'string';
-
     protected $guarded = [];
+
+    protected function casts(): array
+    {
+        return ['id' => 'integer'];
+    }
 
     public function deployments(): HasMany
     {

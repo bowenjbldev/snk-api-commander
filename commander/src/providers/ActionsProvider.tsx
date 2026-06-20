@@ -59,7 +59,7 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
       markPaid: (invoice) => {
         const s = useStore.getState()
         const { resumableDeploymentId } = s.markInvoicePaid(invoice.id)
-        toast.success('Invoice marked as paid', invoice.id)
+        toast.success('Invoice marked as paid', invoice.number)
         if (resumableDeploymentId) {
           const dep = s.deployments.find((d) => d.id === resumableDeploymentId)
           toast.info('Deployment can be resumed', `${dep?.name ?? resumableDeploymentId} was suspended for payment_overdue.`, {
@@ -146,7 +146,7 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
           open
           invoice={overdue}
           deployment={overdueDep}
-          clientName={overdueClient?.name ?? overdue.client_id}
+          clientName={overdueClient?.name ?? String(overdue.client_id)}
           defaultGraceHours={graceHoursDefault}
           onClose={() => setOverdue(null)}
           onKeep={() => {

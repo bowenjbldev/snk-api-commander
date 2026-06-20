@@ -46,7 +46,7 @@ class CommanderProvisioningTest extends CommanderTestCase
     private function plan(): CommanderPlanModel
     {
         return CommanderPlanModel::create([
-            'id' => 'demo-pro', 'package' => self::FIXTURE_PACKAGE, 'name' => 'Pro', 'price_monthly' => 49,
+            'slug' => 'demo-pro', 'package' => self::FIXTURE_PACKAGE, 'name' => 'Pro', 'price_monthly' => 49,
             'q_requests_day' => 100000, 'q_disk_db_mb' => 2048, 'q_users_total' => 50,
         ]);
     }
@@ -54,12 +54,12 @@ class CommanderProvisioningTest extends CommanderTestCase
     public function test_provisioning_creates_live_instance_from_client_and_plan(): void
     {
         $admin = $this->admin();
-        $this->plan();
+        $plan = $this->plan();
 
         $res = $this->actingAs($admin, 'sanctum')->postJson('/api/v1/provisioning', [
-            'plan_id' => 'demo-pro',
+            'plan_id' => $plan->id,
             'client' => [
-                'id' => 'acme', 'name' => 'Acme Inc', 'email' => 'hi@acme.com',
+                'slug' => 'acme', 'name' => 'Acme Inc', 'email' => 'hi@acme.com',
                 'billing_email' => 'billing@acme.com', 'tax_id' => 'ESB12345678',
                 'address_line1' => 'Calle Mayor 1', 'city' => 'Madrid', 'country' => 'ES',
                 'payment_terms' => 'net_30',
@@ -79,13 +79,13 @@ class CommanderProvisioningTest extends CommanderTestCase
         $this->assertSame('demo', $cp->database); // BD propia del package
 
         // Client created with full billing.
-        $client = CommanderClientModel::find('acme');
+        $client = CommanderClientModel::where('slug', 'acme')->first();
         $this->assertSame('billing@acme.com', $client->billing_email);
         $this->assertSame('ESB12345678', $client->tax_id);
         $this->assertSame('ES', $client->country);
 
         // Deployment + subscription + quotas (SPA mirror) from the plan.
-        $dep = CommanderDeploymentModel::find('demo');
+        $dep = CommanderDeploymentModel::where('slug', 'demo')->first();
         $this->assertNotNull($dep->subscription_id);
         $this->assertSame($cp->id, $dep->package_id);
         $this->assertCount(4, $dep->quotas);
@@ -106,46 +106,46 @@ class CommanderProvisioningTest extends CommanderTestCase
     {
         $this->seed(CoreDatabaseSeeder::class);
         $this->seed(CommanderDatabaseSeeder::class);
-        $this->plan();
+        $plan = $this->plan();
 
         $user = CoreUserModel::create([
             'email' => 'noperm@snake.com', 'name' => 'No Perm', 'full_name' => 'No Perm', 'password' => 'secret1234',
         ]);
 
         $this->actingAs($user, 'sanctum')->postJson('/api/v1/provisioning', [
-            'plan_id' => 'demo-pro',
-            'client' => ['id' => 'acme', 'name' => 'Acme', 'email' => 'a@a.com'],
+            'plan_id' => $plan->id,
+            'client' => ['slug' => 'acme', 'name' => 'Acme', 'email' => 'a@a.com'],
         ])->assertStatus(403);
     }
 
     public function test_provisioning_rejects_package_without_code(): void
     {
         $admin = $this->admin();
-        CommanderPlanModel::create([
-            'id' => 'ghost-pro', 'package' => 'Ghost', 'name' => 'Pro', 'price_monthly' => 10,
+        $plan = CommanderPlanModel::create([
+            'slug' => 'ghost-pro', 'package' => 'Ghost', 'name' => 'Pro', 'price_monthly' => 10,
         ]);
 
         // 'Ghost' package has no code on disk → 422.
         $this->actingAs($admin, 'sanctum')->postJson('/api/v1/provisioning', [
-            'plan_id' => 'ghost-pro',
-            'client' => ['id' => 'acme', 'name' => 'Acme', 'email' => 'a@a.com'],
+            'plan_id' => $plan->id,
+            'client' => ['slug' => 'acme', 'name' => 'Acme', 'email' => 'a@a.com'],
         ])->assertStatus(422);
     }
 
     public function test_provisioning_conflicts_when_instance_already_exists(): void
     {
         $admin = $this->admin();
-        $this->plan();
+        $plan = $this->plan();
 
-        CommanderClientModel::create(['id' => 'x', 'name' => 'X', 'email' => 'x@x.test', 'status' => 'active']);
+        $client = CommanderClientModel::create(['slug' => 'x', 'name' => 'X', 'email' => 'x@x.test', 'status' => 'active']);
         CommanderDeploymentModel::create([
-            'id' => 'demo', 'name' => 'demo', 'subdomain' => 'demo.snake.test', 'client_id' => 'x',
+            'slug' => 'demo', 'name' => 'demo', 'subdomain' => 'demo.snake.test', 'client_id' => $client->id,
             'package' => 'Demo', 'version' => 'v1.0.0', 'base_url' => 'https://demo.snake.test/api/v1',
         ]);
 
         $this->actingAs($admin, 'sanctum')->postJson('/api/v1/provisioning', [
-            'plan_id' => 'demo-pro',
-            'client' => ['id' => 'acme', 'name' => 'Acme', 'email' => 'a@a.com'],
+            'plan_id' => $plan->id,
+            'client' => ['slug' => 'acme', 'name' => 'Acme', 'email' => 'a@a.com'],
         ])->assertStatus(409);
     }
 }

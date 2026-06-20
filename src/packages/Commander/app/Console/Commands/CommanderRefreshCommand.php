@@ -46,7 +46,8 @@ class CommanderRefreshCommand extends Command
 
                 // Refleja el valor medido (commander_quota_metrics) en el espejo que lee el SPA.
                 CommanderQuotaModel::query()
-                    ->where('id', $dep->id . ':' . $m->metric_key)
+                    ->where('deployment_id', $dep->id)
+                    ->where('metric_key', $m->metric_key)
                     ->update([
                         'current_value' => $m->current_value,
                         'exceeded_at' => $m->exceeded_at,
@@ -75,11 +76,8 @@ class CommanderRefreshCommand extends Command
                 foreach ($buckets as $b) {
                     $start = CarbonImmutable::parse($b->period_start);
                     CommanderUsageSnapshotModel::query()->updateOrCreate(
-                        ['id' => $dep->id . ':' . $period . ':' . $start->getTimestamp()],
+                        ['deployment_id' => $dep->id, 'period' => $period, 'period_start' => $start],
                         [
-                            'deployment_id' => $dep->id,
-                            'period' => $period,
-                            'period_start' => $start,
                             'request_count' => (int) $b->rc,
                             'error_count' => (int) $b->ec,
                         ],

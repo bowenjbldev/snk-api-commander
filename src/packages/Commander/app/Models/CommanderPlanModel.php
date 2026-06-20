@@ -10,15 +10,12 @@ class CommanderPlanModel extends Model
 
     protected $connection = 'commander';
 
-    public $incrementing = false;
-
-    protected $keyType = 'string';
-
     protected $guarded = [];
 
     protected function casts(): array
     {
         return [
+            'id' => 'integer',
             'price_monthly' => 'float',
             'q_requests_day' => 'integer',
             'q_disk_db_mb' => 'integer',

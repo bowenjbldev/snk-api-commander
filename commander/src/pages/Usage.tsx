@@ -103,7 +103,7 @@ export function Usage() {
   )
   const clientName = useMemo(() => {
     const m = new Map(useStore.getState().clients.map((c) => [c.id, c.name]))
-    return (id: string) => m.get(id) ?? id
+    return (id: number) => m.get(id) ?? String(id)
   }, [])
 
   return (

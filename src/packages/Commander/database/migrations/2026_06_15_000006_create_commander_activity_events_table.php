@@ -8,11 +8,11 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('commander_activity_events', function (Blueprint $table) {
-            $table->string('id', 64)->primary();
+            $table->id();
             $table->timestamp('at')->nullable();
             $table->string('kind', 16); // suspend|grace|resume|paid|quota
-            $table->string('deployment_id', 64)->nullable();
-            $table->string('invoice_id', 64)->nullable();
+            $table->unsignedBigInteger('deployment_id')->nullable();
+            $table->unsignedBigInteger('invoice_id')->nullable(); // FK -> commander_invoices.id
             $table->string('reason', 100)->nullable();
             $table->string('by', 50)->nullable();
             $table->text('message')->nullable();

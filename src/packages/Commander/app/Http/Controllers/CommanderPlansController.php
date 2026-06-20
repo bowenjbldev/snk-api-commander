@@ -22,7 +22,7 @@ class CommanderPlansController extends CoreBaseApiController
     protected string $destroyPermission = 'delete plans';
 
     protected array $validationRulesStore = [
-        'id' => 'required|string|max:64|unique:commander_plans,id',
+        'slug' => 'required|string|max:64|unique:commander_plans,slug',
         'package' => 'required|string|max:255',
         'name' => 'required|string|max:255',
         'description' => 'nullable|string',

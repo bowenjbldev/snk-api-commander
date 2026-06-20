@@ -22,7 +22,8 @@ export interface DeploymentState {
 export type ClientStatus = 'active' | 'inactive'
 
 export interface Client {
-  id: string
+  id: number
+  slug: string // handle legible (antes era la PK)
   name: string
   company?: string // nullable en backend (commander_clients.company)
   email: string
@@ -44,7 +45,8 @@ export interface Client {
 // A catalog offering: a sellable plan tied to a business package, with a price and the default
 // quota limits applied to the deploy when provisioned.
 export interface Plan {
-  id: string
+  id: number
+  slug?: string // handle legible (antes era la PK)
   package: string // src/packages business package (Shop, Blog…)
   name: string // plan label (Basic, Pro…)
   description?: string | null
@@ -57,18 +59,19 @@ export interface Plan {
 }
 
 export interface Deployment {
-  id: string // slug == name
+  id: number
+  slug: string // handle bare legible (antes era la PK: shop, blog…)
   name: string
-  subdomain: string
-  client_id: string
-  package: string // e.g. "tracking-api"
-  version: string // e.g. "v2.9.3"
+  subdomain: string // FQDN (shop.snake.test)
+  client_id: number
+  package: string // StudlyCase package name (Shop, Blog…)
+  version: string
   state: DeploymentState
   requests_24h: number
   quota_health: number // 0..>1 worst-metric ratio
   last_seen: string // ISO
   base_url: string
-  subscription_id: string | null
+  subscription_id: number | null
   created_at: string // ISO
 }
 
@@ -77,8 +80,8 @@ export type MetricKey = 'requests_day' | 'disk_db_mb' | 'disk_storage_mb' | 'use
 export type OnExceed = 'none' | 'warn' | 'suspend'
 
 export interface QuotaMetric {
-  id: string
-  deployment_id: string
+  id: number
+  deployment_id: number
   metric_key: MetricKey
   current_value: number
   limit_value: number | null // null == unlimited
@@ -90,9 +93,10 @@ export interface QuotaMetric {
 export type BillingStatus = 'paid' | 'pending' | 'overdue'
 
 export interface Invoice {
-  id: string // e.g. "INV-2026-0140"
-  client_id: string
-  deployment_id: string
+  id: number
+  number: string // e.g. "INV-2026-0140" (handle de negocio legible)
+  client_id: number
+  deployment_id: number
   amount: number
   issued_at: string // ISO
   due_at: string // ISO
@@ -102,9 +106,9 @@ export interface Invoice {
 }
 
 export interface Subscription {
-  id: string
-  client_id: string
-  deployment_id: string
+  id: number
+  client_id: number
+  deployment_id: number
   plan: string // e.g. "Tracking Pro"
   price_monthly: number
   billing_status: BillingStatus
@@ -136,11 +140,11 @@ export interface LogEntry {
 export type ActivityKind = 'suspend' | 'grace' | 'resume' | 'paid' | 'quota'
 
 export interface ActivityEvent {
-  id: string
+  id: number
   at: string // ISO
   kind: ActivityKind
-  deployment_id?: string
-  invoice_id?: string
+  deployment_id?: number
+  invoice_id?: number
   reason?: StateReason | null
   by?: ChangedBy
   message?: string
@@ -173,7 +177,7 @@ export interface UsageRollup {
 // One row of the Commander local usage cache (commander_usage_snapshots) — per deployment per hour.
 // Served by GET /usage/platform; powers the Dashboard/Usage stacked + error-rate charts.
 export interface UsageSnapshot {
-  deployment_id: string
+  deployment_id: number
   period_start: string // ISO hour bucket
   request_count: number
   error_count: number

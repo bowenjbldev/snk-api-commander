@@ -23,7 +23,7 @@ interface Props {
    * when omitted (global Catalog/Subscriptions flow).
    */
   plans?: Plan[]
-  planId?: string // pre-select a plan (from a row action)
+  planId?: number // pre-select a plan (from a row action)
   onClose: () => void
   /** Fired after a successful provision (e.g. to refresh / close the empty-state). */
   onProvisioned?: () => void
@@ -50,7 +50,7 @@ export function ProvisionModal({ open, packageName, plans, planId, onClose, onPr
 
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   const [clientMode, setClientMode] = useState<'existing' | 'new'>('existing')
-  const [clientId, setClientId] = useState('')
+  const [clientId, setClientId] = useState<number | ''>('')
   const [newName, setNewName] = useState('')
   const [newEmail, setNewEmail] = useState('')
   const [newBillingEmail, setNewBillingEmail] = useState('')
@@ -90,12 +90,12 @@ export function ProvisionModal({ open, packageName, plans, planId, onClose, onPr
       const sub = slug(subdomain) || undefined
       const input =
         clientMode === 'existing'
-          ? { plan_id: selectedPlan.id, client_id: clientId, subdomain: sub }
+          ? { plan_id: selectedPlan.id, client_id: clientId || undefined, subdomain: sub }
           : {
               plan_id: selectedPlan.id,
               subdomain: sub,
               client: {
-                id: slug(newName),
+                slug: slug(newName),
                 name: newName.trim(),
                 email: newEmail.trim(),
                 billing_email: newBillingEmail.trim() || undefined,
@@ -170,7 +170,7 @@ export function ProvisionModal({ open, packageName, plans, planId, onClose, onPr
               label="Select a client"
               items={clients}
               selectedItem={clients.find((c) => c.id === clientId) ?? null}
-              itemToString={(c) => (c ? `${c.name} (${c.id})` : '')}
+              itemToString={(c) => (c ? `${c.name} (${c.slug})` : '')}
               onChange={({ selectedItem }) => setClientId(selectedItem?.id ?? '')}
               invalid={submitted && !!existingError}
               invalidText={existingError}

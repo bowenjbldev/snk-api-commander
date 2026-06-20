@@ -44,13 +44,14 @@ class CommanderProvisioningController extends CoreBaseApiController
         }
 
         $data = $request->validate([
-            'plan_id' => 'required|string|exists:commander_plans,id',
+            'plan_id' => 'required|integer|exists:commander_plans,id',
             'subdomain' => 'nullable|string|max:255|regex:/^[a-z][a-z0-9-]{1,30}$/',
             // Existing client …
-            'client_id' => 'nullable|string|exists:commander_clients,id',
-            // … or a new client object (required unless client_id given)
+            'client_id' => 'nullable|integer|exists:commander_clients,id',
+            // … or a new client object (required unless client_id given). client.slug = handle legible;
+            // el id (bigint) lo asigna la BD.
             'client' => 'nullable|array',
-            'client.id' => 'required_without:client_id|string|max:64',
+            'client.slug' => 'required_without:client_id|string|max:64',
             'client.name' => 'required_without:client_id|string|max:255',
             'client.email' => 'required_without:client_id|email|max:255',
             'client.company' => 'nullable|string|max:255',
@@ -80,12 +81,12 @@ class CommanderProvisioningController extends CoreBaseApiController
             return response()->json(['error' => "Package code '{$package}' is not deployed."], 422);
         }
 
-        if (CommanderDeploymentModel::whereKey($deploymentId)->exists() || CommanderPackageModel::where('subdomain', $subdomain)->exists()) {
+        if (CommanderDeploymentModel::where('slug', $deploymentId)->exists() || CommanderPackageModel::where('subdomain', $subdomain)->exists()) {
             return response()->json(['error' => "A deployment '{$deploymentId}' already exists."], 409);
         }
 
-        if (! empty($data['client']) && CommanderClientModel::whereKey($data['client']['id'])->exists()) {
-            return response()->json(['error' => "Client '{$data['client']['id']}' already exists."], 422);
+        if (! empty($data['client']) && CommanderClientModel::where('slug', $data['client']['slug'])->exists()) {
+            return response()->json(['error' => "Client '{$data['client']['slug']}' already exists."], 422);
         }
 
         $baseDomain = (string) config('core.base_domain', 'snake.test');
@@ -97,14 +98,14 @@ class CommanderProvisioningController extends CoreBaseApiController
             $clientId = $data['client_id'] ?? null;
             if ($clientId === null) {
                 $c = $data['client'];
-                CommanderClientModel::create(array_merge(
-                    ['id' => $c['id'], 'name' => $c['name'], 'email' => $c['email'], 'status' => 'active'],
+                $client = CommanderClientModel::create(array_merge(
+                    ['slug' => $c['slug'], 'name' => $c['name'], 'email' => $c['email'], 'status' => 'active'],
                     array_intersect_key($c, array_flip([
                         'company', 'phone', 'billing_email', 'tax_id', 'address_line1',
                         'address_line2', 'city', 'postal_code', 'country', 'payment_terms',
                     ])),
                 ));
-                $clientId = $c['id'];
+                $clientId = $client->id; // bigint asignado por la BD
             }
 
             // Instancia: la fila packages enciende el subdominio (la resuelve el middleware por host).
@@ -117,10 +118,8 @@ class CommanderProvisioningController extends CoreBaseApiController
                 'changed_at' => $now,
             ]);
 
-            $subscriptionId = 'sub_' . Str::lower(Str::random(20));
-
             $deployment = CommanderDeploymentModel::create([
-                'id' => $deploymentId,
+                'slug' => $deploymentId,
                 'name' => $deploymentId,
                 'subdomain' => $fqdn,
                 'client_id' => $clientId,
@@ -128,27 +127,27 @@ class CommanderProvisioningController extends CoreBaseApiController
                 'package' => $package,
                 'version' => '1.0.0',
                 'base_url' => "https://{$fqdn}/api/v1",
-                'subscription_id' => $subscriptionId,
                 'requests_24h' => 0,
                 'quota_health' => 0,
             ]);
 
-            CommanderSubscriptionModel::create([
-                'id' => $subscriptionId,
+            // Suscripcion: id bigint autoincrement; enlaza ambos lados con el id real.
+            $subscription = CommanderSubscriptionModel::create([
                 'client_id' => $clientId,
-                'deployment_id' => $deploymentId,
+                'deployment_id' => $deployment->id,
                 'plan' => $plan->name,
                 'price_monthly' => $plan->price_monthly,
                 'billing_status' => 'pending',
                 'auto_suspend' => false,
                 'started_at' => $now,
             ]);
+            $deployment->subscription_id = $subscription->id;
+            $deployment->save();
 
             foreach ($plan->quotaLimits() as $metric => $limit) {
                 // Espejo para el SPA (tab de cuotas del Commander)…
                 CommanderQuotaModel::create([
-                    'id' => "{$deploymentId}:{$metric}",
-                    'deployment_id' => $deploymentId,
+                    'deployment_id' => $deployment->id,
                     'metric_key' => $metric,
                     'current_value' => 0,
                     'limit_value' => $limit,

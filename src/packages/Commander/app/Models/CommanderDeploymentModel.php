@@ -13,10 +13,6 @@ class CommanderDeploymentModel extends Model
 
     protected $connection = 'commander';
 
-    public $incrementing = false;
-
-    protected $keyType = 'string';
-
     protected $guarded = [];
 
     protected $hidden = [
@@ -32,6 +28,9 @@ class CommanderDeploymentModel extends Model
     protected function casts(): array
     {
         return [
+            'id' => 'integer',
+            'client_id' => 'integer',
+            'subscription_id' => 'integer',
             'last_seen' => 'datetime',
             'requests_24h' => 'integer',
             'quota_health' => 'float',

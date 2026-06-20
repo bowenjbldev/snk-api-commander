@@ -18,16 +18,17 @@ import type {
 
 /** Payload for the client-first provisioning flow (POST /provisioning). */
 export interface ProvisionInput {
-  plan_id: string
-  client_id?: string
-  client?: Partial<Client> & { id: string; name: string; email: string }
+  plan_id: number
+  client_id?: number // cliente existente (bigint id)
+  // … o un cliente nuevo: la BD asigna el id, se manda el slug legible.
+  client?: Partial<Omit<Client, 'id' | 'slug'>> & { slug: string; name: string; email: string }
   subdomain?: string
 }
 
 /** Payload for creating an invoice from the panel (POST /invoices). */
 export interface InvoiceInput {
-  client_id: string
-  deployment_id: string
+  client_id: number
+  deployment_id: number
   amount: number
   issued_at: string
   due_at: string
@@ -53,32 +54,32 @@ interface StoreActions {
   loadData: () => Promise<void>
 
   // ── deployment state machine (in-process: writes the package's commander_packages row) ──
-  suspend: (id: string, input: SuspendInput) => void
-  grace: (id: string, input: GraceInput) => void
-  resume: (id: string, by?: StateOpts['by']) => void
+  suspend: (id: number, input: SuspendInput) => void
+  grace: (id: number, input: GraceInput) => void
+  resume: (id: number, by?: StateOpts['by']) => void
 
   // ── quotas ──
-  editQuotaLimit: (quotaId: string, limit: number | null) => void
-  setQuotaPolicy: (quotaId: string, policy: OnExceed) => void
+  editQuotaLimit: (quotaId: number, limit: number | null) => void
+  setQuotaPolicy: (quotaId: number, policy: OnExceed) => void
 
   // ── billing ──
-  markInvoicePaid: (invoiceId: string) => { resumableDeploymentId?: string }
-  markInvoiceOverdue: (invoiceId: string) => void
-  setInvoiceEnforcement: (invoiceId: string, enforcement: Invoice['enforcement']) => void
+  markInvoicePaid: (invoiceId: number) => { resumableDeploymentId?: number }
+  markInvoiceOverdue: (invoiceId: number) => void
+  setInvoiceEnforcement: (invoiceId: number, enforcement: Invoice['enforcement']) => void
   addInvoice: (input: InvoiceInput) => string
-  updateInvoice: (id: string, patch: Partial<Pick<Invoice, 'amount' | 'issued_at' | 'due_at' | 'status'>>) => void
-  deleteInvoice: (id: string) => void
+  updateInvoice: (id: number, patch: Partial<Pick<Invoice, 'amount' | 'issued_at' | 'due_at' | 'status'>>) => void
+  deleteInvoice: (id: number) => void
 
   // ── CRUD ──
-  addClient: (client: Omit<Client, 'id' | 'created_at'>) => string
-  updateClient: (id: string, patch: Partial<Client>) => void
-  deleteDeployment: (id: string) => void
+  addClient: (client: Omit<Client, 'id' | 'created_at' | 'slug'>) => string
+  updateClient: (id: number, patch: Partial<Client>) => void
+  deleteDeployment: (id: number) => void
   updateSettings: (patch: Partial<OperatorSettings>) => void
 
   // ── catalog (plans) ──
-  addPlan: (plan: Plan) => void
-  updatePlan: (id: string, patch: Partial<Plan>) => void
-  deletePlan: (id: string) => void
+  addPlan: (plan: Omit<Plan, 'id'> & { slug: string }) => void
+  updatePlan: (id: number, patch: Partial<Plan>) => void
+  deletePlan: (id: number) => void
 
   // ── packages (registry metadata) ──
   updatePackage: (name: string, patch: Partial<Pick<RegisteredPackage, 'label' | 'description' | 'status'>>) => void
@@ -129,12 +130,12 @@ function slug(name: string): string {
     .replace(/(^-|-$)/g, '')
 }
 
-// Next sequential invoice id (INV-YYYY-NNNN). The backend requires a unique id on POST /invoices,
-// so the panel assigns it from the running max of the loaded invoices.
-function nextInvoiceId(invoices: Invoice[]): string {
+// Next sequential invoice number (INV-YYYY-NNNN) — el handle de negocio. El backend exige `number`
+// único en POST /invoices y asigna el id (bigint); el panel lo deriva del max de los cargados.
+function nextInvoiceNumber(invoices: Invoice[]): string {
   const year = new Date().getFullYear()
   const nums = invoices
-    .map((i) => /^INV-\d{4}-(\d+)$/.exec(i.id)?.[1])
+    .map((i) => /^INV-\d{4}-(\d+)$/.exec(i.number)?.[1])
     .filter((x): x is string => x != null)
     .map(Number)
   const next = (nums.length ? Math.max(...nums) : 0) + 1
@@ -162,8 +163,8 @@ export const useStore = create<StoreState>((set, get) => {
   // two rapid out-of-order responses safe WITHOUT comparing the server's changed_at to the
   // optimistic client clock — that comparison dropped legitimate no-status-flip echoes (e.g.
   // re-suspending with a new reason) and mis-fired on benign client/server clock skew.
-  const depActionSeq = new Map<string, number>()
-  const reconcileDep = (id: string) => {
+  const depActionSeq = new Map<number, number>()
+  const reconcileDep = (id: number) => {
     const seq = (depActionSeq.get(id) ?? 0) + 1
     depActionSeq.set(id, seq)
     return (d: Deployment) => {
@@ -172,12 +173,28 @@ export const useStore = create<StoreState>((set, get) => {
   }
   const replaceInvoice = (i: Invoice) =>
     set((s) => ({ invoices: s.invoices.map((x) => (x.id === i.id ? i : x)) }))
+  // addInvoice: reconcilia por `number` (el id bigint lo asigna el servidor).
+  const upsertInvoiceByNumber = (i: Invoice) =>
+    set((s) => ({
+      invoices: s.invoices.some((x) => x.number === i.number)
+        ? s.invoices.map((x) => (x.number === i.number ? i : x))
+        : [i, ...s.invoices],
+    }))
+  // Plan: reconcilia por slug (el id real bigint lo asigna el servidor).
+  const upsertPlanBySlug = (p: Plan) =>
+    set((s) => ({
+      plans: s.plans.some((x) => x.slug === p.slug)
+        ? s.plans.map((x) => (x.slug === p.slug ? p : x))
+        : [...s.plans, p],
+    }))
   const replaceClient = (c: Client) =>
     set((s) => ({ clients: s.clients.map((x) => (x.id === c.id ? c : x)) }))
+  // Reconcilia por slug (no por id): en addClient el id real (bigint) lo asigna el servidor, así que
+  // la fila optimista (id temporal) se empareja por su slug único.
   const upsertClient = (c: Client) =>
     set((s) => ({
-      clients: s.clients.some((x) => x.id === c.id)
-        ? s.clients.map((x) => (x.id === c.id ? c : x))
+      clients: s.clients.some((x) => x.slug === c.slug)
+        ? s.clients.map((x) => (x.slug === c.slug ? c : x))
         : [...s.clients, c],
     }))
 
@@ -323,7 +340,7 @@ export const useStore = create<StoreState>((set, get) => {
 
     markInvoicePaid: (invoiceId) => {
       const inv = get().invoices.find((i) => i.id === invoiceId)
-      let resumableDeploymentId: string | undefined
+      let resumableDeploymentId: number | undefined
       if (inv) {
         const dep = get().deployments.find((d) => d.id === inv.deployment_id)
         if (dep && dep.state.status === 'suspended' && dep.state.reason === 'payment_overdue') {
@@ -376,15 +393,16 @@ export const useStore = create<StoreState>((set, get) => {
     },
 
     addClient: (client) => {
-      const id = slug(client.name) || nextId('client')
+      const slugVal = slug(client.name) || nextId('client')
+      const tempId = -Date.now() // id temporal (negativo) hasta que el server asigne el bigint real
       set((s) => ({
-        clients: [...s.clients, { ...client, id, created_at: new Date().toISOString() }],
+        clients: [...s.clients, { ...client, id: tempId, slug: slugVal, created_at: new Date().toISOString() }],
       }))
       persist(
         api<Client>('/clients', {
           method: 'POST',
           body: {
-            id,
+            slug: slugVal,
             name: client.name,
             company: client.company,
             email: client.email,
@@ -403,7 +421,7 @@ export const useStore = create<StoreState>((set, get) => {
         }),
         upsertClient,
       )
-      return id
+      return slugVal
     },
 
     updateClient: (id, patch) => {
@@ -428,9 +446,11 @@ export const useStore = create<StoreState>((set, get) => {
     },
 
     addInvoice: (input) => {
-      const id = nextInvoiceId(get().invoices)
+      const number = nextInvoiceNumber(get().invoices)
+      const tempId = -Date.now() // id temporal hasta que el server asigne el bigint real
       const invoice: Invoice = {
-        id,
+        id: tempId,
+        number,
         client_id: input.client_id,
         deployment_id: input.deployment_id,
         amount: input.amount,
@@ -440,8 +460,22 @@ export const useStore = create<StoreState>((set, get) => {
         enforcement: null,
       }
       set((s) => ({ invoices: [invoice, ...s.invoices] }))
-      persist(api<Invoice>('/invoices', { method: 'POST', body: invoice }), replaceInvoice)
-      return id
+      persist(
+        api<Invoice>('/invoices', {
+          method: 'POST',
+          body: {
+            number,
+            client_id: input.client_id,
+            deployment_id: input.deployment_id,
+            amount: input.amount,
+            issued_at: input.issued_at,
+            due_at: input.due_at,
+            status: invoice.status,
+          },
+        }),
+        upsertInvoiceByNumber,
+      )
+      return number
     },
 
     updateInvoice: (id, patch) => {
@@ -455,8 +489,9 @@ export const useStore = create<StoreState>((set, get) => {
     },
 
     addPlan: (plan) => {
-      set((s) => ({ plans: [...s.plans, plan] }))
-      persist(api<Plan>('/plans', { method: 'POST', body: plan }))
+      const tempId = -Date.now() // id temporal hasta que el server asigne el bigint real
+      set((s) => ({ plans: [...s.plans, { ...plan, id: tempId }] }))
+      persist(api<Plan>('/plans', { method: 'POST', body: plan }), upsertPlanBySlug)
     },
 
     updatePlan: (id, patch) => {
@@ -484,24 +519,24 @@ export const useStore = create<StoreState>((set, get) => {
 })
 
 // ── Convenience selectors ──────────────────────────────────────────────────────
-export const useDeployment = (id: string | undefined): Deployment | undefined =>
-  useStore((s) => (id ? s.deployments.find((d) => d.id === id) : undefined))
+export const useDeployment = (id: number | undefined): Deployment | undefined =>
+  useStore((s) => (id != null ? s.deployments.find((d) => d.id === id) : undefined))
 
 export const usePackage = (name: string | undefined): RegisteredPackage | undefined =>
   useStore((s) => (name ? s.packages.find((p) => p.name === name) : undefined))
 
-export const useClient = (id: string | undefined): Client | undefined =>
-  useStore((s) => (id ? s.clients.find((c) => c.id === id) : undefined))
+export const useClient = (id: number | undefined): Client | undefined =>
+  useStore((s) => (id != null ? s.clients.find((c) => c.id === id) : undefined))
 
-export const useDeploymentQuotas = (id: string | undefined) => {
+export const useDeploymentQuotas = (id: number | undefined) => {
   // Select the stable array, derive with useMemo — returning a filtered array
   // straight from the selector would change identity every render and loop.
   const quotas = useStore((s) => s.quotas)
   return useMemo(() => quotas.filter((q) => q.deployment_id === id), [quotas, id])
 }
 
-export function clientName(state: StoreState, clientId: string): string {
-  return state.clients.find((c) => c.id === clientId)?.name ?? clientId
+export function clientName(state: StoreState, clientId: number): string {
+  return state.clients.find((c) => c.id === clientId)?.name ?? String(clientId)
 }
 
 export type { Subscription }

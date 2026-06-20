@@ -8,9 +8,10 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('commander_invoices', function (Blueprint $table) {
-            $table->string('id', 64)->primary(); // e.g. INV-2026-0140
-            $table->string('client_id', 64);
-            $table->string('deployment_id', 64);
+            $table->id();
+            $table->string('number', 64)->unique(); // INV-2026-0140 (handle de negocio legible)
+            $table->unsignedBigInteger('client_id');
+            $table->unsignedBigInteger('deployment_id');
             $table->decimal('amount', 10, 2)->default(0);
             $table->timestamp('issued_at')->nullable();
             $table->timestamp('due_at')->nullable();

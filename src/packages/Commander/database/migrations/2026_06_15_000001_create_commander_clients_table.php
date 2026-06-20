@@ -8,7 +8,8 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('commander_clients', function (Blueprint $table) {
-            $table->string('id', 64)->primary(); // slug
+            $table->id();
+            $table->string('slug', 64)->unique(); // handle legible (antes era la PK)
             $table->string('name');
             $table->string('company')->nullable();
             $table->string('email');

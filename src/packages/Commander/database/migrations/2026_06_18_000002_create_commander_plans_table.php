@@ -8,7 +8,8 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('commander_plans', function (Blueprint $table) {
-            $table->string('id', 64)->primary(); // slug
+            $table->id();
+            $table->string('slug', 64)->unique(); // handle legible (antes era la PK: shop-pro…)
             $table->string('package'); // the src/packages business package this plan provisions (Shop, Blog…)
             $table->string('name'); // plan label (Basic, Pro, Enterprise…)
             $table->text('description')->nullable();

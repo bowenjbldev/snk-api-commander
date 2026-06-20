@@ -79,9 +79,8 @@ export function PlanFormModal({ open, mode, plan, packageName, onClose }: Props)
       })
       toast.success('Plan updated', `${packageName} · ${name.trim()}`)
     } else {
-      const id = `${slug(packageName)}-${slug(name)}`
       addPlan({
-        id,
+        slug: `${slug(packageName)}-${slug(name)}`,
         package: packageName,
         name: name.trim(),
         description: description.trim() || null,

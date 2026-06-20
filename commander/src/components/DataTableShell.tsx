@@ -33,13 +33,13 @@ export interface ShellColumn<R> {
 export interface BatchAction {
   label: string
   icon?: CarbonIconType
-  onClick: (ids: string[]) => void
+  onClick: (ids: (string | number)[]) => void
 }
 
 interface Props<R> {
   rows: R[]
   columns: ShellColumn<R>[]
-  getId: (row: R) => string
+  getId: (row: R) => string | number
   searchText?: (row: R) => string
   searchPlaceholder?: string
   filters?: ReactNode
@@ -82,7 +82,7 @@ export function DataTableShell<R>({
   const [sortDir, setSortDir] = useState<SortDir>(initialSort?.dir ?? 'NONE')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(initialPageSize)
-  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [selected, setSelected] = useState<Set<string | number>>(new Set())
 
   const selectable = !!batchActions?.length
 
@@ -127,7 +127,7 @@ export function DataTableShell<R>({
   const toggleAll = () => {
     setSelected(allSelected ? new Set() : new Set(filteredIds))
   }
-  const toggleRow = (id: string) => {
+  const toggleRow = (id: string | number) => {
     setSelected((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)

@@ -94,7 +94,7 @@ export const authApi = {
 
 // A package's real usage rollups (commander_usage_rollups, queried in-process by package_id) for the Usage tab.
 export function deploymentUsage(
-  id: string,
+  id: number,
   params: { period?: 'hour' | 'day'; from?: string; to?: string } = {},
 ): Promise<{ data: UsageRollup[] }> {
   const qs = new URLSearchParams()
@@ -108,7 +108,7 @@ export function deploymentUsage(
 // A package's real recent request logs (commander_request_logs, queried in-process by package_id,
 // tagged with deployment_id) for the Logs view. No real-time stream — fetch on demand / poll.
 export function deploymentLogs(
-  id: string,
+  id: number,
   params: { limit?: number; since?: string; status_class?: 2 | 3 | 4 | 5 } = {},
 ): Promise<{ data: LogEntry[] }> {
   const qs = new URLSearchParams()

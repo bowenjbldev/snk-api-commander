@@ -10,7 +10,7 @@ return new class extends Migration {
         // Singleton: una sola fila ('operator') con el perfil + preferencias del operador.
         // Solo en la BD commander (el panel corre ahi). default_grace_hours alimenta el grace real.
         Schema::create('commander_settings', function (Blueprint $table) {
-            $table->string('id', 32)->primary(); // clave singleton, siempre 'operator'
+            $table->id(); // singleton: siempre la fila id=1
             $table->unsignedSmallInteger('default_grace_hours')->default(72);
             $table->string('operator_name')->nullable();
             $table->string('operator_email')->nullable();

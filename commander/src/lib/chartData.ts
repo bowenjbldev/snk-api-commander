@@ -54,9 +54,9 @@ export function requestsPerHourStacked(deployments: Deployment[]): { data: Point
   const sorted = [...deployments].sort((a, b) => b.requests_24h - a.requests_24h)
   const top = sorted.slice(0, 4)
   const rest = sorted.slice(4)
-  const groups = [...top.map((d) => d.id), 'other']
+  const groups = [...top.map((d) => String(d.id)), 'other']
   const data: Point[] = []
-  top.forEach((d, idx) => data.push(...hourly(d.id, d.requests_24h / 24, seedFrom(d.id) + idx, 48)))
+  top.forEach((d, idx) => data.push(...hourly(String(d.id), d.requests_24h / 24, seedFrom(String(d.id)) + idx, 48)))
   const otherBase = rest.reduce((s, d) => s + d.requests_24h, 0) / 24
   data.push(...hourly('other', otherBase, 99, 48))
   return { data, groups }
@@ -72,24 +72,24 @@ export function errorRate48(): Point[] {
 
 // Usage tab (per deployment).
 export function usageRequests(dep: Deployment): Point[] {
-  return hourly('requests', Math.max(dep.requests_24h / 24, 20), seedFrom(dep.id), 48, { diurnal: 0.4 })
+  return hourly('requests', Math.max(dep.requests_24h / 24, 20), seedFrom(String(dep.id)), 48, { diurnal: 0.4 })
 }
 export function usageErrorRate(dep: Deployment): Point[] {
-  const s = seedFrom(dep.id)
+  const s = seedFrom(String(dep.id))
   return [
     ...hourly('4xx', 1.2, s + 1, 48, { diurnal: 0.2, noise: 0.5 }),
     ...hourly('5xx', 0.4, s + 2, 48, { diurnal: 0.15, noise: 0.6 }),
   ]
 }
 export function usageLatency(dep: Deployment): Point[] {
-  const s = seedFrom(dep.id)
+  const s = seedFrom(String(dep.id))
   return [
     ...hourly('avg', 129, s + 3, 48, { diurnal: 0.18, noise: 0.2 }),
     ...hourly('p95', 472, s + 4, 48, { diurnal: 0.22, noise: 0.25 }),
   ]
 }
 export function usageTransfer(dep: Deployment): Point[] {
-  const s = seedFrom(dep.id)
+  const s = seedFrom(String(dep.id))
   const base = Math.max(dep.requests_24h / 24 / 8, 5)
   return [
     ...hourly('in', base, s + 5, 48, { diurnal: 0.35 }),
@@ -207,13 +207,14 @@ export interface PlatformSeries {
 
 export function snapshotsToPlatformSeries(snapshots: UsageSnapshot[]): PlatformSeries {
   // Pick the top-4 deployments by total requests; everything else folds into 'other'.
-  const totals = new Map<string, number>()
+  // Keyed by the numeric deployment_id; the chart group labels are the id stringified.
+  const totals = new Map<number, number>()
   for (const s of snapshots) totals.set(s.deployment_id, (totals.get(s.deployment_id) ?? 0) + s.request_count)
   const top = [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([id]) => id)
   const topSet = new Set(top)
-  const groups = [...top, 'other']
+  const groups = [...top.map((id) => String(id)), 'other']
 
-  const buckets = new Map<string, { perDep: Map<string, number>; other: number; total: number; errors: number }>()
+  const buckets = new Map<string, { perDep: Map<number, number>; other: number; total: number; errors: number }>()
   for (const s of snapshots) {
     let b = buckets.get(s.period_start)
     if (!b) {
@@ -231,7 +232,7 @@ export function snapshotsToPlatformSeries(snapshots: UsageSnapshot[]): PlatformS
   for (const key of [...buckets.keys()].sort()) {
     const b = buckets.get(key)!
     const date = new Date(key)
-    for (const id of top) data.push({ group: id, date, value: b.perDep.get(id) ?? 0 })
+    for (const id of top) data.push({ group: String(id), date, value: b.perDep.get(id) ?? 0 })
     data.push({ group: 'other', date, value: b.other })
     errorRate.push({ group: 'error %', date, value: b.total > 0 ? (b.errors / b.total) * 100 : 0 })
   }

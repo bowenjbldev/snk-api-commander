@@ -38,7 +38,7 @@ class CommanderApiTest extends CommanderTestCase
         $this->assertCount(0, $this->actingAs($admin, 'sanctum')->getJson('/api/v1/clients')->json());
 
         CommanderClientModel::create([
-            'id' => 'acme', 'name' => 'Acme', 'company' => 'Acme', 'email' => 'ops@acme.test', 'status' => 'active',
+            'slug' => 'acme', 'name' => 'Acme', 'company' => 'Acme', 'email' => 'ops@acme.test', 'status' => 'active',
         ]);
 
         $this->assertCount(1, $this->actingAs($admin, 'sanctum')->getJson('/api/v1/clients')->json());
@@ -48,8 +48,8 @@ class CommanderApiTest extends CommanderTestCase
     {
         $admin = $this->admin();
 
-        CommanderClientModel::create([
-            'id' => 'kestrel', 'name' => 'Kestrel Logistics', 'company' => 'Kestrel Logistics Co',
+        $client = CommanderClientModel::create([
+            'slug' => 'kestrel', 'name' => 'Kestrel Logistics', 'company' => 'Kestrel Logistics Co',
             'email' => 'it@kestrel.test', 'status' => 'active',
         ]);
 
@@ -60,20 +60,20 @@ class CommanderApiTest extends CommanderTestCase
             'grace_until' => now()->addHours(48), 'changed_by' => 'operator', 'changed_at' => now(),
         ]);
 
-        CommanderDeploymentModel::create([
-            'id' => 'kestrel-track', 'name' => 'kestrel-track', 'subdomain' => 'kestrel-track.snake.test',
-            'client_id' => 'kestrel', 'package_id' => $package->id, 'package' => 'TrackingApi', 'version' => 'v2.9.3',
+        $dep = CommanderDeploymentModel::create([
+            'slug' => 'kestrel-track', 'name' => 'kestrel-track', 'subdomain' => 'kestrel-track.snake.test',
+            'client_id' => $client->id, 'package_id' => $package->id, 'package' => 'TrackingApi', 'version' => 'v2.9.3',
             'base_url' => 'https://kestrel-track.snake.test/api/v1',
         ]);
         foreach (['requests_day', 'disk_db_mb', 'disk_storage_mb', 'users_total'] as $metric) {
             CommanderQuotaModel::create([
-                'id' => "kestrel-track:{$metric}", 'deployment_id' => 'kestrel-track', 'metric_key' => $metric,
+                'deployment_id' => $dep->id, 'metric_key' => $metric,
                 'current_value' => 1, 'limit_value' => 100, 'on_exceed' => 'none',
                 'unit' => str_ends_with($metric, '_mb') ? 'mb' : 'count',
             ]);
         }
 
-        $res = $this->actingAs($admin, 'sanctum')->getJson('/api/v1/deployments/kestrel-track?with=client,quotas');
+        $res = $this->actingAs($admin, 'sanctum')->getJson("/api/v1/deployments/{$dep->id}?with=client,quotas");
         $res->assertOk();
         $body = $res->json();
 
@@ -92,16 +92,16 @@ class CommanderApiTest extends CommanderTestCase
         $admin = $this->admin();
 
         $package = CommanderPackageModel::create(['name' => 'Shop', 'subdomain' => 'shop', 'status' => 'active']);
-        CommanderClientModel::create(['id' => 'c', 'name' => 'C', 'email' => 'c@c.test', 'status' => 'active']);
-        CommanderDeploymentModel::create([
-            'id' => 'shop', 'name' => 'shop', 'subdomain' => 'shop.snake.test', 'client_id' => 'c',
+        $client = CommanderClientModel::create(['slug' => 'c', 'name' => 'C', 'email' => 'c@c.test', 'status' => 'active']);
+        $dep = CommanderDeploymentModel::create([
+            'slug' => 'shop', 'name' => 'shop', 'subdomain' => 'shop.snake.test', 'client_id' => $client->id,
             'package_id' => $package->id, 'package' => 'Shop', 'version' => '1.0.0',
             'base_url' => 'https://shop.snake.test/api/v1',
         ]);
 
         // Suspend → writes the commander_packages row directly.
         $this->actingAs($admin, 'sanctum')
-            ->postJson('/api/v1/deployments/shop/suspend', ['reason' => 'payment_overdue', 'message' => 'pay up'])
+            ->postJson("/api/v1/deployments/{$dep->id}/suspend", ['reason' => 'payment_overdue', 'message' => 'pay up'])
             ->assertOk()
             ->assertJsonPath('state.status', 'suspended')
             ->assertJsonPath('state.reason', 'payment_overdue');
@@ -109,7 +109,7 @@ class CommanderApiTest extends CommanderTestCase
 
         // Resume → back to active.
         $this->actingAs($admin, 'sanctum')
-            ->postJson('/api/v1/deployments/shop/resume')
+            ->postJson("/api/v1/deployments/{$dep->id}/resume")
             ->assertOk()
             ->assertJsonPath('state.status', 'active');
         $this->assertSame('active', $package->fresh()->getRawOriginal('status'));
@@ -120,23 +120,23 @@ class CommanderApiTest extends CommanderTestCase
         $admin = $this->admin();
 
         $package = CommanderPackageModel::create(['name' => 'Shop', 'subdomain' => 'shop', 'database' => 'shop', 'status' => 'active']);
-        CommanderClientModel::create(['id' => 'c', 'name' => 'C', 'email' => 'c@c.test', 'status' => 'active']);
-        CommanderDeploymentModel::create([
-            'id' => 'shop', 'name' => 'shop', 'subdomain' => 'shop.snake.test', 'client_id' => 'c',
+        $client = CommanderClientModel::create(['slug' => 'c', 'name' => 'C', 'email' => 'c@c.test', 'status' => 'active']);
+        $dep = CommanderDeploymentModel::create([
+            'slug' => 'shop', 'name' => 'shop', 'subdomain' => 'shop.snake.test', 'client_id' => $client->id,
             'package_id' => $package->id, 'package' => 'Shop', 'version' => '1.0.0',
             'base_url' => 'https://shop.snake.test/api/v1',
         ]);
         CommanderQuotaModel::create([
-            'id' => 'shop:requests_day', 'deployment_id' => 'shop', 'metric_key' => 'requests_day',
+            'deployment_id' => $dep->id, 'metric_key' => 'requests_day',
             'current_value' => 0, 'limit_value' => 100, 'on_exceed' => 'suspend', 'unit' => 'count',
         ]);
 
         // De-provision: en MariaDB hace DROP DATABASE; aqui (sqlite) limpia las filas de la BD commander.
-        $this->actingAs($admin, 'sanctum')->deleteJson('/api/v1/deployments/shop')->assertOk();
+        $this->actingAs($admin, 'sanctum')->deleteJson("/api/v1/deployments/{$dep->id}")->assertOk();
 
-        $this->assertNull(CommanderDeploymentModel::find('shop'));
+        $this->assertNull(CommanderDeploymentModel::find($dep->id));
         $this->assertNull(CommanderPackageModel::find($package->id));
-        $this->assertCount(0, CommanderQuotaModel::where('deployment_id', 'shop')->get());
+        $this->assertCount(0, CommanderQuotaModel::where('deployment_id', $dep->id)->get());
     }
 
     // Nota: el aislamiento operador↔tenant ya no necesita middleware: con BD por package, el token

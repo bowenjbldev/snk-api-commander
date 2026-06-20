@@ -43,7 +43,7 @@ export function Invoices() {
 
   const clientName = useMemo(() => {
     const m = new Map(clients.map((c) => [c.id, c.name]))
-    return (id: string) => m.get(id) ?? id
+    return (id: number) => m.get(id) ?? String(id)
   }, [clients])
 
   const filtered = useMemo(
@@ -68,8 +68,8 @@ export function Invoices() {
       key: 'number',
       header: 'Number',
       sortable: true,
-      sortValue: (i) => i.id,
-      render: (i) => <span className="scns-mono" style={{ color: 'var(--cds-link-primary)' }}>{i.id}</span>,
+      sortValue: (i) => i.number,
+      render: (i) => <span className="scns-mono" style={{ color: 'var(--cds-link-primary)' }}>{i.number}</span>,
     },
     { key: 'client', header: 'Client', sortable: true, sortValue: (i) => clientName(i.client_id), render: (i) => clientName(i.client_id) },
     {
@@ -138,7 +138,7 @@ export function Invoices() {
         rows={filtered}
         columns={columns}
         getId={(i) => i.id}
-        searchText={(i) => `${i.id} ${clientName(i.client_id)} ${i.deployment_id}`}
+        searchText={(i) => `${i.number} ${clientName(i.client_id)} ${i.deployment_id}`}
         searchPlaceholder="Search invoices"
         initialSort={{ key: 'number', dir: 'DESC' }}
         itemLabel="invoices"
@@ -158,7 +158,7 @@ export function Invoices() {
           />
         }
         rowActions={(i) => (
-          <OverflowMenu size="sm" flipped aria-label={`Actions for ${i.id}`} onClick={(e) => e.stopPropagation()}>
+          <OverflowMenu size="sm" flipped aria-label={`Actions for ${i.number}`} onClick={(e) => e.stopPropagation()}>
             {canUpdate && <OverflowMenuItem itemText="Edit…" onClick={() => setForm({ mode: 'edit', invoice: i })} />}
             {i.status !== 'paid' && <OverflowMenuItem hasDivider={canUpdate} itemText="Mark as paid" onClick={() => actions.markPaid(i)} />}
             {i.status !== 'overdue' && (
@@ -178,7 +178,7 @@ export function Invoices() {
           onSubmit={(value) => {
             if (form.mode === 'edit' && form.invoice) {
               updateInvoice(form.invoice.id, value)
-              toast.success('Invoice updated', form.invoice.id)
+              toast.success('Invoice updated', form.invoice.number)
             } else {
               const id = addInvoice(value as Parameters<typeof addInvoice>[0])
               toast.success('Invoice created', id)
@@ -190,20 +190,20 @@ export function Invoices() {
       {toDelete && (
         <TypedConfirmModal
           open
-          title={`Delete invoice ${toDelete.id}?`}
+          title={`Delete invoice ${toDelete.number}?`}
           label="Invoices"
-          confirmWord={toDelete.id}
+          confirmWord={toDelete.number}
           confirmLabel="Delete invoice"
           body={
             <p>
-              This permanently removes invoice <span className="scns-mono">{toDelete.id}</span> for{' '}
+              This permanently removes invoice <span className="scns-mono">{toDelete.number}</span> for{' '}
               {clientName(toDelete.client_id)} ({formatCurrency(toDelete.amount)}). This cannot be undone.
             </p>
           }
           onClose={() => setToDelete(null)}
           onConfirm={() => {
             deleteInvoice(toDelete.id)
-            toast.success('Invoice deleted', toDelete.id)
+            toast.success('Invoice deleted', toDelete.number)
             setToDelete(null)
           }}
         />

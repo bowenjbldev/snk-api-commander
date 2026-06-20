@@ -7,7 +7,6 @@ use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Packages\Commander\Models\CommanderActivityEventModel;
 use Packages\Commander\Models\CommanderDeploymentModel;
 use Packages\Commander\Models\CommanderQuotaMetricModel;
@@ -39,10 +38,10 @@ class CommanderDeploymentsController extends CoreBaseApiController
     protected array $allowedWith = ['client', 'subscription', 'quotas', 'corePackage'];
 
     protected array $validationRulesStore = [
-        'id' => 'required|string|max:64|unique:commander_deployments,id',
+        'slug' => 'required|string|max:64|unique:commander_deployments,slug',
         'name' => 'required|string|max:255',
         'subdomain' => 'required|string|max:255',
-        'client_id' => 'required|string|exists:commander_clients,id',
+        'client_id' => 'required|integer|exists:commander_clients,id',
         'package' => 'required|string|max:255',
         'version' => 'required|string|max:32',
         'base_url' => 'required|string|max:255',
@@ -51,7 +50,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
     protected array $validationRulesUpdate = [
         'name' => 'nullable|string|max:255',
         'subdomain' => 'nullable|string|max:255',
-        'client_id' => 'nullable|string|exists:commander_clients,id',
+        'client_id' => 'nullable|integer|exists:commander_clients,id',
         'package' => 'nullable|string|max:255',
         'version' => 'nullable|string|max:32',
         'base_url' => 'nullable|string|max:255',
@@ -212,7 +211,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
             ->orderByDesc('occurred_at')
             ->limit($data['limit'] ?? 100)
             ->get()
-            ->map(fn ($row) => array_merge($row->toArray(), ['deployment_id' => $deployment->id]))
+            ->map(fn ($row) => array_merge($row->toArray(), ['deployment_id' => $deployment->slug]))
             ->all();
 
         return response()->json(['data' => $rows]);
@@ -258,7 +257,6 @@ class CommanderDeploymentsController extends CoreBaseApiController
     private function recordActivity(string $kind, CommanderDeploymentModel $deployment, ?string $reason, ?string $message): void
     {
         CommanderActivityEventModel::create([
-            'id' => 'act_' . Str::random(24),
             'at' => CarbonImmutable::now(),
             'kind' => $kind,
             'deployment_id' => $deployment->id,

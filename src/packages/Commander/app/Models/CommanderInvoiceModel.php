@@ -11,15 +11,14 @@ class CommanderInvoiceModel extends Model
 
     protected $connection = 'commander';
 
-    public $incrementing = false;
-
-    protected $keyType = 'string';
-
     protected $guarded = [];
 
     protected function casts(): array
     {
         return [
+            'id' => 'integer',
+            'client_id' => 'integer',
+            'deployment_id' => 'integer',
             'amount' => 'float',
             'issued_at' => 'datetime',
             'due_at' => 'datetime',

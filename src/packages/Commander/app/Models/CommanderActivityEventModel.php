@@ -10,15 +10,14 @@ class CommanderActivityEventModel extends Model
 
     protected $connection = 'commander';
 
-    public $incrementing = false;
-
-    protected $keyType = 'string';
-
     protected $guarded = [];
 
     protected function casts(): array
     {
         return [
+            'id' => 'integer',
+            'deployment_id' => 'integer',
+            'invoice_id' => 'integer',
             'at' => 'datetime',
         ];
     }

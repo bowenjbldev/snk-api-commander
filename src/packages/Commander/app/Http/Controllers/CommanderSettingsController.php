@@ -16,7 +16,7 @@ use Packages\Commander\Models\CommanderSettingModel;
 #[Group('Settings')]
 class CommanderSettingsController extends Controller
 {
-    private const KEY = 'operator';
+    private const SINGLETON_ID = 1;
 
     public function show(): JsonResponse
     {
@@ -44,7 +44,7 @@ class CommanderSettingsController extends Controller
     private function singleton(): CommanderSettingModel
     {
         return CommanderSettingModel::firstOrCreate(
-            ['id' => self::KEY],
+            ['id' => self::SINGLETON_ID],
             [
                 'default_grace_hours' => (int) config('core.quotas.grace_hours', 72),
                 'notify_on_suspend' => true,

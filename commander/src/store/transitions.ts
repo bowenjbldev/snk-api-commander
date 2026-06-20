@@ -36,13 +36,17 @@ export function buildState(status: DeploymentStatus, opts: StateOpts = {}): Depl
 }
 
 export interface ActivityOpts {
-  deployment_id?: string
-  invoice_id?: string
+  deployment_id?: number
+  invoice_id?: number
   reason?: StateReason | null
   by?: ChangedBy
   message?: string
 }
 
+// Optimistic activity events use a transient negative id until loadData() replaces them with the
+// server's bigint-keyed feed.
+let tempActId = 0
+
 export function activity(kind: ActivityKind, opts: ActivityOpts = {}): ActivityEvent {
-  return { id: nextId('act'), at: new Date().toISOString(), kind, ...opts }
+  return { id: --tempActId, at: new Date().toISOString(), kind, ...opts }
 }

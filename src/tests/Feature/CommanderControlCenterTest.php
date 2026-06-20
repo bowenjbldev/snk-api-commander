@@ -38,10 +38,10 @@ class CommanderControlCenterTest extends CommanderTestCase
             'name' => 'Shop', 'subdomain' => 'shop', 'database' => 'shop', 'status' => 'active',
             'changed_by' => 'operator', 'changed_at' => now(),
         ]);
-        CommanderClientModel::create(['id' => 'c', 'name' => 'C', 'email' => 'c@c.test', 'status' => 'active']);
+        $client = CommanderClientModel::create(['slug' => 'c', 'name' => 'C', 'email' => 'c@c.test', 'status' => 'active']);
 
         return CommanderDeploymentModel::create([
-            'id' => 'shop', 'name' => 'shop', 'subdomain' => 'shop.snake.test', 'client_id' => 'c',
+            'slug' => 'shop', 'name' => 'shop', 'subdomain' => 'shop.snake.test', 'client_id' => $client->id,
             'package_id' => $package->id, 'package' => 'Shop', 'version' => '1.0.0',
             'base_url' => 'https://shop.snake.test/api/v1',
         ]);
@@ -77,8 +77,8 @@ class CommanderControlCenterTest extends CommanderTestCase
         $dep = $this->deployment();
 
         // Espejo (commander_quotas) + metrica real (commander_quota_metrics) por package_id.
-        CommanderQuotaModel::create([
-            'id' => 'shop:requests_day', 'deployment_id' => 'shop', 'metric_key' => 'requests_day',
+        $quota = CommanderQuotaModel::create([
+            'deployment_id' => $dep->id, 'metric_key' => 'requests_day',
             'current_value' => 0, 'limit_value' => 1000, 'on_exceed' => 'warn', 'unit' => 'count',
         ]);
         CommanderQuotaMetricModel::create([
@@ -86,7 +86,7 @@ class CommanderControlCenterTest extends CommanderTestCase
             'limit_value' => 1000, 'current_value' => 0, 'on_exceed' => 'warn',
         ]);
 
-        $this->actingAs($admin, 'sanctum')->patchJson('/api/v1/quotas/shop:requests_day', [
+        $this->actingAs($admin, 'sanctum')->patchJson("/api/v1/quotas/{$quota->id}", [
             'limit_value' => 500, 'on_exceed' => 'suspend',
         ])->assertOk();
 
@@ -111,7 +111,7 @@ class CommanderControlCenterTest extends CommanderTestCase
 
         $res = $this->actingAs($admin, 'sanctum')->getJson('/api/v1/logs')->assertOk();
         $res->assertJsonCount(1, 'data');
-        $this->assertSame('shop', $res->json('data.0.deployment_id'));
+        $this->assertSame('shop', $res->json('data.0.deployment_id')); // tag = slug legible
         $this->assertSame(200, $res->json('data.0.status'));
     }
 
@@ -121,12 +121,12 @@ class CommanderControlCenterTest extends CommanderTestCase
 
         // 'Ghostpkg' no existe en packages/: el catalogo no debe aceptar un plan para el.
         $this->actingAs($admin, 'sanctum')->postJson('/api/v1/plans', [
-            'id' => 'ghost-basic', 'package' => 'Ghostpkg', 'name' => 'Basic', 'price_monthly' => 10,
+            'slug' => 'ghost-basic', 'package' => 'Ghostpkg', 'name' => 'Basic', 'price_monthly' => 10,
         ])->assertStatus(422)->assertJsonValidationErrors('package');
 
         // 'Commander' si existe en disco -> pasa el guard de package desplegado.
         $this->actingAs($admin, 'sanctum')->postJson('/api/v1/plans', [
-            'id' => 'cmd-basic', 'package' => 'Commander', 'name' => 'Basic', 'price_monthly' => 10,
+            'slug' => 'cmd-basic', 'package' => 'Commander', 'name' => 'Basic', 'price_monthly' => 10,
         ])->assertStatus(201);
     }
 

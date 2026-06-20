@@ -3,7 +3,7 @@ import { Modal, Dropdown, NumberInput, DatePicker, DatePickerInput } from '@carb
 import { useStore } from '../../store/store'
 import type { Invoice } from '../../store/types'
 
-type CreateInput = { client_id: string; deployment_id: string; amount: number; issued_at: string; due_at: string }
+type CreateInput = { client_id: number; deployment_id: number; amount: number; issued_at: string; due_at: string }
 type EditPatch = { amount: number; issued_at: string; due_at: string }
 
 interface Props {
@@ -25,8 +25,8 @@ export function InvoiceFormModal({ open, mode, invoice, onSubmit, onClose }: Pro
   const clients = useStore((s) => s.clients)
   const deployments = useStore((s) => s.deployments)
 
-  const [clientId, setClientId] = useState('')
-  const [deploymentId, setDeploymentId] = useState('')
+  const [clientId, setClientId] = useState<number | ''>('')
+  const [deploymentId, setDeploymentId] = useState<number | ''>('')
   const [amount, setAmount] = useState('0')
   const [issuedAt, setIssuedAt] = useState<Date | undefined>(undefined)
   const [dueAt, setDueAt] = useState<Date | undefined>(undefined)
@@ -69,8 +69,8 @@ export function InvoiceFormModal({ open, mode, invoice, onSubmit, onClose }: Pro
       onSubmit({ amount: amountNum, issued_at: toIso(issuedAt), due_at: toIso(dueAt) })
     } else {
       onSubmit({
-        client_id: clientId,
-        deployment_id: deploymentId,
+        client_id: Number(clientId),
+        deployment_id: Number(deploymentId),
         amount: amountNum,
         issued_at: toIso(issuedAt),
         due_at: toIso(dueAt),

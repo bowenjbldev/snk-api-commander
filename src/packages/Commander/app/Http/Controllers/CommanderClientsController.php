@@ -20,7 +20,7 @@ class CommanderClientsController extends CoreBaseApiController
     protected array $allowedWith = ['deployments', 'subscriptions', 'invoices'];
 
     protected array $validationRulesStore = [
-        'id' => 'required|string|max:64|unique:commander_clients,id',
+        'slug' => 'required|string|max:64|unique:commander_clients,slug',
         'name' => 'required|string|max:255',
         'company' => 'nullable|string|max:255',
         'email' => 'required|email|max:255',

@@ -54,14 +54,14 @@ export function Quotas() {
   const [onlyBreaches, setOnlyBreaches] = useState(false)
 
   const deployItems = useMemo(
-    () => [{ id: 'all', label: 'Deployment: All' }, ...deployments.map((d) => ({ id: d.id, label: d.id }))],
+    () => [{ id: 'all', label: 'Deployment: All' }, ...deployments.map((d) => ({ id: String(d.id), label: d.slug }))],
     [deployments],
   )
 
   const filtered = useMemo(
     () =>
       quotas.filter((q) => {
-        if (deployFilter !== 'all' && q.deployment_id !== deployFilter) return false
+        if (deployFilter !== 'all' && String(q.deployment_id) !== deployFilter) return false
         if (metricFilter !== 'all' && q.metric_key !== metricFilter) return false
         if (onlyBreaches && ratioOf(q) < 0.8) return false
         return true

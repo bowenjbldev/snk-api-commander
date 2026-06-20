@@ -31,11 +31,12 @@ export function Clients() {
 
   const [searchParams] = useSearchParams()
   const [statusFilter, setStatusFilter] = useState('all')
-  const [openId, setOpenId] = useState<string | null>(searchParams.get('client'))
+  const clientParam = searchParams.get('client')
+  const [openId, setOpenId] = useState<number | null>(clientParam != null ? Number(clientParam) : null)
   const [form, setForm] = useState<{ mode: 'create' | 'edit'; client?: Client } | null>(null)
 
   const depCount = useMemo(() => {
-    const m = new Map<string, number>()
+    const m = new Map<number, number>()
     for (const d of deployments) m.set(d.client_id, (m.get(d.client_id) ?? 0) + 1)
     return m
   }, [deployments])
@@ -166,7 +167,7 @@ function ClientDrawer({
   overdue: Invoice | undefined
   canEdit: boolean
   onClose: () => void
-  onOpenDeployment: (id: string) => void
+  onOpenDeployment: (id: number) => void
   onEdit: (c: Client) => void
   onPlaceholder: (what: string) => void
 }) {

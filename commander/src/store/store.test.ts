@@ -23,28 +23,34 @@ beforeEach(() => {
 })
 
 describe('store mutations', () => {
-  it('suspend → resume writes activity and flips status', () => {
-    s().suspend('bluepeak', { reason: 'manual' })
-    expect(s().deployments.find((d) => d.id === 'bluepeak')?.state.status).toBe('suspended')
-    expect(s().activity[0]).toMatchObject({ kind: 'suspend', deployment_id: 'bluepeak' })
+  // Los ids de deployment son bigint ahora; se resuelven por su slug legible.
+  const depId = (slug: string) => s().deployments.find((d) => d.slug === slug)!.id
 
-    s().resume('bluepeak')
-    expect(s().deployments.find((d) => d.id === 'bluepeak')?.state.status).toBe('active')
-    expect(s().activity[0]).toMatchObject({ kind: 'resume', deployment_id: 'bluepeak' })
+  it('suspend → resume writes activity and flips status', () => {
+    const id = depId('bluepeak')
+    s().suspend(id, { reason: 'manual' })
+    expect(s().deployments.find((d) => d.id === id)?.state.status).toBe('suspended')
+    expect(s().activity[0]).toMatchObject({ kind: 'suspend', deployment_id: id })
+
+    s().resume(id)
+    expect(s().deployments.find((d) => d.id === id)?.state.status).toBe('active')
+    expect(s().activity[0]).toMatchObject({ kind: 'resume', deployment_id: id })
   })
 
   it('grace sets a deadline', () => {
     const until = new Date(Date.now() + 72 * 3_600_000).toISOString()
-    s().grace('mori-assets', { reason: 'manual', grace_until: until })
-    const dep = s().deployments.find((d) => d.id === 'mori-assets')
+    const id = depId('mori-assets')
+    s().grace(id, { reason: 'manual', grace_until: until })
+    const dep = s().deployments.find((d) => d.id === id)
     expect(dep?.state.status).toBe('grace')
     expect(dep?.state.grace_until).toBe(until)
   })
 
   it('markInvoicePaid reports a resumable deployment when it was suspended for payment_overdue', () => {
-    const { resumableDeploymentId } = s().markInvoicePaid('INV-2026-0139')
-    expect(resumableDeploymentId).toBe('acme-shop')
-    expect(s().invoices.find((i) => i.id === 'INV-2026-0139')?.status).toBe('paid')
+    const inv = s().invoices.find((i) => i.number === 'INV-2026-0139')!
+    const { resumableDeploymentId } = s().markInvoicePaid(inv.id)
+    expect(resumableDeploymentId).toBe(depId('acme-shop'))
+    expect(s().invoices.find((i) => i.number === 'INV-2026-0139')?.status).toBe('paid')
   })
 
   it('editQuotaLimit below current usage stamps exceeded_at', () => {

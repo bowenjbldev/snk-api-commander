@@ -11,15 +11,13 @@ class CommanderQuotaModel extends Model
 
     protected $connection = 'commander';
 
-    public $incrementing = false;
-
-    protected $keyType = 'string';
-
     protected $guarded = [];
 
     protected function casts(): array
     {
         return [
+            'id' => 'integer',
+            'deployment_id' => 'integer',
             'current_value' => 'integer',
             'limit_value' => 'integer',
             'exceeded_at' => 'datetime',

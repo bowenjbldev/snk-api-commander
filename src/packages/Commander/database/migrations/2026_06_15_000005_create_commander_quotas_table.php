@@ -8,8 +8,8 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('commander_quotas', function (Blueprint $table) {
-            $table->string('id', 96)->primary(); // "${deployment_id}:${metric_key}"
-            $table->string('deployment_id', 64);
+            $table->id();
+            $table->unsignedBigInteger('deployment_id');
             $table->string('metric_key', 32); // requests_day|disk_db_mb|disk_storage_mb|users_total
             $table->unsignedBigInteger('current_value')->default(0);
             $table->unsignedBigInteger('limit_value')->nullable(); // null = unlimited
@@ -18,7 +18,8 @@ return new class extends Migration {
             $table->string('unit', 16)->default('count'); // count|mb
             $table->timestamps();
 
-            $table->index('deployment_id');
+            // Una fila por (deployment, metrica) — antes era el id compuesto, ahora UNIQUE.
+            $table->unique(['deployment_id', 'metric_key']);
         });
     }
 

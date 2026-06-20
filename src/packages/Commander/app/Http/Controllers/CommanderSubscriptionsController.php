@@ -20,9 +20,8 @@ class CommanderSubscriptionsController extends CoreBaseApiController
     protected array $allowedWith = ['client', 'deployment'];
 
     protected array $validationRulesStore = [
-        'id' => 'required|string|max:64|unique:commander_subscriptions,id',
-        'client_id' => 'required|string|exists:commander_clients,id',
-        'deployment_id' => 'required|string|exists:commander_deployments,id',
+        'client_id' => 'required|integer|exists:commander_clients,id',
+        'deployment_id' => 'required|integer|exists:commander_deployments,id',
         'plan' => 'required|string|max:255',
         'price_monthly' => 'required|numeric|min:0',
         'billing_status' => 'nullable|in:paid,pending,overdue',
