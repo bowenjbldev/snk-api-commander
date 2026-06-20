@@ -5,6 +5,8 @@ namespace Packages\Commander\Services;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Packages\Commander\Models\CommanderActivityEventModel;
+use Packages\Commander\Models\CommanderDeploymentModel;
 use Packages\Commander\Models\CommanderPackageModel;
 use Packages\Commander\Models\CommanderQuotaMetricModel;
 use Packages\Commander\Models\CommanderRequestLogModel;
@@ -118,13 +120,15 @@ class CommanderQuotaMeasurerService
             }
 
             if ($state->status === CorePackageStatusEnum::Active) {
+                $message = "Cuota [{$metric->metric_key}] excedida. El servicio se suspendera si no se corrige.";
                 $this->stateService->set(
                     CorePackageStatusEnum::Grace,
                     $reason,
-                    "Cuota [{$metric->metric_key}] excedida. El servicio se suspendera si no se corrige.",
+                    $message,
                     CarbonImmutable::now()->addHours((int) config('core.quotas.grace_hours', 72)),
                     'quota',
                 );
+                $this->recordActivity($metric->package_id, 'grace', $reason, $message);
                 return;
             }
 
@@ -132,13 +136,15 @@ class CommanderQuotaMeasurerService
             if ($state->status === CorePackageStatusEnum::Grace
                 && $state->reason === $reason
                 && $state->effectiveStatus() === CorePackageStatusEnum::Suspended) {
+                $message = "Cuota [{$metric->metric_key}] excedida y periodo de gracia agotado.";
                 $this->stateService->set(
                     CorePackageStatusEnum::Suspended,
                     $reason,
-                    "Cuota [{$metric->metric_key}] excedida y periodo de gracia agotado.",
+                    $message,
                     null,
                     'quota',
                 );
+                $this->recordActivity($metric->package_id, 'suspend', $reason, $message);
             }
 
             return;
@@ -153,7 +159,32 @@ class CommanderQuotaMeasurerService
         // Auto-heal: solo si la suspension/grace la causo ESTA metrica
         if ($state->status !== CorePackageStatusEnum::Active && $state->reason === $reason) {
             $this->stateService->set(CorePackageStatusEnum::Active, null, null, null, 'quota');
+            $this->recordActivity($metric->package_id, 'resume', null, null);
         }
+    }
+
+    /**
+     * Registra el cambio de estado AUTOMATICO en el feed de actividad (commander_activity_events),
+     * igual que las acciones manuales del operador, pero con by='quota'. Resuelve el deployment del
+     * package medido. Sin esto, las suspensiones por cuota no dejaban rastro en el feed del SPA.
+     */
+    private function recordActivity(int $packageId, string $kind, ?string $reason, ?string $message): void
+    {
+        $deploymentId = CommanderDeploymentModel::query()->where('package_id', $packageId)->value('id');
+
+        if ($deploymentId === null) {
+            return;
+        }
+
+        CommanderActivityEventModel::create([
+            'at' => CarbonImmutable::now(),
+            'kind' => $kind,
+            'deployment_id' => $deploymentId,
+            'invoice_id' => null,
+            'reason' => $reason,
+            'by' => 'quota',
+            'message' => $message,
+        ]);
     }
 
     private function measureDatabaseSizeMb(?CommanderPackageModel $package): ?int

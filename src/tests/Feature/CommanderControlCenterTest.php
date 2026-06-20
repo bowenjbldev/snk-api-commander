@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Packages\Commander\Database\Seeders\CommanderDatabaseSeeder;
+use Packages\Commander\Models\CommanderActivityEventModel;
 use Packages\Commander\Models\CommanderClientModel;
 use Packages\Commander\Models\CommanderDeploymentModel;
 use Packages\Commander\Models\CommanderPackageModel;
@@ -11,6 +12,7 @@ use Packages\Commander\Models\CommanderQuotaMetricModel;
 use Packages\Commander\Models\CommanderQuotaModel;
 use Packages\Commander\Models\CommanderRegisteredPackageModel;
 use Packages\Commander\Models\CommanderRequestLogModel;
+use Packages\Commander\Services\CommanderQuotaMeasurerService;
 use Packages\Core\Database\Seeders\CoreDatabaseSeeder;
 use Packages\Core\Models\CoreUserModel;
 use Tests\CommanderTestCase;
@@ -93,6 +95,37 @@ class CommanderControlCenterTest extends CommanderTestCase
             ->where('metric_key', 'requests_day')->first();
         $this->assertSame(500, (int) $metric->limit_value);
         $this->assertSame('suspend', $metric->on_exceed);
+    }
+
+    public function test_quota_enforcement_records_activity_event(): void
+    {
+        $admin = $this->admin();
+        $dep = $this->deployment(); // package Shop (subdomain shop, active) + deployment
+        $pid = $dep->package_id;
+
+        // Metrica requests_day con limite 5 / suspend; y 8 logs hoy => supera el limite.
+        CommanderQuotaMetricModel::create([
+            'package_id' => $pid, 'metric_key' => 'requests_day',
+            'limit_value' => 5, 'current_value' => 0, 'on_exceed' => 'suspend',
+        ]);
+        for ($i = 0; $i < 8; $i++) {
+            CommanderRequestLogModel::create([
+                'package_id' => $pid, 'occurred_at' => now(), 'method' => 'GET',
+                'route' => '/api/v1/x', 'path' => 'api/v1/x', 'status' => 200,
+                'duration_ms' => 1, 'request_bytes' => 0, 'response_bytes' => 1, 'memory_kb' => 1,
+            ]);
+        }
+
+        app(CommanderQuotaMeasurerService::class)->measureAll();
+
+        // El medidor lo movio a grace…
+        $this->assertSame('grace', CommanderPackageModel::find($pid)->getRawOriginal('status'));
+
+        // …y dejo rastro en el feed de actividad con by='quota' (antes no se registraba).
+        $event = CommanderActivityEventModel::where('deployment_id', $dep->id)->where('by', 'quota')->first();
+        $this->assertNotNull($event);
+        $this->assertSame('grace', $event->kind);
+        $this->assertSame('quota_exceeded:requests_day', $event->reason);
     }
 
     public function test_global_logs_tag_each_row_with_deployment_id(): void
