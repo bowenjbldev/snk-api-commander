@@ -67,9 +67,10 @@ class CommanderProvisioningTest extends CommanderTestCase
         ]);
 
         $res->assertStatus(201);
-        // One-step: live immediately, state sourced from commander_packages.
-        $res->assertJsonPath('deployment.state.status', 'active');
-        $res->assertJsonPath('deployment.package', 'Demo');
+        // One-step: live immediately. Identidad + estado vienen en la relacion anidada `package`.
+        $res->assertJsonPath('deployment.package.status', 'active');
+        $res->assertJsonPath('deployment.package.name', 'Demo');
+        $res->assertJsonPath('deployment.package.subdomain', 'demo');
         $res->assertJsonPath('deployment.subscription.plan', 'Pro');
 
         // Instance row (commander_packages) created + active + its own database name → subdomain is live.
@@ -85,7 +86,7 @@ class CommanderProvisioningTest extends CommanderTestCase
         $this->assertSame('ES', $client->country);
 
         // Deployment + subscription + quotas (SPA mirror) from the plan.
-        $dep = CommanderDeploymentModel::where('slug', 'demo')->first();
+        $dep = CommanderDeploymentModel::where('package_id', $cp->id)->first();
         $this->assertNotNull($dep->subscription_id);
         $this->assertSame($cp->id, $dep->package_id);
         $this->assertCount(4, $dep->quotas);
@@ -138,9 +139,12 @@ class CommanderProvisioningTest extends CommanderTestCase
         $plan = $this->plan();
 
         $client = CommanderClientModel::create(['slug' => 'x', 'name' => 'X', 'email' => 'x@x.test', 'status' => 'active']);
+        // El conflicto lo detecta la instancia (commander_packages.subdomain unico), no el deployment.
+        $package = CommanderPackageModel::create([
+            'name' => 'Demo', 'subdomain' => 'demo', 'database' => 'demo', 'status' => 'active',
+        ]);
         CommanderDeploymentModel::create([
-            'slug' => 'demo', 'name' => 'demo', 'subdomain' => 'demo.snake.test', 'client_id' => $client->id,
-            'package' => 'Demo', 'version' => 'v1.0.0', 'base_url' => 'https://demo.snake.test/api/v1',
+            'client_id' => $client->id, 'package_id' => $package->id,
         ]);
 
         $this->actingAs($admin, 'sanctum')->postJson('/api/v1/provisioning', [

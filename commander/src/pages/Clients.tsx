@@ -137,7 +137,7 @@ export function Clients() {
           onClose={() => setOpenId(null)}
           onOpenDeployment={(id) => {
             setOpenId(null)
-            const pkg = deployments.find((d) => d.id === id)?.package
+            const pkg = deployments.find((d) => d.id === id)?.package.name
             navigate(pkg ? `/packages/${pkg}` : '/packages')
           }}
           onEdit={(c) => setForm({ mode: 'edit', client: c })}
@@ -248,13 +248,13 @@ function ClientDrawer({
               >
                 <div>
                   <div className="scns-mono" style={{ color: 'var(--cds-link-primary)' }}>
-                    {d.name}
+                    {d.package.name}
                   </div>
                   <div className="scns-mono scns-helper" style={{ fontSize: 11 }}>
-                    {d.package}
+                    {d.package.subdomain}
                   </div>
                 </div>
-                <DeploymentStatusTag state={d.state} />
+                <DeploymentStatusTag pkg={d.package} />
               </button>
             ))
           )}

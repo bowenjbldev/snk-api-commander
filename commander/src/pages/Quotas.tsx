@@ -54,7 +54,7 @@ export function Quotas() {
   const [onlyBreaches, setOnlyBreaches] = useState(false)
 
   const deployItems = useMemo(
-    () => [{ id: 'all', label: 'Deployment: All' }, ...deployments.map((d) => ({ id: String(d.id), label: d.slug }))],
+    () => [{ id: 'all', label: 'Deployment: All' }, ...deployments.map((d) => ({ id: String(d.id), label: d.package.name }))],
     [deployments],
   )
 
@@ -85,7 +85,7 @@ export function Quotas() {
           className="scns-mono"
           style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--cds-link-primary)' }}
           onClick={() => {
-            const pkg = deployments.find((d) => d.id === q.deployment_id)?.package
+            const pkg = deployments.find((d) => d.id === q.deployment_id)?.package.name
             navigate(pkg ? `/packages/${pkg}` : '/packages')
           }}
         >

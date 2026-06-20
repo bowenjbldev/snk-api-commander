@@ -70,8 +70,8 @@ export function Dashboard() {
   const counts = useMemo(() => {
     let active = 0, grace = 0, suspended = 0
     for (const d of deployments) {
-      if (d.state.status === 'active') active++
-      else if (d.state.status === 'grace') grace++
+      if (d.package.status === 'active') active++
+      else if (d.package.status === 'grace') grace++
       else suspended++
     }
     return { active, grace, suspended }
@@ -131,11 +131,11 @@ export function Dashboard() {
       }
     }
     for (const d of deployments) {
-      if (d.state.status === 'grace' && d.state.grace_until) {
+      if (d.package.status === 'grace' && d.package.grace_until) {
         items.push({
-          tone: 'amber', sev: 'GRACE ENDS', entity: d.name,
-          desc: <>suspends in <GraceCountdown until={d.state.grace_until} /> · {d.state.reason}</>,
-          cta: 'Open package →', to: `/packages/${d.package}`,
+          tone: 'amber', sev: 'GRACE ENDS', entity: d.package.name,
+          desc: <>suspends in <GraceCountdown until={d.package.grace_until} /> · {d.package.reason}</>,
+          cta: 'Open package →', to: `/packages/${d.package.name}`,
         })
       }
     }

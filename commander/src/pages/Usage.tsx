@@ -121,7 +121,7 @@ export function Usage() {
           value={formatPercent(platform.kpis.errorRate, 1)}
           helper={<PointsTrend points={platform.kpis.errorRateDelta} suffix="vs prior 24h" invert />}
         />
-        <KpiTile label="Active deployments" value={deployments.filter((d) => d.state.status === 'active').length} helper={`of ${deployments.length}`} />
+        <KpiTile label="Active deployments" value={deployments.filter((d) => d.package.status === 'active').length} helper={`of ${deployments.length}`} />
         <KpiTile label="MRR" value={`$${formatInt(dash.mrr)}`} />
       </KpiCluster>
 
@@ -172,11 +172,11 @@ export function Usage() {
                 </TableRow>
               ) : (
                 top.map((d) => (
-                  <TableRow key={d.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/packages/${d.package}`)}>
-                    <TableCell className="scns-mono" style={{ color: 'var(--cds-link-primary)' }}>{d.name}</TableCell>
+                  <TableRow key={d.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/packages/${d.package.name}`)}>
+                    <TableCell className="scns-mono" style={{ color: 'var(--cds-link-primary)' }}>{d.package.name}</TableCell>
                     <TableCell>{clientName(d.client_id)}</TableCell>
                     <TableCell>
-                      <DeploymentStatusTag state={d.state} />
+                      <DeploymentStatusTag pkg={d.package} />
                     </TableCell>
                     <TableCell style={{ textAlign: 'right' }} className="scns-num">{formatInt(d.requests_24h)}</TableCell>
                     <TableCell style={{ width: 160 }}>

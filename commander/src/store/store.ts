@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { create } from 'zustand'
 import type { Dataset } from './fixtures'
-import { activity, buildState, nextId, type StateOpts } from './transitions'
+import { activity, applyPackageState, nextId, type StateOpts } from './transitions'
 import { api, packagesApi, settingsApi } from '../lib/api'
 import type {
   ActivityEvent,
@@ -255,9 +255,9 @@ export const useStore = create<StoreState>((set, get) => {
           d.id === id
             ? {
                 ...d,
-                state: buildState('suspended', {
+                package: applyPackageState(d.package, 'suspended', {
                   reason: input.reason,
-                  message: input.message ?? d.state.message,
+                  message: input.message ?? d.package.message,
                   by: input.by ?? 'operator',
                 }),
               }
@@ -283,9 +283,9 @@ export const useStore = create<StoreState>((set, get) => {
           d.id === id
             ? {
                 ...d,
-                state: buildState('grace', {
+                package: applyPackageState(d.package, 'grace', {
                   reason: input.reason,
-                  message: input.message ?? d.state.message,
+                  message: input.message ?? d.package.message,
                   grace_until: input.grace_until,
                   by: input.by ?? 'operator',
                 }),
@@ -309,7 +309,7 @@ export const useStore = create<StoreState>((set, get) => {
     resume: (id, by = 'operator') => {
       set((s) => ({
         deployments: s.deployments.map((d) =>
-          d.id === id ? { ...d, state: buildState('active', { by }) } : d,
+          d.id === id ? { ...d, package: applyPackageState(d.package, 'active', { by }) } : d,
         ),
         activity: [activity('resume', { deployment_id: id, by }), ...s.activity],
       }))
@@ -343,7 +343,7 @@ export const useStore = create<StoreState>((set, get) => {
       let resumableDeploymentId: number | undefined
       if (inv) {
         const dep = get().deployments.find((d) => d.id === inv.deployment_id)
-        if (dep && dep.state.status === 'suspended' && dep.state.reason === 'payment_overdue') {
+        if (dep && dep.package.status === 'suspended' && dep.package.reason === 'payment_overdue') {
           resumableDeploymentId = dep.id
         }
       }

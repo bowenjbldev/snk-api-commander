@@ -81,7 +81,8 @@ class CommanderProvisioningController extends CoreBaseApiController
             return response()->json(['error' => "Package code '{$package}' is not deployed."], 422);
         }
 
-        if (CommanderDeploymentModel::where('slug', $deploymentId)->exists() || CommanderPackageModel::where('subdomain', $subdomain)->exists()) {
+        // La instancia (commander_packages) es la fuente de verdad; su subdomain es unico => cubre el conflicto.
+        if (CommanderPackageModel::where('subdomain', $subdomain)->exists()) {
             return response()->json(['error' => "A deployment '{$deploymentId}' already exists."], 409);
         }
 
@@ -89,10 +90,7 @@ class CommanderProvisioningController extends CoreBaseApiController
             return response()->json(['error' => "Client '{$data['client']['slug']}' already exists."], 422);
         }
 
-        $baseDomain = (string) config('core.base_domain', 'snake.test');
-        $fqdn = "{$subdomain}.{$baseDomain}";
-
-        [$deployment, $corePackage] = DB::connection('commander')->transaction(function () use ($data, $plan, $package, $subdomain, $deploymentId, $fqdn, $database) {
+        [$deployment, $commanderPackage] = DB::connection('commander')->transaction(function () use ($data, $plan, $package, $subdomain, $database) {
             $now = CarbonImmutable::now();
 
             $clientId = $data['client_id'] ?? null;
@@ -109,7 +107,7 @@ class CommanderProvisioningController extends CoreBaseApiController
             }
 
             // Instancia: la fila packages enciende el subdominio (la resuelve el middleware por host).
-            $corePackage = CommanderPackageModel::create([
+            $commanderPackage = CommanderPackageModel::create([
                 'name' => $package,
                 'subdomain' => $subdomain,
                 'database' => $database,
@@ -118,15 +116,11 @@ class CommanderProvisioningController extends CoreBaseApiController
                 'changed_at' => $now,
             ]);
 
+            // Identidad (slug/name/subdomain/package/base_url) NO se almacena: la derivan los accessors
+            // del modelo desde commanderPackage. Aqui solo enlaces + cache de KPIs.
             $deployment = CommanderDeploymentModel::create([
-                'slug' => $deploymentId,
-                'name' => $deploymentId,
-                'subdomain' => $fqdn,
                 'client_id' => $clientId,
-                'package_id' => $corePackage->id,
-                'package' => $package,
-                'version' => '1.0.0',
-                'base_url' => "https://{$fqdn}/api/v1",
+                'package_id' => $commanderPackage->id,
                 'requests_24h' => 0,
                 'quota_health' => 0,
             ]);
@@ -157,7 +151,7 @@ class CommanderProvisioningController extends CoreBaseApiController
 
                 // …y la fila real que el medidor de cuotas de Core hace cumplir, por package.
                 CommanderQuotaMetricModel::create([
-                    'package_id' => $corePackage->id,
+                    'package_id' => $commanderPackage->id,
                     'metric_key' => $metric,
                     'limit_value' => $limit,
                     'current_value' => 0,
@@ -165,7 +159,7 @@ class CommanderProvisioningController extends CoreBaseApiController
                 ]);
             }
 
-            return [$deployment, $corePackage];
+            return [$deployment, $commanderPackage];
         });
 
         // Crea la BD propia del package y migra/siembra ahi (DDL fuera de la transaccion commander):
@@ -182,7 +176,7 @@ class CommanderProvisioningController extends CoreBaseApiController
         }
 
         return response()->json([
-            'deployment' => $deployment->fresh()->load(['client', 'subscription', 'quotas', 'corePackage']),
+            'deployment' => $deployment->fresh()->load(['client', 'subscription', 'quotas', 'package']),
         ], 201);
     }
 }

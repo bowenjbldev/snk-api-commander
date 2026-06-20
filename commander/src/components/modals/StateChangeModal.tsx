@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Modal, Select, SelectItem, TextArea, NumberInput, InlineNotification } from '@carbon/react'
 import type { Deployment } from '../../store/types'
 import { formatDateUTC } from '../../lib/time'
+import { deploymentFqdn } from '../../lib/deployment'
 
 export interface StateChangeResult {
   reason: string
@@ -35,7 +36,7 @@ export function StateChangeModal({ mode, targets, defaultGraceHours, open, onClo
   useEffect(() => {
     if (open) {
       setReason(mode === 'grace' ? 'payment_overdue' : 'payment_overdue')
-      setMessage(single?.state.message ?? '')
+      setMessage(single?.package.message ?? '')
       setHours(defaultGraceHours)
     }
   }, [open, mode, single, defaultGraceHours])
@@ -45,14 +46,14 @@ export function StateChangeModal({ mode, targets, defaultGraceHours, open, onClo
   const isSuspend = mode === 'suspend'
   const heading = single
     ? isSuspend
-      ? `Suspend deployment ${single.name}?`
-      : `Move ${single.name} to grace`
+      ? `Suspend deployment ${single.package.name}?`
+      : `Move ${single.package.name} to grace`
     : isSuspend
       ? `Suspend ${targets.length} deployments?`
       : `Move ${targets.length} deployments to grace`
-  const label = single ? single.subdomain : `${targets.length} deployments selected`
+  const label = single ? deploymentFqdn(single) : `${targets.length} deployments selected`
   const graceUntilPreview = formatDateUTC(new Date(Date.now() + hours * 3_600_000).toISOString())
-  const suspendingGrace = isSuspend && single?.state.status === 'grace'
+  const suspendingGrace = isSuspend && single?.package.status === 'grace'
 
   return (
     <Modal
@@ -79,7 +80,7 @@ export function StateChangeModal({ mode, targets, defaultGraceHours, open, onClo
         )}
       </p>
 
-      {suspendingGrace && single?.state.grace_until && (
+      {suspendingGrace && single?.package.grace_until && (
         <InlineNotification
           kind="warning"
           lowContrast

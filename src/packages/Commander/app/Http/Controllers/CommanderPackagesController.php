@@ -3,6 +3,7 @@
 namespace Packages\Commander\Http\Controllers;
 
 use Dedoc\Scramble\Attributes\Group;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Packages\Commander\Models\CommanderDeploymentModel;
@@ -44,8 +45,10 @@ class CommanderPackagesController extends CoreBaseApiController
         $this->registry->syncFromDisk();
         $onDisk = $this->registry->availableOnDisk();
 
+        // deployments ya no guarda `package`: el nombre se resuelve por join a commander_packages.
         $deploymentCounts = CommanderDeploymentModel::query()
-            ->selectRaw('package, COUNT(*) as c')->groupBy('package')->pluck('c', 'package');
+            ->join('commander_packages as p', 'p.id', '=', 'commander_deployments.package_id')
+            ->selectRaw('p.name as package, COUNT(*) as c')->groupBy('p.name')->pluck('c', 'package');
         $planCounts = CommanderPlanModel::query()
             ->selectRaw('package, COUNT(*) as c')->groupBy('package')->pluck('c', 'package');
 
@@ -72,5 +75,20 @@ class CommanderPackagesController extends CoreBaseApiController
     public function update(Request $request, $package = null): JsonResponse
     {
         return parent::update($request, $package);
+    }
+
+    /**
+     * El registro lleva PK numerica (id), pero la ruta `packages/{package}` direcciona por
+     * `name` (StudlyCase) — la clave de negocio compartida con commander_plans/deployments.
+     */
+    protected function findModel($id, bool $applyWith = false): ?Model
+    {
+        $query = CommanderRegisteredPackageModel::query();
+
+        if ($applyWith) {
+            $query = $this->applyWith($query);
+        }
+
+        return $query->where('name', $id)->first();
     }
 }

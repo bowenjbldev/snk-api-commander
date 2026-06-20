@@ -12,6 +12,7 @@ import {
 } from '@carbon/react'
 import { Edit } from '@carbon/icons-react'
 import type { PackageContext, RegisteredPackage } from '../../store/types'
+import { deploymentBaseUrl } from '../../lib/deployment'
 import { useStore, useDeploymentQuotas } from '../../store/store'
 import { useCan } from '../../store/auth'
 import { StateCard } from '../../components/StateCard'
@@ -66,7 +67,7 @@ export function OverviewTab() {
                   label="Client"
                   value={<Link className="scns-link" to="/clients">{client?.name ?? deployment.client_id}</Link>}
                 />
-                <KVRow label="Package" value={<span className="scns-mono">{deployment.package}</span>} />
+                <KVRow label="Package" value={<span className="scns-mono">{deployment.package.name}</span>} />
                 <KVRow
                   label="Subscription"
                   value={
@@ -87,7 +88,7 @@ export function OverviewTab() {
               <div className="scns-helper" style={{ fontSize: 12, marginBottom: 6 }}>
                 base_url
               </div>
-              <CopyableCode value={deployment.base_url} />
+              <CopyableCode value={deploymentBaseUrl(deployment)} />
             </div>
           </div>
 

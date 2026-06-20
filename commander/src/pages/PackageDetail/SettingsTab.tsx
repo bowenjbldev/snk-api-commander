@@ -13,6 +13,7 @@ import { useActions } from '../../providers/ActionsProvider'
 import { CopyableCode } from '../../components/CopyableCode'
 import { EmptyState } from '../../components/EmptyState'
 import { formatDateUTC } from '../../lib/time'
+import { deploymentBaseUrl, deploymentFqdn } from '../../lib/deployment'
 
 export function SettingsTab() {
   const { deployment } = useOutletContext<PackageContext>()
@@ -46,7 +47,7 @@ function SettingsView({ dep }: { dep: Deployment }) {
                 Name
               </StructuredListCell>
               <StructuredListCell>
-                <span className="scns-mono">{dep.name}</span>
+                <span className="scns-mono">{dep.package.name}</span>
               </StructuredListCell>
             </StructuredListRow>
             <StructuredListRow>
@@ -54,7 +55,7 @@ function SettingsView({ dep }: { dep: Deployment }) {
                 Subdomain
               </StructuredListCell>
               <StructuredListCell>
-                <span className="scns-mono">{dep.subdomain}</span>
+                <span className="scns-mono">{deploymentFqdn(dep)}</span>
               </StructuredListCell>
             </StructuredListRow>
             <StructuredListRow>
@@ -62,7 +63,7 @@ function SettingsView({ dep }: { dep: Deployment }) {
                 Package
               </StructuredListCell>
               <StructuredListCell>
-                <span className="scns-mono">{dep.package}</span>
+                <span className="scns-mono">{dep.package.name}</span>
               </StructuredListCell>
             </StructuredListRow>
             <StructuredListRow>
@@ -87,7 +88,7 @@ function SettingsView({ dep }: { dep: Deployment }) {
           <div className="scns-helper" style={{ fontSize: 12, marginBottom: 6 }}>
             base_url
           </div>
-          <CopyableCode value={dep.base_url} />
+          <CopyableCode value={deploymentBaseUrl(dep)} />
         </div>
       </div>
 

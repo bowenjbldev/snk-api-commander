@@ -5,7 +5,6 @@ namespace Packages\Commander\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Packages\Commander\Models\CommanderPackageModel;
 
 class CommanderDeploymentModel extends Model
 {
@@ -15,15 +14,13 @@ class CommanderDeploymentModel extends Model
 
     protected $guarded = [];
 
-    protected $hidden = [
-        'package_id',
-        'core_package', // relacion interna (estado); el SPA usa `package` (string) y `state`
-    ];
+    // La identidad (name/subdomain/status...) NO se almacena ni se deriva con accessors: vive en
+    // commander_packages y viaja como relacion anidada `package`, que se eager-carga SIEMPRE.
+    // El front lee el dato de la relation (d.package.name, d.package.status, ...).
+    protected $with = ['package'];
 
-    // SPA shape: nested `state` object, ahora leido de packages (fuente de verdad).
-    protected $appends = [
-        'state',
-    ];
+    // package_id es redundante con package.id (la relation va anidada); el resto del overlay es real.
+    protected $hidden = ['package_id'];
 
     protected function casts(): array
     {
@@ -37,25 +34,8 @@ class CommanderDeploymentModel extends Model
         ];
     }
 
-    /** Estado runtime del package (packages), con la forma DeploymentState del SPA. */
-    public function getStateAttribute(): array
-    {
-        $package = $this->relationLoaded('corePackage')
-            ? $this->getRelation('corePackage')
-            : ($this->package_id !== null ? $this->corePackage()->first() : null);
-
-        return [
-            'status' => $package?->getRawOriginal('status') ?? 'active',
-            'reason' => $package?->reason,
-            'message' => $package?->message,
-            'grace_until' => optional($package?->grace_until)->toISOString(),
-            'changed_by' => $package?->changed_by,
-            'changed_at' => optional($package?->changed_at)->toISOString(),
-        ];
-    }
-
-    /** Relacion con la instancia/estado (packages). Nombre distinto de la columna `package`. */
-    public function corePackage(): BelongsTo
+    /** Instancia/estado del package provisionado (commander_packages): fuente de verdad de la identidad. */
+    public function package(): BelongsTo
     {
         return $this->belongsTo(CommanderPackageModel::class, 'package_id');
     }

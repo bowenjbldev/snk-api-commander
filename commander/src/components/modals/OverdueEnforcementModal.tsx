@@ -40,7 +40,7 @@ export function OverdueEnforcementModal({
       <ModalBody>
         <p style={{ marginBottom: 16 }}>
           The linked deployment{' '}
-          <span className="scns-mono">{deployment?.name ?? invoice.deployment_id}</span> is still
+          <span className="scns-mono">{deployment?.package.name ?? invoice.deployment_id}</span> is still
           operational. Auto-suspend is off for this subscription — choose what happens to the deployment
           now.
         </p>

@@ -5,6 +5,7 @@ import { StateChangeModal, type StateChangeResult } from '../components/modals/S
 import { TypedConfirmModal } from '../components/modals/TypedConfirmModal'
 import { OverdueEnforcementModal } from '../components/modals/OverdueEnforcementModal'
 import type { Deployment, Invoice } from '../store/types'
+import { deploymentFqdn } from '../lib/deployment'
 
 interface ActionsApi {
   suspend: (targets: Deployment | Deployment[]) => void
@@ -52,7 +53,7 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
         list.forEach((d) => s.resume(d.id))
         toast.success(
           list.length === 1 ? 'Deployment resumed' : `${list.length} deployments resumed`,
-          list.length === 1 ? list[0].name : undefined,
+          list.length === 1 ? list[0].package.name : undefined,
         )
       },
       deleteDeployment: (dep, onDeleted) => setTyped({ kind: 'delete', dep, onDeleted }),
@@ -62,11 +63,11 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
         toast.success('Invoice marked as paid', invoice.number)
         if (resumableDeploymentId) {
           const dep = s.deployments.find((d) => d.id === resumableDeploymentId)
-          toast.info('Deployment can be resumed', `${dep?.name ?? resumableDeploymentId} was suspended for payment_overdue.`, {
+          toast.info('Deployment can be resumed', `${dep?.package.name ?? resumableDeploymentId} was suspended for payment_overdue.`, {
             actionLabel: 'Resume deployment',
             onAction: () => {
               useStore.getState().resume(resumableDeploymentId)
-              toast.success('Deployment resumed', dep?.name)
+              toast.success('Deployment resumed', dep?.package.name)
             },
           })
         }
@@ -90,14 +91,14 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
       targets.forEach((d) => s.suspend(d.id, { reason: r.reason, message: r.message }))
       toast.success(
         targets.length === 1 ? 'Deployment suspended' : `${targets.length} ${noun(targets.length)} suspended`,
-        targets.length === 1 ? targets[0].name : undefined,
+        targets.length === 1 ? targets[0].package.name : undefined,
       )
     } else {
       const graceUntil = new Date(Date.now() + (r.graceHours ?? graceHoursDefault) * 3_600_000).toISOString()
       targets.forEach((d) => s.grace(d.id, { reason: r.reason, message: r.message, grace_until: graceUntil }))
       toast.success(
         targets.length === 1 ? 'Moved to grace' : `${targets.length} ${noun(targets.length)} moved to grace`,
-        targets.length === 1 ? targets[0].name : undefined,
+        targets.length === 1 ? targets[0].package.name : undefined,
       )
     }
     setStateChange(null)
@@ -121,9 +122,9 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
       {typed?.kind === 'delete' && (
         <TypedConfirmModal
           open
-          title={`Delete deployment ${typed.dep.name}?`}
-          label={typed.dep.subdomain}
-          confirmWord={typed.dep.name}
+          title={`Delete deployment ${typed.dep.package.name}?`}
+          label={deploymentFqdn(typed.dep)}
+          confirmWord={typed.dep.package.name}
           confirmLabel="Delete deployment"
           body={
             <p>
@@ -134,7 +135,7 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
           onConfirm={() => {
             const { dep, onDeleted } = typed
             useStore.getState().deleteDeployment(dep.id)
-            toast.success('Deployment deleted', dep.name)
+            toast.success('Deployment deleted', dep.package.name)
             setTyped(null)
             onDeleted?.()
           }}
@@ -151,7 +152,7 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
           onClose={() => setOverdue(null)}
           onKeep={() => {
             useStore.getState().setInvoiceEnforcement(overdue.id, null)
-            toast.info('Deployment left running', overdueDep?.name)
+            toast.info('Deployment left running', overdueDep?.package.name)
             setOverdue(null)
           }}
           onGrace={() => {
@@ -161,14 +162,14 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
               s.grace(overdueDep.id, { reason: 'payment_overdue', grace_until: graceUntil })
             }
             s.setInvoiceEnforcement(overdue.id, 'grace')
-            toast.success('Moved to grace', overdueDep?.name)
+            toast.success('Moved to grace', overdueDep?.package.name)
             setOverdue(null)
           }}
           onSuspend={() => {
             const s = useStore.getState()
             if (overdueDep) s.suspend(overdueDep.id, { reason: 'payment_overdue' })
             s.setInvoiceEnforcement(overdue.id, 'suspended')
-            toast.success('Deployment suspended', overdueDep?.name)
+            toast.success('Deployment suspended', overdueDep?.package.name)
             setOverdue(null)
           }}
         />

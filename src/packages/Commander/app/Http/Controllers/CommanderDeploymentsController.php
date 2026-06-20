@@ -35,25 +35,19 @@ class CommanderDeploymentsController extends CoreBaseApiController
     protected string $updatePermission = 'update deployments';
     protected string $destroyPermission = 'delete deployments';
 
-    protected array $allowedWith = ['client', 'subscription', 'quotas', 'corePackage'];
+    protected array $allowedWith = ['client', 'subscription', 'quotas', 'package'];
 
+    // La identidad (slug/name/subdomain/package/base_url) se deriva de commander_packages: no se
+    // escribe aqui. La via canonica de alta es /provisioning; este CRUD solo toca enlaces.
     protected array $validationRulesStore = [
-        'slug' => 'required|string|max:64|unique:commander_deployments,slug',
-        'name' => 'required|string|max:255',
-        'subdomain' => 'required|string|max:255',
         'client_id' => 'required|integer|exists:commander_clients,id',
-        'package' => 'required|string|max:255',
-        'version' => 'required|string|max:32',
-        'base_url' => 'required|string|max:255',
+        'package_id' => 'required|integer|exists:commander_packages,id',
+        'subscription_id' => 'nullable|integer|exists:commander_subscriptions,id',
     ];
 
     protected array $validationRulesUpdate = [
-        'name' => 'nullable|string|max:255',
-        'subdomain' => 'nullable|string|max:255',
         'client_id' => 'nullable|integer|exists:commander_clients,id',
-        'package' => 'nullable|string|max:255',
-        'version' => 'nullable|string|max:32',
-        'base_url' => 'nullable|string|max:255',
+        'subscription_id' => 'nullable|integer|exists:commander_subscriptions,id',
     ];
 
     /** Operator state actions are guarded by a dedicated control permission, not plain CRUD update. */
@@ -90,7 +84,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
 
         $this->recordActivity('suspend', $deployment, $data['reason'], $data['message'] ?? null);
 
-        return response()->json($deployment->fresh()->load('corePackage'));
+        return response()->json($deployment->fresh()->load('package'));
     }
 
     /** Grace period (time-boxed) for the package. */
@@ -126,7 +120,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
 
         $this->recordActivity('grace', $deployment, $data['reason'], $data['message'] ?? null);
 
-        return response()->json($deployment->fresh()->load('corePackage'));
+        return response()->json($deployment->fresh()->load('package'));
     }
 
     /** Restore the package to active. */
@@ -151,7 +145,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
 
         $this->recordActivity('resume', $deployment, null, null);
 
-        return response()->json($deployment->fresh()->load('corePackage'));
+        return response()->json($deployment->fresh()->load('package'));
     }
 
     /** Real usage rollups (commander_usage_rollups) for the package, for the Usage-tab charts. */
@@ -211,7 +205,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
             ->orderByDesc('occurred_at')
             ->limit($data['limit'] ?? 100)
             ->get()
-            ->map(fn ($row) => array_merge($row->toArray(), ['deployment_id' => $deployment->slug]))
+            ->map(fn ($row) => array_merge($row->toArray(), ['deployment_id' => $deployment->package?->subdomain]))
             ->all();
 
         return response()->json(['data' => $rows]);
@@ -228,7 +222,7 @@ class CommanderDeploymentsController extends CoreBaseApiController
             return response()->json(['error' => 'Record not found'], 404);
         }
 
-        $package = $deployment->corePackage;
+        $package = $deployment->package;
         $database = $package?->database;
 
         DB::connection('commander')->transaction(function () use ($deployment, $package) {

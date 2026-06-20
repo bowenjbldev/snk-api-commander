@@ -12,6 +12,7 @@ import { EmptyState } from '../../components/EmptyState'
 import { ProvisionModal } from '../../components/modals/ProvisionModal'
 import { formatDateUTC } from '../../lib/time'
 import { formatInt } from '../../lib/format'
+import { deploymentBaseUrl } from '../../lib/deployment'
 
 // The package's deployed instance(s). It's 1:1 for now, so `deployment` from the package context is
 // the single instance (or undefined → empty state with a Provision CTA).
@@ -61,7 +62,7 @@ function DeploymentCard({ dep }: { dep: Deployment }) {
   const can = useCan()
   const canControl = can('control deployments')
   const canDelete = can('delete deployments')
-  const { status } = dep.state
+  const { status } = dep.package
 
   const accent =
     status === 'grace' ? 'var(--scns-warning)' : status === 'suspended' ? 'var(--scns-error)' : 'var(--scns-success)'
@@ -70,7 +71,7 @@ function DeploymentCard({ dep }: { dep: Deployment }) {
     status === 'grace'
       ? 'Grace period — payment overdue'
       : status === 'suspended'
-        ? `Suspended — ${dep.state.reason ?? 'manual'}`
+        ? `Suspended — ${dep.package.reason ?? 'manual'}`
         : 'Operational'
 
   return (
@@ -82,21 +83,21 @@ function DeploymentCard({ dep }: { dep: Deployment }) {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 16 }}>
-            <Field label="Reason" value={<span className="scns-mono">{dep.state.reason ?? '—'}</span>} />
-            {status === 'grace' && dep.state.grace_until && (
-              <Field label="Deadline" value={<span className="scns-mono">{formatDateUTC(dep.state.grace_until)}</span>} />
+            <Field label="Reason" value={<span className="scns-mono">{dep.package.reason ?? '—'}</span>} />
+            {status === 'grace' && dep.package.grace_until && (
+              <Field label="Deadline" value={<span className="scns-mono">{formatDateUTC(dep.package.grace_until)}</span>} />
             )}
             <Field
               label="Changed by"
               value={
                 <span>
-                  {dep.state.changed_by} · <RelativeTime iso={dep.state.changed_at} />
+                  {dep.package.changed_by} · <RelativeTime iso={dep.package.changed_at} />
                 </span>
               }
             />
           </div>
 
-          {dep.state.message && (
+          {dep.package.message && (
             <div style={{ marginBottom: 16 }}>
               <div className="scns-helper" style={{ fontSize: 12, marginBottom: 4 }}>
                 Client-facing message
@@ -110,7 +111,7 @@ function DeploymentCard({ dep }: { dep: Deployment }) {
                   fontStyle: 'italic',
                 }}
               >
-                “{dep.state.message}”
+                “{dep.package.message}”
               </blockquote>
             </div>
           )}
@@ -129,8 +130,8 @@ function DeploymentCard({ dep }: { dep: Deployment }) {
             <Field
               label="Base URL"
               value={
-                <a className="scns-mono" href={dep.base_url} target="_blank" rel="noreferrer">
-                  {dep.base_url}
+                <a className="scns-mono" href={deploymentBaseUrl(dep)} target="_blank" rel="noreferrer">
+                  {deploymentBaseUrl(dep)}
                 </a>
               }
             />
@@ -168,12 +169,12 @@ function DeploymentCard({ dep }: { dep: Deployment }) {
         </div>
 
         <div style={{ width: 280, flex: 'none', borderLeft: '1px solid var(--cds-border-subtle)', padding: 20 }}>
-          {status === 'grace' && dep.state.grace_until ? (
+          {status === 'grace' && dep.package.grace_until ? (
             <>
               <div className="scns-helper" style={{ fontSize: 12, marginBottom: 8 }}>
                 Suspends in
               </div>
-              <GraceCountdown until={dep.state.grace_until} mode="clock" />
+              <GraceCountdown until={dep.package.grace_until} mode="clock" />
               <div className="scns-helper" style={{ fontSize: 12, marginTop: 8 }}>
                 users will receive HTTP 402
               </div>

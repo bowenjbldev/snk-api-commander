@@ -49,7 +49,7 @@ export function Subscriptions() {
           className="scns-mono"
           style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--cds-link-primary)' }}
           onClick={() => {
-            const pkg = deployments.find((d) => d.id === s.deployment_id)?.package
+            const pkg = deployments.find((d) => d.id === s.deployment_id)?.package.name
             navigate(pkg ? `/packages/${pkg}` : '/packages')
           }}
         >

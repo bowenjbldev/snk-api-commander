@@ -1,22 +1,28 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { DeploymentStatusTag, BillingTag } from './tags/StatusTag'
+import type { DeploymentPackage } from '../store/types'
 
-function state(status: 'active' | 'grace' | 'suspended', grace_until: string | null = null) {
-  return { status, reason: null, message: null, grace_until, changed_by: 'cli' as const, changed_at: new Date().toISOString() }
+function pkg(status: 'active' | 'grace' | 'suspended', grace_until: string | null = null): DeploymentPackage {
+  const now = new Date().toISOString()
+  return {
+    id: 1, name: 'Shop', subdomain: 'shop', database: 'shop',
+    status, reason: null, message: null, grace_until,
+    changed_by: 'cli', changed_at: now, created_at: now, updated_at: now,
+  }
 }
 
 describe('DeploymentStatusTag', () => {
   it('maps status to label', () => {
-    render(<DeploymentStatusTag state={state('active')} />)
+    render(<DeploymentStatusTag pkg={pkg('active')} />)
     expect(screen.getByText('Operational')).toBeInTheDocument()
   })
   it('suspended', () => {
-    render(<DeploymentStatusTag state={state('suspended')} />)
+    render(<DeploymentStatusTag pkg={pkg('suspended')} />)
     expect(screen.getByText('Suspended')).toBeInTheDocument()
   })
   it('grace shows a countdown', () => {
-    render(<DeploymentStatusTag state={state('grace', new Date(Date.now() + 3_600_000).toISOString())} />)
+    render(<DeploymentStatusTag pkg={pkg('grace', new Date(Date.now() + 3_600_000).toISOString())} />)
     expect(screen.getByText(/Grace/)).toBeInTheDocument()
   })
 })

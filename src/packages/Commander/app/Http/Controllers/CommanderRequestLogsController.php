@@ -36,8 +36,8 @@ class CommanderRequestLogsController extends CoreBaseApiController
 
         $rows = CommanderRequestLogModel::query()
             ->from('commander_request_logs as l')
-            ->leftJoin('commander_deployments as d', 'd.package_id', '=', 'l.package_id')
-            ->when(isset($data['deployment_id']), fn ($q) => $q->where('d.slug', $data['deployment_id']))
+            ->leftJoin('commander_packages as p', 'p.id', '=', 'l.package_id')
+            ->when(isset($data['deployment_id']), fn ($q) => $q->where('p.subdomain', $data['deployment_id']))
             ->when(isset($data['since']), fn ($q) => $q->where('l.occurred_at', '>=', $data['since']))
             ->when(isset($data['method']), fn ($q) => $q->where('l.method', strtoupper($data['method'])))
             ->when(isset($data['status_class']), function ($q) use ($data) {
@@ -47,7 +47,7 @@ class CommanderRequestLogsController extends CoreBaseApiController
             })
             ->orderByDesc('l.occurred_at')
             ->limit($data['limit'] ?? 100)
-            ->get(['l.*', 'd.slug as deployment_id']) // tag legible (slug), no el bigint
+            ->get(['l.*', 'p.subdomain as deployment_id']) // tag legible (subdomain), no el bigint
             ->all();
 
         return response()->json(['data' => $rows]);

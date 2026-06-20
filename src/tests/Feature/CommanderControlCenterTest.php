@@ -41,9 +41,7 @@ class CommanderControlCenterTest extends CommanderTestCase
         $client = CommanderClientModel::create(['slug' => 'c', 'name' => 'C', 'email' => 'c@c.test', 'status' => 'active']);
 
         return CommanderDeploymentModel::create([
-            'slug' => 'shop', 'name' => 'shop', 'subdomain' => 'shop.snake.test', 'client_id' => $client->id,
-            'package_id' => $package->id, 'package' => 'Shop', 'version' => '1.0.0',
-            'base_url' => 'https://shop.snake.test/api/v1',
+            'client_id' => $client->id, 'package_id' => $package->id,
         ]);
     }
 
@@ -159,7 +157,7 @@ class CommanderControlCenterTest extends CommanderTestCase
             'label' => 'Tienda', 'description' => 'Mi tienda online', 'status' => 'inactive',
         ])->assertOk()->assertJsonPath('label', 'Tienda')->assertJsonPath('status', 'inactive');
 
-        $row = CommanderRegisteredPackageModel::find('Shop');
+        $row = CommanderRegisteredPackageModel::where('name', 'Shop')->first();
         $this->assertSame('Tienda', $row->label);
         $this->assertSame('inactive', $row->status);
     }

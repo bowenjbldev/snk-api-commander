@@ -61,9 +61,7 @@ class CommanderApiTest extends CommanderTestCase
         ]);
 
         $dep = CommanderDeploymentModel::create([
-            'slug' => 'kestrel-track', 'name' => 'kestrel-track', 'subdomain' => 'kestrel-track.snake.test',
-            'client_id' => $client->id, 'package_id' => $package->id, 'package' => 'TrackingApi', 'version' => 'v2.9.3',
-            'base_url' => 'https://kestrel-track.snake.test/api/v1',
+            'client_id' => $client->id, 'package_id' => $package->id,
         ]);
         foreach (['requests_day', 'disk_db_mb', 'disk_storage_mb', 'users_total'] as $metric) {
             CommanderQuotaModel::create([
@@ -77,10 +75,14 @@ class CommanderApiTest extends CommanderTestCase
         $res->assertOk();
         $body = $res->json();
 
-        // Nested state object (sourced from packages, not flat columns).
-        $this->assertSame('grace', $body['state']['status']);
-        $this->assertSame('payment_overdue', $body['state']['reason']);
-        $this->assertNotNull($body['state']['grace_until']);
+        // Identidad + estado llegan como la relacion anidada `package` (sin columnas planas ni accessors).
+        $this->assertSame('TrackingApi', $body['package']['name']);
+        $this->assertSame('kestrel-track', $body['package']['subdomain']);
+        $this->assertSame('grace', $body['package']['status']);
+        $this->assertSame('payment_overdue', $body['package']['reason']);
+        $this->assertNotNull($body['package']['grace_until']);
+        $this->assertArrayNotHasKey('state', $body);
+        $this->assertArrayNotHasKey('package_id', $body);
 
         // Relations resolve.
         $this->assertSame('Kestrel Logistics', $body['client']['name']);
@@ -94,24 +96,22 @@ class CommanderApiTest extends CommanderTestCase
         $package = CommanderPackageModel::create(['name' => 'Shop', 'subdomain' => 'shop', 'status' => 'active']);
         $client = CommanderClientModel::create(['slug' => 'c', 'name' => 'C', 'email' => 'c@c.test', 'status' => 'active']);
         $dep = CommanderDeploymentModel::create([
-            'slug' => 'shop', 'name' => 'shop', 'subdomain' => 'shop.snake.test', 'client_id' => $client->id,
-            'package_id' => $package->id, 'package' => 'Shop', 'version' => '1.0.0',
-            'base_url' => 'https://shop.snake.test/api/v1',
+            'client_id' => $client->id, 'package_id' => $package->id,
         ]);
 
         // Suspend → writes the commander_packages row directly.
         $this->actingAs($admin, 'sanctum')
             ->postJson("/api/v1/deployments/{$dep->id}/suspend", ['reason' => 'payment_overdue', 'message' => 'pay up'])
             ->assertOk()
-            ->assertJsonPath('state.status', 'suspended')
-            ->assertJsonPath('state.reason', 'payment_overdue');
+            ->assertJsonPath('package.status', 'suspended')
+            ->assertJsonPath('package.reason', 'payment_overdue');
         $this->assertSame('suspended', $package->fresh()->getRawOriginal('status'));
 
         // Resume → back to active.
         $this->actingAs($admin, 'sanctum')
             ->postJson("/api/v1/deployments/{$dep->id}/resume")
             ->assertOk()
-            ->assertJsonPath('state.status', 'active');
+            ->assertJsonPath('package.status', 'active');
         $this->assertSame('active', $package->fresh()->getRawOriginal('status'));
     }
 
@@ -122,9 +122,7 @@ class CommanderApiTest extends CommanderTestCase
         $package = CommanderPackageModel::create(['name' => 'Shop', 'subdomain' => 'shop', 'database' => 'shop', 'status' => 'active']);
         $client = CommanderClientModel::create(['slug' => 'c', 'name' => 'C', 'email' => 'c@c.test', 'status' => 'active']);
         $dep = CommanderDeploymentModel::create([
-            'slug' => 'shop', 'name' => 'shop', 'subdomain' => 'shop.snake.test', 'client_id' => $client->id,
-            'package_id' => $package->id, 'package' => 'Shop', 'version' => '1.0.0',
-            'base_url' => 'https://shop.snake.test/api/v1',
+            'client_id' => $client->id, 'package_id' => $package->id,
         ]);
         CommanderQuotaModel::create([
             'deployment_id' => $dep->id, 'metric_key' => 'requests_day',

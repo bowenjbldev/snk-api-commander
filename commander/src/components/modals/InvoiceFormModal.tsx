@@ -112,7 +112,7 @@ export function InvoiceFormModal({ open, mode, invoice, onSubmit, onClose }: Pro
           label={clientId ? 'Select a deployment' : 'Select a client first'}
           disabled={mode === 'edit' || !clientId}
           items={clientDeployments}
-          itemToString={(d) => d?.name ?? ''}
+          itemToString={(d) => d?.package.name ?? ''}
           selectedItem={selectedDeployment}
           invalid={submitted && !!deploymentError}
           invalidText={deploymentError}

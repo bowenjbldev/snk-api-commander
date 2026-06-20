@@ -19,7 +19,7 @@ const TABS = [
 export function PackageDetail() {
   const { name } = useParams()
   const pkg = usePackage(name)
-  const deployment = useStore((s) => s.deployments.find((d) => d.package === name))
+  const deployment = useStore((s) => s.deployments.find((d) => d.package.name === name))
   const plansAll = useStore((s) => s.plans)
   const plans = useMemo(() => plansAll.filter((p) => p.package === name), [plansAll, name])
   const navigate = useNavigate()
@@ -48,7 +48,7 @@ export function PackageDetail() {
             <Tag type={pkg.status === 'active' ? 'green' : 'gray'} size="sm">
               {pkg.status}
             </Tag>
-            {deployment && <DeploymentStatusTag state={deployment.state} />}
+            {deployment && <DeploymentStatusTag pkg={deployment.package} />}
           </div>
           <div className="scns-helper" style={{ fontSize: 13, marginTop: 6 }}>
             <span className="scns-mono">{pkg.name}</span> · {plans.length} {plans.length === 1 ? 'plan' : 'plans'} ·{' '}

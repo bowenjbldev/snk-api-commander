@@ -24,16 +24,16 @@ beforeEach(() => {
 
 describe('store mutations', () => {
   // Los ids de deployment son bigint ahora; se resuelven por su slug legible.
-  const depId = (slug: string) => s().deployments.find((d) => d.slug === slug)!.id
+  const depId = (slug: string) => s().deployments.find((d) => d.package.subdomain === slug)!.id
 
   it('suspend → resume writes activity and flips status', () => {
     const id = depId('bluepeak')
     s().suspend(id, { reason: 'manual' })
-    expect(s().deployments.find((d) => d.id === id)?.state.status).toBe('suspended')
+    expect(s().deployments.find((d) => d.id === id)?.package.status).toBe('suspended')
     expect(s().activity[0]).toMatchObject({ kind: 'suspend', deployment_id: id })
 
     s().resume(id)
-    expect(s().deployments.find((d) => d.id === id)?.state.status).toBe('active')
+    expect(s().deployments.find((d) => d.id === id)?.package.status).toBe('active')
     expect(s().activity[0]).toMatchObject({ kind: 'resume', deployment_id: id })
   })
 
@@ -42,8 +42,8 @@ describe('store mutations', () => {
     const id = depId('mori-assets')
     s().grace(id, { reason: 'manual', grace_until: until })
     const dep = s().deployments.find((d) => d.id === id)
-    expect(dep?.state.status).toBe('grace')
-    expect(dep?.state.grace_until).toBe(until)
+    expect(dep?.package.status).toBe('grace')
+    expect(dep?.package.grace_until).toBe(until)
   })
 
   it('markInvoicePaid reports a resumable deployment when it was suspended for payment_overdue', () => {

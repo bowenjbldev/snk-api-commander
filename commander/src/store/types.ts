@@ -10,15 +10,6 @@ export type StateReason = 'manual' | 'payment_overdue' | 'abuse' | string
 
 export type ChangedBy = 'operator' | 'cli' | 'quota' | 'cms' | 'auto-suspend'
 
-export interface DeploymentState {
-  status: DeploymentStatus
-  reason: StateReason | null
-  message: string | null
-  grace_until: string | null // ISO, or null
-  changed_by: ChangedBy
-  changed_at: string // ISO
-}
-
 export type ClientStatus = 'active' | 'inactive'
 
 export interface Client {
@@ -58,21 +49,33 @@ export interface Plan {
   status: 'active' | 'inactive'
 }
 
+// La instancia provisionada (commander_packages): identidad (name/subdomain) + estado runtime. Llega
+// anidada en el deployment como la relación `package` (fuente de verdad; el deployment no la duplica).
+export interface DeploymentPackage {
+  id: number
+  name: string // StudlyCase package name (Shop, Blog…)
+  subdomain: string // bare subdomain (shop), NO el FQDN
+  database: string // BD propia del package
+  status: DeploymentStatus
+  reason: StateReason | null
+  message: string | null
+  grace_until: string | null // ISO, or null
+  changed_by: ChangedBy
+  changed_at: string // ISO
+  created_at: string // ISO
+  updated_at: string // ISO
+}
+
 export interface Deployment {
   id: number
-  slug: string // handle bare legible (antes era la PK: shop, blog…)
-  name: string
-  subdomain: string // FQDN (shop.snake.test)
   client_id: number
-  package: string // StudlyCase package name (Shop, Blog…)
-  version: string
-  state: DeploymentState
+  package: DeploymentPackage // relación anidada: identidad + estado (sin columnas planas ni `state`)
   requests_24h: number
   quota_health: number // 0..>1 worst-metric ratio
-  last_seen: string // ISO
-  base_url: string
+  last_seen: string | null // ISO
   subscription_id: number | null
   created_at: string // ISO
+  updated_at: string // ISO
 }
 
 export type MetricKey = 'requests_day' | 'disk_db_mb' | 'disk_storage_mb' | 'users_total'

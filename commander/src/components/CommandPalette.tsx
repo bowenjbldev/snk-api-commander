@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router'
 import { Search } from '@carbon/icons-react'
 import { useStore } from '../store/store'
 import { useFocusTrap } from '../hooks/useFocusTrap'
+import { baseDomain } from '../lib/deployment'
 
 interface Cmd {
   id: string | number
@@ -28,7 +29,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const all = useMemo<Cmd[]>(
     () => [
       ...packages.map((p) => ({ id: p.name, label: p.label ?? p.name, sublabel: p.name, kind: 'Package' as const, to: `/packages/${p.name}` })),
-      ...deployments.map((d) => ({ id: d.id, label: d.name, sublabel: d.subdomain, kind: 'Deployment' as const, to: `/packages/${d.package}` })),
+      ...deployments.map((d) => ({ id: d.id, label: d.package.name, sublabel: `${d.package.subdomain}.${baseDomain()}`, kind: 'Deployment' as const, to: `/packages/${d.package.name}` })),
       ...clients.map((c) => ({ id: c.id, label: c.name, sublabel: c.company, kind: 'Client' as const, to: '/clients' })),
       ...invoices.map((i) => ({ id: i.id, label: i.number, sublabel: String(i.deployment_id), kind: 'Invoice' as const, to: '/invoices' })),
     ],

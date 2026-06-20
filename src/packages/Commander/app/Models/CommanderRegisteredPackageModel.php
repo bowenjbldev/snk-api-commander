@@ -10,11 +10,5 @@ class CommanderRegisteredPackageModel extends Model
 
     protected $connection = 'commander';
 
-    protected $primaryKey = 'name';
-
-    public $incrementing = false;
-
-    protected $keyType = 'string';
-
     protected $guarded = [];
 }

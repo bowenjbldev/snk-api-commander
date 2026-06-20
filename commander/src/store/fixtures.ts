@@ -10,6 +10,7 @@ import type {
   ActivityEvent,
   Client,
   Deployment,
+  DeploymentPackage,
   Invoice,
   LogEntry,
   OperatorSettings,
@@ -149,7 +150,7 @@ export function buildFixtures(nowMs: number): Dataset {
     string,
     string,
     string,
-    Deployment['state']['status'],
+    DeploymentPackage['status'],
     number,
     number,
     number,
@@ -191,11 +192,11 @@ export function buildFixtures(nowMs: number): Dataset {
     'Your subscription payment is overdue. Service continues during a short grace period; settle the balance to avoid suspension.'
 
   const deployments: Deployment[] = rows.map((r, idx) => {
-    const [name, client, pkg, version, status, req, health, seenMs, , , created] = r
+    const [name, client, pkg, , status, req, health, seenMs, , , created] = r
     let reason: string | null = null
     let message: string | null = null
     let grace_until: string | null = null
-    let changed_by: Deployment['state']['changed_by'] = 'cli'
+    let changed_by: DeploymentPackage['changed_by'] = 'cli'
     let changed_at = created
     if (status === 'suspended') {
       reason = name === 'quill-cms' ? 'abuse' : 'payment_overdue'
@@ -211,24 +212,33 @@ export function buildFixtures(nowMs: number): Dataset {
     }
     return {
       id: idx + 1, // bigint PK
-      slug: name, // handle legible (antes era la PK)
-      name,
-      subdomain: `${name}.${DEMO_DOMAIN}`,
       client_id: clientIdBySlug.get(client)!,
-      package: pkg,
-      version,
-      state: { status, reason, message, grace_until, changed_by, changed_at },
+      // Identidad + estado viven en la instancia `package` anidada (commander_packages).
+      package: {
+        id: idx + 1,
+        name: pkg, // StudlyCase
+        subdomain: name, // handle bare (NO el FQDN; el front lo deriva con baseDomain())
+        database: name.replace(/-/g, '_'),
+        status,
+        reason,
+        message,
+        grace_until,
+        changed_by,
+        changed_at,
+        created_at: created,
+        updated_at: changed_at,
+      },
       requests_24h: req,
       quota_health: health,
       last_seen: ago(seenMs),
-      base_url: `https://${name}.${DEMO_DOMAIN}/api/v1`,
       subscription_id: null, // bigint FK, asignado tras construir las subscriptions
       created_at: created,
+      updated_at: created,
     }
   })
 
-  // deployment slug (name) → numeric deployment id (PK migration: deployment_id FKs are bigint now)
-  const depIdBySlug = new Map(deployments.map((d) => [d.slug, d.id]))
+  // deployment handle (package.subdomain) → numeric deployment id (FKs son bigint)
+  const depIdBySlug = new Map(deployments.map((d) => [d.package.subdomain, d.id]))
 
   // ── Subscriptions (one per billable deployment) ──────────────────────────────
   const subSpec: Array<[string, string, string, number, boolean]> = [
@@ -245,7 +255,7 @@ export function buildFixtures(nowMs: number): Dataset {
     ['tetra-telemetry', 'Telemetry Standard', 'paid', 260, false],
   ]
   const subscriptions: Subscription[] = subSpec.map(([dep, plan, billing, price, auto], idx) => {
-    const dpl = deployments.find((d) => d.slug === dep)!
+    const dpl = deployments.find((d) => d.package.subdomain === dep)!
     return {
       id: idx + 1, // bigint PK
       client_id: dpl.client_id,
@@ -297,7 +307,7 @@ export function buildFixtures(nowMs: number): Dataset {
   for (const d of deployments) {
     const h = d.quota_health
     const serving = d.requests_24h > 0
-    if (d.slug === 'kestrel-track') {
+    if (d.package.subdomain === 'kestrel-track') {
       quotas.push(
         q(d.id, 'requests_day', 201330, 500000, 'suspend', null, 'count'),
         q(d.id, 'disk_db_mb', 1204, 4096, 'suspend', null, 'mb'),
@@ -306,7 +316,7 @@ export function buildFixtures(nowMs: number): Dataset {
       )
       continue
     }
-    if (d.slug === 'helios-meter') {
+    if (d.package.subdomain === 'helios-meter') {
       quotas.push(
         q(d.id, 'requests_day', 1240332, 1000000, 'warn', ago(3 * D), 'count'),
         q(d.id, 'disk_db_mb', 7420, 10240, 'suspend', null, 'mb'),
@@ -326,7 +336,7 @@ export function buildFixtures(nowMs: number): Dataset {
     const stRatio = serving ? clamp(h * 0.8, 0.04, 0.98) : h
     quotas.push(q(d.id, 'disk_storage_mb', Math.round(stRatio * stLimit), stLimit, 'none', null, 'mb'))
     // users_total: unlimited for most
-    const usersLimited = ['bluepeak', 'northwind-api', 'tetra-fleet'].includes(d.slug)
+    const usersLimited = ['bluepeak', 'northwind-api', 'tetra-fleet'].includes(d.package.subdomain)
     quotas.push(
       q(
         d.id,
@@ -386,7 +396,7 @@ export function buildFixtures(nowMs: number): Dataset {
   ]
 
   // Registered packages (types) derived from the demo deployments.
-  const packages: RegisteredPackage[] = Array.from(new Set(deployments.map((d) => d.package))).map((name) => ({
+  const packages: RegisteredPackage[] = Array.from(new Set(deployments.map((d) => d.package.name))).map((name) => ({
     name,
     label: name,
     description: null,
@@ -481,8 +491,8 @@ const KESTREL_ENDPOINTS: TopEndpoint[] = [
 ]
 
 export function topEndpointsFor(d: Deployment): TopEndpoint[] {
-  if (d.slug === 'kestrel-track') return KESTREL_ENDPOINTS
-  const noun = d.package.replace(/-api$/, '').replace(/-/g, '/')
+  if (d.package.subdomain === 'kestrel-track') return KESTREL_ENDPOINTS
+  const noun = d.package.name.replace(/-api$/, '').replace(/-/g, '/')
   const base = Math.max(d.requests_24h, 200)
   const specs: Array<[string, TopEndpoint['method'], number, number, number]> = [
     [`/v1/${noun}`, 'GET', 0.42, 0.006, 220],

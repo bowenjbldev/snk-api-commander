@@ -2,7 +2,7 @@ import type {
   ActivityEvent,
   ActivityKind,
   ChangedBy,
-  DeploymentState,
+  DeploymentPackage,
   DeploymentStatus,
   StateReason,
 } from './types'
@@ -21,11 +21,16 @@ export interface StateOpts {
   by?: ChangedBy
 }
 
-// Builds a fresh DeploymentState for a transition, stamping changed_at = now.
-// Valid transitions: active→grace, active→suspended, grace→suspended,
-// grace→active, suspended→active. The caller enforces source validity.
-export function buildState(status: DeploymentStatus, opts: StateOpts = {}): DeploymentState {
+// Aplica una transición de estado sobre la instancia `package` anidada, sellando changed_at = now y
+// conservando la identidad (id/name/subdomain/…). Transiciones válidas: active→grace, active→suspended,
+// grace→suspended, grace→active, suspended→active. El caller valida el origen.
+export function applyPackageState(
+  pkg: DeploymentPackage,
+  status: DeploymentStatus,
+  opts: StateOpts = {},
+): DeploymentPackage {
   return {
+    ...pkg,
     status,
     reason: opts.reason ?? null,
     message: opts.message ?? null,
