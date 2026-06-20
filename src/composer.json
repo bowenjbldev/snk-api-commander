@@ -30,10 +30,16 @@
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/",
             "Packages\\": "packages/",
+            "Packages\\Blog\\": "packages/Blog/app/",
+            "Packages\\Blog\\Database\\Seeders\\": "packages/Blog/database/seeders/",
             "Packages\\Commander\\": "packages/Commander/app/",
             "Packages\\Commander\\Database\\Seeders\\": "packages/Commander/database/seeders/",
             "Packages\\Core\\": "packages/Core/app/",
-            "Packages\\Core\\Database\\Seeders\\": "packages/Core/database/seeders/"
+            "Packages\\Core\\Database\\Seeders\\": "packages/Core/database/seeders/",
+            "Packages\\Crm\\": "packages/Crm/app/",
+            "Packages\\Crm\\Database\\Seeders\\": "packages/Crm/database/seeders/",
+            "Packages\\Shop\\": "packages/Shop/app/",
+            "Packages\\Shop\\Database\\Seeders\\": "packages/Shop/database/seeders/"
         }
     },
     "autoload-dev": {
