@@ -59,7 +59,15 @@ export function RequestLogs() {
     }
   }, [selectedId, tick])
 
-  const items = useMemo(() => [ALL_DEPLOYMENTS, ...deployments.map((d) => d.id)], [deployments])
+  // El backend filtra logs por commander_packages.subdomain (== log.deployment_id), no por el id
+  // numerico. El dropdown muestra el nombre del package y manda el subdominio como valor.
+  const items = useMemo(
+    () => [
+      { id: '', label: ALL_DEPLOYMENTS },
+      ...deployments.map((d) => ({ id: d.package.subdomain, label: d.package.name })),
+    ],
+    [deployments],
+  )
   const logs = state.logs ?? []
 
   const columns: ShellColumn<LogEntry>[] = [
@@ -136,9 +144,10 @@ export function RequestLogs() {
                 hideLabel
                 label="Filter by deployment"
                 items={items}
-                selectedItem={selectedId ?? ALL_DEPLOYMENTS}
+                itemToString={(i) => i?.label ?? ''}
+                selectedItem={items.find((i) => i.id === (selectedId ?? '')) ?? items[0]}
                 onChange={({ selectedItem }) =>
-                  setSelectedId(selectedItem && selectedItem !== ALL_DEPLOYMENTS ? (selectedItem as string) : null)
+                  setSelectedId(selectedItem && selectedItem.id ? selectedItem.id : null)
                 }
                 size="lg"
                 type="inline"

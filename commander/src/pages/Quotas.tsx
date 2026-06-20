@@ -58,6 +58,11 @@ export function Quotas() {
     [deployments],
   )
 
+  const deploymentName = useMemo(() => {
+    const m = new Map(deployments.map((d) => [d.id, d.package.name]))
+    return (id: number) => m.get(id) ?? String(id)
+  }, [deployments])
+
   const filtered = useMemo(
     () =>
       quotas.filter((q) => {
@@ -77,7 +82,7 @@ export function Quotas() {
       key: 'deployment',
       header: 'Deployment',
       sortable: true,
-      sortValue: (q) => q.deployment_id,
+      sortValue: (q) => deploymentName(q.deployment_id),
       width: 180,
       render: (q) => (
         <button
@@ -89,7 +94,7 @@ export function Quotas() {
             navigate(pkg ? `/packages/${pkg}` : '/packages')
           }}
         >
-          {q.deployment_id}
+          {deploymentName(q.deployment_id)}
         </button>
       ),
     },

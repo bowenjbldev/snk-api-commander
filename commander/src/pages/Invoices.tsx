@@ -27,6 +27,7 @@ const DAY = 86_400_000
 export function Invoices() {
   const invoices = useStore((s) => s.invoices)
   const clients = useStore((s) => s.clients)
+  const deployments = useStore((s) => s.deployments)
   const addInvoice = useStore((s) => s.addInvoice)
   const updateInvoice = useStore((s) => s.updateInvoice)
   const deleteInvoice = useStore((s) => s.deleteInvoice)
@@ -45,6 +46,11 @@ export function Invoices() {
     const m = new Map(clients.map((c) => [c.id, c.name]))
     return (id: number) => m.get(id) ?? String(id)
   }, [clients])
+
+  const deploymentName = useMemo(() => {
+    const m = new Map(deployments.map((d) => [d.id, d.package.name]))
+    return (id: number) => m.get(id) ?? String(id)
+  }, [deployments])
 
   const filtered = useMemo(
     () => invoices.filter((i) => statusFilter === 'all' || i.status === statusFilter),
@@ -76,8 +82,8 @@ export function Invoices() {
       key: 'deployment',
       header: 'Deployment',
       sortable: true,
-      sortValue: (i) => i.deployment_id,
-      render: (i) => <span className="scns-mono" style={{ fontSize: 12 }}>{i.deployment_id}</span>,
+      sortValue: (i) => deploymentName(i.deployment_id),
+      render: (i) => <span className="scns-mono" style={{ fontSize: 12 }}>{deploymentName(i.deployment_id)}</span>,
     },
     {
       key: 'amount',

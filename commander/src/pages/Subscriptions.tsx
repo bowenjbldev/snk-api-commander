@@ -31,6 +31,11 @@ export function Subscriptions() {
     return (id: number) => m.get(id) ?? String(id)
   }, [clients])
 
+  const deploymentName = useMemo(() => {
+    const m = new Map(deployments.map((d) => [d.id, d.package.name]))
+    return (id: number) => m.get(id) ?? String(id)
+  }, [deployments])
+
   const filtered = useMemo(
     () => subscriptions.filter((s) => statusFilter === 'all' || s.billing_status === statusFilter),
     [subscriptions, statusFilter],
@@ -42,7 +47,7 @@ export function Subscriptions() {
       key: 'deployment',
       header: 'Deployment',
       sortable: true,
-      sortValue: (s) => s.deployment_id,
+      sortValue: (s) => deploymentName(s.deployment_id),
       render: (s) => (
         <button
           type="button"
@@ -53,7 +58,7 @@ export function Subscriptions() {
             navigate(pkg ? `/packages/${pkg}` : '/packages')
           }}
         >
-          {s.deployment_id}
+          {deploymentName(s.deployment_id)}
         </button>
       ),
     },
@@ -88,7 +93,7 @@ export function Subscriptions() {
         rows={filtered}
         columns={columns}
         getId={(s) => s.id}
-        searchText={(s) => `${s.deployment_id} ${clientName(s.client_id)} ${s.plan}`}
+        searchText={(s) => `${deploymentName(s.deployment_id)} ${clientName(s.client_id)} ${s.plan}`}
         searchPlaceholder="Search subscriptions"
         initialSort={{ key: 'deployment', dir: 'ASC' }}
         itemLabel="subscriptions"
