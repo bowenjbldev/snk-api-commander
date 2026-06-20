@@ -440,3 +440,147 @@ body {
   height: calc(100vh - 48px);
   background: var(--cds-layer);
 }
+
+// ── Auth / Login ─────────────────────────────────────────────────────────────
+.login-page {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: minmax(0, 1fr) minmax(32rem, 1fr);
+  color: var(--cds-text-primary);
+  background: var(--cds-background);
+}
+
+.login-brand {
+  position: relative;
+  display: flex;
+  min-height: 100vh;
+  overflow: hidden;
+  border-right: 1px solid var(--cds-border-subtle);
+  background: var(--cds-layer);
+}
+
+.login-brand__image {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.24)), url('https://lh3.googleusercontent.com/aida-public/AB6AXuDWGxC9NasjWLgq9oPmoaGeIn7a-glqazA3A5vslkrivr3RyRd6hPob1Z6rYteup9H4CiAKwY_m6nJ_zIDVnenOMF1tYutxN48d9V8crRE8IoCcNTlnuVdcpOJBdkIjlDlL-cwK2LsAhe6uMRlB6KKM37WfikH7YXeYcFYl5xWov881_DTbEXKqMxad6Rzqx078GjfPGmLjPlcVFKKK2ECfVYSJ9nV5_x1aR5KzJDLOk_rQJxD-GbJiPy882qCzaQUcIR3wD9sz69k');
+  background-position: center;
+  background-size: cover;
+  filter: grayscale(1);
+  opacity: 0.38;
+}
+
+.login-brand__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 3rem 3.75rem;
+}
+
+.login-brand__mark,
+.login-panel__mobile-brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--cds-text-primary);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.login-brand__mark svg,
+.login-panel__mobile-brand svg {
+  color: var(--cds-interactive);
+}
+
+.login-brand h1 {
+  max-width: 36rem;
+  margin: 4.5rem 0 0;
+  font-size: clamp(2.25rem, 4vw, 3.25rem);
+  font-weight: 300;
+  line-height: 1.2;
+}
+
+.login-brand p {
+  max-width: 34rem;
+  margin: 0;
+  color: var(--cds-text-secondary);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.login-panel {
+  display: flex;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  background: var(--cds-background);
+}
+
+.login-panel__inner {
+  width: min(100%, 35rem);
+}
+
+.login-panel__mobile-brand {
+  display: none;
+  margin-bottom: 3rem;
+}
+
+.login-panel__heading {
+  margin-bottom: 2.5rem;
+}
+
+.login-panel__heading h2 {
+  margin: 0;
+  color: var(--cds-text-primary);
+  font-size: clamp(2.25rem, 4vw, 3.25rem);
+  font-weight: 300;
+  line-height: 1.15;
+}
+
+.login-panel__heading p {
+  margin: 1rem 0 0;
+  color: var(--cds-text-secondary);
+  font-size: 1rem;
+}
+
+.login-form {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.login-form__submit {
+  width: 100%;
+  max-width: none;
+  margin-top: 1.25rem;
+}
+
+.login-footer {
+  display: flex;
+  min-height: 2.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.25rem 1.25rem;
+  border-top: 1px solid var(--cds-border-subtle);
+  color: var(--cds-text-secondary);
+  background: var(--cds-background);
+  font-size: 0.75rem;
+}
+
+@media (max-width: 64rem) {
+  .login-page {
+    grid-template-columns: 1fr;
+  }
+  .login-brand {
+    display: none;
+  }
+  .login-panel {
+    padding: 2rem 1.5rem;
+  }
+  .login-panel__mobile-brand {
+    display: flex;
+  }
+}

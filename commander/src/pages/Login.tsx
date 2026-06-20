@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { Button, Form, InlineNotification, PasswordInput, Stack, TextInput } from '@carbon/react'
+import { Button, Form, InlineNotification, PasswordInput, TextInput } from '@carbon/react'
+import { ArrowRight, Cloud } from '@carbon/icons-react'
 import { useAuth } from '../store/auth'
 
 export function Login() {
@@ -22,23 +23,38 @@ export function Login() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 24,
-      }}
-    >
-      <div style={{ width: '100%', maxWidth: 360 }}>
-        <div style={{ marginBottom: 24, display: 'flex', alignItems: 'baseline', gap: 6 }}>
-          <span style={{ fontSize: 20, fontWeight: 600 }}>SnakeCloud</span>
-          <span style={{ fontSize: 20, fontWeight: 400, color: 'var(--cds-text-secondary)' }}>Commander</span>
+    <div className="login-page">
+      <section className="login-brand" aria-label="Product introduction">
+        <div className="login-brand__image" />
+        <div className="login-brand__content">
+          <div>
+            <div className="login-brand__mark">
+              <Cloud size={24} aria-hidden="true" />
+              <span>SnakeCloud Commander</span>
+            </div>
+            <h1>Enterprise infrastructure, instantiated with precision.</h1>
+          </div>
+          <p>
+            Secure, high-density environments engineered for DevOps and IT
+            administrators. Execute complex infrastructure deployments with
+            unyielding mathematical logic.
+          </p>
         </div>
+      </section>
 
-        <Form onSubmit={onSubmit}>
-          <Stack gap={6}>
+      <section className="login-panel" aria-labelledby="login-title">
+        <div className="login-panel__inner">
+          <div className="login-panel__mobile-brand">
+            <Cloud size={24} aria-hidden="true" />
+            <span>SnakeCloud Commander</span>
+          </div>
+
+          <div className="login-panel__heading">
+            <h2 id="login-title">Log in</h2>
+            <p>Access your provisioning dashboard.</p>
+          </div>
+
+          <Form className="login-form" onSubmit={onSubmit}>
             {error && (
               <InlineNotification
                 kind="error"
@@ -46,34 +62,47 @@ export function Login() {
                 subtitle={error}
                 lowContrast
                 hideCloseButton
+                style={{ marginBottom: '1rem', width: '100%', maxWidth: 'none' }}
               />
             )}
+
             <TextInput
               id="login-email"
               labelText="Email"
               type="email"
+              placeholder="admin@snake.com"
               autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
+
             <PasswordInput
               id="login-password"
               labelText="Password"
+              placeholder="Password"
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
-            <Button type="submit" disabled={submitting} style={{ width: '100%', maxWidth: 'none' }}>
-              {submitting ? 'Signing in…' : 'Sign in'}
+
+            <Button
+              className="login-form__submit"
+              type="submit"
+              size="lg"
+              renderIcon={ArrowRight}
+              disabled={submitting}
+            >
+              {submitting ? 'Signing in...' : 'Log in'}
             </Button>
-            <p style={{ fontSize: 12, color: 'var(--cds-text-secondary)' }}>
-              Demo: <code>admin@snake.com</code> / <code>secret1234</code>
+
+            <p style={{ fontSize: 13, color: 'var(--cds-text-secondary)', marginTop: '1rem' }}>
+              Demo access: <code>admin@snake.com</code> / <code>secret1234</code>
             </p>
-          </Stack>
-        </Form>
-      </div>
+          </Form>
+        </div>
+      </section>
     </div>
   )
 }
