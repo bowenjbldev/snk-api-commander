@@ -9,7 +9,12 @@
       "Bash(grep -n \"cmd_add\\\\|usage\\\\|client\\\\|package\\\\|API_PACKAGE\\\\|positional\\\\|\\\\$1\\\\|\\\\$2\\\\|shift\" /home/snake/DEV/PROJECTS/snake-laravel-api/scripts/subscription.sh)",
       "Bash(docker compose exec -T db mariadb -uroot snake -N -e ' *)",
       "Bash(awk '{ if\\($1!=prev\\){print \"\\\\n=== \"$1\" ===\"; prev=$1} printf \" %-22s %s\\\\n\", $2, \\($3==\"PRI\"?\"\\(PK\\)\":\\($3==\"MUL\"?\"\\(FK/idx\\)\":\\($3==\"UNI\"?\"\\(uniq\\)\":\"\"\\)\\)\\) }')",
-      "Bash(awk '{printf \"  %s.%s -> %s\\\\n\",$1,$2,$3}')"
+      "Bash(awk '{printf \"  %s.%s -> %s\\\\n\",$1,$2,$3}')",
+      "Bash(cd \"\\\\\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\snake\\\\DEV\\\\PROJECTS\\\\snake-laravel-api\")",
+      "Bash(ls -la design/ design/design_handoff_snakecloud_cms/)",
+      "Bash(wc -l design/*.html design/*.js design/design_handoff_snakecloud_cms/*.html)",
+      "Read(///wsl.localhost/Ubuntu/home/snake/DEV/PROJECTS/**)",
+      "Bash(rm -rf design/* design/.thumbnail)"
     ]
   }
 }

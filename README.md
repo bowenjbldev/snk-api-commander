@@ -11,7 +11,7 @@ API modular sobre Laravel 13. **Un solo despliegue (una app) sirve TODOS los paq
 - **Spatie Laravel Permission** — Roles y permisos
 - **Scramble** — Documentacion OpenAPI auto-generada con RapiDoc UI
 - **Docker** — PHP-FPM (Alpine) + Nginx (vhost wildcard) + MariaDB
-- **Commander** — SPA React (Carbon) operador en `commander.<BASE_DOMAIN>`
+- **Commander** — SPA React + IBM Carbon (en `commander/`, fuera de `src/`), panel de operador en `commander.<BASE_DOMAIN>` **conectado a la API real** del paquete `Commander` (Bearer Sanctum). Diseño en [`design/README.md`](design/README.md), app en [`commander/README.md`](commander/README.md).
 
 ## Puesta en marcha desde cero
 
@@ -71,6 +71,15 @@ src/
 ├── routes/web.php
 └── tests/
 ```
+
+Fuera de `src/`, en la raíz del repo:
+
+```
+commander/   # SPA React + Carbon del panel de operador (Vite). Consume la API del paquete Commander.
+design/      # Sistema de diseño del Commander (reglas, páginas, flujos) — un solo README.md.
+```
+
+El backend del Commander es el paquete `src/packages/Commander/` (controllers, rutas, migraciones `commander_*`); el frontend es `commander/`, que llama a esa API.
 
 ## Arquitectura
 
