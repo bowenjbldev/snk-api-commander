@@ -228,7 +228,7 @@ php artisan core:migrate --rollback       # rollback de la commander
 
 ### Control plane (estado, metering, cuotas)
 
-Todo in-process (Commander y deploys viven en la misma app/BD). Detalle en [`docs/CONTROL-PLANE.md`](docs/CONTROL-PLANE.md).
+Todo in-process (Commander y deploys viven en la misma app/BD).
 
 ```bash
 php artisan commander:status                       # estado + cuotas (por paquete activo)
