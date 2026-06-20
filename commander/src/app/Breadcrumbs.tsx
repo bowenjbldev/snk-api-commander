@@ -5,20 +5,20 @@ import { useStore } from '../store/store'
 // Breadcrumbs appear under the header on detail pages only.
 export function Breadcrumbs() {
   const { pathname } = useLocation()
-  const deployments = useStore((s) => s.deployments)
-  const match = pathname.match(/^\/deployments\/([^/]+)/)
+  const packages = useStore((s) => s.packages)
+  const match = pathname.match(/^\/packages\/([^/]+)/)
   if (!match) return null
 
-  const id = decodeURIComponent(match[1])
-  const name = deployments.find((d) => d.id === id)?.name ?? id
+  const name = decodeURIComponent(match[1])
+  const label = packages.find((p) => p.name === name)?.label ?? name
 
   return (
     <Breadcrumb noTrailingSlash style={{ marginBottom: 16 }}>
       <BreadcrumbItem>
-        <Link to="/deployments">Deployments</Link>
+        <Link to="/packages">Packages</Link>
       </BreadcrumbItem>
       <BreadcrumbItem isCurrentPage className="scns-mono">
-        {name}
+        {label}
       </BreadcrumbItem>
     </Breadcrumb>
   )

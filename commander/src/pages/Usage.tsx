@@ -23,6 +23,40 @@ import { stackedBarOptions, areaOptions, legendItems } from '../lib/chartOptions
 import { snapshotsToPlatformSeries, type PlatformSeries } from '../lib/chartData'
 import { platformUsage } from '../lib/api'
 import { formatCompact, formatInt, formatPercent } from '../lib/format'
+import type { UsageSnapshot } from '../store/types'
+
+// Real platform KPIs derived from the usage-snapshot cache: aggregate error rate over the most
+// recent 24h, plus period-over-period deltas vs the prior 24h of the same 48h series. Deltas are
+// null when there's no prior window, so the operator never sees a fabricated trend.
+interface UsageKpis {
+  errorRate: number // 0..1 over the last 24h
+  requestsDelta: number | null // ratio vs prior 24h
+  errorRateDelta: number | null // pp change vs prior 24h
+}
+
+function deriveUsageKpis(snapshots: UsageSnapshot[]): UsageKpis {
+  if (snapshots.length === 0) return { errorRate: 0, requestsDelta: null, errorRateDelta: null }
+  const now = Date.now()
+  const dayMs = 24 * 3_600_000
+  let curReq = 0, curErr = 0, prevReq = 0, prevErr = 0
+  for (const s of snapshots) {
+    const ageMs = now - new Date(s.period_start).getTime()
+    if (ageMs < dayMs) {
+      curReq += s.request_count
+      curErr += s.error_count
+    } else if (ageMs < 2 * dayMs) {
+      prevReq += s.request_count
+      prevErr += s.error_count
+    }
+  }
+  const errorRate = curReq > 0 ? curErr / curReq : 0
+  const hasPrior = prevReq > 0
+  return {
+    errorRate,
+    requestsDelta: hasPrior ? (curReq - prevReq) / prevReq : null,
+    errorRateDelta: hasPrior ? errorRate - prevErr / prevReq : null,
+  }
+}
 
 export function Usage() {
   const { theme } = useAppTheme()
@@ -30,19 +64,26 @@ export function Usage() {
   const deployments = useStore((s) => s.deployments)
   const dash = useStore((s) => s.dashboard)
 
-  const [platform, setPlatform] = useState<{ loading: boolean; series: PlatformSeries | null; error: string | null }>({
+  const [platform, setPlatform] = useState<{
+    loading: boolean
+    series: PlatformSeries | null
+    kpis: UsageKpis
+    error: string | null
+  }>({
     loading: true,
     series: null,
+    kpis: { errorRate: 0, requestsDelta: null, errorRateDelta: null },
     error: null,
   })
   useEffect(() => {
     let cancelled = false
     platformUsage({ period: 'hour', hours: 48 })
       .then((res) => {
-        if (!cancelled) setPlatform({ loading: false, series: snapshotsToPlatformSeries(res.data ?? []), error: null })
+        const snapshots = res.data ?? []
+        if (!cancelled) setPlatform({ loading: false, series: snapshotsToPlatformSeries(snapshots), kpis: deriveUsageKpis(snapshots), error: null })
       })
       .catch((e: unknown) => {
-        if (!cancelled) setPlatform({ loading: false, series: null, error: e instanceof Error ? e.message : 'Failed to load usage' })
+        if (!cancelled) setPlatform({ loading: false, series: null, kpis: { errorRate: 0, requestsDelta: null, errorRateDelta: null }, error: e instanceof Error ? e.message : 'Failed to load usage' })
       })
     return () => {
       cancelled = true
@@ -70,10 +111,18 @@ export function Usage() {
       <PageHeader title="Usage" subtitle="Platform-wide rollups · UTC · last 48h" />
 
       <KpiCluster columns={4}>
-        <KpiTile label="Requests (24h)" value={formatCompact(dash.requests_24h)} helper={<span className="scns-val-green">▲ {formatPercent(dash.requests_delta)}</span>} />
-        <KpiTile label="Error rate (24h)" value={formatPercent(dash.error_rate, 1)} helper={<span className="scns-val-red">▲ {formatPercent(dash.error_rate_delta, 1)}</span>} />
+        <KpiTile
+          label="Requests (24h)"
+          value={formatCompact(dash.requests_24h)}
+          helper={<RatioTrend ratio={platform.kpis.requestsDelta} suffix="vs prior 24h" />}
+        />
+        <KpiTile
+          label="Error rate (24h)"
+          value={formatPercent(platform.kpis.errorRate, 1)}
+          helper={<PointsTrend points={platform.kpis.errorRateDelta} suffix="vs prior 24h" invert />}
+        />
         <KpiTile label="Active deployments" value={deployments.filter((d) => d.state.status === 'active').length} helper={`of ${deployments.length}`} />
-        <KpiTile label="MRR" value={`$${formatInt(dash.mrr)}`} helper={<span className="scns-val-green">▲ ${formatInt(dash.mrr_delta)}</span>} />
+        <KpiTile label="MRR" value={`$${formatInt(dash.mrr)}`} />
       </KpiCluster>
 
       <div className="scns-charts-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, marginTop: 24 }}>
@@ -91,7 +140,7 @@ export function Usage() {
         <ChartCard
           title="Error rate"
           subtitle="%"
-          right={<ChartLegend items={[{ label: '4xx', color: '#d2a106' }, { label: '5xx', color: '#fa4d56' }]} />}
+          right={<ChartLegend items={[{ label: 'error %', color: '#fa4d56' }]} />}
         >
           {hasChart ? (
             <AreaChart data={errData} options={errOpts} />
@@ -123,7 +172,7 @@ export function Usage() {
                 </TableRow>
               ) : (
                 top.map((d) => (
-                  <TableRow key={d.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/deployments/${d.id}`)}>
+                  <TableRow key={d.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/packages/${d.package}`)}>
                     <TableCell className="scns-mono" style={{ color: 'var(--cds-link-primary)' }}>{d.name}</TableCell>
                     <TableCell>{clientName(d.client_id)}</TableCell>
                     <TableCell>
@@ -141,6 +190,30 @@ export function Usage() {
         </TableContainer>
       </div>
     </div>
+  )
+}
+
+// Period-over-period trend (last 24h vs prior 24h). Rendered only when a prior window exists.
+function RatioTrend({ ratio, suffix }: { ratio: number | null; suffix: string }) {
+  if (ratio == null) return null
+  const up = ratio >= 0
+  return (
+    <span className={up ? 'scns-val-green' : 'scns-val-red'}>
+      {up ? '▲' : '▼'} {formatPercent(Math.abs(ratio))} {suffix}
+    </span>
+  )
+}
+
+// Trend in percentage points (for rate-style KPIs). `invert` flips color semantics so a rising
+// error rate reads red.
+function PointsTrend({ points, suffix, invert }: { points: number | null; suffix: string; invert?: boolean }) {
+  if (points == null) return null
+  const up = points >= 0
+  const good = invert ? !up : up
+  return (
+    <span className={good ? 'scns-val-green' : 'scns-val-red'}>
+      {up ? '▲' : '▼'} {formatPercent(Math.abs(points), 1)} {suffix}
+    </span>
   )
 }
 

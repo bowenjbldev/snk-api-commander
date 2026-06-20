@@ -10,9 +10,12 @@ import { DataTableShell, type ShellColumn } from '../components/DataTableShell'
 import { EmptyState } from '../components/EmptyState'
 import { MethodTag } from '../components/tags/MethodTag'
 import { useFirstLoad } from '../hooks/useFirstLoad'
-import { deploymentLogs } from '../lib/api'
+import { platformLogs } from '../lib/api'
 import { formatInt } from '../lib/format'
 import type { LogEntry } from '../store/types'
+
+// Sentinel for the "no deployment filter" Dropdown option (cross-fleet view).
+const ALL_DEPLOYMENTS = 'All deployments'
 
 function logTime(iso: string): string {
   return `${new Date(iso).toISOString().slice(11, 23)} UTC`
@@ -30,25 +33,20 @@ interface LogsLoad {
   error: string | null
 }
 
-// Real request logs: pick a deployment, fetch its recent core_request_logs (proxied via signed
-// /control/logs). No cross-fleet synthetic tail — raw logs are per-deploy and high-volume.
+// Platform-wide request log: read commander_request_logs in-process (no /control, no proxy). By
+// default we tail every package; the deployment Dropdown is an optional filter (deployment_id).
 export function RequestLogs() {
   const deployments = useStore((s) => s.deployments)
+  // null == "All deployments" (cross-fleet). A non-null id filters to one package.
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [tick, setTick] = useState(0)
   const [state, setState] = useState<LogsLoad>({ loading: false, logs: null, error: null })
   const firstLoad = useFirstLoad()
 
-  // Default to the first deployment once the registry loads.
   useEffect(() => {
-    if (selectedId == null && deployments.length > 0) setSelectedId(deployments[0].id)
-  }, [deployments, selectedId])
-
-  useEffect(() => {
-    if (!selectedId) return
     let cancelled = false
     setState({ loading: true, logs: null, error: null })
-    deploymentLogs(selectedId, { limit: 100 })
+    platformLogs({ limit: 100, ...(selectedId ? { deployment_id: selectedId } : {}) })
       .then((res) => {
         if (!cancelled) setState({ loading: false, logs: res.data ?? [], error: null })
       })
@@ -61,7 +59,7 @@ export function RequestLogs() {
     }
   }, [selectedId, tick])
 
-  const items = useMemo(() => deployments.map((d) => d.id), [deployments])
+  const items = useMemo(() => [ALL_DEPLOYMENTS, ...deployments.map((d) => d.id)], [deployments])
   const logs = state.logs ?? []
 
   const columns: ShellColumn<LogEntry>[] = [
@@ -71,6 +69,17 @@ export function RequestLogs() {
       width: 140,
       render: (l) => <span className="scns-mono" style={{ color: 'var(--cds-text-helper)', fontSize: 12 }}>{logTime(l.occurred_at)}</span>,
     },
+    // The origin column only earns its width in the cross-fleet view; hide it when filtered.
+    ...(selectedId
+      ? []
+      : [
+          {
+            key: 'deployment',
+            header: 'Deployment',
+            width: 180,
+            render: (l: LogEntry) => <span className="scns-mono" style={{ fontSize: 12 }}>{l.deployment_id}</span>,
+          } satisfies ShellColumn<LogEntry>,
+        ]),
     {
       key: 'method',
       header: 'Method',
@@ -107,7 +116,7 @@ export function RequestLogs() {
     <div className="scns-page">
       <PageHeader
         title="Request Logs"
-        subtitle="Real request log per deployment · read-only"
+        subtitle="Platform-wide request log · read-only"
       />
 
       <div className="scns-card">
@@ -115,7 +124,7 @@ export function RequestLogs() {
           rows={logs}
           columns={columns}
           getId={(l) => l.id}
-          searchText={(l) => `${l.method} ${l.route} ${l.status} ${l.ip}`}
+          searchText={(l) => `${l.deployment_id} ${l.method} ${l.route} ${l.status} ${l.ip}`}
           searchPlaceholder="Search logs"
           itemLabel="logs"
           loading={state.loading || firstLoad}
@@ -125,10 +134,12 @@ export function RequestLogs() {
                 id="logs-deploy"
                 titleText="Deployment"
                 hideLabel
-                label="Select a deployment"
+                label="Filter by deployment"
                 items={items}
-                selectedItem={selectedId}
-                onChange={({ selectedItem }) => setSelectedId((selectedItem as string | null) ?? null)}
+                selectedItem={selectedId ?? ALL_DEPLOYMENTS}
+                onChange={({ selectedItem }) =>
+                  setSelectedId(selectedItem && selectedItem !== ALL_DEPLOYMENTS ? (selectedItem as string) : null)
+                }
                 size="lg"
                 type="inline"
                 style={{ width: 280 }}
@@ -138,19 +149,17 @@ export function RequestLogs() {
                 size="md"
                 renderIcon={Renew}
                 onClick={() => setTick((t) => t + 1)}
-                disabled={state.loading || !selectedId}
+                disabled={state.loading}
               >
                 Refresh
               </Button>
             </>
           }
           empty={
-            deployments.length === 0 ? (
-              <EmptyState title="No deployments yet" />
-            ) : state.error ? (
+            state.error ? (
               <EmptyState
                 title="Logs unavailable"
-                description={`Could not reach the deploy's control plane: ${state.error}`}
+                description={`Could not load request logs: ${state.error}`}
               />
             ) : (
               <EmptyState title="No recent requests" />

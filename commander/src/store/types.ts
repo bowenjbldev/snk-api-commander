@@ -1,5 +1,5 @@
-// Domain model. Mirrors the shared core_* tables (core_packages, core_quota_metrics,
-// core_usage_rollups, core_request_logs) of the centralized deploy. The Commander reads
+// Domain model. Mirrors the commander_* tables (commander_packages, commander_quota_metrics,
+// commander_usage_rollups, commander_request_logs) of the centralized deploy. The Commander reads
 // them in-process (same app + DB), so this is the live shape, not a mirror.
 
 export type DeploymentStatus = 'active' | 'grace' | 'suspended'
@@ -24,7 +24,7 @@ export type ClientStatus = 'active' | 'inactive'
 export interface Client {
   id: string
   name: string
-  company: string
+  company?: string // nullable en backend (commander_clients.company)
   email: string
   phone?: string
   notes?: string
@@ -114,12 +114,15 @@ export interface Subscription {
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
+// One row of commander_request_logs (written by CoreMeteringMiddleware), tagged with deployment_id
+// by the API (joined via package_id). Shape matches the real table columns.
 export interface LogEntry {
   id: string
-  occurred_at: string // ISO with ms
+  occurred_at: string // ISO
   deployment_id: string
   method: HttpMethod
   route: string
+  path?: string
   status: number
   duration_ms: number
   user_id: string | null
@@ -127,8 +130,7 @@ export interface LogEntry {
   ip: string
   request_bytes: number
   response_bytes: number
-  response_body?: unknown
-  context?: string // e.g. "Rejected by quota requests_day (policy: warn)"
+  memory_kb?: number
 }
 
 export type ActivityKind = 'suspend' | 'grace' | 'resume' | 'paid' | 'quota'
@@ -183,4 +185,24 @@ export interface OperatorSettings {
   operator_email: string
   notify_on_suspend: boolean
   notify_on_overdue: boolean
+}
+
+// Registered business package (type) — la entidad central del panel package-céntrico. Se sincroniza
+// desde disco (packages/*) y guarda metadatos editables del operador; la API la enriquece con conteos.
+export interface RegisteredPackage {
+  name: string
+  label: string | null
+  description: string | null
+  status: 'active' | 'inactive'
+  on_disk?: boolean
+  deployment_count?: number
+  has_deployment?: boolean
+  plan_count?: number
+}
+
+// Contexto que PackageDetail pasa a sus tabs vía <Outlet context>.
+export interface PackageContext {
+  pkg: RegisteredPackage
+  deployment: Deployment | undefined
+  plans: Plan[]
 }

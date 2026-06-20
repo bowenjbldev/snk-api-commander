@@ -15,7 +15,7 @@ import {
 } from '@carbon/react'
 import { AreaChart, LineChart } from '@carbon/charts-react'
 import { Calendar, Download } from '@carbon/icons-react'
-import type { Deployment } from '../../store/types'
+import type { Deployment, PackageContext } from '../../store/types'
 import { useAppTheme } from '../../providers/ThemeProvider'
 import { useToast } from '../../providers/ToastProvider'
 import { ChartCard, ChartLegend } from '../../components/ChartCard'
@@ -45,7 +45,23 @@ interface UsageLoad {
 }
 
 export function UsageTab() {
-  const dep = useOutletContext<Deployment>()
+  const { deployment } = useOutletContext<PackageContext>()
+
+  if (!deployment) {
+    return (
+      <div className="scns-card">
+        <EmptyState
+          title="No deployment yet — provision one to see usage"
+          description="Once this package is deployed, in-process metering rolls up its traffic here."
+        />
+      </div>
+    )
+  }
+
+  return <UsageView dep={deployment} />
+}
+
+function UsageView({ dep }: { dep: Deployment }) {
   const { theme } = useAppTheme()
   const toast = useToast()
   const [granularity, setGranularity] = useState(0) // 0 = hour, 1 = day
@@ -53,7 +69,7 @@ export function UsageTab() {
 
   const period = granularity === 0 ? 'hour' : 'day'
 
-  // Pull the deploy's real rollups (proxied from its signed /control/usage) on mount + on toggle.
+  // Pull the deploy's real rollups (read in-process from commander_usage_rollups) on mount + on toggle.
   useEffect(() => {
     let cancelled = false
     setUsage({ loading: true, series: null, error: null })
@@ -115,7 +131,7 @@ export function UsageTab() {
           {granularity === 0 ? 'last 48h' : 'last 30d'}
         </div>
         <span className="scns-helper" style={{ fontSize: 12 }}>
-          UTC · rollup per {period} · live from /control/usage
+          UTC · rollup per {period} · in-process metering
         </span>
         <div style={{ flex: 1 }} />
         <Button kind="tertiary" size="md" renderIcon={Download} onClick={exportEndpoints} disabled={!hasData}>
@@ -141,7 +157,7 @@ export function UsageTab() {
         <div className="scns-card">
           <EmptyState
             title="Usage unavailable"
-            description={`Could not reach the deploy's control plane: ${usage.error}`}
+            description={`Could not load usage: ${usage.error}`}
           />
         </div>
       ) : !hasData ? (

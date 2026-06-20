@@ -12,7 +12,7 @@ import {
   TableRow,
 } from '@carbon/react'
 import { Renew } from '@carbon/icons-react'
-import type { Deployment, LogEntry } from '../../store/types'
+import type { Deployment, LogEntry, PackageContext } from '../../store/types'
 import { EmptyState } from '../../components/EmptyState'
 import { MethodTag } from '../../components/tags/MethodTag'
 import { deploymentLogs } from '../../lib/api'
@@ -34,9 +34,23 @@ interface LogsLoad {
   error: string | null
 }
 
-// Real recent requests for this deployment — proxied from its signed /control/logs (core_request_logs).
 export function LogsTab() {
-  const dep = useOutletContext<Deployment>()
+  const { deployment } = useOutletContext<PackageContext>()
+
+  if (!deployment) {
+    return (
+      <EmptyState
+        title="No deployment yet — provision one to see logs"
+        description="Recent request logs appear here once this package is deployed and serving traffic."
+      />
+    )
+  }
+
+  return <LogsView dep={deployment} />
+}
+
+// Real recent requests for this deployment — read in-process from commander_request_logs.
+function LogsView({ dep }: { dep: Deployment }) {
   const [tick, setTick] = useState(0)
   const [state, setState] = useState<LogsLoad>({ loading: true, logs: null, error: null })
 
@@ -77,7 +91,7 @@ export function LogsTab() {
       ) : state.error ? (
         <EmptyState
           title="Logs unavailable"
-          description={`Could not reach the deploy's control plane: ${state.error}`}
+          description={`Could not load logs: ${state.error}`}
         />
       ) : logs.length === 0 ? (
         <EmptyState

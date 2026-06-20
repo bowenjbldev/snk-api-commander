@@ -3,6 +3,10 @@
 namespace Packages\Commander\Http\Controllers;
 
 use Dedoc\Scramble\Attributes\Group;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Packages\Commander\Models\CommanderPlanModel;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 
@@ -29,6 +33,54 @@ class CommanderPlansController extends CoreBaseApiController
         'q_users_total' => 'nullable|integer|min:0',
         'status' => 'nullable|in:active,inactive',
     ];
+
+    public function store(Request $request): JsonResponse
+    {
+        if ($response = $this->requirePermission($this->storePermission)) {
+            return $response;
+        }
+
+        $this->guardPackageDeployed($request);
+
+        return parent::store($request);
+    }
+
+    public function update(Request $request, $id = null): JsonResponse
+    {
+        if ($response = $this->requirePermission($this->updatePermission)) {
+            return $response;
+        }
+
+        if ($request->filled('package')) {
+            $this->guardPackageDeployed($request);
+        }
+
+        return parent::update($request, $id);
+    }
+
+    /**
+     * Un plan solo es provisionable si su package existe en disco. Validar aqui evita crear
+     * ofertas en el catalogo que luego revientan con 422 al pulsar Provision (mismo criterio
+     * is_dir que CommanderProvisioningController::store).
+     *
+     * @throws ValidationException si el package no esta desplegado.
+     */
+    private function guardPackageDeployed(Request $request): void
+    {
+        $package = $request->input('package');
+
+        if (! is_string($package) || $package === '') {
+            return; // las reglas base (required) gestionan el caso vacio
+        }
+
+        $studly = Str::studly($package);
+
+        if (! is_dir(base_path("packages/{$studly}"))) {
+            throw ValidationException::withMessages([
+                'package' => ["Package code '{$studly}' is not deployed."],
+            ]);
+        }
+    }
 
     protected array $validationRulesUpdate = [
         'package' => 'nullable|string|max:255',

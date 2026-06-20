@@ -13,8 +13,20 @@ import type { Plan } from '../../store/types'
 
 interface Props {
   open: boolean
-  planId?: string // pre-select a plan (from the Catalog row action)
+  /**
+   * Business package this provisioning is scoped to. When set, only this package's plans are
+   * offered and the backend derives the package from the chosen plan. Omit for the global flow.
+   */
+  packageName?: string
+  /**
+   * Plans to offer (already package-scoped by the caller). Falls back to the full store catalog
+   * when omitted (global Catalog/Subscriptions flow).
+   */
+  plans?: Plan[]
+  planId?: string // pre-select a plan (from a row action)
   onClose: () => void
+  /** Fired after a successful provision (e.g. to refresh / close the empty-state). */
+  onProvisioned?: () => void
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -23,13 +35,18 @@ function slug(s: string): string {
   return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 }
 
-export function ProvisionModal({ open, planId, onClose }: Props) {
-  const plans = useStore((s) => s.plans)
+export function ProvisionModal({ open, packageName, plans, planId, onClose, onProvisioned }: Props) {
+  const storePlans = useStore((s) => s.plans)
   const clients = useStore((s) => s.clients)
   const provision = useStore((s) => s.provision)
   const toast = useToast()
 
-  const activePlans = useMemo(() => plans.filter((p) => p.status === 'active'), [plans])
+  // Package-scoped when a list is supplied, else the whole catalog. Always re-filter by packageName
+  // (when given) so a caller passing mixed plans can't leak another package's offerings.
+  const activePlans = useMemo(() => {
+    const source = plans ?? storePlans
+    return source.filter((p) => p.status === 'active' && (!packageName || p.package === packageName))
+  }, [plans, storePlans, packageName])
 
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   const [clientMode, setClientMode] = useState<'existing' | 'new'>('existing')
@@ -37,6 +54,7 @@ export function ProvisionModal({ open, planId, onClose }: Props) {
   const [newName, setNewName] = useState('')
   const [newEmail, setNewEmail] = useState('')
   const [newBillingEmail, setNewBillingEmail] = useState('')
+  const [subdomain, setSubdomain] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [busy, setBusy] = useState(false)
 
@@ -48,6 +66,7 @@ export function ProvisionModal({ open, planId, onClose }: Props) {
       setNewName('')
       setNewEmail('')
       setNewBillingEmail('')
+      setSubdomain('')
       setSubmitted(false)
       setBusy(false)
     }
@@ -68,11 +87,13 @@ export function ProvisionModal({ open, planId, onClose }: Props) {
     if (!valid || !selectedPlan) return
     setBusy(true)
     try {
+      const sub = slug(subdomain) || undefined
       const input =
         clientMode === 'existing'
-          ? { plan_id: selectedPlan.id, client_id: clientId }
+          ? { plan_id: selectedPlan.id, client_id: clientId, subdomain: sub }
           : {
               plan_id: selectedPlan.id,
+              subdomain: sub,
               client: {
                 id: slug(newName),
                 name: newName.trim(),
@@ -82,6 +103,7 @@ export function ProvisionModal({ open, planId, onClose }: Props) {
             }
       await provision(input)
       toast.success('Instance provisioned', `${selectedPlan.package} · ${selectedPlan.name} is live`)
+      onProvisioned?.()
       onClose()
     } catch (e) {
       toast.error('Provisioning failed', e instanceof Error ? e.message : 'Request failed')
@@ -94,7 +116,7 @@ export function ProvisionModal({ open, planId, onClose }: Props) {
     <Modal
       open
       modalHeading="New subscription"
-      modalLabel="Provisioning"
+      modalLabel={packageName ? `Provisioning · ${packageName}` : 'Provisioning'}
       primaryButtonText={busy ? 'Provisioning…' : 'Create & provision'}
       primaryButtonDisabled={busy}
       secondaryButtonText="Cancel"
@@ -108,7 +130,11 @@ export function ProvisionModal({ open, planId, onClose }: Props) {
               lowContrast
               hideCloseButton
               title="No active plans"
-              subtitle="Create a plan in the Catalog first."
+              subtitle={
+                packageName
+                  ? 'Create an active plan for this package first (Plans tab).'
+                  : 'Create a plan in the Catalog first.'
+              }
               style={{ maxWidth: '100%' }}
             />
           ) : (
@@ -118,7 +144,9 @@ export function ProvisionModal({ open, planId, onClose }: Props) {
               label="Select a plan"
               items={activePlans}
               selectedItem={selectedPlan}
-              itemToString={(p) => (p ? `${p.package} · ${p.name} — $${p.price_monthly}/mo` : '')}
+              itemToString={(p) =>
+                p ? `${packageName ? '' : `${p.package} · `}${p.name} — $${p.price_monthly}/mo` : ''
+              }
               onChange={({ selectedItem }) => setSelectedPlan(selectedItem ?? null)}
               invalid={submitted && !!planError}
               invalidText={planError}
@@ -157,6 +185,15 @@ export function ProvisionModal({ open, planId, onClose }: Props) {
               </p>
             </div>
           )}
+
+          <TextInput
+            id="prov-subdomain"
+            labelText="Subdomain (optional)"
+            placeholder="auto from client"
+            value={subdomain}
+            onChange={(e) => setSubdomain(e.target.value)}
+            helperText="Leave blank to let the backend derive it from the client."
+          />
         </div>
     </Modal>
   )

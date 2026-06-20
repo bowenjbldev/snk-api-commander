@@ -7,8 +7,11 @@ use Packages\Commander\Http\Controllers\CommanderClientsController;
 use Packages\Commander\Http\Controllers\CommanderDeploymentsController;
 use Packages\Commander\Http\Controllers\CommanderInvoicesController;
 use Packages\Commander\Http\Controllers\CommanderPlansController;
+use Packages\Commander\Http\Controllers\CommanderPackagesController;
 use Packages\Commander\Http\Controllers\CommanderProvisioningController;
 use Packages\Commander\Http\Controllers\CommanderQuotasController;
+use Packages\Commander\Http\Controllers\CommanderRequestLogsController;
+use Packages\Commander\Http\Controllers\CommanderSettingsController;
 use Packages\Commander\Http\Controllers\CommanderSubscriptionsController;
 use Packages\Commander\Http\Controllers\CommanderUsageController;
 use Packages\Commander\Http\Controllers\CommanderUsersController;
@@ -45,5 +48,18 @@ Route::middleware(['api'])->group(function () {
 
         // Platform usage (aggregate of the local snapshot cache) for the Dashboard/Usage charts
         Route::get('usage/platform', [CommanderUsageController::class, 'platform']);
+
+        // Platform-wide request logs (all packages), with optional deployment/method/status filters.
+        Route::get('logs', [CommanderRequestLogsController::class, 'index']);
+
+        // Package registry (tipos): hub package-centrico. index sincroniza desde disco + enriquece
+        // con on_disk / conteo de deployments y planes. Metadatos editables (label/description/status).
+        Route::get('packages', [CommanderPackagesController::class, 'index']);
+        Route::get('packages/{package}', [CommanderPackagesController::class, 'show']);
+        Route::patch('packages/{package}', [CommanderPackagesController::class, 'update']);
+
+        // Operator profile + platform preferences (singleton). default_grace_hours feeds the real grace.
+        Route::get('settings', [CommanderSettingsController::class, 'show']);
+        Route::put('settings', [CommanderSettingsController::class, 'update']);
     });
 });

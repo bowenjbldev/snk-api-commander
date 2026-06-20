@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router'
 import { Dropdown, Button, InlineNotification } from '@carbon/react'
 import { Add } from '@carbon/icons-react'
 import { useStore } from '../store/store'
+import { useCan } from '../store/auth'
 import { useToast } from '../providers/ToastProvider'
 import { PageHeader } from '../components/PageHeader'
 import { DataTableShell, type ShellColumn } from '../components/DataTableShell'
@@ -24,6 +25,7 @@ export function Clients() {
   const clients = useStore((s) => s.clients)
   const deployments = useStore((s) => s.deployments)
   const invoices = useStore((s) => s.invoices)
+  const can = useCan()
   const toast = useToast()
   const navigate = useNavigate()
 
@@ -93,7 +95,11 @@ export function Clients() {
       <PageHeader
         title="Clients"
         subtitle={`${clients.length} clients · ${active} active`}
-        primaryAction={{ label: 'Create client', icon: Add, onClick: () => setForm({ mode: 'create' }) }}
+        primaryAction={
+          can('create clients')
+            ? { label: 'Create client', icon: Add, onClick: () => setForm({ mode: 'create' }) }
+            : undefined
+        }
       />
       <DataTableShell
         rows={filtered}
@@ -126,10 +132,12 @@ export function Clients() {
           client={open}
           deployments={deployments.filter((d) => d.client_id === open.id)}
           overdue={invoices.find((i) => i.client_id === open.id && i.status === 'overdue')}
+          canEdit={can('update clients')}
           onClose={() => setOpenId(null)}
           onOpenDeployment={(id) => {
             setOpenId(null)
-            navigate(`/deployments/${id}`)
+            const pkg = deployments.find((d) => d.id === id)?.package
+            navigate(pkg ? `/packages/${pkg}` : '/packages')
           }}
           onEdit={(c) => setForm({ mode: 'edit', client: c })}
           onPlaceholder={(what) => toast.info(what, 'Coming online.')}
@@ -147,6 +155,7 @@ function ClientDrawer({
   client,
   deployments,
   overdue,
+  canEdit,
   onClose,
   onOpenDeployment,
   onEdit,
@@ -155,6 +164,7 @@ function ClientDrawer({
   client: Client
   deployments: Deployment[]
   overdue: Invoice | undefined
+  canEdit: boolean
   onClose: () => void
   onOpenDeployment: (id: string) => void
   onEdit: (c: Client) => void
@@ -178,9 +188,11 @@ function ClientDrawer({
       }
       footer={
         <>
-          <Button kind="secondary" style={{ flex: 1, maxWidth: 'none' }} onClick={() => onEdit(client)}>
-            Edit client
-          </Button>
+          {canEdit && (
+            <Button kind="secondary" style={{ flex: 1, maxWidth: 'none' }} onClick={() => onEdit(client)}>
+              Edit client
+            </Button>
+          )}
           <Button kind="primary" style={{ flex: 1, maxWidth: 'none' }} onClick={() => onPlaceholder('Open full record')}>
             Open full record
           </Button>
@@ -238,7 +250,7 @@ function ClientDrawer({
                     {d.name}
                   </div>
                   <div className="scns-mono scns-helper" style={{ fontSize: 11 }}>
-                    {d.package} {d.version}
+                    {d.package}
                   </div>
                 </div>
                 <DeploymentStatusTag state={d.state} />

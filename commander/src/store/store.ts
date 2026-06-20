@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { create } from 'zustand'
 import type { Dataset } from './fixtures'
 import { activity, buildState, nextId, type StateOpts } from './transitions'
-import { api } from '../lib/api'
+import { api, packagesApi, settingsApi } from '../lib/api'
 import type {
   ActivityEvent,
   Client,
@@ -12,6 +12,7 @@ import type {
   OperatorSettings,
   Plan,
   QuotaMetric,
+  RegisteredPackage,
   Subscription,
 } from './types'
 
@@ -21,6 +22,16 @@ export interface ProvisionInput {
   client_id?: string
   client?: Partial<Client> & { id: string; name: string; email: string }
   subdomain?: string
+}
+
+/** Payload for creating an invoice from the panel (POST /invoices). */
+export interface InvoiceInput {
+  client_id: string
+  deployment_id: string
+  amount: number
+  issued_at: string
+  due_at: string
+  status?: Invoice['status']
 }
 
 export interface SuspendInput {
@@ -41,7 +52,7 @@ interface StoreActions {
   actionError: { message: string; at: number } | null
   loadData: () => Promise<void>
 
-  // ── deployment state machine (in-process: writes the package's core_packages row) ──
+  // ── deployment state machine (in-process: writes the package's commander_packages row) ──
   suspend: (id: string, input: SuspendInput) => void
   grace: (id: string, input: GraceInput) => void
   resume: (id: string, by?: StateOpts['by']) => void
@@ -54,6 +65,9 @@ interface StoreActions {
   markInvoicePaid: (invoiceId: string) => { resumableDeploymentId?: string }
   markInvoiceOverdue: (invoiceId: string) => void
   setInvoiceEnforcement: (invoiceId: string, enforcement: Invoice['enforcement']) => void
+  addInvoice: (input: InvoiceInput) => string
+  updateInvoice: (id: string, patch: Partial<Pick<Invoice, 'amount' | 'issued_at' | 'due_at' | 'status'>>) => void
+  deleteInvoice: (id: string) => void
 
   // ── CRUD ──
   addClient: (client: Omit<Client, 'id' | 'created_at'>) => string
@@ -65,6 +79,9 @@ interface StoreActions {
   addPlan: (plan: Plan) => void
   updatePlan: (id: string, patch: Partial<Plan>) => void
   deletePlan: (id: string) => void
+
+  // ── packages (registry metadata) ──
+  updatePackage: (name: string, patch: Partial<Pick<RegisteredPackage, 'label' | 'description' | 'status'>>) => void
 
   // ── client-first provisioning (one-step, in-process) ──
   // Creates client (new/existing) + subscription + live instance (migrates + seeds + activates),
@@ -84,6 +101,7 @@ const initial: Dataset = {
   invoices: [],
   quotas: [],
   plans: [],
+  packages: [],
   logs: [],
   activity: [],
   settings: {
@@ -109,6 +127,18 @@ function slug(name: string): string {
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '')
+}
+
+// Next sequential invoice id (INV-YYYY-NNNN). The backend requires a unique id on POST /invoices,
+// so the panel assigns it from the running max of the loaded invoices.
+function nextInvoiceId(invoices: Invoice[]): string {
+  const year = new Date().getFullYear()
+  const nums = invoices
+    .map((i) => /^INV-\d{4}-(\d+)$/.exec(i.id)?.[1])
+    .filter((x): x is string => x != null)
+    .map(Number)
+  const next = (nums.length ? Math.max(...nums) : 0) + 1
+  return `INV-${year}-${String(next).padStart(4, '0')}`
 }
 
 export const useStore = create<StoreState>((set, get) => {
@@ -158,14 +188,16 @@ export const useStore = create<StoreState>((set, get) => {
 
     loadData: async () => {
       try {
-        const [clients, deployments, subscriptions, invoices, quotas, plans, activityFeed] = await Promise.all([
+        const [clients, deployments, subscriptions, invoices, quotas, plans, packages, activityFeed, settingsRow] = await Promise.all([
           api<Client[]>('/clients'),
           api<Deployment[]>('/deployments'),
           api<Subscription[]>('/subscriptions'),
           api<Invoice[]>('/invoices'),
           api<QuotaMetric[]>('/quotas'),
           api<Plan[]>('/plans'),
+          packagesApi.list(),
           api<ActivityEvent[]>('/activity'),
+          settingsApi.get(),
         ])
         set((s) => ({
           clients,
@@ -174,7 +206,16 @@ export const useStore = create<StoreState>((set, get) => {
           invoices,
           quotas,
           plans,
+          packages,
           activity: activityFeed,
+          // Operator profile + preferences are now server-persisted (commander_settings singleton).
+          settings: {
+            default_grace_hours: Number(settingsRow.default_grace_hours) || s.settings.default_grace_hours,
+            operator_name: settingsRow.operator_name ?? '',
+            operator_email: settingsRow.operator_email ?? '',
+            notify_on_suspend: settingsRow.notify_on_suspend ?? true,
+            notify_on_overdue: settingsRow.notify_on_overdue ?? true,
+          },
           // Charts/deltas/error-rate stay synthetic; recompute the two real KPIs from live data.
           dashboard: {
             ...s.dashboard,
@@ -381,7 +422,37 @@ export const useStore = create<StoreState>((set, get) => {
       persist(api(`/deployments/${id}`, { method: 'DELETE' }))
     },
 
-    updateSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
+    updateSettings: (patch) => {
+      set((s) => ({ settings: { ...s.settings, ...patch } }))
+      persist(settingsApi.update(patch))
+    },
+
+    addInvoice: (input) => {
+      const id = nextInvoiceId(get().invoices)
+      const invoice: Invoice = {
+        id,
+        client_id: input.client_id,
+        deployment_id: input.deployment_id,
+        amount: input.amount,
+        issued_at: input.issued_at,
+        due_at: input.due_at,
+        status: input.status ?? 'pending',
+        enforcement: null,
+      }
+      set((s) => ({ invoices: [invoice, ...s.invoices] }))
+      persist(api<Invoice>('/invoices', { method: 'POST', body: invoice }), replaceInvoice)
+      return id
+    },
+
+    updateInvoice: (id, patch) => {
+      set((s) => ({ invoices: s.invoices.map((i) => (i.id === id ? { ...i, ...patch } : i)) }))
+      persist(api<Invoice>(`/invoices/${id}`, { method: 'PATCH', body: patch }), replaceInvoice)
+    },
+
+    deleteInvoice: (id) => {
+      set((s) => ({ invoices: s.invoices.filter((i) => i.id !== id) }))
+      persist(api(`/invoices/${id}`, { method: 'DELETE' }))
+    },
 
     addPlan: (plan) => {
       set((s) => ({ plans: [...s.plans, plan] }))
@@ -398,6 +469,11 @@ export const useStore = create<StoreState>((set, get) => {
       persist(api(`/plans/${id}`, { method: 'DELETE' }))
     },
 
+    updatePackage: (name, patch) => {
+      set((s) => ({ packages: s.packages.map((p) => (p.name === name ? { ...p, ...patch } : p)) }))
+      persist(packagesApi.update(name, patch))
+    },
+
     provision: async (input) => {
       // One-step, in-process: the server creates the client + subscription + live instance
       // (migrates + seeds + activates the package) atomically. Refresh the registry on success.
@@ -410,6 +486,9 @@ export const useStore = create<StoreState>((set, get) => {
 // ── Convenience selectors ──────────────────────────────────────────────────────
 export const useDeployment = (id: string | undefined): Deployment | undefined =>
   useStore((s) => (id ? s.deployments.find((d) => d.id === id) : undefined))
+
+export const usePackage = (name: string | undefined): RegisteredPackage | undefined =>
+  useStore((s) => (name ? s.packages.find((p) => p.name === name) : undefined))
 
 export const useClient = (id: string | undefined): Client | undefined =>
   useStore((s) => (id ? s.clients.find((c) => c.id === id) : undefined))

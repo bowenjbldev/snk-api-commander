@@ -9,12 +9,13 @@ interface Cmd {
   id: string
   label: string
   sublabel: string
-  kind: 'Deployment' | 'Client' | 'Invoice'
+  kind: 'Package' | 'Deployment' | 'Client' | 'Invoice'
   to: string
 }
 
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate()
+  const packages = useStore((s) => s.packages)
   const deployments = useStore((s) => s.deployments)
   const clients = useStore((s) => s.clients)
   const invoices = useStore((s) => s.invoices)
@@ -26,11 +27,12 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   const all = useMemo<Cmd[]>(
     () => [
-      ...deployments.map((d) => ({ id: d.id, label: d.name, sublabel: d.subdomain, kind: 'Deployment' as const, to: `/deployments/${d.id}` })),
+      ...packages.map((p) => ({ id: p.name, label: p.label ?? p.name, sublabel: p.name, kind: 'Package' as const, to: `/packages/${p.name}` })),
+      ...deployments.map((d) => ({ id: d.id, label: d.name, sublabel: d.subdomain, kind: 'Deployment' as const, to: `/packages/${d.package}` })),
       ...clients.map((c) => ({ id: c.id, label: c.name, sublabel: c.company, kind: 'Client' as const, to: '/clients' })),
       ...invoices.map((i) => ({ id: i.id, label: i.id, sublabel: i.deployment_id, kind: 'Invoice' as const, to: '/invoices' })),
     ],
-    [deployments, clients, invoices],
+    [packages, deployments, clients, invoices],
   )
 
   const results = useMemo(() => {

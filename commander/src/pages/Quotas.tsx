@@ -84,7 +84,10 @@ export function Quotas() {
           type="button"
           className="scns-mono"
           style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--cds-link-primary)' }}
-          onClick={() => navigate(`/deployments/${q.deployment_id}`)}
+          onClick={() => {
+            const pkg = deployments.find((d) => d.id === q.deployment_id)?.package
+            navigate(pkg ? `/packages/${pkg}` : '/packages')
+          }}
         >
           {q.deployment_id}
         </button>

@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { create } from 'zustand'
 import { authApi, getToken, setToken, setUnauthorizedHandler, type User } from '../lib/api'
 
@@ -60,3 +61,15 @@ setUnauthorizedHandler(() => {
   setToken(null)
   useAuth.setState({ status: 'anon', user: null })
 })
+
+// UI permission gating. The backend is authoritative (every controller calls requirePermission and
+// returns 403), but the panel hides/disables actions the operator can't perform so the control center
+// only surfaces what will actually succeed. Permission names match CommanderDatabaseSeeder exactly
+// (e.g. 'control deployments', 'provision deployments', 'create clients').
+export function useCan(): (permission: string) => boolean {
+  const permissions = useAuth((s) => s.user?.all_permissions)
+  return useMemo(() => {
+    const set = new Set(permissions ?? [])
+    return (permission: string) => set.has(permission)
+  }, [permissions])
+}

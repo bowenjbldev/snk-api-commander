@@ -14,7 +14,38 @@ import { stackedBarOptions, areaOptions, legendItems } from '../lib/chartOptions
 import { snapshotsToPlatformSeries, type PlatformSeries } from '../lib/chartData'
 import { platformUsage } from '../lib/api'
 import { formatCompact, formatCurrencyShort, formatCurrency, formatPercent } from '../lib/format'
-import type { ActivityEvent } from '../store/types'
+import type { ActivityEvent, UsageSnapshot } from '../store/types'
+
+// Real platform KPIs derived from the usage-snapshot cache. Error rate is the aggregate
+// errors/requests over the most recent 24h; the deltas compare that window against the prior
+// 24h of the same 48h series (the only period-over-period signal the snapshot feed gives us).
+interface UsageKpis {
+  errorRate: number // 0..1 over the last 24h
+  requestsDelta: number | null // ratio vs prior 24h, or null when there's no prior window
+  errorRateDelta: number | null // pp change vs prior 24h, or null when there's no prior window
+}
+
+function deriveUsageKpis(snapshots: UsageSnapshot[]): UsageKpis {
+  if (snapshots.length === 0) return { errorRate: 0, requestsDelta: null, errorRateDelta: null }
+  const now = Date.now()
+  const dayMs = 24 * 3_600_000
+  let curReq = 0, curErr = 0, prevReq = 0, prevErr = 0
+  for (const s of snapshots) {
+    const ageMs = now - new Date(s.period_start).getTime()
+    if (ageMs < dayMs) {
+      curReq += s.request_count
+      curErr += s.error_count
+    } else if (ageMs < 2 * dayMs) {
+      prevReq += s.request_count
+      prevErr += s.error_count
+    }
+  }
+  const errorRate = curReq > 0 ? curErr / curReq : 0
+  const hasPrior = prevReq > 0
+  const requestsDelta = hasPrior ? (curReq - prevReq) / prevReq : null
+  const errorRateDelta = hasPrior ? errorRate - prevErr / prevReq : null
+  return { errorRate, requestsDelta, errorRateDelta }
+}
 
 // Isolated so the 1s tick re-renders only this line — not the whole dashboard
 // (which would force every Carbon chart to re-layout each second).
@@ -47,9 +78,15 @@ export function Dashboard() {
   }, [deployments])
 
   // Real platform usage from the Commander snapshot cache (seeded + refreshed by deployment sync).
-  const [platform, setPlatform] = useState<{ loading: boolean; series: PlatformSeries | null; error: string | null }>({
+  const [platform, setPlatform] = useState<{
+    loading: boolean
+    series: PlatformSeries | null
+    kpis: UsageKpis
+    error: string | null
+  }>({
     loading: true,
     series: null,
+    kpis: { errorRate: 0, requestsDelta: null, errorRateDelta: null },
     error: null,
   })
   useEffect(() => {
@@ -57,11 +94,14 @@ export function Dashboard() {
     const load = () => {
       platformUsage({ period: 'hour', hours: 48 })
         .then((res) => {
-          if (!cancelled) setPlatform({ loading: false, series: snapshotsToPlatformSeries(res.data ?? []), error: null })
+          const snapshots = res.data ?? []
+          if (!cancelled) {
+            setPlatform({ loading: false, series: snapshotsToPlatformSeries(snapshots), kpis: deriveUsageKpis(snapshots), error: null })
+          }
         })
         .catch((e: unknown) => {
           // Keep the last good series on a refresh error so the chart doesn't blank out.
-          if (!cancelled) setPlatform((p) => ({ loading: false, series: p.series, error: e instanceof Error ? e.message : 'Failed to load usage' }))
+          if (!cancelled) setPlatform((p) => ({ ...p, loading: false, error: e instanceof Error ? e.message : 'Failed to load usage' }))
         })
     }
     load()
@@ -95,7 +135,7 @@ export function Dashboard() {
         items.push({
           tone: 'amber', sev: 'GRACE ENDS', entity: d.name,
           desc: <>suspends in <GraceCountdown until={d.state.grace_until} /> · {d.state.reason}</>,
-          cta: 'Open deployment →', to: `/deployments/${d.id}`,
+          cta: 'Open package →', to: `/packages/${d.package}`,
         })
       }
     }
@@ -128,9 +168,17 @@ export function Dashboard() {
         <KpiTile label="Active" value={counts.active} helper={`of ${deployments.length}`} />
         <KpiTile label="In grace" value={counts.grace} valueClass="scns-val-amber" helper="awaiting payment" />
         <KpiTile label="Suspended" value={counts.suspended} valueClass="scns-val-red" helper="serving HTTP 402" />
-        <KpiTile label="Requests (24h)" value={formatCompact(dash.requests_24h)} helper={<span className="scns-val-green">▲ {formatPercent(dash.requests_delta)} vs prior 24h</span>} />
-        <KpiTile label="Error rate (24h)" value={formatPercent(dash.error_rate, 1)} helper={<span className="scns-val-red">▲ {formatPercent(dash.error_rate_delta, 1)}</span>} />
-        <KpiTile label="MRR" value={formatCurrencyShort(dash.mrr)} helper={<span className="scns-val-green">▲ {formatCurrencyShort(dash.mrr_delta)} this month</span>} />
+        <KpiTile
+          label="Requests (24h)"
+          value={formatCompact(dash.requests_24h)}
+          helper={<RatioTrend ratio={platform.kpis.requestsDelta} suffix="vs prior 24h" />}
+        />
+        <KpiTile
+          label="Error rate (24h)"
+          value={formatPercent(platform.kpis.errorRate, 1)}
+          helper={<PointsTrend points={platform.kpis.errorRateDelta} suffix="vs prior 24h" invert />}
+        />
+        <KpiTile label="MRR" value={formatCurrencyShort(dash.mrr)} />
       </KpiCluster>
 
       {/* Attention required */}
@@ -180,7 +228,7 @@ export function Dashboard() {
         <ChartCard
           title="Error rate"
           subtitle="%"
-          right={<ChartLegend items={[{ label: '4xx', color: '#d2a106' }, { label: '5xx', color: '#fa4d56' }]} />}
+          right={<ChartLegend items={[{ label: 'error %', color: '#fa4d56' }]} />}
         >
           {hasChart ? (
             <AreaChart data={errData} options={errOpts} />
@@ -255,6 +303,31 @@ function ChartPlaceholder({ loading, error, height }: { loading: boolean; error:
         <EmptyState title="No usage data yet" />
       )}
     </div>
+  )
+}
+
+// Period-over-period trend (last 24h vs prior 24h). Rendered only when a prior window exists;
+// nothing is shown otherwise so the operator never sees a fabricated arrow.
+function RatioTrend({ ratio, suffix }: { ratio: number | null; suffix: string }) {
+  if (ratio == null) return null
+  const up = ratio >= 0
+  return (
+    <span className={up ? 'scns-val-green' : 'scns-val-red'}>
+      {up ? '▲' : '▼'} {formatPercent(Math.abs(ratio))} {suffix}
+    </span>
+  )
+}
+
+// Trend expressed in percentage points (for rate-style KPIs). `invert` flips the color semantics
+// so that a rising error rate reads red.
+function PointsTrend({ points, suffix, invert }: { points: number | null; suffix: string; invert?: boolean }) {
+  if (points == null) return null
+  const up = points >= 0
+  const good = invert ? !up : up
+  return (
+    <span className={good ? 'scns-val-green' : 'scns-val-red'}>
+      {up ? '▲' : '▼'} {formatPercent(Math.abs(points), 1)} {suffix}
+    </span>
   )
 }
 

@@ -6,16 +6,33 @@ import {
   StructuredListRow,
   StructuredListCell,
 } from '@carbon/react'
-import type { Deployment } from '../../store/types'
+import type { Deployment, PackageContext } from '../../store/types'
 import { useStore } from '../../store/store'
+import { useCan } from '../../store/auth'
 import { useActions } from '../../providers/ActionsProvider'
 import { CopyableCode } from '../../components/CopyableCode'
+import { EmptyState } from '../../components/EmptyState'
 import { formatDateUTC } from '../../lib/time'
 
 export function SettingsTab() {
-  const dep = useOutletContext<Deployment>()
+  const { deployment } = useOutletContext<PackageContext>()
+
+  if (!deployment) {
+    return (
+      <EmptyState
+        title="No deployment yet — provision one to manage its settings"
+        description="Deployment settings and the danger zone appear here once this package is deployed."
+      />
+    )
+  }
+
+  return <SettingsView dep={deployment} />
+}
+
+function SettingsView({ dep }: { dep: Deployment }) {
   const navigate = useNavigate()
   const actions = useActions()
+  const can = useCan()
   const subscription = useStore((s) => s.subscriptions.find((sub) => sub.id === dep.subscription_id))
 
   return (
@@ -45,7 +62,7 @@ export function SettingsTab() {
                 Package
               </StructuredListCell>
               <StructuredListCell>
-                <span className="scns-mono">{dep.package} {dep.version}</span>
+                <span className="scns-mono">{dep.package}</span>
               </StructuredListCell>
             </StructuredListRow>
             <StructuredListRow>
@@ -74,15 +91,17 @@ export function SettingsTab() {
         </div>
       </div>
 
-      <div className="scns-card" style={{ padding: 16, borderLeft: '3px solid var(--scns-error)' }}>
-        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Danger zone</div>
-        <p className="scns-helper" style={{ fontSize: 13, marginBottom: 12 }}>
-          Deleting removes the deployment, its quotas and subscription link. This cannot be undone.
-        </p>
-        <Button kind="danger--tertiary" onClick={() => actions.deleteDeployment(dep, () => navigate('/deployments'))}>
-          Delete deployment…
-        </Button>
-      </div>
+      {can('delete deployments') && (
+        <div className="scns-card" style={{ padding: 16, borderLeft: '3px solid var(--scns-error)' }}>
+          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Danger zone</div>
+          <p className="scns-helper" style={{ fontSize: 13, marginBottom: 12 }}>
+            Deleting removes the deployment, its quotas and subscription link. This cannot be undone.
+          </p>
+          <Button kind="danger--tertiary" onClick={() => actions.deleteDeployment(dep, () => navigate('/packages'))}>
+            Delete deployment…
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

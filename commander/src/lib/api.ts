@@ -2,7 +2,7 @@
 // path that Vite proxies to the backend (see vite.config.ts) — no CORS, no cert prompt.
 // For a production build, set VITE_API_BASE to the deploy's origin (e.g. https://commander.host/api/v1).
 
-import type { LogEntry, UsageRollup, UsageSnapshot } from '../store/types'
+import type { LogEntry, OperatorSettings, RegisteredPackage, UsageRollup, UsageSnapshot } from '../store/types'
 
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? '/api/v1'
 const TOKEN_KEY = 'commander_token'
@@ -92,7 +92,7 @@ export const authApi = {
   logout: () => api('/auth/logout', { method: 'POST' }),
 }
 
-// A package's real usage rollups (core_usage_rollups, queried in-process by package_id) for the Usage tab.
+// A package's real usage rollups (commander_usage_rollups, queried in-process by package_id) for the Usage tab.
 export function deploymentUsage(
   id: string,
   params: { period?: 'hour' | 'day'; from?: string; to?: string } = {},
@@ -105,8 +105,8 @@ export function deploymentUsage(
   return api<{ data: UsageRollup[] }>(`/deployments/${id}/usage${q ? `?${q}` : ''}`)
 }
 
-// A package's real recent request logs (core_request_logs, queried in-process by package_id, tagged
-// with deployment_id) for the Logs view. No real-time stream — fetch on demand / poll.
+// A package's real recent request logs (commander_request_logs, queried in-process by package_id,
+// tagged with deployment_id) for the Logs view. No real-time stream — fetch on demand / poll.
 export function deploymentLogs(
   id: string,
   params: { limit?: number; since?: string; status_class?: 2 | 3 | 4 | 5 } = {},
@@ -128,4 +128,35 @@ export function platformUsage(
   if (params.hours) qs.set('hours', String(params.hours))
   const q = qs.toString()
   return api<{ data: UsageSnapshot[] }>(`/usage/platform${q ? `?${q}` : ''}`)
+}
+
+// Platform-wide request logs (all packages). The API joins commander_request_logs to
+// commander_deployments (by package_id) to tag each row's deployment_id. deployment_id is an
+// OPTIONAL filter — omit it for the cross-fleet view.
+export function platformLogs(
+  params: { deployment_id?: string; limit?: number; since?: string; status_class?: 2 | 3 | 4 | 5; method?: string } = {},
+): Promise<{ data: LogEntry[] }> {
+  const qs = new URLSearchParams()
+  if (params.deployment_id) qs.set('deployment_id', params.deployment_id)
+  if (params.limit) qs.set('limit', String(params.limit))
+  if (params.since) qs.set('since', params.since)
+  if (params.status_class) qs.set('status_class', String(params.status_class))
+  if (params.method) qs.set('method', params.method)
+  const q = qs.toString()
+  return api<{ data: LogEntry[] }>(`/logs${q ? `?${q}` : ''}`)
+}
+
+// Registro de packages de negocio (tipos): el hub package-céntrico. index() sincroniza desde disco
+// y enriquece con on_disk + conteos de deployments/planes. Metadatos editables (label/description/status).
+export const packagesApi = {
+  list: () => api<RegisteredPackage[]>('/packages'),
+  update: (name: string, patch: Partial<Pick<RegisteredPackage, 'label' | 'description' | 'status'>>) =>
+    api<RegisteredPackage>(`/packages/${name}`, { method: 'PATCH', body: patch }),
+}
+
+// Operator profile + platform preferences (singleton, persisted server-side).
+export const settingsApi = {
+  get: () => api<OperatorSettings>('/settings'),
+  update: (patch: Partial<OperatorSettings>) =>
+    api<OperatorSettings>('/settings', { method: 'PUT', body: patch }),
 }

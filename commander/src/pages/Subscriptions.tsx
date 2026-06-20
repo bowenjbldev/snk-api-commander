@@ -21,6 +21,7 @@ const STATUS_ITEMS = [
 export function Subscriptions() {
   const subscriptions = useStore((s) => s.subscriptions)
   const clients = useStore((s) => s.clients)
+  const deployments = useStore((s) => s.deployments)
   const navigate = useNavigate()
   const [statusFilter, setStatusFilter] = useState('all')
   const [provisionOpen, setProvisionOpen] = useState(false)
@@ -47,7 +48,10 @@ export function Subscriptions() {
           type="button"
           className="scns-mono"
           style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--cds-link-primary)' }}
-          onClick={() => navigate(`/deployments/${s.deployment_id}`)}
+          onClick={() => {
+            const pkg = deployments.find((d) => d.id === s.deployment_id)?.package
+            navigate(pkg ? `/packages/${pkg}` : '/packages')
+          }}
         >
           {s.deployment_id}
         </button>

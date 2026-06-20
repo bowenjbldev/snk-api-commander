@@ -8,6 +8,8 @@ interface Props {
   open: boolean
   mode: 'create' | 'edit'
   plan?: Plan
+  /** The business package this plan belongs to — comes from the route context, not a picker. */
+  packageName: string
   onClose: () => void
 }
 
@@ -23,12 +25,11 @@ function numOrNull(v: string): number | null {
   return Number.isFinite(n) && n >= 0 ? Math.round(n) : null
 }
 
-export function PlanFormModal({ open, mode, plan, onClose }: Props) {
+export function PlanFormModal({ open, mode, plan, packageName, onClose }: Props) {
   const addPlan = useStore((s) => s.addPlan)
   const updatePlan = useStore((s) => s.updatePlan)
   const toast = useToast()
 
-  const [pkg, setPkg] = useState('')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [price, setPrice] = useState('0')
@@ -41,7 +42,6 @@ export function PlanFormModal({ open, mode, plan, onClose }: Props) {
 
   useEffect(() => {
     if (open) {
-      setPkg(plan?.package ?? '')
       setName(plan?.name ?? '')
       setDescription(plan?.description ?? '')
       setPrice(String(plan?.price_monthly ?? 0))
@@ -56,9 +56,8 @@ export function PlanFormModal({ open, mode, plan, onClose }: Props) {
 
   if (!open) return null
 
-  const pkgError = !pkg.trim() ? 'Required' : ''
   const nameError = !name.trim() ? 'Required' : ''
-  const valid = !pkgError && !nameError
+  const valid = !nameError
 
   const submit = () => {
     setSubmitted(true)
@@ -71,26 +70,26 @@ export function PlanFormModal({ open, mode, plan, onClose }: Props) {
     }
     if (mode === 'edit' && plan) {
       updatePlan(plan.id, {
-        package: pkg.trim(),
+        package: packageName,
         name: name.trim(),
         description: description.trim() || null,
         price_monthly: Number(price) || 0,
         status: active ? 'active' : 'inactive',
         ...quotas,
       })
-      toast.success('Plan updated', `${pkg.trim()} · ${name.trim()}`)
+      toast.success('Plan updated', `${packageName} · ${name.trim()}`)
     } else {
-      const id = `${slug(pkg)}-${slug(name)}`
+      const id = `${slug(packageName)}-${slug(name)}`
       addPlan({
         id,
-        package: pkg.trim(),
+        package: packageName,
         name: name.trim(),
         description: description.trim() || null,
         price_monthly: Number(price) || 0,
         status: active ? 'active' : 'inactive',
         ...quotas,
       })
-      toast.success('Plan created', `${pkg.trim()} · ${name.trim()}`)
+      toast.success('Plan created', `${packageName} · ${name.trim()}`)
     }
     onClose()
   }
@@ -106,7 +105,14 @@ export function PlanFormModal({ open, mode, plan, onClose }: Props) {
       onRequestSubmit={submit}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <TextInput id="pl-package" labelText="Package" helperText="The business package this plan provisions (e.g. Shop, Blog)." value={pkg} onChange={(e) => setPkg(e.target.value)} invalid={submitted && !!pkgError} invalidText={pkgError} disabled={mode === 'edit'} />
+        <TextInput
+          id="pl-package"
+          labelText="Package"
+          helperText="The business package this plan provisions. Fixed by context."
+          value={packageName}
+          readOnly
+          disabled
+        />
         <TextInput id="pl-name" labelText="Plan name" placeholder="Pro" value={name} onChange={(e) => setName(e.target.value)} invalid={submitted && !!nameError} invalidText={nameError} />
         <TextArea id="pl-desc" labelText="Description (optional)" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
         <TextInput id="pl-price" labelText="Price / month" type="number" value={price} onChange={(e) => setPrice(e.target.value)} />

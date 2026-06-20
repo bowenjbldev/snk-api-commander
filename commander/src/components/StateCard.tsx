@@ -1,14 +1,17 @@
 import type { ReactNode } from 'react'
 import { Button } from '@carbon/react'
 import { WarningAltFilled, ErrorFilled, CheckmarkFilled } from '@carbon/icons-react'
-import type { Deployment } from '../../store/types'
-import { useActions } from '../../providers/ActionsProvider'
-import { GraceCountdown } from '../../components/GraceCountdown'
-import { RelativeTime } from '../../components/RelativeTime'
-import { formatDateUTC } from '../../lib/time'
+import type { Deployment } from '../store/types'
+import { useCan } from '../store/auth'
+import { useActions } from '../providers/ActionsProvider'
+import { GraceCountdown } from './GraceCountdown'
+import { RelativeTime } from './RelativeTime'
+import { formatDateUTC } from '../lib/time'
 
 export function StateCard({ dep }: { dep: Deployment }) {
   const actions = useActions()
+  const can = useCan()
+  const canControl = can('control deployments')
   const { status } = dep.state
   const accent =
     status === 'grace' ? 'var(--scns-warning)' : status === 'suspended' ? 'var(--scns-error)' : 'var(--scns-success)'
@@ -62,28 +65,30 @@ export function StateCard({ dep }: { dep: Deployment }) {
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 8 }}>
-          {status !== 'active' && (
-            <Button size="md" kind="primary" onClick={() => actions.resume(dep)}>
-              Resume now
-            </Button>
-          )}
-          {status === 'grace' && (
-            <Button size="md" kind="tertiary" onClick={() => actions.grace(dep)}>
-              Extend grace…
-            </Button>
-          )}
-          {status !== 'suspended' && (
-            <Button size="md" kind="danger--tertiary" onClick={() => actions.suspend(dep)}>
-              Suspend now
-            </Button>
-          )}
-          {status === 'active' && (
-            <Button size="md" kind="tertiary" onClick={() => actions.grace(dep)}>
-              Move to grace…
-            </Button>
-          )}
-        </div>
+        {canControl && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            {status !== 'active' && (
+              <Button size="md" kind="primary" onClick={() => actions.resume(dep)}>
+                Resume now
+              </Button>
+            )}
+            {status === 'grace' && (
+              <Button size="md" kind="tertiary" onClick={() => actions.grace(dep)}>
+                Extend grace…
+              </Button>
+            )}
+            {status !== 'suspended' && (
+              <Button size="md" kind="danger--tertiary" onClick={() => actions.suspend(dep)}>
+                Suspend now
+              </Button>
+            )}
+            {status === 'active' && (
+              <Button size="md" kind="tertiary" onClick={() => actions.grace(dep)}>
+                Move to grace…
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       <div style={{ width: 280, flex: 'none', borderLeft: '1px solid var(--cds-border-subtle)', padding: 20 }}>

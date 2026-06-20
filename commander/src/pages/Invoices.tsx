@@ -2,12 +2,15 @@ import { useMemo, useState } from 'react'
 import { Dropdown, OverflowMenu, OverflowMenuItem } from '@carbon/react'
 import { Add } from '@carbon/icons-react'
 import { useStore } from '../store/store'
+import { useCan } from '../store/auth'
 import { useActions } from '../providers/ActionsProvider'
 import { useToast } from '../providers/ToastProvider'
 import { PageHeader } from '../components/PageHeader'
 import { DataTableShell, type ShellColumn } from '../components/DataTableShell'
 import { useFirstLoad } from '../hooks/useFirstLoad'
 import { BillingTag } from '../components/tags/StatusTag'
+import { InvoiceFormModal } from '../components/modals/InvoiceFormModal'
+import { TypedConfirmModal } from '../components/modals/TypedConfirmModal'
 import { formatCurrency } from '../lib/format'
 import { formatDayMonth } from '../lib/time'
 import type { Invoice } from '../store/types'
@@ -24,9 +27,19 @@ const DAY = 86_400_000
 export function Invoices() {
   const invoices = useStore((s) => s.invoices)
   const clients = useStore((s) => s.clients)
+  const addInvoice = useStore((s) => s.addInvoice)
+  const updateInvoice = useStore((s) => s.updateInvoice)
+  const deleteInvoice = useStore((s) => s.deleteInvoice)
   const actions = useActions()
   const toast = useToast()
+  const can = useCan()
   const [statusFilter, setStatusFilter] = useState('all')
+  const [form, setForm] = useState<{ mode: 'create' | 'edit'; invoice?: Invoice } | null>(null)
+  const [toDelete, setToDelete] = useState<Invoice | null>(null)
+
+  const canCreate = can('create invoices')
+  const canUpdate = can('update invoices')
+  const canDelete = can('delete invoices')
 
   const clientName = useMemo(() => {
     const m = new Map(clients.map((c) => [c.id, c.name]))
@@ -115,7 +128,11 @@ export function Invoices() {
             · {summary.pending} pending · {summary.paid} paid
           </>
         }
-        primaryAction={{ label: 'Create invoice', icon: Add, onClick: () => toast.info('Create invoice', 'Invoice form coming online.') }}
+        primaryAction={
+          canCreate
+            ? { label: 'Create invoice', icon: Add, onClick: () => setForm({ mode: 'create' }) }
+            : undefined
+        }
       />
       <DataTableShell
         rows={filtered}
@@ -142,16 +159,55 @@ export function Invoices() {
         }
         rowActions={(i) => (
           <OverflowMenu size="sm" flipped aria-label={`Actions for ${i.id}`} onClick={(e) => e.stopPropagation()}>
-            <OverflowMenuItem itemText="Open invoice" onClick={() => toast.info('Open invoice', i.id)} />
-            <OverflowMenuItem itemText="Edit…" onClick={() => toast.info('Edit invoice', i.id)} />
-            {i.status !== 'paid' && <OverflowMenuItem hasDivider itemText="Mark as paid" onClick={() => actions.markPaid(i)} />}
+            {canUpdate && <OverflowMenuItem itemText="Edit…" onClick={() => setForm({ mode: 'edit', invoice: i })} />}
+            {i.status !== 'paid' && <OverflowMenuItem hasDivider={canUpdate} itemText="Mark as paid" onClick={() => actions.markPaid(i)} />}
             {i.status !== 'overdue' && (
-              <OverflowMenuItem hasDivider={i.status === 'paid'} itemText="Mark as overdue…" onClick={() => actions.markOverdue(i)} />
+              <OverflowMenuItem hasDivider={i.status === 'paid' || canUpdate} itemText="Mark as overdue…" onClick={() => actions.markOverdue(i)} />
             )}
-            <OverflowMenuItem hasDivider isDelete itemText="Delete…" onClick={() => toast.info('Delete invoice', i.id)} />
+            {canDelete && <OverflowMenuItem hasDivider isDelete itemText="Delete…" onClick={() => setToDelete(i)} />}
           </OverflowMenu>
         )}
       />
+
+      {form && (
+        <InvoiceFormModal
+          open
+          mode={form.mode}
+          invoice={form.invoice}
+          onClose={() => setForm(null)}
+          onSubmit={(value) => {
+            if (form.mode === 'edit' && form.invoice) {
+              updateInvoice(form.invoice.id, value)
+              toast.success('Invoice updated', form.invoice.id)
+            } else {
+              const id = addInvoice(value as Parameters<typeof addInvoice>[0])
+              toast.success('Invoice created', id)
+            }
+          }}
+        />
+      )}
+
+      {toDelete && (
+        <TypedConfirmModal
+          open
+          title={`Delete invoice ${toDelete.id}?`}
+          label="Invoices"
+          confirmWord={toDelete.id}
+          confirmLabel="Delete invoice"
+          body={
+            <p>
+              This permanently removes invoice <span className="scns-mono">{toDelete.id}</span> for{' '}
+              {clientName(toDelete.client_id)} ({formatCurrency(toDelete.amount)}). This cannot be undone.
+            </p>
+          }
+          onClose={() => setToDelete(null)}
+          onConfirm={() => {
+            deleteInvoice(toDelete.id)
+            toast.success('Invoice deleted', toDelete.id)
+            setToDelete(null)
+          }}
+        />
+      )}
     </div>
   )
 }

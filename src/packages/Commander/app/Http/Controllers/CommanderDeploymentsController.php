@@ -264,7 +264,10 @@ class CommanderDeploymentsController extends CoreBaseApiController
             'deployment_id' => $deployment->id,
             'invoice_id' => null,
             'reason' => $reason,
-            'by' => auth()->user()?->name ?? 'operator',
+            // Token de enum ChangedBy (no el nombre del usuario): casa con el feed del SPA y con
+            // state.changed_by, que tambien es 'operator' (suspend/grace/resume lo pasan literal).
+            // Si en el futuro se quiere la identidad real del actor, anadir una columna actor_name.
+            'by' => 'operator',
             'message' => $message,
         ]);
     }

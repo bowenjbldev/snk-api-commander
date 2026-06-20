@@ -15,6 +15,7 @@ import type {
   OperatorSettings,
   Plan,
   QuotaMetric,
+  RegisteredPackage,
   Subscription,
   TopEndpoint,
 } from './types'
@@ -31,6 +32,7 @@ export interface Dataset {
   invoices: Invoice[]
   quotas: QuotaMetric[]
   plans: Plan[]
+  packages: RegisteredPackage[]
   logs: LogEntry[]
   activity: ActivityEvent[]
   settings: OperatorSettings
@@ -316,25 +318,15 @@ export function buildFixtures(nowMs: number): Dataset {
   // ── Request logs (recent sample; live tail prepends more) ─────────────────────
   const logs: LogEntry[] = [
     log('kestrel-track', 'GET', '/v1/track/SHP-88412', 200, 124, 'usr_8841', 'tok_live_2a18', '84.12.9.51', 412, 1224, ago(1 * S)),
-    log('helios-meter', 'POST', '/v1/telemetry/batch', 429, 8, 'usr_502', 'tok_live_9c44', '52.28.114.9', 18842, 312, ago(3 * S), {
-      error: 'quota_exceeded',
-      metric: 'requests_day',
-      retry_after: 34520,
-    }, 'Rejected by quota requests_day (policy: warn)'),
+    log('helios-meter', 'POST', '/v1/telemetry/batch', 429, 8, 'usr_502', 'tok_live_9c44', '52.28.114.9', 18842, 312, ago(3 * S)),
     log('bluepeak', 'GET', '/v1/metrics/query?window=1h', 200, 388, 'usr_2210', 'tok_live_77b1', '18.196.4.2', 980, 10044, ago(5 * S)),
     log('acme-shop-staging', 'POST', '/v1/orders', 201, 242, 'usr_1108', 'tok_live_3d90', '91.0.4.22', 2410, 612, ago(6 * S)),
     log('tetra-fleet', 'GET', '/v1/fleet/status', 200, 96, 'usr_3306', 'tok_live_ff21', '212.8.9.1', 310, 3140, ago(8 * S)),
-    log('kestrel-track', 'POST', '/v1/routes/optimize', 500, 1840, 'usr_2188', 'tok_live_0a7c', '84.12.9.77', 6220, 488, ago(11 * S), {
-      error: 'internal_error',
-    }, 'Unhandled exception in optimizer'),
+    log('kestrel-track', 'POST', '/v1/routes/optimize', 500, 1840, 'usr_2188', 'tok_live_0a7c', '84.12.9.77', 6220, 488, ago(11 * S)),
     log('mori-assets', 'GET', '/v1/assets/a8f3.png', 304, 12, 'usr_410', 'tok_live_b210', '34.96.1.4', 0, 312, ago(14 * S)),
     log('northwind-api', 'POST', '/v1/auth/token', 401, 88, null, 'tok_live_c0de', '203.0.113.5', 612, 188, ago(17 * S)),
     log('northwind-api', 'GET', '/v1/ledger/entries?from=2026-06-01', 200, 154, 'usr_5521', 'tok_live_aa01', '203.0.113.9', 480, 14600, ago(21 * S)),
-    log('helios-meter', 'POST', '/v1/telemetry/batch', 429, 7, 'usr_502', 'tok_live_9c44', '52.28.114.9', 18112, 312, ago(24 * S), {
-      error: 'quota_exceeded',
-      metric: 'requests_day',
-      retry_after: 34518,
-    }, 'Rejected by quota requests_day (policy: warn)'),
+    log('helios-meter', 'POST', '/v1/telemetry/batch', 429, 7, 'usr_502', 'tok_live_9c44', '52.28.114.9', 18112, 312, ago(24 * S)),
     log('kestrel-track', 'GET', '/v1/track/SHP-88409', 200, 132, 'usr_8841', 'tok_live_2a18', '84.12.9.51', 412, 1208, ago(27 * S)),
     log('bluepeak', 'GET', '/v1/metrics/query?window=24h', 200, 401, 'usr_2231', 'tok_live_77b1', '18.196.4.9', 1020, 10240, ago(31 * S)),
     log('tetra-fleet', 'POST', '/v1/fleet/telemetry', 200, 73, 'usr_3310', 'tok_live_ff21', '212.8.9.4', 4400, 220, ago(38 * S)),
@@ -364,6 +356,14 @@ export function buildFixtures(nowMs: number): Dataset {
     { id: 'metrics-scale', package: 'metrics-api', name: 'Metrics Scale', price_monthly: 480, q_requests_day: 2000000, q_disk_db_mb: 10240, q_disk_storage_mb: 51200, q_users_total: 5000, status: 'active' },
   ]
 
+  // Registered packages (types) derived from the demo deployments.
+  const packages: RegisteredPackage[] = Array.from(new Set(deployments.map((d) => d.package))).map((name) => ({
+    name,
+    label: name,
+    description: null,
+    status: 'active' as const,
+  }))
+
   return {
     clients,
     deployments,
@@ -371,6 +371,7 @@ export function buildFixtures(nowMs: number): Dataset {
     invoices,
     quotas,
     plans,
+    packages,
     logs,
     activity,
     settings,
@@ -418,8 +419,6 @@ function log(
   request_bytes: number,
   response_bytes: number,
   occurred_at: string,
-  response_body?: unknown,
-  context?: string,
 ): LogEntry {
   return {
     id: `log_${occurred_at}_${route}`,
@@ -434,8 +433,6 @@ function log(
     ip,
     request_bytes,
     response_bytes,
-    response_body,
-    context,
   }
 }
 
