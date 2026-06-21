@@ -209,7 +209,7 @@ export function snapshotsToPlatformSeries(snapshots: UsageSnapshot[], packageLab
   // Pick the top-4 packages by total requests; everything else folds into 'other'.
   // Keyed by numeric package_id internally; chart labels use operator-facing package names.
   const totals = new Map<number, number>()
-  for (const s of snapshots) totals.set(s.package_id, (totals.get(s.package_id) ?? 0) + s.request_count)
+  for (const s of snapshots) totals.set(s.package_id, (totals.get(s.package_id) ?? 0) + Number(s.request_count))
   const top = [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([id]) => id)
   const topSet = new Set(top)
   const labelFor = (id: number) => packageLabels.get(id) ?? `package ${id}`
@@ -217,15 +217,19 @@ export function snapshotsToPlatformSeries(snapshots: UsageSnapshot[], packageLab
 
   const buckets = new Map<string, { perPkg: Map<number, number>; other: number; total: number; errors: number }>()
   for (const s of snapshots) {
+    // The API serialises these aggregate columns as strings; coerce so the stacked sums
+    // are numeric (string `+=` would concatenate and blow the chart's y-axis to nonsense).
+    const requests = Number(s.request_count)
+    const errors = Number(s.error_count)
     let b = buckets.get(s.period_start)
     if (!b) {
       b = { perPkg: new Map(), other: 0, total: 0, errors: 0 }
       buckets.set(s.period_start, b)
     }
-    b.total += s.request_count
-    b.errors += s.error_count
-    if (topSet.has(s.package_id)) b.perPkg.set(s.package_id, (b.perPkg.get(s.package_id) ?? 0) + s.request_count)
-    else b.other += s.request_count
+    b.total += requests
+    b.errors += errors
+    if (topSet.has(s.package_id)) b.perPkg.set(s.package_id, (b.perPkg.get(s.package_id) ?? 0) + requests)
+    else b.other += requests
   }
 
   const data: Point[] = []

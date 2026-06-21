@@ -31,13 +31,17 @@ function deriveUsageKpis(snapshots: UsageSnapshot[]): UsageKpis {
   const dayMs = 24 * 3_600_000
   let curReq = 0, curErr = 0, prevReq = 0, prevErr = 0
   for (const s of snapshots) {
+    // request_count/error_count arrive as strings from the API — coerce so the running
+    // totals are numeric rather than concatenated.
+    const requests = Number(s.request_count)
+    const errors = Number(s.error_count)
     const ageMs = now - new Date(s.period_start).getTime()
     if (ageMs < dayMs) {
-      curReq += s.request_count
-      curErr += s.error_count
+      curReq += requests
+      curErr += errors
     } else if (ageMs < 2 * dayMs) {
-      prevReq += s.request_count
-      prevErr += s.error_count
+      prevReq += requests
+      prevErr += errors
     }
   }
   const errorRate = curReq > 0 ? curErr / curReq : 0
