@@ -7,6 +7,7 @@ import { useStore, useProvisionedPackages } from '../store/store'
 import { useAppTheme } from '../providers/ThemeProvider'
 import { useTick } from '../providers/TickProvider'
 import { KpiCluster, KpiTile } from '../components/KpiCluster'
+import { Card } from '../components/Card'
 import { ChartCard, ChartLegend } from '../components/ChartCard'
 import { GraceCountdown } from '../components/GraceCountdown'
 import { RelativeTime } from '../components/RelativeTime'
@@ -153,7 +154,7 @@ export function Dashboard() {
         items.push({
           tone: 'red', label: 'Quota over', entity: packageLabel(q.package_id),
           desc: <>{q.metric_key} over limit</>, metric: formatPercent(q.current_value / q.limit_value),
-          to: pkg ? `/packages/${pkg.name}/quotas` : '/packages',
+          to: pkg ? `/packages/${pkg.id}/quotas` : '/packages',
         })
       }
     }
@@ -162,7 +163,7 @@ export function Dashboard() {
         items.push({
           tone: 'amber', label: 'Grace ends', entity: p.name,
           desc: <>{p.reason ?? 'payment overdue'}</>, metric: <GraceCountdown until={p.grace_until} mode="short" />,
-          to: `/packages/${p.name}`,
+          to: `/packages/${p.id}`,
         })
       }
     }
@@ -245,13 +246,8 @@ export function Dashboard() {
       {/* Triage: attention required + recent activity, side by side */}
       <div className="scns-grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginTop: 40 }}>
         {/* Attention required */}
-        <section>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <span style={{ fontSize: 16, fontWeight: 600 }}>Needs attention</span>
-            <span className="scns-helper" style={{ fontSize: 13 }}>quotas, grace &amp; billing</span>
-          </div>
-          <div className="scns-card">
-            {attention.length === 0 ? (
+        <Card title="Needs attention" subtitle="quotas, grace & billing" bodyPadding={0}>
+          {attention.length === 0 ? (
               <EmptyState title="No issues detected" />
             ) : (
               attention.map((a, idx) => {
@@ -272,17 +268,11 @@ export function Dashboard() {
                 )
               })
             )}
-          </div>
-        </section>
+        </Card>
 
         {/* Recent activity */}
-        <section>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <span style={{ fontSize: 16, fontWeight: 600 }}>Recent activity</span>
-            <span className="scns-helper" style={{ fontSize: 13 }}>last 3 days</span>
-          </div>
-          <div className="scns-card">
-            {activity.length === 0 ? (
+        <Card title="Recent activity" subtitle="last 3 days" bodyPadding={0}>
+          {activity.length === 0 ? (
               <EmptyState title="No recent activity" />
             ) : (
               activity.map((ev, idx) => {
@@ -304,8 +294,7 @@ export function Dashboard() {
                 )
               })
             )}
-          </div>
-        </section>
+        </Card>
       </div>
     </div>
   )
@@ -344,7 +333,7 @@ function activityMeta(
   invoiceLabel: (id: number | undefined) => string,
 ): ActivityMeta {
   const pkg = packageLabel(ev.package_id)
-  const pkgTo = `/packages/${pkg}`
+  const pkgTo = ev.package_id != null ? `/packages/${ev.package_id}` : '/packages'
   switch (ev.kind) {
     case 'suspend':
       return { tone: 'red', label: 'Suspended', entity: pkg, detail: `${ev.reason ?? 'manual'} · by ${ev.by}`, to: pkgTo }

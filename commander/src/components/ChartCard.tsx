@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Card } from './Card'
 
 export function ChartLegend({ items }: { items: { label: string; color: string }[] }) {
   return (
@@ -27,27 +28,11 @@ export function ChartCard({
   children: ReactNode
 }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12, gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
-          <span style={{ fontSize: 16, fontWeight: 600 }}>{title}</span>
-          {subtitle && (
-            <span className="scns-helper" style={{ fontSize: 13 }}>
-              {subtitle}
-            </span>
-          )}
-        </div>
+    <Card title={title} subtitle={subtitle} className="scns-chartcard" bodyPadding={16}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        {right && <div style={{ alignSelf: 'flex-start', marginBottom: 16 }}>{right}</div>}
+        <div style={{ flex: 1 }}>{children}</div>
       </div>
-      <div className="scns-card" style={{ padding: 16, flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {right && (
-          <div style={{ alignSelf: 'flex-start', marginBottom: 16 }}>
-            {right}
-          </div>
-        )}
-        <div style={{ flex: 1 }}>
-          {children}
-        </div>
-      </div>
-    </div>
+    </Card>
   )
 }

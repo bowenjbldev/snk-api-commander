@@ -24,6 +24,8 @@
   --scns-warning: #f1c21b;
   --scns-error: #fa4d56;
   --scns-card-border: var(--cds-border-subtle);
+  // Form field on a card/panel: Carbon's layering wants the elevated field-02 (lighter) on layer-01.
+  --scns-field: var(--cds-field-02);
 }
 
 @mixin scns-light {
@@ -44,6 +46,8 @@
   --scns-warning: #f1c21b;
   --scns-error: #da1e28;
   --scns-card-border: #e0e0e0;
+  // On white cards Carbon's field-02 is #ffffff (would blend); keep the grey background for contrast.
+  --scns-field: var(--cds-background);
 }
 
 .cds--g100 { @include scns-dark; }
@@ -117,6 +121,14 @@ body {
   text-underline-offset: 2px;
   text-transform: uppercase;
   letter-spacing: 0.3px;
+}
+
+// Breadcrumbs keep Carbon's own default treatment (normal case, no dotted underline) — opt them
+// out of the global .cds--link house style above.
+.cds--breadcrumb .cds--link {
+  text-transform: none;
+  letter-spacing: normal;
+  text-decoration: none;
 }
 
 // Relative timestamps: Plex Mono (per the art direction) + dotted underline →
@@ -238,6 +250,57 @@ body {
   color: var(--cds-text-helper);
 }
 
+// Small status dot (no label) — e.g. client active/inactive in the clients table.
+.scns-status-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+// Billing-risk marker on a client's name cell (has an overdue invoice).
+.scns-risk-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--scns-error);
+}
+
+// Compact stat strip at the top of a drawer (Packages · MRR · Requests) — a
+// quieter sibling of the KPI cluster for the detail panel.
+.scns-drawer-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--scns-card-border);
+  border: 1px solid var(--scns-card-border);
+  margin-bottom: 24px;
+}
+.scns-drawer-stat {
+  background: var(--cds-layer);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.scns-drawer-stat-label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.32px;
+  text-transform: uppercase;
+  color: var(--cds-text-secondary);
+}
+.scns-drawer-stat-value {
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
 // ── Quota bar ────────────────────────────────────────────────────────────────
 .scns-qbar {
   position: relative;
@@ -250,10 +313,184 @@ body {
   transition: width 0.3s ease;
 }
 
+// ── Status-mix mini-bar ──────────────────────────────────────────────────────
+// Segmented sibling of the quota bar: a client's active/grace/suspended packages
+// as proportional slices. Sharp corners, same 6px weight.
+.scns-statusmix {
+  display: flex;
+  height: 6px;
+  overflow: hidden;
+  background: var(--cds-layer-accent);
+  border-radius: 0;
+}
+.scns-statusmix__seg {
+  height: 100%;
+  display: block;
+}
+
 // ── Bordered card / list ───────────────────────────────────────────────────────
 .scns-card {
   background: var(--cds-layer);
   border: 1px solid var(--scns-card-border);
+}
+
+// Titled card: a header band (same surface as the body) divided by a hairline, then the body.
+.scns-card--sectioned {
+  display: flex;
+  flex-direction: column;
+}
+.scns-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+  padding: 4px 8px 4px 16px;
+  border-bottom: 1px solid var(--cds-border-subtle);
+}
+.scns-card__heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.scns-card__title {
+  font-size: 14px;
+  font-weight: 600;
+}
+.scns-card__sub {
+  font-size: 12px;
+  color: var(--cds-text-helper);
+}
+.scns-card__body {
+  flex: 1;
+  min-width: 0;
+}
+.scns-card__footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--cds-border-subtle);
+}
+
+// Floating save action (Material-style FAB, IBM aesthetic: square, IBM Blue, sober elevation).
+// Appears bottom-right while the form has unsaved changes.
+.scns-save-fab {
+  position: fixed;
+  right: 32px;
+  bottom: 32px;
+  z-index: 100;
+  display: flex;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+  animation: scns-fab-in 0.16s ease-out;
+}
+@keyframes scns-fab-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+// Inline form layout: a steady 2-column grid (even field counts pack with no empty cells),
+// collapsing to a single column only on very narrow viewports.
+.scns-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 20px;
+}
+@media (max-width: 600px) {
+  .scns-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+// Client detail: live edit form (left) + compact packages/invoices rail (right). The rail
+// gets a hairline separator and collapses below the form on narrow viewports.
+.scns-client-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 32px;
+  align-items: start;
+}
+
+// Compact aligned table inside a card body (client rail: packages / invoices). Faint uppercase
+// column header, hairline row dividers, numeric columns tabular + right-aligned. First/last cells
+// align flush to the card's body inset.
+.scns-minitable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.scns-minitable th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.32px;
+  text-transform: uppercase;
+  color: var(--cds-text-secondary);
+  padding: 0 8px 8px;
+  white-space: nowrap;
+}
+.scns-minitable td {
+  padding: 8px;
+  border-top: 1px solid var(--cds-border-subtle);
+  vertical-align: middle;
+}
+.scns-minitable th:first-child,
+.scns-minitable td:first-child { padding-left: 0; }
+.scns-minitable th:last-child,
+.scns-minitable td:last-child { padding-right: 0; }
+.scns-minitable__num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  white-space: nowrap;
+}
+.scns-minitable__row { cursor: pointer; }
+.scns-minitable__row:hover { background: var(--cds-layer-hover, var(--cds-layer-accent)); }
+.scns-client-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+@media (max-width: 880px) {
+  .scns-client-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}
+
+// Form inputs sit on a card / side panel (--cds-layer); Carbon's default field colour equals the
+// layer, so they blend in. Use --scns-field (theme-aware): dark → field-02 (lighter/elevated, the
+// Carbon-canonical field on layer-01); light → grey background (field-02 would be white-on-white).
+.scns-client-form,
+.scns-drawer {
+  .cds--text-input,
+  .cds--text-area,
+  .cds--select-input {
+    background-color: var(--scns-field);
+  }
+}
+
+// Clickable record row (package/invoice lists on detail pages): full-width button,
+// top divider, hover wash. Sharp corners to match the sober surface.
+.scns-record-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: calc(100% + 16px);
+  padding: 12px 8px;
+  margin: 0 -8px;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--cds-border-subtle);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.scns-record-row:hover {
+  background: var(--cds-layer-hover, var(--cds-layer-accent));
 }
 
 // ── Dense list rows — Attention required AND Recent activity share this shape ────
@@ -323,7 +560,10 @@ body {
 // ── Drawer (424px) + detail panel (340px) ────────────────────────────────────
 .scns-overlay {
   position: fixed;
-  inset: 0;
+  top: 48px; // start below the persistent app header (same as the drawer panel) so it isn't dimmed
+  right: 0;
+  bottom: 0;
+  left: 0;
   background: var(--scns-overlay);
   z-index: 8500;
 }
@@ -339,7 +579,7 @@ body {
   z-index: 8600;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  overflow: hidden; // the body scrolls; keep the panel from gaining an x-scroll when a tooltip opens
 }
 .scns-panel {
   width: 340px;

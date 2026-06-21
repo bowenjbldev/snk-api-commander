@@ -24,6 +24,8 @@ interface Props {
    */
   plans?: Plan[]
   planId?: number // pre-select a plan (from a row action)
+  /** Pre-select + lock an existing client (e.g. "New package for this client" from the client page). */
+  lockClientId?: number
   onClose: () => void
   /** Fired after a successful provision (e.g. to refresh / close the empty-state). */
   onProvisioned?: () => void
@@ -35,7 +37,7 @@ function slug(s: string): string {
   return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 }
 
-export function ProvisionModal({ open, packageName, plans, planId, onClose, onProvisioned }: Props) {
+export function ProvisionModal({ open, packageName, plans, planId, lockClientId, onClose, onProvisioned }: Props) {
   const storePlans = useStore((s) => s.plans)
   const clients = useStore((s) => s.clients)
   const provision = useStore((s) => s.provision)
@@ -61,8 +63,8 @@ export function ProvisionModal({ open, packageName, plans, planId, onClose, onPr
   useEffect(() => {
     if (open) {
       setSelectedPlan(activePlans.find((p) => p.id === planId) ?? activePlans[0] ?? null)
-      setClientMode(clients.length > 0 ? 'existing' : 'new')
-      setClientId(clients[0]?.id ?? '')
+      setClientMode(lockClientId != null || clients.length > 0 ? 'existing' : 'new')
+      setClientId(lockClientId ?? clients[0]?.id ?? '')
       setNewName('')
       setNewEmail('')
       setNewBillingEmail('')
@@ -71,7 +73,7 @@ export function ProvisionModal({ open, packageName, plans, planId, onClose, onPr
       setBusy(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, planId])
+  }, [open, planId, lockClientId])
 
   if (!open) return null
 
@@ -153,21 +155,24 @@ export function ProvisionModal({ open, packageName, plans, planId, onClose, onPr
             />
           )}
 
-          <RadioButtonGroup
-            legendText="Client"
-            name="prov-client-mode"
-            valueSelected={clientMode}
-            onChange={(v) => setClientMode(v as 'existing' | 'new')}
-          >
-            <RadioButton labelText="Existing client" value="existing" id="prov-existing" disabled={clients.length === 0} />
-            <RadioButton labelText="New client" value="new" id="prov-new" />
-          </RadioButtonGroup>
+          {lockClientId == null && (
+            <RadioButtonGroup
+              legendText="Client"
+              name="prov-client-mode"
+              valueSelected={clientMode}
+              onChange={(v) => setClientMode(v as 'existing' | 'new')}
+            >
+              <RadioButton labelText="Existing client" value="existing" id="prov-existing" disabled={clients.length === 0} />
+              <RadioButton labelText="New client" value="new" id="prov-new" />
+            </RadioButtonGroup>
+          )}
 
           {clientMode === 'existing' ? (
             <Dropdown
               id="prov-client"
-              titleText="Select client"
+              titleText="Client"
               label="Select a client"
+              disabled={lockClientId != null}
               items={clients}
               selectedItem={clients.find((c) => c.id === clientId) ?? null}
               itemToString={(c) => (c ? `${c.name} (${c.slug})` : '')}

@@ -35,11 +35,11 @@ export function Drawer({ open, onClose, ariaLabel, header, footer, children }: P
       <aside ref={panelRef} className="scns-drawer" role="dialog" aria-modal="true" aria-label={ariaLabel}>
         <div className="scns-drawer__header">
           <div style={{ minWidth: 0 }}>{header}</div>
-          <IconButton kind="ghost" size="sm" label="Close" onClick={onClose}>
+          <IconButton kind="ghost" size="sm" label="Close" align="left" onClick={onClose}>
             <Close />
           </IconButton>
         </div>
-        <div style={{ flex: 1, padding: 16, overflowY: 'auto' }}>{children}</div>
+        <div style={{ flex: 1, padding: 16, overflow: 'hidden auto' }}>{children}</div>
         {footer && (
           <div style={{ borderTop: '1px solid var(--cds-border-subtle)', display: 'flex' }}>{footer}</div>
         )}

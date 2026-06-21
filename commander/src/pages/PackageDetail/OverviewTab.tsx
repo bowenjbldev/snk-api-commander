@@ -108,7 +108,13 @@ export function OverviewTab() {
               <StructuredListBody>
                 <KVRow
                   label="Client"
-                  value={<Link className="scns-link" to="/clients">{client?.name ?? 'Unknown client'}</Link>}
+                  value={
+                    client ? (
+                      <Link className="scns-link" to={`/clients/${client.id}`}>{client.name}</Link>
+                    ) : (
+                      <span className="scns-helper">Unknown client</span>
+                    )
+                  }
                 />
                 <KVRow label="Package" value={<span className="scns-mono">{packageRow.name}</span>} />
                 <KVRow
@@ -139,7 +145,7 @@ export function OverviewTab() {
           <div className="scns-card" style={{ padding: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <span style={{ fontSize: 16, fontWeight: 600 }}>Quotas</span>
-              <Link className="scns-link" to={`/packages/${packageRow.name}/quotas`}>
+              <Link className="scns-link" to={`/packages/${packageRow.id}/quotas`}>
                 Edit limits {'->'}
               </Link>
             </div>

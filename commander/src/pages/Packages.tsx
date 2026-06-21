@@ -24,7 +24,7 @@ export function Packages() {
       width: 280,
       render: (p) => (
         <div style={{ lineHeight: 1.3 }}>
-          <Link to={`/packages/${p.name}`} className="scns-link" style={{ fontWeight: 600 }}>
+          <Link to={`/packages/${p.id}`} className="scns-link" style={{ fontWeight: 600 }}>
             {p.label ?? p.name}
           </Link>
           <div className="scns-mono scns-helper" style={{ fontSize: 11 }}>
@@ -91,7 +91,7 @@ export function Packages() {
         initialSort={{ key: 'name', dir: 'ASC' }}
         itemLabel="packages"
         loading={useFirstLoad()}
-        onRowClick={(p) => navigate(`/packages/${p.name}`)}
+        onRowClick={(p) => navigate(`/packages/${p.id}`)}
       />
     </div>
   )

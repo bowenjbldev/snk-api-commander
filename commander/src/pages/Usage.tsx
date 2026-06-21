@@ -173,7 +173,7 @@ export function Usage() {
                 </TableRow>
               ) : (
                 top.map((p) => (
-                  <TableRow key={p.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/packages/${p.name}`)}>
+                  <TableRow key={p.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/packages/${p.id}`)}>
                     <TableCell className="scns-mono" style={{ color: 'var(--cds-link-primary)' }}>{p.name}</TableCell>
                     <TableCell>{clientName(p.client_id)}</TableCell>
                     <TableCell>

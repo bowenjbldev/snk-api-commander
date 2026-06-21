@@ -6,6 +6,7 @@ import { Dashboard } from './pages/Dashboard'
 // Landing (Dashboard) is eager; every other route is code-split and loaded on demand
 // (Suspense fallback lives in AppShell). Named exports → default for React.lazy.
 const Clients = lazy(() => import('./pages/Clients').then((m) => ({ default: m.Clients })))
+const ClientDetail = lazy(() => import('./pages/ClientDetail').then((m) => ({ default: m.ClientDetail })))
 const Packages = lazy(() => import('./pages/Packages').then((m) => ({ default: m.Packages })))
 const Invoices = lazy(() => import('./pages/Invoices').then((m) => ({ default: m.Invoices })))
 const Usage = lazy(() => import('./pages/Usage').then((m) => ({ default: m.Usage })))
@@ -13,7 +14,7 @@ const RequestLogs = lazy(() => import('./pages/RequestLogs').then((m) => ({ defa
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })))
 const NotFound = lazy(() => import('./pages/NotFound').then((m) => ({ default: m.NotFound })))
 
-// Package-centric hub: /packages/:name with tabs.
+// Package-centric hub: /packages/:id with tabs.
 const PackageDetail = lazy(() =>
   import('./pages/PackageDetail/PackageDetail').then((m) => ({ default: m.PackageDetail })),
 )
@@ -35,9 +36,10 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: 'dashboard', element: <Dashboard /> },
       { path: 'clients', element: <Clients /> },
+      { path: 'clients/:id', element: <ClientDetail /> },
       { path: 'packages', element: <Packages /> },
       {
-        path: 'packages/:name',
+        path: 'packages/:id',
         element: <PackageDetail />,
         children: [
           { index: true, element: <Navigate to="overview" replace /> },

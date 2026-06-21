@@ -6,20 +6,36 @@ import { useStore } from '../store/store'
 export function Breadcrumbs() {
   const { pathname } = useLocation()
   const packages = useStore((s) => s.packages)
-  const match = pathname.match(/^\/packages\/([^/]+)/)
-  if (!match) return null
+  const clients = useStore((s) => s.clients)
 
-  const name = decodeURIComponent(match[1])
-  const label = packages.find((p) => p.name === name)?.label ?? name
+  const pkgMatch = pathname.match(/^\/packages\/([^/]+)/)
+  if (pkgMatch) {
+    const id = Number(decodeURIComponent(pkgMatch[1]))
+    const pkg = packages.find((p) => p.id === id)
+    const label = pkg?.label ?? pkg?.name ?? `Package ${pkgMatch[1]}`
+    return (
+      <Breadcrumb noTrailingSlash style={{ marginBottom: 16 }}>
+        <BreadcrumbItem>
+          <Link to="/packages">Packages</Link>
+        </BreadcrumbItem>
+        <BreadcrumbItem isCurrentPage>{label}</BreadcrumbItem>
+      </Breadcrumb>
+    )
+  }
 
-  return (
-    <Breadcrumb noTrailingSlash style={{ marginBottom: 16 }}>
-      <BreadcrumbItem>
-        <Link to="/packages">Packages</Link>
-      </BreadcrumbItem>
-      <BreadcrumbItem isCurrentPage className="scns-mono">
-        {label}
-      </BreadcrumbItem>
-    </Breadcrumb>
-  )
+  const clientMatch = pathname.match(/^\/clients\/([^/]+)/)
+  if (clientMatch) {
+    const id = Number(decodeURIComponent(clientMatch[1]))
+    const label = clients.find((c) => c.id === id)?.name ?? `Client ${clientMatch[1]}`
+    return (
+      <Breadcrumb noTrailingSlash style={{ marginBottom: 16 }}>
+        <BreadcrumbItem>
+          <Link to="/clients">Clients</Link>
+        </BreadcrumbItem>
+        <BreadcrumbItem isCurrentPage>{label}</BreadcrumbItem>
+      </Breadcrumb>
+    )
+  }
+
+  return null
 }

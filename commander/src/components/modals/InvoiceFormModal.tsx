@@ -10,6 +10,8 @@ interface Props {
   open: boolean
   mode: 'create' | 'edit'
   invoice?: Invoice
+  /** Pre-select + lock the client (e.g. "New invoice for this client" from the client page). */
+  clientId?: number
   /** create → full input; edit → amount/issued/due patch. */
   onSubmit: (value: CreateInput | EditPatch) => void
   onClose: () => void
@@ -21,7 +23,7 @@ function toIso(d: Date | undefined): string {
   return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString()
 }
 
-export function InvoiceFormModal({ open, mode, invoice, onSubmit, onClose }: Props) {
+export function InvoiceFormModal({ open, mode, invoice, clientId: lockClientId, onSubmit, onClose }: Props) {
   const clients = useStore((s) => s.clients)
   const packages = useProvisionedPackages()
 
@@ -34,14 +36,14 @@ export function InvoiceFormModal({ open, mode, invoice, onSubmit, onClose }: Pro
 
   useEffect(() => {
     if (open) {
-      setClientId(invoice?.client_id ?? '')
+      setClientId(invoice?.client_id ?? lockClientId ?? '')
       setPackageId(invoice?.package_id ?? '')
       setAmount(String(invoice?.amount ?? 0))
       setIssuedAt(invoice ? new Date(invoice.issued_at) : undefined)
       setDueAt(invoice ? new Date(invoice.due_at) : undefined)
       setSubmitted(false)
     }
-  }, [open, invoice])
+  }, [open, invoice, lockClientId])
 
   // Packages scoped to the selected client; in edit the pair is fixed.
   const clientPackages = useMemo(
@@ -95,7 +97,7 @@ export function InvoiceFormModal({ open, mode, invoice, onSubmit, onClose }: Pro
           id="inv-client"
           titleText="Client"
           label="Select a client"
-          disabled={mode === 'edit'}
+          disabled={mode === 'edit' || lockClientId != null}
           items={clients}
           itemToString={(c) => c?.name ?? ''}
           selectedItem={selectedClient}

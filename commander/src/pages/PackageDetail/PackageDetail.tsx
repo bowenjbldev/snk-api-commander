@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { NavLink, Outlet, useNavigate, useParams } from 'react-router'
 import { Tag } from '@carbon/react'
 import { Breadcrumbs } from '../../app/Breadcrumbs'
-import { useStore, usePackage, useProvisionedPackage } from '../../store/store'
+import { useStore } from '../../store/store'
 import { PackageStatusTag } from '../../components/tags/StatusTag'
 import { EmptyState } from '../../components/EmptyState'
 import type { PackageContext } from '../../store/types'
@@ -17,11 +17,15 @@ const TABS = [
 ]
 
 export function PackageDetail() {
-  const { name } = useParams()
-  const pkg = usePackage(name)
-  const packageRow = useProvisionedPackage(name)
+  const { id } = useParams()
+  const packages = useStore((s) => s.packages)
+  const pkg = useMemo(
+    () => (id != null ? packages.find((p) => p.id === Number(id)) : undefined),
+    [packages, id],
+  )
+  const packageRow = pkg?.provisioned_at != null ? pkg : undefined
   const plansAll = useStore((s) => s.plans)
-  const plans = useMemo(() => plansAll.filter((p) => p.package === name), [plansAll, name])
+  const plans = useMemo(() => plansAll.filter((p) => p.package === pkg?.name), [plansAll, pkg?.name])
   const navigate = useNavigate()
 
   if (!pkg) {
@@ -43,16 +47,16 @@ export function PackageDetail() {
       <Breadcrumbs />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 400, margin: 0 }}>{pkg.label ?? pkg.name}</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 400, margin: 0 }}>{pkg.label ?? pkg.name}</h1>
+          <div className="scns-helper" style={{ fontSize: 13, marginTop: 6 }}>
+            <span className="scns-mono">{pkg.name}</span> · {plans.length} {plans.length === 1 ? 'plan' : 'plans'} ·{' '}
+            {packageRow ? 'provisioned' : 'not provisioned'}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
             <Tag type={pkg.listing_status === 'active' ? 'green' : 'gray'} size="sm">
               {pkg.listing_status}
             </Tag>
             {packageRow && <PackageStatusTag pkg={packageRow} />}
-          </div>
-          <div className="scns-helper" style={{ fontSize: 13, marginTop: 6 }}>
-            <span className="scns-mono">{pkg.name}</span> · {plans.length} {plans.length === 1 ? 'plan' : 'plans'} ·{' '}
-            {packageRow ? 'provisioned' : 'not provisioned'}
           </div>
         </div>
       </div>

@@ -108,12 +108,35 @@ Header (ambos temas): bg `#161616`, borde `#393939`, texto `#f4f4f4`.
 
 - Fuentes: **IBM Plex Sans** (UI: 400/500/600), **IBM Plex Mono** (400/500/600).
 - Escala (productive): 10–12px labels/captions mono, 13px cuerpo de tabla, 14px UI/body,
-  16px títulos de card (600), 18px títulos de drawer (600), 20px títulos de modal (400),
+  14px títulos de card (600, `.scns-card__title`), 18px títulos de drawer (600), 20px títulos de modal (400),
   24px títulos de página (400), 28px valores KPI (400), 36px countdown (mono).
 - Espaciado Carbon base 8px (4/8/12/16/24/32). Padding de columna de contenido 24–32px.
 - Alturas de fila: tabla 48px (logs 34px, quotas 52px dentro del detalle de package), toolbar 48px, batch bar 40px,
   footer de modal 56px, botones 40px (compactos 32px).
 - Radio: 0 en todo salvo tags/pills (full round) y dots/toggles (50%).
+
+### Formularios
+
+- **Rejilla `.scns-form-grid` de 2 columnas fijas** (no auto-fit): `repeat(2, minmax(0,1fr))`,
+  gap `16px 20px`, colapsa a 1 columna en <600px.
+- **Sin celdas vacías.** Ordena los campos para que cada sección tenga un **número par** de ítems y
+  las filas queden completas (p. ej. Contact = 6 ítems → 3 filas; Billing = 8 → 4 filas). **No dejes
+  controles sueltos a media fila**: empareja los pequeños (un `Toggle`, un `Select`) o el `TextArea`
+  con otro campo dentro de la misma rejilla en vez de ponerlos en su propia fila ancha. El `TextArea`
+  va como una celda más (media anchura), no flotando con hueco a la derecha.
+- **Inputs sobre card/panel → token theme-aware `--scns-field`.** Carbon iguala el campo
+  (`--cds-field`) al `--cds-layer` de la card, así que se funden. Usa `--scns-field` (clase scoped
+  `.scns-client-form` / `.scns-drawer`): en **oscuro** → `field-02` (más **claro**/elevado, el campo
+  canónico de Carbon sobre layer-01); en **claro** → `--cds-background` (gris; el `field-02` claro
+  sería blanco-sobre-blanco). Así los inputs leen como campos distintos en ambos temas siguiendo la
+  capa de Carbon.
+- **Edición in situ (no modal) donde la página ES el registro:** el form se renderiza siempre
+  editable (inputs como vista). El guardado va en un **botón flotante** (`.scns-save-fab`, estilo FAB
+  Material **con estética IBM**: cuadrado, IBM Blue, elevación sobria, abajo-derecha, fixed): **siempre
+  visible** mientras haya permiso, **deshabilitado/neutro hasta que haya un cambio** y entonces pasa a
+  primary activo; al guardar vuelve a neutro. Sin permiso `update clients`, los inputs van `disabled`
+  (solo lectura) y no se muestra el FAB. Resetea el estado del form al cambiar de entidad
+  (`key={id}`). Los modales (`*FormModal`) se reservan para **crear** desde las listas.
 
 ---
 
@@ -158,8 +181,29 @@ Componentes reutilizables propios (`commander/src/components/`): `DataTableShell
 `CopyableCode`, `ChartCard`, `EmptyState`, `StateCard`, `PageHeader`, `RelativeTime`,
 `FullScreenLoading`, `CommandPalette`.
 
-Modales (`components/modals/`): `TypedConfirmModal`, `StateChangeModal`, `ProvisionModal`,
-`OverdueEnforcementModal`, `ClientFormModal`, `InvoiceFormModal`, `PlanFormModal`.
+Modales (`components/modals/`, reservados para **confirmaciones / cambios de estado**):
+`TypedConfirmModal`, `StateChangeModal`, `ProvisionModal`, `OverdueEnforcementModal`,
+`InvoiceFormModal`, `PlanFormModal`.
+
+**Create flows → side panel, no modal.** La creación de entidades usa un **slide-over** derecho
+(`CreatePanel`, sobre el `Drawer`) en vez de un modal centrado: mantiene la lista visible detrás, da
+aire al form multi-campo y es menos bloqueante (guía Carbon de *create flows*). Primero migrado:
+**`ClientCreatePanel`** (sustituye al antiguo `ClientFormModal`). Pendiente migrar
+invoice/plan/provisioning al mismo patrón.
+
+Convenciones del **Drawer / side panel** (`components/Drawer.tsx`, `CreatePanel`):
+- **Ancho 424px**, fijo a la derecha, portaled a `<body>` (la zona de tema vive ahí), con focus-trap;
+  **Esc** y click en overlay cierran.
+- **Arranca bajo el header** (`top: 48px`): el **overlay también** empieza en 48px, así el header
+  persistente de la app **no queda tapado/atenuado**.
+- **Scroll solo en el body**: el panel es `overflow: hidden` y el body `overflow: hidden auto` →
+  evita un scroll-x espurio cuando se abre un tooltip. El tooltip del botón **Close** abre hacia
+  dentro (`align="left"`) para no desbordar por la derecha.
+- **Header con un solo título** (el del evento, p. ej. "Create client"), con el **mismo estilo que el
+  título de página** (`<h2>` 24px / 400 — no bold). Sin overline redundante.
+- **Footer**: `Cancel` (secondary) + acción primaria, cada uno `flex: 1`.
+- **Form a 1 columna**; **inputs con fondo `--scns-field`** (theme-aware: oscuro → field-02 elevado,
+  claro → gris; misma convención que los inputs sobre card, ver §3 Formularios; la regla cubre `.scns-drawer`).
 
 ---
 
@@ -214,19 +258,73 @@ Pantalla de acceso del operador. Email + password → token Sanctum (Bearer) gua
   Plan) y el valor el timestamp relativo. Toda la fila es un botón clicable con hover.
 
 ### Clients (lista + drawer)
-- Tabla: Name (link) · Company · Email (mono) · Packages (count) · Status tag · Created.
-  Toolbar con search + filtro de estado. Primaria **Create client**.
-- Click de fila → **Drawer** (424px): contacto (email/phone/notes), bloque de alerta con borde
-  rojo si hay factura overdue, mini-lista de packages, atajo "New package for this client"
-  (pre-rellena el cliente en el provisioning), footer Edit / Open full record.
-- Alta/edición vía `ClientFormModal`.
+- **KPI cluster** (5 tiles, mismo patrón que Dashboard): Clients (total + active/inactive) ·
+  Active (verde) · Packages provisionados · MRR (términos vigentes) · At risk (clientes con factura
+  overdue, rojo). Todo derivado del store cargado — sin endpoints ni tablas nuevas.
+- Tabla enriquecida (minicharts CSS/SVG ligeros — **sin Carbon charts por fila** por el coste de
+  re-layout). Columnas, ordenadas por relevancia:
+  - **Client** — una sola línea: **tag de estado** del cliente (active/inactive) a la izquierda +
+    nombre link en negrita. (El riesgo de impago se ve vía el KPI "At risk" y el filtro Billing.)
+  - **Email** — contacto del cliente (mono).
+  - **MRR** — mono, `$x` del término vigente excl. overdue, "—" si 0.
+  - **Traffic · 24h** — `requests_24h` (suma de sus packages) + **sparkline** de la tendencia 48h
+    (`Sparkline`, SVG; serie agregada de `GET /usage/platform` por `package_id → client_id`).
+  - **Quota health** — peor `quota_health` entre sus packages como barra verde/ámbar/roja (reusa
+    `QuotaBar`).
+  - **Last seen** — `max(last_seen)` entre sus packages, relativo (`RelativeTime`), "never" si nunca.
+  - (Email y Created viven en el drawer; el search sigue cubriendo email.)
+- Toolbar: search (name + company + email) + filtros inline (patrón QuotasTab) **Status · Billing
+  (At risk/Current) · Health (Any suspended/Any grace/All healthy)**, y **Country** solo si hay >1
+  país distinto. Botón ghost **Clear filters** (icono Close) cuando algún filtro está activo.
+  Primaria **Create client**.
+- Click de fila (o del nombre) → **página dedicada** `/clients/:id` (`ClientDetail`), **todo en una
+  página** (sin tabs): breadcrumbs (Clients / Nombre), header con nombre + status tag + "client since
+  · company", **KPI cluster** (Packages · MRR · Requests 24h · Quota health), alerta de overdue si la
+  hay, y un layout de **form + rail** (`.scns-client-grid`, colapsa a una columna en estrecho). Tanto
+  el form como cada bloque del rail usan el componente compartido **`Card`** (`components/Card.tsx`):
+  card con **header band** (mismo fondo que el body, separado por un hairline — `.scns-card__header`/
+  `__body`) y título 16px bold dentro del header: **Details** · **Packages ·N** · **Invoices ·N**.
+  (Sustituye al antiguo drawer + modal de edición.)
+  - **KPI cluster** con iconos + tinte semántico (como Dashboard/Clients): Packages (`Box`) · MRR
+    (`Money`) · Requests·24h (`Activity`) · Quota health (`MeterAlt`, icono y valor en verde/ámbar/
+    rojo según el peor ratio).
+  - **Izquierda (card "Details") — vista + edición a la vez (sin modal, sin botón "Editar"):** un
+    **formulario siempre editable** (`ClientEditForm`, inputs Carbon en rejilla 2-col
+    `.scns-form-grid` sin celdas vacías — ver §3 Formularios — con sub-labels internos Contact +
+    Billing). Inputs con fondo `--scns-field` (theme-aware, ver §3) vía `.scns-client-form`.
+    Guardado mediante el **botón flotante** `.scns-save-fab` (ver §3 Formularios). Validaciones:
+    name/email requeridos, email/billing válidos, country ISO-2. Sin permiso `update clients` los
+    inputs quedan `disabled` (solo lectura). Se re-inicializa al navegar entre clientes
+    (`key={client.id}`).
+  - **Rail derecho (`.scns-client-rail`):** dos cards apiladas — **Packages** e **Invoices** (títulos
+    sin contador), cada una con una **mini-tabla alineada** (`.scns-minitable`: cabecera tenue
+    uppercase, columnas numéricas mono a la derecha, divisores hairline). Packages: Package (link
+    uppercase punteado a `/packages/:id`) · Plan · MRR · Status. Invoices: Invoice · Due · Amount ·
+    Status (`BillingTag`).
+  - El `ClientFormModal` solo se usa ya para **crear** desde la lista.
+  - **Acciones por card (OverflowMenu kebab "⋮" en el header, prop `action` de `Card`):** el primario
+    (guardar) vive en el FAB; el kebab recoge lo secundario/destructivo. **Details** → Discard changes
+    (`disabled` sin cambios) · Delete client (`isDelete`, **stub** → toast "Not available yet",
+    pendiente de backend). **Packages** → New package for this client (`provision packages`).
+    **Invoices** → New invoice (`create invoices`) · View all invoices. "New invoice"/"New package"
+    abren `InvoiceFormModal`/`ProvisionModal` con el **cliente prefijado y bloqueado** (props
+    aditivas `clientId` / `lockClientId`). El header de card pasa a `align-items: center` para alinear
+    el kebab con el título.
+- Enlaces a cliente (CommandPalette, OverviewTab del package) apuntan a `/clients/:id`.
+- Derivaciones por cliente (sin endpoints/tablas nuevas): MRR = `price_monthly` de subscriptions
+  `ended_at == null` excl. `billing_status == 'overdue'` (idéntico al Dashboard); Traffic 24h = suma
+  de `requests_24h`; status mix / worst `quota_health` / `max(last_seen)` recorriendo sus packages;
+  sparkline 48h agregando los snapshots de `/usage/platform`.
+- Alta vía **`ClientCreatePanel`** (side panel, ver §6); edición in situ en `/clients/:id`.
 
 ### Packages (hub central) + detalle con tabs
 - **Lista de packages** (`Package`): la tabla única de packages de negocio, sincronizada desde
   disco (`packages/*`) y enriquecida por la API con `on_disk` y conteo de planes. Cada fila lleva el
   catálogo (label/description/listing_status, editable) y —si está provisionada— lo operativo de su
   instancia viva.
-- **`/packages/:name`** → `PackageDetail` con `Tabs` (line) y `<Outlet context>`:
+- **`/packages/:id`** → `PackageDetail` con `Tabs` (line) y `<Outlet context>` (la ruta direcciona
+  por id numérico — patrón unificado con `/clients/:id` — pero internamente resuelve `pkg.name`, que
+  es la clave de negocio que usan la API y el store):
   - **Overview** — identidad + estado del package provisionado (State card con countdown de grace),
     details (StructuredList: cliente, package, suscripción, created, last seen, `base_url`),
     control secret (snippet enmascarado + rotar), cuotas (gauges). Si el package aún no tiene

@@ -30,8 +30,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       const packageNames = new Map(provisioned.map((p) => [p.id, p.name]))
 
       return [
-        ...packages.map((p) => ({ id: p.name, label: p.label ?? p.name, sublabel: p.name, kind: 'Package' as const, to: `/packages/${p.name}` })),
-        ...clients.map((c) => ({ id: c.id, label: c.name, sublabel: c.company, kind: 'Client' as const, to: '/clients' })),
+        ...packages.map((p) => ({ id: p.name, label: p.label ?? p.name, sublabel: p.name, kind: 'Package' as const, to: `/packages/${p.id}` })),
+        ...clients.map((c) => ({ id: c.id, label: c.name, sublabel: c.company, kind: 'Client' as const, to: `/clients/${c.id}` })),
         ...invoices.map((i) => ({ id: i.id, label: i.number, sublabel: packageNames.get(i.package_id) ?? 'Unknown package', kind: 'Invoice' as const, to: '/invoices' })),
       ]
     },
