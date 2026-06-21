@@ -78,6 +78,69 @@ export function lineOptions(theme: ThemeName, scale: Record<string, string>, hei
   }
 }
 
+// Breakdown donut (status mix, invoices by status). Carbon legend at the bottom; colours come from
+// the explicit semantic scale passed in.
+export function donutOptions(theme: ThemeName, scale: Record<string, string>, height = '220px'): Opt {
+  return {
+    theme,
+    height,
+    toolbar: { enabled: false },
+    animations: false,
+    legend: { enabled: true, position: 'bottom' },
+    donut: { alignment: 'center' },
+    color: { scale },
+  }
+}
+
+// Breakdown bar (requests/MRR by package). `horizontal` puts labels on the left axis (bars grow
+// right); otherwise labels go on the bottom axis (vertical columns). One colour per package.
+export function barOptions(theme: ThemeName, scale: Record<string, string>, height = '220px', horizontal = true): Opt {
+  const axes = horizontal
+    ? { left: { mapsTo: 'group', scaleType: 'labels' }, bottom: { mapsTo: 'value', includeZero: true } }
+    : { bottom: { mapsTo: 'group', scaleType: 'labels' }, left: { mapsTo: 'value', includeZero: true } }
+  return {
+    theme,
+    height,
+    toolbar: { enabled: false },
+    animations: false,
+    legend: { enabled: false },
+    axes,
+    color: { scale },
+    grid: horizontal ? { y: { enabled: false } } : { x: { enabled: false } },
+  }
+}
+
+// Breakdown meter (invoices by status) — one proportional bar split into segments + a legend.
+export function meterOptions(theme: ThemeName, scale: Record<string, string>, total: number, height = '200px'): Opt {
+  return {
+    theme,
+    height,
+    toolbar: { enabled: false },
+    animations: false,
+    color: { scale },
+    meter: { proportional: { total } },
+    legend: { enabled: true },
+  }
+}
+
+// Breakdown lollipop (MRR by package) — horizontal stems with a dot at each value.
+export function lollipopOptions(theme: ThemeName, scale: Record<string, string>, height = '220px'): Opt {
+  return {
+    theme,
+    height,
+    toolbar: { enabled: false },
+    animations: false,
+    legend: { enabled: false },
+    points: { enabled: true },
+    axes: {
+      left: { mapsTo: 'group', scaleType: 'labels' },
+      bottom: { mapsTo: 'value', includeZero: true },
+    },
+    color: { scale },
+    grid: { y: { enabled: false } },
+  }
+}
+
 export function areaOptions(theme: ThemeName, scale: Record<string, string>, height = '260px'): Opt {
   return {
     theme,

@@ -9,9 +9,10 @@
 #
 # Uso:
 #   bash scripts/simulate.sh                  # flujo completo (spec por defecto)
-#   bash scripts/simulate.sh traffic <sub> [n]# SOLO trafico (ex simulate-traffic.sh)
+#   bash scripts/simulate.sh traffic <sub> [n]# SOLO trafico via HTTP (ex simulate-traffic.sh)
 #   bash scripts/simulate.sh invoices         # SOLO generar invoices
 #   bash scripts/simulate.sh pipeline         # SOLO rollup + measure + refresh
+#   bash scripts/simulate.sh volume [filas]   # bulk-seed masivo (default 100000/package) en 48h
 #   bash scripts/simulate.sh report           # SOLO el reporte de estado
 #
 # Overrides por entorno:
@@ -246,6 +247,55 @@ stage_traffic() {
   done
 }
 
+# ------------------------------------------------------------------ volumen
+# Siembra cientos de miles de commander_request_logs por package, repartidos en
+# las ultimas 48h, con UN SOLO `INSERT ... SELECT FROM seq_1_to_N` (motor SEQUENCE
+# de MariaDB): set-based, sin loops ni HTTP — ordenes de magnitud mas rapido. Luego
+# `commander:usage:rollup` agrega TODOS los buckets cerrados (48 horas) y se pueblan
+# las graficas de la plataforma. Uso: simulate.sh volume [filas_por_package].
+stage_seed_volume() {
+  local ROWS="${1:-100000}"
+  hr; echo "STAGE — seed VOLUMEN (~$ROWS filas/package base, repartidas en 48h, bulk INSERT)"; hr
+  local factors=(1.0 0.6 0.3) idx=0 row name sub pid n
+  for row in "${PACKAGES[@]}"; do
+    read -r name _ _ sub _ _ _ <<<"$row"
+    pid="$(dbq -N commander -e "SELECT id FROM commander_packages WHERE subdomain='$sub' LIMIT 1;" 2>/dev/null | tr -d '[:space:]')"
+    [ -n "$pid" ] || { echo "    $name: sin package provisionado, salto"; continue; }
+    n="$(awk "BEGIN{printf \"%d\", $ROWS * ${factors[$((idx % 3))]}}")"; idx=$((idx + 1))
+    echo "    $name (id=$pid): bulk insert de $n filas…"
+    # status: ~95% 2xx, ~4% 404, ~1% 5xx → error-rate realista. occurred_at uniforme en 48h
+    # (rellena los 48 buckets horarios). Todo generado en MariaDB, una sola sentencia.
+    if ! dbq commander <<SQL
+INSERT INTO commander_request_logs
+  (package_id, occurred_at, method, route, status, duration_ms, user_id, token_id, ip, request_bytes, response_bytes)
+SELECT
+  $pid,
+  NOW() - INTERVAL FLOOR(RAND() * 172800) SECOND,
+  ELT(FLOOR(1 + RAND() * 4), 'GET', 'GET', 'GET', 'POST'),
+  ELT(FLOOR(1 + RAND() * 5), '/products', '/orders', '/customers', '/users', '/auth/me'),
+  CASE WHEN RAND() < 0.04 THEN 404 WHEN RAND() < 0.012 THEN 500 ELSE 200 END,
+  FLOOR(20 + RAND() * 480),
+  FLOOR(1 + RAND() * 40),
+  1,
+  '127.0.0.1',
+  FLOOR(RAND() * 2000),
+  FLOOR(RAND() * 9000)
+FROM seq_1_to_$n;
+SQL
+    then
+      echo "    ERROR en el bulk insert (¿motor SEQUENCE de MariaDB disponible?)"
+    fi
+  done
+  # El rollup es incremental (arranca desde max(period_start) ya agregado). Para sembrar las
+  # 48h historicas hay que RESETEAR los rollups: asi windowStart cae al log crudo mas antiguo y
+  # recomputa todos los buckets. Los logs crudos quedan intactos (el rollup es idempotente).
+  echo "    recomputando rollups de las 48h (reset + rollup hour+day)…"
+  dbq commander -e "DELETE FROM commander_usage_rollups;" >/dev/null 2>&1 || true
+  artisan commander:usage:rollup --period=both >/dev/null || true
+  # measure + bucket actual + refresh de KPIs (reusa el pipeline existente)
+  stage_pipeline
+}
+
 stage_pipeline() {
   hr; echo "STAGE 5/5 — pipeline de metering (rollup + measure + refresh)"; hr
   echo "    quota:measure (mide + aplica enforcement)…"
@@ -287,7 +337,8 @@ case "${1:-all}" in
   invoices) stage_invoices ;;
   change-plan) stage_change_plan; stage_report ;;
   pipeline) stage_pipeline; stage_report ;;
+  volume)   stage_seed_volume "${2:-100000}"; stage_report ;;
   report)   stage_report ;;
   all)      stage_clean; stage_scaffold; stage_provision; stage_change_plan; stage_invoices; stage_traffic; stage_pipeline; stage_report ;;
-  *) echo "uso: simulate.sh [all|traffic <sub> [n]|invoices|change-plan|pipeline|report]"; exit 1 ;;
+  *) echo "uso: simulate.sh [all|traffic <sub> [n]|invoices|change-plan|pipeline|volume [filas]|report]"; exit 1 ;;
 esac

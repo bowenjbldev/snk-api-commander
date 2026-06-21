@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { useNavigate } from 'react-router'
 import { Loading } from '@carbon/react'
 import { Activity, CheckmarkOutline, Time, PauseOutline, Warning, Money } from '@carbon/icons-react'
-import { StackedBarChart, AreaChart } from '@carbon/charts-react'
+import { StackedBarChart, AreaChart, SimpleBarChart } from '@carbon/charts-react'
 import { useStore, useProvisionedPackages } from '../store/store'
 import { useAppTheme } from '../providers/ThemeProvider'
 import { useTick } from '../providers/TickProvider'
@@ -11,8 +11,13 @@ import { ChartCard, ChartLegend } from '../components/ChartCard'
 import { GraceCountdown } from '../components/GraceCountdown'
 import { RelativeTime } from '../components/RelativeTime'
 import { EmptyState } from '../components/EmptyState'
-import { stackedBarOptions, areaOptions, legendItems } from '../lib/chartOptions'
-import { snapshotsToPlatformSeries, type PlatformSeries } from '../lib/chartData'
+import { stackedBarOptions, areaOptions, barOptions, legendItems } from '../lib/chartOptions'
+import {
+  snapshotsToPlatformSeries,
+  requestsByPackageData,
+  packageColorMap,
+  type PlatformSeries,
+} from '../lib/chartData'
 import { platformUsage } from '../lib/api'
 import { formatCompact, formatCurrencyShort, formatCurrency, formatPercent } from '../lib/format'
 import type { ActivityEvent, UsageSnapshot } from '../store/types'
@@ -132,8 +137,13 @@ export function Dashboard() {
   const reqData = platform.series?.requests.data ?? []
   const errData = platform.series?.errorRate ?? []
   const hasChart = !platform.loading && !platform.error && reqData.length > 0
-  const reqOpts = useMemo(() => stackedBarOptions(theme, groups, '320px'), [theme, groups])
-  const errOpts = useMemo(() => areaOptions(theme, { 'error %': '#fa4d56' }, '320px'), [theme])
+  // Principal chart (left): requests per hour timeseries.
+  const reqOpts = useMemo(() => stackedBarOptions(theme, groups, '360px'), [theme, groups])
+  // Two charts beside the principal (right column, stacked).
+  const errOpts = useMemo(() => areaOptions(theme, { 'error %': '#fa4d56' }, '150px'), [theme])
+  const pkgColors = useMemo(() => packageColorMap(packages), [packages])
+  const reqByPkg = useMemo(() => requestsByPackageData(packages), [packages])
+  const reqByPkgOpts = useMemo(() => barOptions(theme, pkgColors, '150px', true), [theme, pkgColors])
 
   const attention = useMemo(() => {
     const items: { tone: Tone; label: string; entity: string; desc: ReactNode; metric: ReactNode; to: string }[] = []
@@ -201,7 +211,7 @@ export function Dashboard() {
         <KpiTile label="MRR" value={formatCurrencyShort(dash.mrr)} icon={<Money size={20} />} />
       </KpiCluster>
 
-      {/* Charts row */}
+      {/* Charts: principal on the left, error rate + requests-24h beside it */}
       <div className="scns-charts-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, marginTop: 40 }}>
         <ChartCard
           title="Requests per hour"
@@ -211,20 +221,25 @@ export function Dashboard() {
           {hasChart ? (
             <StackedBarChart data={reqData} options={reqOpts} />
           ) : (
-            <ChartPlaceholder loading={platform.loading} error={platform.error} height={320} />
+            <ChartPlaceholder loading={platform.loading} error={platform.error} height={360} />
           )}
         </ChartCard>
-        <ChartCard
-          title="Error rate"
-          subtitle="%"
-          right={<ChartLegend items={[{ label: 'error %', color: '#fa4d56' }]} />}
-        >
-          {hasChart ? (
-            <AreaChart data={errData} options={errOpts} />
-          ) : (
-            <ChartPlaceholder loading={platform.loading} error={platform.error} height={320} />
-          )}
-        </ChartCard>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          <ChartCard title="Requests · 24h" subtitle="by package">
+            <SimpleBarChart data={reqByPkg} options={reqByPkgOpts} />
+          </ChartCard>
+          <ChartCard
+            title="Error rate"
+            subtitle="%"
+            right={<ChartLegend items={[{ label: 'error %', color: '#fa4d56' }]} />}
+          >
+            {hasChart ? (
+              <AreaChart data={errData} options={errOpts} />
+            ) : (
+              <ChartPlaceholder loading={platform.loading} error={platform.error} height={150} />
+            )}
+          </ChartCard>
+        </div>
       </div>
 
       {/* Triage: attention required + recent activity, side by side */}

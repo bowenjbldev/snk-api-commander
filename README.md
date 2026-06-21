@@ -261,6 +261,38 @@ php artisan commander:quota:measure                # mide disco/requests/usuario
 - Metering por request en `commander_request_logs` (middleware terminable, cero latencia con FPM, columna `package_id`) + rollups en `commander_usage_rollups`.
 - El Commander cambia el estado de un paquete escribiendo `commander_packages` directamente: `POST /packages/{name}/suspend|grace|resume`.
 
+### Simulación de datos (`scripts/simulate.sh`)
+
+Script end-to-end para poblar el Commander en local (corre contra el stack Docker). Subcomandos:
+
+```bash
+bash scripts/simulate.sh                  # flujo completo: limpia BD → scaffold → provisiona →
+                                          # invoices → trafico (HTTP) → pipeline → reporte
+bash scripts/simulate.sh traffic <sub> [n]# SOLO trafico autenticado por HTTP contra un subdominio
+bash scripts/simulate.sh invoices         # SOLO genera invoices (paid/pending/overdue)
+bash scripts/simulate.sh pipeline         # SOLO rollup + quota:measure + refresh de KPIs
+bash scripts/simulate.sh report           # SOLO el reporte de estado
+```
+
+**Volumen masivo** — para llenar las gráficas (Requests per hour, Error rate) con datos repartidos
+en las últimas 48h sin esperar tráfico real:
+
+```bash
+bash scripts/simulate.sh volume [filas_por_package]   # default 100000; p. ej. volume 200000
+```
+
+- Inserta los `commander_request_logs` con **un solo `INSERT ... SELECT FROM seq_1_to_N`** por package
+  (motor **SEQUENCE** de MariaDB): set-based, sin loops ni HTTP → órdenes de magnitud más rápido.
+- `occurred_at` repartido uniforme en 48h (rellena los ~48 buckets horarios); escala por package
+  (1.0 / 0.6 / 0.3) y mezcla de status realista (~95% 2xx · 4% 4xx · 1% 5xx).
+- **Resetea** `commander_usage_rollups` y recomputa todos los buckets (`commander:usage:rollup` es
+  incremental desde el último bucket; sin el reset solo agregaría las horas recientes).
+- El `INSERT` es rapidísimo incluso con cientos de miles; el cuello de botella a alto volumen es el
+  rollup en PHP (recorre los buckets). Cada `volume` **acumula** sobre lo existente.
+
+Overrides por entorno: `ADMIN_EMAIL` / `ADMIN_PASSWORD` (operador), `SCENARIO=shop|blog|generic`
+(en `traffic`), `DOCKER_COMPOSE` (runner). La spec de packages se edita en el array `PACKAGES[]`.
+
 ### Generadores package-aware
 
 Todos los `make:*` soportan `--package`:

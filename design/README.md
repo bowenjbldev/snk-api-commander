@@ -195,14 +195,23 @@ Pantalla de acceso del operador. Email + password → token Sanctum (Bearer) gua
 
 ### Dashboard
 - Title row + subline de fecha; a la derecha `updated … · auto-refresh` (mono, helper).
-- **Fila de KPIs** (`KpiCluster`): tiles en grid de gap 1px (el gap muestra el borde). Valores
-  con color semántico (In grace ámbar, Suspended rojo) y deltas (verde/rojo). Las dos KPIs
-  reales (requests 24h y MRR) se computan de los datos en vivo; deltas/error-rate sintéticos.
-- **Attention required**: lista bordeada con severidad (QUOTA OVER / GRACE ENDS / OVERDUE /
-  GRACE) + enlace a la entidad + deep-link a la derecha.
-- **Charts** (grid 2fr/1fr): "Requests per hour" (stacked bar por package) + "Error rate"
-  (línea roja + área).
-- **Recent activity**: lista con dot de estado + frase con enlaces mono + timestamp relativo.
+- **Fila de KPIs** (`KpiCluster`, 6 tiles en grid de gap 1px — el gap muestra el borde): cada tile
+  lleva **label en MAYÚSCULA tracked** (estilo label-01), **valor 32px** con cifras tabulares y un
+  **icono Carbon** arriba-derecha (Active `CheckmarkOutline` verde, In grace `Time` ámbar, Suspended
+  `PauseOutline`, Requests `Activity`, Error rate `Warning`, MRR `Money`). Valores con color semántico
+  (In grace ámbar, Suspended rojo). Deltas periodo-anterior (▲/▼ verde/rojo) **solo si hay ventana
+  previa de 24h** — nunca se fabrica una flecha. Requests/error-rate/MRR se computan de datos en vivo.
+- **Charts** (grid 2fr/1fr): a la izquierda el principal **"Requests per hour"** (stacked bar por
+  package, 48h, leyenda a la izquierda); a la derecha, apilados, **"Requests · 24h by package"**
+  (barra horizontal, color por package consistente con el stacked) + **"Error rate"** (área roja).
+  Las dos columnas se igualan en altura. (Counts del feed `/usage/platform` llegan como string →
+  se coercionan a `Number` para no romper el eje.)
+- **Fila de triage** (grid 2 columnas): **"Needs attention"** (subtítulo `quotas, grace & billing`)
+  + **"Recent activity"** (`last 3 days`), ambas con **filas densas idénticas** (`scns-list-row`):
+  `[label pill de estado] · entidad (mono link) · detalle (rellena) · valor (mono, helper)`. En
+  attention el label es la severidad (Quota over/Grace ends/Overdue) y el valor la métrica (294% /
+  2d 14h / $19.99); en activity el label es el tipo de evento (Suspended/Grace/Resumed/Paid/Quota/
+  Plan) y el valor el timestamp relativo. Toda la fila es un botón clicable con hover.
 
 ### Clients (lista + drawer)
 - Tabla: Name (link) · Company · Email (mono) · Packages (count) · Status tag · Created.

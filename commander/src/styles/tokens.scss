@@ -513,10 +513,18 @@ body {
   .scns-grid-2col {
     grid-template-columns: 1fr !important;
   }
+  .scns-charts-4,
+  .scns-charts-5 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
 }
 @media (max-width: 672px) {
   .scns-kpi-cluster {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .scns-charts-4,
+  .scns-charts-5 {
+    grid-template-columns: 1fr !important;
   }
   .scns-page {
     padding: 16px 16px 40px;
