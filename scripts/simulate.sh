@@ -202,6 +202,23 @@ stage_provision() {
   done
 }
 
+stage_change_plan() {
+  hr; echo "STAGE — cambiar de plan (1ª package): cierra el término vigente, abre uno nuevo (historial)"; hr
+  [ -n "${OP_TOKEN:-}" ] || login_operator
+  local name slug qreq sub _r pid err
+  read -r name slug qreq sub _r _r _r <<<"${PACKAGES[0]}"
+  # Segundo plan activo para ese package, y cambio a él (by name).
+  pid="$(jval "$(capi POST /plans "{\"slug\":\"${slug}-v2\",\"package\":\"$name\",\"name\":\"$name Pro\",\"price_monthly\":49.99,\"q_requests_day\":$qreq,\"q_disk_db_mb\":2048,\"q_users_total\":100,\"status\":\"active\"}")" id)"
+  [ -n "$pid" ] || { echo "    $name: 2º plan FALLO"; return 0; }
+  err="$(jval "$(capi POST "/packages/$name/change-plan" "{\"plan_id\":$pid}")" error)"
+  if [ -n "$err" ]; then
+    echo "    $name: change-plan FALLO: $err"
+  else
+    printf '    %-5s -> plan nuevo id=%s (%s Pro); el término anterior queda en el historial\n' "$name" "$pid" "$name"
+  fi
+  return 0
+}
+
 stage_invoices() {
   hr; echo "STAGE — generar invoices (estados variados: paid/pending/overdue)"; hr
   [ -n "${OP_TOKEN:-}" ] || login_operator
@@ -252,6 +269,8 @@ stage_report() {
     ORDER BY p.id;" 2>/dev/null || true
   echo; echo "Invoices (estados):"
   dbq commander -e "SELECT number, package_id, amount, status FROM commander_invoices ORDER BY id;" 2>/dev/null || true
+  echo; echo "Subscriptions (términos; vigente = ended_at NULL, lo demás es historial):"
+  dbq commander -e "SELECT package_id, plan, price_monthly, billing_status, ended_at FROM commander_subscriptions ORDER BY package_id, id;" 2>/dev/null || true
   echo; echo "Tablas commander_* con filas:"
   dbq commander -N -e "SELECT 'packages',COUNT(*) FROM commander_packages
     UNION ALL SELECT 'subscriptions',COUNT(*) FROM commander_subscriptions
@@ -266,8 +285,9 @@ stage_report() {
 case "${1:-all}" in
   traffic)  run_traffic "${2:?uso: simulate.sh traffic <sub> [iter]}" "${3:-40}" ;;
   invoices) stage_invoices ;;
+  change-plan) stage_change_plan; stage_report ;;
   pipeline) stage_pipeline; stage_report ;;
   report)   stage_report ;;
-  all)      stage_clean; stage_scaffold; stage_provision; stage_invoices; stage_traffic; stage_pipeline; stage_report ;;
-  *) echo "uso: simulate.sh [all|traffic <sub> [n]|invoices|pipeline|report]"; exit 1 ;;
+  all)      stage_clean; stage_scaffold; stage_provision; stage_change_plan; stage_invoices; stage_traffic; stage_pipeline; stage_report ;;
+  *) echo "uso: simulate.sh [all|traffic <sub> [n]|invoices|change-plan|pipeline|report]"; exit 1 ;;
 esac

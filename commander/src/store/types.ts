@@ -121,15 +121,20 @@ export interface Invoice {
   enforcement: 'grace' | 'suspended' | null
 }
 
+// Un término de subscripción (1:N por package = historial de planes). El VIGENTE es el de
+// `ended_at == null` (al que apunta `Package.subscription_id`); los cerrados son histórico. `plan`/
+// `price_monthly` son snapshots congelados; `plan_id` es trazabilidad al catálogo.
 export interface Subscription {
   id: number
   client_id: number
   package_id: number
-  plan: string // e.g. "Tracking Pro"
-  price_monthly: number
+  plan_id: number | null // FK al catálogo (snapshot manda en billing)
+  plan: string // snapshot del nombre, e.g. "Tracking Pro"
+  price_monthly: number // snapshot del precio
   billing_status: BillingStatus
   auto_suspend: boolean
   started_at: string // ISO
+  ended_at: string | null // null = término vigente; ISO = histórico
 }
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
@@ -154,7 +159,7 @@ export interface LogEntry {
   memory_kb?: number
 }
 
-export type ActivityKind = 'suspend' | 'grace' | 'resume' | 'paid' | 'quota'
+export type ActivityKind = 'suspend' | 'grace' | 'resume' | 'paid' | 'quota' | 'change_plan'
 
 export interface ActivityEvent {
   id: number

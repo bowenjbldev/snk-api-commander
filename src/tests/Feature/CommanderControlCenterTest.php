@@ -4,12 +4,15 @@ namespace Tests\Feature;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Packages\Commander\Database\Seeders\CommanderDatabaseSeeder;
 use Packages\Commander\Models\CommanderActivityEventModel;
 use Packages\Commander\Models\CommanderClientModel;
 use Packages\Commander\Models\CommanderPackageModel;
+use Packages\Commander\Models\CommanderPlanModel;
 use Packages\Commander\Models\CommanderQuotaModel;
 use Packages\Commander\Models\CommanderRequestLogModel;
+use Packages\Commander\Models\CommanderSubscriptionModel;
 use Packages\Commander\Models\CommanderUsageRollupModel;
 use Packages\Commander\Services\CommanderQuotaMeasurerService;
 use Packages\Core\Database\Seeders\CoreDatabaseSeeder;
@@ -214,5 +217,120 @@ class CommanderControlCenterTest extends CommanderTestCase
         $row = CommanderPackageModel::where('name', 'Shop')->first();
         $this->assertSame('Tienda', $row->label);
         $this->assertSame('inactive', $row->listing_status);
+    }
+
+    // ── change-plan (historial 1:N de subscripciones) ──────────────────────────────
+
+    private function planFor(string $package, string $name, float $price = 100, string $status = 'active'): CommanderPlanModel
+    {
+        return CommanderPlanModel::create([
+            'slug' => Str::slug("{$package} {$name}") . '-' . uniqid(),
+            'package' => $package, 'name' => $name, 'price_monthly' => $price, 'status' => $status,
+        ]);
+    }
+
+    private function currentTerm(CommanderPackageModel $pkg, CommanderPlanModel $plan, bool $autoSuspend = true): CommanderSubscriptionModel
+    {
+        $sub = CommanderSubscriptionModel::create([
+            'client_id' => $pkg->client_id, 'package_id' => $pkg->id, 'plan_id' => $plan->id,
+            'plan' => $plan->name, 'price_monthly' => $plan->price_monthly,
+            'billing_status' => 'paid', 'auto_suspend' => $autoSuspend, 'started_at' => now(), 'ended_at' => null,
+        ]);
+        $pkg->forceFill(['subscription_id' => $sub->id])->save();
+
+        return $sub;
+    }
+
+    public function test_change_plan_closes_current_term_and_opens_new(): void
+    {
+        $admin = $this->admin();
+        $pkg = $this->package();
+        $basic = $this->planFor('Shop', 'Basic', 50);
+        $pro = $this->planFor('Shop', 'Pro', 290);
+        $current = $this->currentTerm($pkg, $basic, true);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson('/api/v1/packages/Shop/change-plan', ['plan_id' => $pro->id])
+            ->assertOk()
+            ->assertJsonPath('subscription.plan', 'Pro');
+
+        // El término anterior queda cerrado; el nuevo es el único vigente y snapshotea el plan elegido.
+        $this->assertNotNull($current->fresh()->ended_at);
+        $open = CommanderSubscriptionModel::where('package_id', $pkg->id)->whereNull('ended_at')->get();
+        $this->assertCount(1, $open);
+        $new = $open->first();
+        $this->assertSame('Pro', $new->plan);
+        $this->assertSame($pro->id, $new->plan_id);
+        $this->assertSame(290.0, (float) $new->price_monthly);
+        $this->assertSame('pending', $new->billing_status);
+        $this->assertTrue((bool) $new->auto_suspend); // heredado del término anterior
+        $this->assertSame($new->id, $pkg->fresh()->subscription_id); // package repunta al vigente
+
+        $this->assertNotNull(
+            CommanderActivityEventModel::where('package_id', $pkg->id)->where('kind', 'change_plan')->first()
+        );
+    }
+
+    public function test_change_plan_rejects_plan_of_other_package(): void
+    {
+        $admin = $this->admin();
+        $pkg = $this->package();
+        $this->currentTerm($pkg, $this->planFor('Shop', 'Basic', 50));
+        $other = $this->planFor('Blog', 'Pro', 100);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson('/api/v1/packages/Shop/change-plan', ['plan_id' => $other->id])
+            ->assertStatus(422);
+    }
+
+    public function test_change_plan_rejects_inactive_plan(): void
+    {
+        $admin = $this->admin();
+        $pkg = $this->package();
+        $this->currentTerm($pkg, $this->planFor('Shop', 'Basic', 50));
+        $inactive = $this->planFor('Shop', 'Old', 100, 'inactive');
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson('/api/v1/packages/Shop/change-plan', ['plan_id' => $inactive->id])
+            ->assertStatus(422);
+    }
+
+    public function test_change_plan_rejects_same_plan(): void
+    {
+        $admin = $this->admin();
+        $pkg = $this->package();
+        $basic = $this->planFor('Shop', 'Basic', 50);
+        $this->currentTerm($pkg, $basic);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson('/api/v1/packages/Shop/change-plan', ['plan_id' => $basic->id])
+            ->assertStatus(422);
+    }
+
+    public function test_change_plan_requires_provisioned_package(): void
+    {
+        $admin = $this->admin();
+        // Fila solo-catálogo (sin provisioned_at): no es instancia viva.
+        CommanderPackageModel::create(['name' => 'Ghost', 'label' => 'Ghost', 'listing_status' => 'active']);
+        $plan = $this->planFor('Ghost', 'Pro', 100);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson('/api/v1/packages/Ghost/change-plan', ['plan_id' => $plan->id])
+            ->assertStatus(404);
+    }
+
+    public function test_change_plan_requires_control_permission(): void
+    {
+        $this->seed(CoreDatabaseSeeder::class);
+        $this->seed(CommanderDatabaseSeeder::class);
+        $pkg = $this->package();
+        $plan = $this->planFor('Shop', 'Pro', 100);
+        $user = CoreUserModel::create([
+            'email' => 'noperm@snake.com', 'name' => 'No Perm', 'full_name' => 'No Perm', 'password' => 'secret1234',
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/packages/Shop/change-plan', ['plan_id' => $plan->id])
+            ->assertStatus(403);
     }
 }

@@ -8,11 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Packages\Commander\Models\CommanderActivityEventModel;
 use Packages\Commander\Models\CommanderPackageModel;
 use Packages\Commander\Models\CommanderPlanModel;
 use Packages\Commander\Models\CommanderQuotaModel;
 use Packages\Commander\Models\CommanderRequestLogModel;
+use Packages\Commander\Models\CommanderSubscriptionModel;
 use Packages\Commander\Models\CommanderUsageRollupModel;
 use Packages\Commander\Services\CommanderPackageRegistryService;
 use Packages\Core\Enums\CorePackageStatusEnum;
@@ -23,8 +25,8 @@ use Packages\Core\Services\CorePackageStateService;
  * Hub del panel package-centrico sobre la tabla UNICA commander_packages: una fila por package en
  * disco. index() sincroniza desde disco y enriquece cada fila con on_disk + conteo de planes; la fila
  * lleva catalogo (label/description/listing_status) y —si esta provisionada— lo operativo (subdomain,
- * cliente, estado runtime, KPIs) + relaciones. Las acciones operativas (estado, usage, logs,
- * de-provision) exigen una fila provisionada y se direccionan por `name`.
+ * cliente, estado runtime, KPIs) + relaciones. Las acciones operativas (estado, cambio de plan,
+ * usage, logs, de-provision) exigen una fila provisionada y se direccionan por `name`.
  */
 #[Group('Packages')]
 class CommanderPackagesController extends CoreBaseApiController
@@ -211,6 +213,79 @@ class CommanderPackagesController extends CoreBaseApiController
         return response()->json($packageRow->fresh()->load(['client', 'subscription', 'quotas']));
     }
 
+    /**
+     * Cambiar de plan: cierra el término de subscripción vigente y abre uno nuevo (historial 1:N).
+     * El nuevo término snapshotea el plan elegido y arranca en 'pending'; hereda auto_suspend.
+     */
+    public function changePlan(Request $request, $package = null): JsonResponse
+    {
+        if ($response = $this->requirePermission(self::CONTROL_PERMISSION)) {
+            return $response;
+        }
+
+        if (($packageRow = $this->findPackageRow($package)) === null) {
+            return response()->json(['error' => 'Package not provisioned'], 404);
+        }
+
+        $data = $request->validate([
+            'plan_id' => 'required|integer|exists:commander_plans,id',
+        ]);
+
+        $plan = CommanderPlanModel::findOrFail($data['plan_id']);
+
+        if (Str::studly($plan->package) !== $packageRow->name) {
+            return response()->json(['error' => 'Plan does not belong to this package.'], 422);
+        }
+        if ($plan->status !== 'active') {
+            return response()->json(['error' => 'Plan is not active.'], 422);
+        }
+
+        $now = CarbonImmutable::now();
+
+        $new = DB::connection('commander')->transaction(function () use ($packageRow, $plan, $now) {
+            // Bloquea el término vigente para evitar abrir dos en cambios concurrentes.
+            $current = CommanderSubscriptionModel::query()
+                ->where('package_id', $packageRow->id)
+                ->whereNull('ended_at')
+                ->lockForUpdate()
+                ->first();
+
+            if ($current && (int) $current->plan_id === (int) $plan->id) {
+                return null; // ya está en este plan: no-op
+            }
+
+            if ($current) {
+                $current->ended_at = $now;
+                $current->save();
+            }
+
+            $created = CommanderSubscriptionModel::create([
+                'client_id' => $packageRow->client_id,
+                'package_id' => $packageRow->id,
+                'plan_id' => $plan->id,
+                'plan' => $plan->name,
+                'price_monthly' => $plan->price_monthly,
+                'billing_status' => 'pending',
+                'auto_suspend' => $current?->auto_suspend ?? false,
+                'started_at' => $now,
+                'ended_at' => null,
+            ]);
+
+            $packageRow->subscription_id = $created->id;
+            $packageRow->save();
+
+            return $created;
+        });
+
+        if ($new === null) {
+            return response()->json(['error' => 'Package is already on this plan.'], 422);
+        }
+
+        $this->recordActivity('change_plan', $packageRow, "plan:{$plan->name}", null);
+
+        return response()->json($packageRow->fresh()->load(['client', 'subscription', 'quotas']));
+    }
+
     /** Real usage rollups (commander_usage_rollups) for the package. */
     public function usage(Request $request, $package = null): JsonResponse
     {
@@ -300,6 +375,12 @@ class CommanderPackagesController extends CoreBaseApiController
             CommanderRequestLogModel::query()->where('package_id', $packageId)->delete();
             CommanderQuotaModel::query()->where('package_id', $packageId)->delete();
             CommanderUsageRollupModel::query()->where('package_id', $packageId)->delete();
+
+            // Cierra el término de subscripción vigente; el historial (términos cerrados) se conserva.
+            CommanderSubscriptionModel::query()
+                ->where('package_id', $packageId)
+                ->whereNull('ended_at')
+                ->update(['ended_at' => CarbonImmutable::now()]);
 
             // Soft: anula lo operativo, conserva el catalogo + el historial de billing (FKs siguen validas).
             $packageRow->forceFill([

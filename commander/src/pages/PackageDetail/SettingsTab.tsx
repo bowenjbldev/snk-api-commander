@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router'
 import {
   Button,
@@ -6,40 +7,50 @@ import {
   StructuredListRow,
   StructuredListCell,
 } from '@carbon/react'
-import type { Package, PackageContext } from '../../store/types'
+import type { Package, PackageContext, Plan } from '../../store/types'
 import { useStore } from '../../store/store'
 import { useCan } from '../../store/auth'
 import { useActions } from '../../providers/ActionsProvider'
 import { CopyableCode } from '../../components/CopyableCode'
 import { EmptyState } from '../../components/EmptyState'
+import { ChangePlanModal } from '../../components/modals/ChangePlanModal'
 import { formatDateUTC } from '../../lib/time'
 import { packageBaseUrl, packageFqdn } from '../../lib/package'
 
 export function SettingsTab() {
-  const { packageRow } = useOutletContext<PackageContext>()
+  const { packageRow, plans } = useOutletContext<PackageContext>()
 
   if (!packageRow) {
     return (
       <EmptyState
         title="No live instance yet — provision one to manage its settings"
-        description="Deployment settings and the danger zone appear here once this package is deployed."
+        description="Package settings and the danger zone appear here once this package is provisioned."
       />
     )
   }
 
-  return <SettingsView pkg={packageRow} />
+  return <SettingsView pkg={packageRow} plans={plans} />
 }
 
-function SettingsView({ pkg }: { pkg: Package }) {
+function SettingsView({ pkg, plans }: { pkg: Package; plans: Plan[] }) {
   const navigate = useNavigate()
   const actions = useActions()
   const can = useCan()
+  const canControl = can('control packages')
+  const [changePlanOpen, setChangePlanOpen] = useState(false)
   const subscription = useStore((s) => s.subscriptions.find((sub) => sub.id === pkg.subscription_id))
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 640 }}>
       <div className="scns-card" style={{ padding: 16 }}>
-        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Package</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <span style={{ fontSize: 16, fontWeight: 600 }}>Package</span>
+          {canControl && (
+            <Button kind="ghost" size="sm" onClick={() => setChangePlanOpen(true)}>
+              Change plan
+            </Button>
+          )}
+        </div>
         <StructuredListWrapper isCondensed>
           <StructuredListBody>
             <StructuredListRow>
@@ -56,14 +67,6 @@ function SettingsView({ pkg }: { pkg: Package }) {
               </StructuredListCell>
               <StructuredListCell>
                 <span className="scns-mono">{packageFqdn(pkg)}</span>
-              </StructuredListCell>
-            </StructuredListRow>
-            <StructuredListRow>
-              <StructuredListCell noWrap style={{ width: 160, color: 'var(--cds-text-secondary)' }}>
-                Package
-              </StructuredListCell>
-              <StructuredListCell>
-                <span className="scns-mono">{pkg.name}</span>
               </StructuredListCell>
             </StructuredListRow>
             <StructuredListRow>
@@ -102,6 +105,17 @@ function SettingsView({ pkg }: { pkg: Package }) {
             De-provision package…
           </Button>
         </div>
+      )}
+
+      {changePlanOpen && (
+        <ChangePlanModal
+          open
+          packageName={pkg.name}
+          plans={plans}
+          currentPlanId={subscription?.plan_id ?? null}
+          onClose={() => setChangePlanOpen(false)}
+          onChanged={() => setChangePlanOpen(false)}
+        />
       )}
     </div>
   )

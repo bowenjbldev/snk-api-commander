@@ -134,6 +134,8 @@ export const packagesApi = {
   grace: (name: string, body: { reason: string; message?: string | null; grace_until?: string }) =>
     api<Package>(`/packages/${name}/grace`, { method: 'POST', body }),
   resume: (name: string) => api<Package>(`/packages/${name}/resume`, { method: 'POST' }),
+  changePlan: (name: string, plan_id: number) =>
+    api<Package>(`/packages/${name}/change-plan`, { method: 'POST', body: { plan_id } }),
   deprovision: (name: string) => api(`/packages/${name}`, { method: 'DELETE' }),
 
   // A package's real usage rollups (commander_usage_rollups, queried in-process by package_id).

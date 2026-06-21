@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useOutletContext, Link } from 'react-router'
 import {
   Button,
@@ -7,6 +7,7 @@ import {
   StructuredListBody,
   StructuredListRow,
   StructuredListCell,
+  Tag,
   TextArea,
   TextInput,
 } from '@carbon/react'
@@ -21,6 +22,7 @@ import { QuotaBar } from '../../components/QuotaBar'
 import { RelativeTime } from '../../components/RelativeTime'
 import { EmptyState } from '../../components/EmptyState'
 import { ProvisionModal } from '../../components/modals/ProvisionModal'
+import { ChangePlanModal } from '../../components/modals/ChangePlanModal'
 import { formatDateUTC } from '../../lib/time'
 import { formatCurrency, formatInt, formatMb, formatPercent } from '../../lib/format'
 
@@ -32,12 +34,25 @@ export function OverviewTab() {
   const can = useCan()
   const canEdit = can('update plans')
   const canProvision = can('provision packages')
+  const canControl = can('control packages')
   const [provisionOpen, setProvisionOpen] = useState(false)
+  const [changePlanOpen, setChangePlanOpen] = useState(false)
   const client = useStore((s) => (packageRow ? s.clients.find((c) => c.id === packageRow.client_id) : undefined))
   const subscription = useStore((s) =>
     packageRow ? s.subscriptions.find((sub) => sub.id === packageRow.subscription_id) : undefined,
   )
   const quotas = usePackageQuotas(packageRow?.id)
+  // Historial de planes: todos los términos del package, vigente primero.
+  const allSubscriptions = useStore((s) => s.subscriptions)
+  const history = useMemo(
+    () =>
+      packageRow
+        ? allSubscriptions
+            .filter((s) => s.package_id === packageRow.id)
+            .sort((a, b) => b.started_at.localeCompare(a.started_at) || b.id - a.id)
+        : [],
+    [allSubscriptions, packageRow],
+  )
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -81,7 +96,14 @@ export function OverviewTab() {
 
           {/* Details */}
           <div className="scns-card" style={{ padding: 16 }}>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Details</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: 16, fontWeight: 600 }}>Details</span>
+              {canControl && (
+                <Button kind="ghost" size="sm" onClick={() => setChangePlanOpen(true)}>
+                  Change plan
+                </Button>
+              )}
+            </div>
             <StructuredListWrapper isCondensed>
               <StructuredListBody>
                 <KVRow
@@ -150,6 +172,49 @@ export function OverviewTab() {
               )}
             </div>
           </div>
+
+          {/* Plan history */}
+          <div className="scns-card" style={{ padding: 16 }}>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Plan history</div>
+            {history.length === 0 ? (
+              <EmptyState title="No plan history" />
+            ) : (
+              <StructuredListWrapper isCondensed>
+                <StructuredListBody>
+                  {history.map((sub) => (
+                    <StructuredListRow key={sub.id}>
+                      <StructuredListCell>
+                        <span className="scns-mono">{sub.plan}</span> · {formatCurrency(sub.price_monthly)}/mo
+                      </StructuredListCell>
+                      <StructuredListCell>
+                        <span className="scns-mono scns-helper" style={{ fontSize: 12 }}>
+                          {formatDateUTC(sub.started_at)} → {sub.ended_at ? formatDateUTC(sub.ended_at) : 'current'}
+                        </span>
+                      </StructuredListCell>
+                      <StructuredListCell>
+                        {sub.id === packageRow.subscription_id ? (
+                          <Tag type="blue" size="sm">current</Tag>
+                        ) : (
+                          <span className="scns-helper" style={{ fontSize: 12 }}>{sub.billing_status}</span>
+                        )}
+                      </StructuredListCell>
+                    </StructuredListRow>
+                  ))}
+                </StructuredListBody>
+              </StructuredListWrapper>
+            )}
+          </div>
+
+          {changePlanOpen && (
+            <ChangePlanModal
+              open
+              packageName={pkg.name}
+              plans={plans}
+              currentPlanId={subscription?.plan_id ?? null}
+              onClose={() => setChangePlanOpen(false)}
+              onChanged={() => setChangePlanOpen(false)}
+            />
+          )}
         </>
       )}
     </div>

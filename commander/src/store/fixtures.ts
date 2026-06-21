@@ -260,16 +260,36 @@ export function buildFixtures(nowMs: number): Dataset {
       id: idx + 1, // bigint PK
       client_id: p.client_id!,
       package_id: p.id,
+      plan_id: null, // snapshot manda; en el demo no enlazamos al catálogo
       plan,
       price_monthly: price,
       billing_status: billing as Subscription['billing_status'],
       auto_suspend: auto,
       started_at: p.created_at,
+      ended_at: null, // término vigente
     }
   })
 
-  // Enlaza cada package con su subscription (FK bigint) por package_id.
-  const subIdByPackageId = new Map(subscriptions.map((sub) => [sub.package_id, sub.id]))
+  // Un término PASADO (historial) para kestrel-track: estuvo en un plan más barato y cambió.
+  // El cerrado (ended_at no nulo) NO cuenta para el MRR y aparece en "Plan history".
+  const kestrelId = pkgIdBySubdomain.get('kestrel-track')!
+  subscriptions.push({
+    id: subscriptions.length + 1,
+    client_id: clientIdBySlug.get('kestrel')!,
+    package_id: kestrelId,
+    plan_id: null,
+    plan: 'Tracking Basic',
+    price_monthly: 90,
+    billing_status: 'paid',
+    auto_suspend: false,
+    started_at: ago(400 * D),
+    ended_at: ago(120 * D),
+  })
+
+  // Enlaza cada package con su término VIGENTE (ended_at null) por package_id.
+  const subIdByPackageId = new Map(
+    subscriptions.filter((sub) => sub.ended_at == null).map((sub) => [sub.package_id, sub.id]),
+  )
   for (const p of packages) {
     p.subscription_id = subIdByPackageId.get(p.id) ?? null
   }

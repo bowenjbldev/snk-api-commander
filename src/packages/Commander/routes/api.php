@@ -48,6 +48,7 @@ Route::middleware(['api'])->group(function () {
         Route::post('packages/{package}/suspend', [CommanderPackagesController::class, 'suspend']);
         Route::post('packages/{package}/grace', [CommanderPackagesController::class, 'grace']);
         Route::post('packages/{package}/resume', [CommanderPackagesController::class, 'resume']);
+        Route::post('packages/{package}/change-plan', [CommanderPackagesController::class, 'changePlan']);
         Route::get('packages/{package}/usage', [CommanderPackagesController::class, 'usage']);
         Route::get('packages/{package}/logs', [CommanderPackagesController::class, 'logs']);
         Route::get('packages/{package}', [CommanderPackagesController::class, 'show']);

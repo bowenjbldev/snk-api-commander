@@ -87,6 +87,10 @@ class CommanderProvisioningTest extends CommanderTestCase
         // Subscription + quotas (tabla unica) hang off the package row (1:1). El motor mide/aplica
         // estas mismas filas — no hay tabla de metrics aparte.
         $this->assertNotNull($cp->subscription_id);
+        // El término de subscripción inicial es el vigente (ended_at null) y traza el plan.
+        $term = $cp->subscription;
+        $this->assertSame($plan->id, $term->plan_id);
+        $this->assertNull($term->ended_at);
         $this->assertSame($client->id, $cp->client_id);
         $this->assertCount(4, $cp->quotas);
         $this->assertSame(100000, (int) $cp->quotas->firstWhere('metric_key', 'requests_day')->limit_value);

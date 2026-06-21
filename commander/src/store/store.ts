@@ -56,6 +56,8 @@ interface StoreActions {
   suspend: (name: string, input: SuspendInput) => void
   grace: (name: string, input: GraceInput) => void
   resume: (name: string, by?: StateOpts['by']) => void
+  // Change the package's plan: closes the current subscription term and opens a new one (1:N history).
+  changePlan: (name: string, planId: number) => void
 
   // ── quotas ──
   editQuotaLimit: (quotaId: number, limit: number | null) => void
@@ -255,10 +257,10 @@ export const useStore = create<StoreState>((set, get) => {
           dashboard: {
             ...s.dashboard,
             requests_24h: provisioned.reduce((a, p) => a + Number(p.requests_24h || 0), 0),
-            mrr: subscriptions.reduce(
-              (a, x) => a + (x.billing_status !== 'overdue' ? Number(x.price_monthly || 0) : 0),
-              0,
-            ),
+            // Solo el término vigente (ended_at null) de cada package cuenta para el MRR.
+            mrr: subscriptions
+              .filter((x) => x.ended_at == null)
+              .reduce((a, x) => a + (x.billing_status !== 'overdue' ? Number(x.price_monthly || 0) : 0), 0),
           },
           loaded: true,
         }))
@@ -312,6 +314,46 @@ export const useStore = create<StoreState>((set, get) => {
       applyLocalState(name, 'active', { by })
       set((s) => ({ activity: [activity('resume', { package_id: pkgId(name), by }), ...s.activity] }))
       persist(packagesApi.resume(name), reconcilePackage(name))
+    },
+
+    changePlan: (name, planId) => {
+      const pkg = get().packages.find((p) => p.name === name)
+      const plan = get().plans.find((pl) => pl.id === planId)
+      if (!pkg || !plan) return
+      const now = new Date().toISOString()
+      const tempId = -Date.now() // id temporal del nuevo término hasta que el server asigne el real
+      const current = get().subscriptions.find((s) => s.id === pkg.subscription_id)
+      // Optimista: cierra el término vigente, abre el nuevo (snapshot + pending), repunta el package.
+      set((s) => ({
+        subscriptions: [
+          {
+            id: tempId,
+            client_id: pkg.client_id ?? current?.client_id ?? 0,
+            package_id: pkg.id,
+            plan_id: plan.id,
+            plan: plan.name,
+            price_monthly: plan.price_monthly,
+            billing_status: 'pending',
+            auto_suspend: current?.auto_suspend ?? false,
+            started_at: now,
+            ended_at: null,
+          },
+          ...s.subscriptions.map((x) => (x.id === pkg.subscription_id ? { ...x, ended_at: now } : x)),
+        ],
+        packages: s.packages.map((p) => (p.name === name ? { ...p, subscription_id: tempId } : p)),
+        activity: [
+          activity('change_plan', { package_id: pkg.id, reason: `plan:${plan.name}`, by: 'operator' }),
+          ...s.activity,
+        ],
+      }))
+      // La respuesta es el package (no el término); resync para tomar el id real del nuevo término.
+      packagesApi
+        .changePlan(name, planId)
+        .then(() => get().loadData())
+        .catch((e) => {
+          fail(e instanceof Error ? e.message : 'Request failed')
+          void get().loadData()
+        })
     },
 
     editQuotaLimit: (quotaId, limit) => {

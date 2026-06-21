@@ -130,15 +130,18 @@ class CommanderProvisioningController extends CoreBaseApiController
             ]);
             $commanderPackage->save();
 
-            // Suscripcion: id bigint autoincrement; package_id es la relacion autoritativa.
+            // Primer término de subscripción (vigente: ended_at null). package_id es la relación
+            // autoritativa; plan_id traza el catálogo; plan/price_monthly son snapshots congelados.
             $subscription = CommanderSubscriptionModel::create([
                 'client_id' => $clientId,
                 'package_id' => $commanderPackage->id,
+                'plan_id' => $plan->id,
                 'plan' => $plan->name,
                 'price_monthly' => $plan->price_monthly,
                 'billing_status' => 'pending',
                 'auto_suspend' => false,
                 'started_at' => $now,
+                'ended_at' => null,
             ]);
             $commanderPackage->subscription_id = $subscription->id;
             $commanderPackage->save();

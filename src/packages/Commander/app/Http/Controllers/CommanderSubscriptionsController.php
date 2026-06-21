@@ -17,7 +17,7 @@ class CommanderSubscriptionsController extends CoreBaseApiController
     protected string $updatePermission = 'update subscriptions';
     protected string $destroyPermission = 'delete subscriptions';
 
-    protected array $allowedWith = ['client', 'package'];
+    protected array $allowedWith = ['client', 'package', 'plan'];
 
     protected array $validationRulesStore = [
         'client_id' => 'required|integer|exists:commander_clients,id',

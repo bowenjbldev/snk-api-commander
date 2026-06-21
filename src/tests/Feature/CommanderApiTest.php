@@ -7,6 +7,7 @@ use Packages\Commander\Database\Seeders\CommanderDatabaseSeeder;
 use Packages\Commander\Models\CommanderClientModel;
 use Packages\Commander\Models\CommanderQuotaModel;
 use Packages\Commander\Models\CommanderRequestLogModel;
+use Packages\Commander\Models\CommanderSubscriptionModel;
 use Packages\Core\Database\Seeders\CoreDatabaseSeeder;
 use Packages\Commander\Models\CommanderPackageModel;
 use Packages\Core\Models\CoreUserModel;
@@ -136,9 +137,16 @@ class CommanderApiTest extends CommanderTestCase
             'route' => '/api/v1/x', 'path' => 'api/v1/x', 'status' => 200,
             'duration_ms' => 1, 'request_bytes' => 0, 'response_bytes' => 1, 'memory_kb' => 1,
         ]);
+        // Término de subscripción vigente (historial de billing): debe conservarse pero quedar cerrado.
+        $sub = CommanderSubscriptionModel::create([
+            'client_id' => $client->id, 'package_id' => $package->id, 'plan_id' => null,
+            'plan' => 'Pro', 'price_monthly' => 99, 'billing_status' => 'paid',
+            'auto_suspend' => false, 'started_at' => now(), 'ended_at' => null,
+        ]);
+        $package->forceFill(['subscription_id' => $sub->id])->save();
 
         // De-provision SOFT: en MariaDB hace DROP DATABASE; borra metering + cuotas y ANULA las columnas
-        // operativas, pero conserva la fila (catalogo) y el historial de billing.
+        // operativas, pero conserva la fila (catalogo) y el historial de billing (cierra el término).
         $this->actingAs($admin, 'sanctum')->deleteJson('/api/v1/packages/Shop')->assertOk();
 
         $fresh = CommanderPackageModel::find($package->id);
@@ -146,10 +154,15 @@ class CommanderApiTest extends CommanderTestCase
         $this->assertNull($fresh->provisioned_at);    // ya no es instancia viva
         $this->assertNull($fresh->subdomain);
         $this->assertNull($fresh->getRawOriginal('client_id'));
+        $this->assertNull($fresh->getRawOriginal('subscription_id'));
         $this->assertSame('Shop', $fresh->label);     // catalogo conservado
 
         $this->assertCount(0, CommanderRequestLogModel::where('package_id', $package->id)->get());
         $this->assertCount(0, CommanderQuotaModel::where('package_id', $package->id)->get());
+        // El término de subscripción se conserva (historial) pero queda cerrado.
+        $closed = CommanderSubscriptionModel::find($sub->id);
+        $this->assertNotNull($closed);
+        $this->assertNotNull($closed->ended_at);
     }
 
     // Nota: el aislamiento operador↔tenant ya no necesita middleware: con BD por package, el token

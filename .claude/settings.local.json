@@ -14,7 +14,8 @@
       "Bash(ls -la design/ design/design_handoff_snakecloud_cms/)",
       "Bash(wc -l design/*.html design/*.js design/design_handoff_snakecloud_cms/*.html)",
       "Read(///wsl.localhost/Ubuntu/home/snake/DEV/PROJECTS/**)",
-      "Bash(rm -rf design/* design/.thumbnail)"
+      "Bash(rm -rf design/* design/.thumbnail)",
+      "PowerShell(Remove-Item *)"
     ]
   }
 }

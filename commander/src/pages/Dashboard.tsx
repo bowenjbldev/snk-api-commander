@@ -305,6 +305,8 @@ function activitySentence(
       return <>{ent(invoiceLabel(ev.invoice_id))} marked paid{ev.message ? ` — ${ev.message}` : ''}</>
     case 'quota':
       return <>{ent(packageLabel(ev.package_id))} {ev.message}</>
+    case 'change_plan':
+      return <>{ent(packageLabel(ev.package_id))} changed plan{ev.reason ? ` to ${ev.reason.replace(/^plan:/, '')}` : ''} · by {ev.by}</>
   }
 }
 

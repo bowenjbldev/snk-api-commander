@@ -15,6 +15,7 @@ vi.mock('../lib/api', () => ({
     suspend: vi.fn(() => Promise.resolve({})),
     grace: vi.fn(() => Promise.resolve({})),
     resume: vi.fn(() => Promise.resolve({})),
+    changePlan: vi.fn(() => Promise.resolve({})),
     deprovision: vi.fn(() => Promise.resolve({})),
     usage: vi.fn(() => Promise.resolve({ data: [] })),
     logs: vi.fn(() => Promise.resolve({ data: [] })),
@@ -65,6 +66,27 @@ describe('store mutations', () => {
     const { resumablePackageName } = s().markInvoicePaid(inv.id)
     expect(resumablePackageName).toBe(pkgBySub('acme-shop').name)
     expect(s().invoices.find((i) => i.number === 'INV-2026-0139')?.status).toBe('paid')
+  })
+
+  it('changePlan closes the current term and opens a new pending one', () => {
+    // Un plan activo del catálogo de AcmeShop para cambiar.
+    useStore.setState({
+      plans: [...s().plans, { id: 99, package: 'AcmeShop', name: 'Shop Pro', price_monthly: 500, status: 'active' }],
+    })
+    const pkg = pkgBySub('acme-shop')
+    const oldTermId = pkg.subscription_id!
+
+    s().changePlan(pkg.name, 99)
+
+    // El término anterior queda cerrado.
+    expect(s().subscriptions.find((x) => x.id === oldTermId)?.ended_at).not.toBeNull()
+    // Exactamente un término vigente: el nuevo, snapshot del plan + pending.
+    const open = s().subscriptions.filter((x) => x.package_id === pkg.id && x.ended_at == null)
+    expect(open).toHaveLength(1)
+    expect(open[0]).toMatchObject({ plan: 'Shop Pro', price_monthly: 500, billing_status: 'pending', plan_id: 99 })
+    // El package repunta al término vigente, y queda rastro de actividad.
+    expect(pkgBySub('acme-shop').subscription_id).toBe(open[0].id)
+    expect(s().activity[0]).toMatchObject({ kind: 'change_plan', package_id: pkg.id })
   })
 
   it('editQuotaLimit below current usage stamps exceeded_at', () => {
