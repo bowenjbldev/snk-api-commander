@@ -15,7 +15,7 @@ import {
 } from '@carbon/react'
 import { AreaChart, LineChart } from '@carbon/charts-react'
 import { Calendar, Download } from '@carbon/icons-react'
-import type { Deployment, PackageContext } from '../../store/types'
+import type { Package, PackageContext } from '../../store/types'
 import { useAppTheme } from '../../providers/ThemeProvider'
 import { useToast } from '../../providers/ToastProvider'
 import { ChartCard, ChartLegend } from '../../components/ChartCard'
@@ -24,7 +24,7 @@ import { MethodTag } from '../../components/tags/MethodTag'
 import { KpiCluster, KpiTile } from '../../components/KpiCluster'
 import { areaOptions, lineOptions } from '../../lib/chartOptions'
 import { rollupsToUsageSeries, type UsageSeries } from '../../lib/chartData'
-import { deploymentUsage } from '../../lib/api'
+import { packagesApi } from '../../lib/api'
 import { formatBytes, formatCompact, formatInt, formatPercent } from '../../lib/format'
 
 function exportCsv(filename: string, rows: (string | number)[][]) {
@@ -45,23 +45,23 @@ interface UsageLoad {
 }
 
 export function UsageTab() {
-  const { deployment } = useOutletContext<PackageContext>()
+  const { packageRow } = useOutletContext<PackageContext>()
 
-  if (!deployment) {
+  if (!packageRow) {
     return (
       <div className="scns-card">
         <EmptyState
-          title="No deployment yet — provision one to see usage"
-          description="Once this package is deployed, in-process metering rolls up its traffic here."
+          title="No live instance yet — provision one to see usage"
+          description="Once this package is provisioned, in-process metering rolls up its traffic here."
         />
       </div>
     )
   }
 
-  return <UsageView dep={deployment} />
+  return <UsageView pkg={packageRow} />
 }
 
-function UsageView({ dep }: { dep: Deployment }) {
+function UsageView({ pkg }: { pkg: Package }) {
   const { theme } = useAppTheme()
   const toast = useToast()
   const [granularity, setGranularity] = useState(0) // 0 = hour, 1 = day
@@ -75,7 +75,7 @@ function UsageView({ dep }: { dep: Deployment }) {
     setUsage({ loading: true, series: null, error: null })
     const windowMs = granularity === 0 ? 48 * 3_600_000 : 30 * 86_400_000
     const from = new Date(Date.now() - windowMs).toISOString()
-    deploymentUsage(dep.id, { period, from })
+    packagesApi.usage(pkg.name, { period, from })
       .then((res) => {
         if (!cancelled) setUsage({ loading: false, series: rollupsToUsageSeries(res.data ?? []), error: null })
       })
@@ -85,7 +85,7 @@ function UsageView({ dep }: { dep: Deployment }) {
     return () => {
       cancelled = true
     }
-  }, [dep.id, granularity, period])
+  }, [pkg.name, granularity, period])
 
   const series = usage.series
   const hasData = !!series && series.requests.length > 0
@@ -98,11 +98,12 @@ function UsageView({ dep }: { dep: Deployment }) {
   const txOpts = useMemo(() => areaOptions(theme, { in: '#005d5d', out: '#6929c4' }, '240px'), [theme])
 
   const exportEndpoints = () => {
-    exportCsv(`${dep.id}-endpoints.csv`, [
+    const filename = `${pkg.subdomain}-endpoints.csv`
+    exportCsv(filename, [
       ['route', 'method', 'requests', 'error_rate', 'p95_ms'],
       ...endpoints.map((e) => [e.route, e.method, e.requests, e.error_rate, e.p95_ms]),
     ])
-    toast.success('Exported CSV', `${dep.id}-endpoints.csv`)
+    toast.success('Exported CSV', filename)
   }
 
   const dash = (v: string | undefined) => (hasData && v !== undefined ? v : '—')

@@ -4,7 +4,6 @@ use Illuminate\Support\Facades\Route;
 use Packages\Commander\Http\Controllers\CommanderActivityController;
 use Packages\Commander\Http\Controllers\CommanderAuthController;
 use Packages\Commander\Http\Controllers\CommanderClientsController;
-use Packages\Commander\Http\Controllers\CommanderDeploymentsController;
 use Packages\Commander\Http\Controllers\CommanderInvoicesController;
 use Packages\Commander\Http\Controllers\CommanderPlansController;
 use Packages\Commander\Http\Controllers\CommanderPackagesController;
@@ -33,14 +32,6 @@ Route::middleware(['api'])->group(function () {
         // Client-first provisioning: crea cliente + suscripcion + instancia (commander_packages) en un paso
         Route::post('provisioning', [CommanderProvisioningController::class, 'store']);
 
-        // Acciones de estado del operador: in-process directo sobre commander_packages.
-        Route::post('deployments/{id}/suspend', [CommanderDeploymentsController::class, 'suspend']);
-        Route::post('deployments/{id}/grace', [CommanderDeploymentsController::class, 'grace']);
-        Route::post('deployments/{id}/resume', [CommanderDeploymentsController::class, 'resume']);
-        // Uso y logs reales del package: query directo a commander_usage_rollups / commander_request_logs.
-        Route::get('deployments/{id}/usage', [CommanderDeploymentsController::class, 'usage']);
-        Route::get('deployments/{id}/logs', [CommanderDeploymentsController::class, 'logs']);
-        Route::apiResource('deployments', CommanderDeploymentsController::class);
         Route::apiResource('subscriptions', CommanderSubscriptionsController::class);
         Route::apiResource('invoices', CommanderInvoicesController::class);
         Route::apiResource('quotas', CommanderQuotasController::class)->only(['index', 'show', 'update']);
@@ -52,11 +43,16 @@ Route::middleware(['api'])->group(function () {
         // Platform-wide request logs (all packages), with optional deployment/method/status filters.
         Route::get('logs', [CommanderRequestLogsController::class, 'index']);
 
-        // Package registry (tipos): hub package-centrico. index sincroniza desde disco + enriquece
-        // con on_disk / conteo de deployments y planes. Metadatos editables (label/description/status).
+        // Package registry + package provisionado 1:1. index sincroniza desde disco + enriquece con planes.
         Route::get('packages', [CommanderPackagesController::class, 'index']);
+        Route::post('packages/{package}/suspend', [CommanderPackagesController::class, 'suspend']);
+        Route::post('packages/{package}/grace', [CommanderPackagesController::class, 'grace']);
+        Route::post('packages/{package}/resume', [CommanderPackagesController::class, 'resume']);
+        Route::get('packages/{package}/usage', [CommanderPackagesController::class, 'usage']);
+        Route::get('packages/{package}/logs', [CommanderPackagesController::class, 'logs']);
         Route::get('packages/{package}', [CommanderPackagesController::class, 'show']);
         Route::patch('packages/{package}', [CommanderPackagesController::class, 'update']);
+        Route::delete('packages/{package}', [CommanderPackagesController::class, 'destroy']);
 
         // Operator profile + platform preferences (singleton). default_grace_hours feeds the real grace.
         Route::get('settings', [CommanderSettingsController::class, 'show']);

@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { Tag, Loading } from '@carbon/react'
 import { StackedBarChart, AreaChart } from '@carbon/charts-react'
-import { useStore } from '../store/store'
+import { useStore, useProvisionedPackages } from '../store/store'
 import { useAppTheme } from '../providers/ThemeProvider'
 import { useTick } from '../providers/TickProvider'
 import { KpiCluster, KpiTile } from '../components/KpiCluster'
@@ -61,7 +61,7 @@ function UpdatedClock() {
 export function Dashboard() {
   const { theme } = useAppTheme()
   const navigate = useNavigate()
-  const deployments = useStore((s) => s.deployments)
+  const packages = useProvisionedPackages()
   const invoices = useStore((s) => s.invoices)
   const quotas = useStore((s) => s.quotas)
   const activity = useStore((s) => s.activity)
@@ -69,15 +69,15 @@ export function Dashboard() {
 
   const counts = useMemo(() => {
     let active = 0, grace = 0, suspended = 0
-    for (const d of deployments) {
-      if (d.package.status === 'active') active++
-      else if (d.package.status === 'grace') grace++
+    for (const p of packages) {
+      if (p.status === 'active') active++
+      else if (p.status === 'grace') grace++
       else suspended++
     }
     return { active, grace, suspended }
-  }, [deployments])
+  }, [packages])
 
-  // Real platform usage from the Commander snapshot cache (seeded + refreshed by deployment sync).
+  // Real platform usage from the Commander snapshot cache (seeded + refreshed by package sync).
   const [platform, setPlatform] = useState<{
     loading: boolean
     series: PlatformSeries | null
@@ -89,6 +89,17 @@ export function Dashboard() {
     kpis: { errorRate: 0, requestsDelta: null, errorRateDelta: null },
     error: null,
   })
+  const packageLabels = useMemo(() => new Map(packages.map((p) => [p.id, p.name])), [packages])
+  const invoiceLabels = useMemo(() => new Map(invoices.map((i) => [i.id, i.number])), [invoices])
+  const packageLabel = useCallback(
+    (id: number | undefined) => (id == null ? 'Unknown package' : packageLabels.get(id) ?? `package ${id}`),
+    [packageLabels],
+  )
+  const invoiceLabel = useCallback(
+    (id: number | undefined) => (id == null ? 'Unknown invoice' : invoiceLabels.get(id) ?? `invoice ${id}`),
+    [invoiceLabels],
+  )
+
   useEffect(() => {
     let cancelled = false
     const load = () => {
@@ -96,7 +107,7 @@ export function Dashboard() {
         .then((res) => {
           const snapshots = res.data ?? []
           if (!cancelled) {
-            setPlatform({ loading: false, series: snapshotsToPlatformSeries(snapshots), kpis: deriveUsageKpis(snapshots), error: null })
+            setPlatform({ loading: false, series: snapshotsToPlatformSeries(snapshots, packageLabels), kpis: deriveUsageKpis(snapshots), error: null })
           }
         })
         .catch((e: unknown) => {
@@ -110,7 +121,7 @@ export function Dashboard() {
       cancelled = true
       clearInterval(timer)
     }
-  }, [])
+  }, [packageLabels])
 
   const groups = useMemo(() => platform.series?.requests.groups ?? [], [platform.series])
   const reqData = platform.series?.requests.data ?? []
@@ -123,19 +134,20 @@ export function Dashboard() {
     const items: { tone: 'red' | 'amber'; sev: string; entity: string; desc: ReactNode; cta: string; to: string }[] = []
     for (const q of quotas) {
       if (q.limit_value != null && q.current_value / q.limit_value > 1) {
+        const pkg = packages.find((p) => p.id === q.package_id)
         items.push({
-          tone: 'red', sev: 'QUOTA OVER', entity: String(q.deployment_id),
+          tone: 'red', sev: 'QUOTA OVER', entity: packageLabel(q.package_id),
           desc: <>{q.metric_key} at {formatPercent(q.current_value / q.limit_value)} of limit</>,
-          cta: 'Review quota →', to: '/quotas',
+          cta: 'Review quota ->', to: pkg ? `/packages/${pkg.name}/quotas` : '/packages',
         })
       }
     }
-    for (const d of deployments) {
-      if (d.package.status === 'grace' && d.package.grace_until) {
+    for (const p of packages) {
+      if (p.status === 'grace' && p.grace_until) {
         items.push({
-          tone: 'amber', sev: 'GRACE ENDS', entity: d.package.name,
-          desc: <>suspends in <GraceCountdown until={d.package.grace_until} /> · {d.package.reason}</>,
-          cta: 'Open package →', to: `/packages/${d.package.name}`,
+          tone: 'amber', sev: 'GRACE ENDS', entity: p.name,
+          desc: <>suspends in <GraceCountdown until={p.grace_until} /> · {p.reason}</>,
+          cta: 'Open package ->', to: `/packages/${p.name}`,
         })
       }
     }
@@ -143,13 +155,13 @@ export function Dashboard() {
       if (i.status === 'overdue') {
         items.push({
           tone: 'red', sev: 'OVERDUE', entity: i.number,
-          desc: <>{formatCurrency(i.amount)} — linked {i.deployment_id} {i.enforcement === 'suspended' ? 'suspended' : 'in grace'}</>,
-          cta: 'Open invoice →', to: '/invoices',
+          desc: <>{formatCurrency(i.amount)} — linked {packageLabel(i.package_id)} {i.enforcement === 'suspended' ? 'suspended' : 'in grace'}</>,
+          cta: 'Open invoice ->', to: '/invoices',
         })
       }
     }
     return items
-  }, [quotas, deployments, invoices])
+  }, [quotas, packages, invoices, packageLabel])
 
   return (
     <div className="scns-page">
@@ -157,7 +169,7 @@ export function Dashboard() {
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 400, margin: 0 }}>Dashboard</h1>
           <div className="scns-helper" style={{ fontSize: 13, marginTop: 6 }}>
-            Platform overview across {deployments.length} deployments
+            Platform overview across {packages.length} packages
           </div>
         </div>
         <UpdatedClock />
@@ -165,7 +177,7 @@ export function Dashboard() {
 
       {/* KPI row */}
       <KpiCluster columns={6}>
-        <KpiTile label="Active" value={counts.active} helper={`of ${deployments.length}`} />
+        <KpiTile label="Active" value={counts.active} helper={`of ${packages.length}`} />
         <KpiTile label="In grace" value={counts.grace} valueClass="scns-val-amber" helper="awaiting payment" />
         <KpiTile label="Suspended" value={counts.suspended} valueClass="scns-val-red" helper="serving HTTP 402" />
         <KpiTile
@@ -216,7 +228,7 @@ export function Dashboard() {
       <div className="scns-charts-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, marginTop: 32 }}>
         <ChartCard
           title="Requests per hour"
-          subtitle="last 48h, stacked by deployment"
+          subtitle="last 48h, stacked by package"
           right={<ChartLegend items={legendItems(groups)} />}
         >
           {hasChart ? (
@@ -259,7 +271,7 @@ export function Dashboard() {
                 }}
               >
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor(ev.kind), flex: 'none' }} aria-hidden="true" />
-                <span style={{ flex: 1, fontSize: 13 }}>{activitySentence(ev)}</span>
+                <span style={{ flex: 1, fontSize: 13 }}>{activitySentence(ev, packageLabel, invoiceLabel)}</span>
                 <RelativeTime iso={ev.at} />
               </div>
             ))
@@ -276,19 +288,23 @@ function dotColor(kind: ActivityEvent['kind']): string {
   return 'var(--scns-success)'
 }
 
-function activitySentence(ev: ActivityEvent): ReactNode {
+function activitySentence(
+  ev: ActivityEvent,
+  packageLabel: (id: number | undefined) => string,
+  invoiceLabel: (id: number | undefined) => string,
+): ReactNode {
   const ent = (s?: string | number) => <span className="scns-mono" style={{ color: 'var(--cds-link-primary)' }}>{s}</span>
   switch (ev.kind) {
     case 'suspend':
-      return <>{ent(ev.deployment_id)} suspended — {ev.reason} · by {ev.by}</>
+      return <>{ent(packageLabel(ev.package_id))} suspended — {ev.reason} · by {ev.by}</>
     case 'grace':
-      return <>{ent(ev.deployment_id)} moved to grace — {ev.reason} · by {ev.by}</>
+      return <>{ent(packageLabel(ev.package_id))} moved to grace — {ev.reason} · by {ev.by}</>
     case 'resume':
-      return <>{ent(ev.deployment_id)} resumed · by {ev.by}</>
+      return <>{ent(packageLabel(ev.package_id))} resumed · by {ev.by}</>
     case 'paid':
-      return <>{ent(ev.invoice_id)} marked paid{ev.message ? ` — ${ev.message}` : ''}</>
+      return <>{ent(invoiceLabel(ev.invoice_id))} marked paid{ev.message ? ` — ${ev.message}` : ''}</>
     case 'quota':
-      return <>{ent(ev.deployment_id)} {ev.message}</>
+      return <>{ent(packageLabel(ev.package_id))} {ev.message}</>
   }
 }
 

@@ -51,7 +51,7 @@ Principios:
 - **UI monocromática**: el color aparece SOLO como semántica de estado (verde/ámbar/rojo),
   azul de enlace, la **única acción primaria por pantalla** (IBM Blue 60 `#0f62fe`) y las
   series de las gráficas.
-- **Plex Mono** para identificadores (nombres de deployment, nº de factura, emails, IPs,
+- **Plex Mono** para identificadores (nombres de package/subdominio, nº de factura, emails, IPs,
   secretos, rutas, versiones), toda celda numérica de tabla (alineada a la derecha, cifras
   tabulares), timestamps, etiquetas de eje y countdowns.
 - **Fechas relativas** en todas partes (`3h ago`) con subrayado punteado → tooltip de hora
@@ -107,7 +107,7 @@ Header (ambos temas): bg `#161616`, borde `#393939`, texto `#f4f4f4`.
   16px títulos de card (600), 18px títulos de drawer (600), 20px títulos de modal (400),
   24px títulos de página (400), 28px valores KPI (400), 36px countdown (mono).
 - Espaciado Carbon base 8px (4/8/12/16/24/32). Padding de columna de contenido 24–32px.
-- Alturas de fila: tabla 48px (logs 34px, quotas 52px), toolbar 48px, batch bar 40px,
+- Alturas de fila: tabla 48px (logs 34px, quotas 52px dentro del detalle de package), toolbar 48px, batch bar 40px,
   footer de modal 56px, botones 40px (compactos 32px).
 - Radio: 0 en todo salvo tags/pills (full round) y dots/toggles (50%).
 
@@ -166,7 +166,7 @@ Modales (`components/modals/`): `TypedConfirmModal`, `StateChangeModal`, `Provis
   - Búsqueda global → **Command Palette** (`⌘K`) sobre packages/clients/invoices.
   - Cluster derecho: chip de entorno `PROD` (Plex Mono 10px), estado de conexión (dot verde
     + "Connected"), toggle de tema, divisor 1px, avatar (inicial del operador).
-- **SideNav** (Carbon `SideNav`, fija, 256px, tematizada): los **9 ítems** en orden de diseño
+- **SideNav** (Carbon `SideNav`, fija, 256px, tematizada): los **7 ítems** en orden de diseño
   (ver §8). Activo: borde izquierdo 4px IBM Blue 60, fondo de capa, peso 600. Footer con la
   versión `SnakeCloud Commander v1.14.2` (Plex Mono).
 - **Breadcrumbs** (Carbon `Breadcrumb`) bajo el header, solo en páginas de detalle:
@@ -178,12 +178,12 @@ Modales (`components/modals/`): `TypedConfirmModal`, `StateChangeModal`, `Provis
 
 ## 8. Páginas implementadas
 
-Navegación (orden de `navConfig.ts`): **Dashboard · Clients · Packages · Subscriptions ·
-Invoices · Usage · Quotas · Request Logs · Settings**.
+Navegación (orden de `navConfig.ts`): **Dashboard · Clients · Packages · Invoices · Usage ·
+Request Logs · Settings**.
 
 > **Cambio de arquitectura de información respecto al prototipo:** el hub **Packages** fusiona
-> lo que antes eran *Deployments* + *Catalog*. Las rutas antiguas `/deployments`,
-> `/deployments/:name` y `/catalog` **redirigen a `/packages`** (back-compat).
+> lo que antes eran *Deployments* + *Catalog* y ahora absorbe **Quotas** y **Subscriptions**
+> como contexto de cada package. No se mantienen rutas legacy en desarrollo.
 
 ### Login (fuera del nav)
 Pantalla de acceso del operador. Email + password → token Sanctum (Bearer) guardado en
@@ -196,64 +196,55 @@ Pantalla de acceso del operador. Email + password → token Sanctum (Bearer) gua
   reales (requests 24h y MRR) se computan de los datos en vivo; deltas/error-rate sintéticos.
 - **Attention required**: lista bordeada con severidad (QUOTA OVER / GRACE ENDS / OVERDUE /
   GRACE) + enlace a la entidad + deep-link a la derecha.
-- **Charts** (grid 2fr/1fr): "Requests per hour" (stacked bar por deployment) + "Error rate"
+- **Charts** (grid 2fr/1fr): "Requests per hour" (stacked bar por package) + "Error rate"
   (línea roja + área).
 - **Recent activity**: lista con dot de estado + frase con enlaces mono + timestamp relativo.
 
 ### Clients (lista + drawer)
-- Tabla: Name (link) · Company · Email (mono) · Deployments (count) · Status tag · Created.
+- Tabla: Name (link) · Company · Email (mono) · Packages (count) · Status tag · Created.
   Toolbar con search + filtro de estado. Primaria **Create client**.
 - Click de fila → **Drawer** (424px): contacto (email/phone/notes), bloque de alerta con borde
-  rojo si hay factura overdue, mini-lista de deployments, atajo "New deployment for this client"
+  rojo si hay factura overdue, mini-lista de packages, atajo "New package for this client"
   (pre-rellena el cliente en el provisioning), footer Edit / Open full record.
 - Alta/edición vía `ClientFormModal`.
 
 ### Packages (hub central) + detalle con tabs
-- **Lista de packages** (`RegisteredPackage`): el registro de tipos de negocio, sincronizado
-  desde disco (`packages/*`) y enriquecido por la API con `on_disk`, conteo de deployments y de
-  planes. Metadatos editables (label/description/status).
+- **Lista de packages** (`Package`): la tabla única de packages de negocio, sincronizada desde
+  disco (`packages/*`) y enriquecida por la API con `on_disk` y conteo de planes. Cada fila lleva el
+  catálogo (label/description/listing_status, editable) y —si está provisionada— lo operativo de su
+  instancia viva.
 - **`/packages/:name`** → `PackageDetail` con `Tabs` (line) y `<Outlet context>`:
-  - **Overview** — identidad + estado del deployment (State card con countdown de grace),
+  - **Overview** — identidad + estado del package provisionado (State card con countdown de grace),
     details (StructuredList: cliente, package, suscripción, created, last seen, `base_url`),
-    control secret (snippet enmascarado + rotar), cuotas (gauges).
+    control secret (snippet enmascarado + rotar), cuotas (gauges). Si el package aún no tiene
+    instancia viva, el empty state muestra la **CTA de Provision**.
   - **Plans** — catálogo de planes del package (precio + límites de cuota por defecto). CRUD
     vía `PlanFormModal`.
-  - **Deployments** — la(s) instancia(s) del package: estado, acciones suspend/grace/resume,
-    quota health, last seen.
+  - **Quotas** — límites reales/editables del package provisionado: `requests_day`,
+    `disk_db_mb`, `disk_storage_mb`, `users_total`, uso actual, límite inline, política
+    `none`/`warn`/`suspend` y fecha de exceso.
   - **Usage** — KPIs + gráficas 2×2 (requests, error rate, latency avg/p95, transfer) desde
-    `GET /deployments/{id}/usage` (rollups reales). Export CSV.
-  - **Logs** — request logs reales del package (`GET /deployments/{id}/logs`), tabla densa.
+    `GET /packages/{name}/usage` (rollups reales). Export CSV.
+  - **Logs** — request logs reales del package (`GET /packages/{name}/logs`), tabla densa.
   - **Settings** — configuración del package/instancia.
 
-### Subscriptions
-Lista de suscripciones (cliente, deployment, plan, precio mensual, billing status, auto-suspend).
-
 ### Invoices (+ flujo de enforcement)
-- Subline destaca el total rojo de overdue. Tabla: Number (mono link) · Client · Deployment ·
+- Subline destaca el total rojo de overdue. Tabla: Number (mono link) · Client · Package ·
   Amount · Issued · Due (overdue en rojo con retraso; late-pending en ámbar) · Status · ⋮.
   Filas overdue muestran el estado de enforcement (`→ grace` / `→ suspended`).
 - Overflow: Open / Edit / Mark as paid / Mark as overdue… / Delete.
 - Alta/edición vía `InvoiceFormModal`. Ver flujo de enforcement en §10.
 
 ### Usage (plataforma)
-Vista agregada de toda la flota desde `GET /usage/platform` (snapshot cache local por
-deployment/hora): stacked bar de requests + error rate.
-
-### Quotas (inline editable)
-- Subline documenta el comportamiento; pills resumen `N OVER` (rojo) + `N ≥ 80%` (ámbar).
-- Tabla (52px): Deployment · Metric (`requests_day`, `disk_db_mb`, `disk_storage_mb`,
-  `users_total`) · Current usage (barra 200px + valor + % — OVER en rojo con pill `OVER 124%`) ·
-  **Limit** (editable inline; vacío = "Unlimited") · On exceed (select inline `none`/`warn`/
-  `suspend`) · Exceeded since (relativo rojo o `—`).
-- `InlineEdit`: valor → field con borde inferior 2px Blue 60 + ✓/✕; Enter/✓ commit, Esc/✕
-  cancela; toast al guardar.
+Vista agregada de toda la flota desde `GET /usage/platform` (suma de `commander_usage_rollups`
+por package/bucket en vivo, sin tabla de caché): stacked bar de requests + error rate.
 
 ### Request Logs (explorer, read-only)
 - Header: "raw request log · read-only". (Sin stream en tiempo real: se hace fetch on demand /
   poll, no websocket.)
-- Toolbar: search de ruta, filtros Deployment/Method, rango de tiempo, chips de clase de estado
+- Toolbar: search de ruta, filtros Package/Method, rango de tiempo, chips de clase de estado
   `2xx 3xx 4xx 5xx`.
-- Tabla densa (34px, todo Plex Mono 11.5px): time (UTC ms) · deployment · method (GET/POST) ·
+- Tabla densa (34px, todo Plex Mono 11.5px): time (UTC ms) · package · method (GET/POST) ·
   route · status color-coded (2xx verde, 3xx gris, 4xx ámbar, 5xx rojo) · ms · user · bytes.
 - Fila seleccionada → **panel de detalle** (derecha) con todos los campos + body de respuesta
   (JSON) + bloque de contexto enlazando a la causa (cuota, etc.).
@@ -271,16 +262,19 @@ Perfil del operador + preferencias de plataforma (singleton, server-persistido):
 ## 9. Estado y datos (producción)
 
 - **Sin datos demo.** El store de `zustand` arranca vacío; `loadData()` carga en paralelo
-  clients, deployments, subscriptions, invoices, quotas, plans, packages, activity y settings
-  desde la API. El registro se puebla por provisioning y el CRUD del panel.
+  clients, subscriptions, invoices, quotas, plans, packages, activity y settings
+  desde la API (los packages vía `packagesApi.list()`). El registro se puebla por provisioning y
+  el CRUD del panel.
 - **Tipos = tablas reales.** `commander/src/store/types.ts` espeja `commander_*`
-  (`commander_packages`, `commander_quota_metrics`, `commander_usage_rollups`,
-  `commander_request_logs`, …). El estado runtime del deployment llega **anidado** en
-  `deployment.package` (fuente de verdad, sin columnas planas duplicadas).
+  (`commander_packages`, `commander_quotas`, `commander_usage_rollups`,
+  `commander_request_logs`, …). Cada package es **una fila `Package` única** (tabla única
+  `commander_packages`): catálogo (label/description/listing_status) + operativo (subdomain/estado/
+  KPIs/`client_id`). Está provisionado cuando **`provisioned_at != null`** — sin objeto anidado ni
+  colección `deployments` separada, y sin tabla de registro aparte.
 - **Mutaciones optimistas + reconcile.** Cada acción aplica el cambio local al instante y dispara
   la llamada API; al éxito reconcilia con la entidad del servidor (autoritativo); al fallo,
-  muestra toast y **re-sincroniza** con `loadData()`. Las acciones de estado por deployment usan
-  un **seq guard** para tolerar respuestas fuera de orden.
+  muestra toast y **re-sincroniza** con `loadData()`. Las acciones de estado por package (keyed
+  por nombre) usan un **seq guard** para tolerar respuestas fuera de orden.
 - **Reconcile por handle legible** cuando el id real lo asigna el servidor: clientes por `slug`,
   facturas por `number` (`INV-YYYY-NNNN`), planes por `slug` (id temporal negativo mientras tanto).
 - **Auth:** store separado (`auth.ts`). Bearer token en `localStorage`; en boot valida vía
@@ -292,11 +286,11 @@ Perfil del operador + preferencias de plataforma (singleton, server-persistido):
 
 ## 10. Flujos (reglas de UX no negociables)
 
-### Máquina de estados de un deployment
+### Máquina de estados de un package
 Transiciones: `active→grace`, `active→suspended`, `grace→suspended` (deadline o manual),
 `grace→active`, `suspended→active`. **Cada transición escribe un evento en el activity feed.**
 Las acciones suspend/grace/resume escriben in-process la fila `commander_packages`
-(`POST /deployments/{id}/{suspend|grace|resume}`).
+(`POST /packages/{name}/{suspend|grace|resume}`).
 
 - **Suspend** (`StateChangeModal` danger): reason requerido (`payment_overdue`/`abuse`/`manual`)
   + mensaje client-facing (se devuelve en el 402). **No** requiere confirmación tipeada (es
@@ -314,11 +308,11 @@ migra, siembra y activa el package) atómicamente; al éxito el panel hace `load
 de host.
 
 ### Facturación y enforcement
-- **Mark as paid**: si el deployment estaba `suspended` por `payment_overdue`, el follow-up de
-  éxito ofrece **Resume deployment**.
+- **Mark as paid**: si el package estaba `suspended` por `payment_overdue`, el follow-up de
+  éxito ofrece **Resume package**.
 - **Mark as overdue**: dispara `OverdueEnforcementModal` (3 botones): **Keep running**
   (secundaria) / **Grace 72h** (primaria, aplica el deadline por defecto) / **Suspend now**
-  (danger). La elección escribe el `enforcement` de la factura y el estado del deployment.
+  (danger). La elección escribe el `enforcement` de la factura y el estado del package.
 
 ### Acciones destructivas / irreversibles
 Borrar entidad y **rotar secreto** requieren **confirmación tipeada** (`TypedConfirmModal`:
@@ -344,15 +338,15 @@ Rutas reales (`src/packages/Commander/routes/api.php`, todas bajo `auth:sanctum`
 |---|---|
 | Auth | `POST auth/login` (throttle) · `GET auth/me` · `POST auth/logout` |
 | Clients / Plans / Users | `apiResource clients`, `plans`, `users` |
-| Provisioning | `POST provisioning` (client-first, un paso) |
-| Estado de deployment | `POST deployments/{id}/{suspend\|grace\|resume}` |
-| Uso / logs por deployment | `GET deployments/{id}/usage` · `GET deployments/{id}/logs` |
-| Deployments / Subscriptions / Invoices | `apiResource` |
+| Provisioning | `POST provisioning` (client-first, un paso) → `{ package }` |
+| Estado de package | `POST packages/{name}/{suspend\|grace\|resume}` |
+| Uso / logs por package | `GET packages/{name}/usage` · `GET packages/{name}/logs` |
+| Subscriptions / Invoices | `apiResource` |
 | Quotas | `apiResource quotas` (index/show/update) |
 | Activity | `apiResource activity` (index/show) |
 | Usage plataforma | `GET usage/platform` |
-| Logs plataforma | `GET logs` (filtros deployment/method/status) |
-| Packages (registro) | `GET packages` · `GET packages/{package}` · `PATCH packages/{package}` |
+| Logs plataforma | `GET logs` (filtros package/method/status) |
+| Packages (registro) | `GET packages` · `GET\|PATCH\|DELETE packages/{name}` |
 | Settings (singleton) | `GET settings` · `PUT settings` |
 
 Cliente HTTP del panel: `commander/src/lib/api.ts` (fetch wrapper, Bearer, `ApiError`,

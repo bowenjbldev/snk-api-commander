@@ -17,11 +17,11 @@ class CommanderSubscriptionsController extends CoreBaseApiController
     protected string $updatePermission = 'update subscriptions';
     protected string $destroyPermission = 'delete subscriptions';
 
-    protected array $allowedWith = ['client', 'deployment'];
+    protected array $allowedWith = ['client', 'package'];
 
     protected array $validationRulesStore = [
         'client_id' => 'required|integer|exists:commander_clients,id',
-        'deployment_id' => 'required|integer|exists:commander_deployments,id',
+        'package_id' => 'required|integer|exists:commander_packages,id',
         'plan' => 'required|string|max:255',
         'price_monthly' => 'required|numeric|min:0',
         'billing_status' => 'nullable|in:paid,pending,overdue',

@@ -2,16 +2,15 @@
 
 namespace Tests\Feature;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Packages\Commander\Database\Seeders\CommanderDatabaseSeeder;
 use Packages\Commander\Models\CommanderActivityEventModel;
 use Packages\Commander\Models\CommanderClientModel;
-use Packages\Commander\Models\CommanderDeploymentModel;
 use Packages\Commander\Models\CommanderPackageModel;
-use Packages\Commander\Models\CommanderQuotaMetricModel;
 use Packages\Commander\Models\CommanderQuotaModel;
-use Packages\Commander\Models\CommanderRegisteredPackageModel;
 use Packages\Commander\Models\CommanderRequestLogModel;
+use Packages\Commander\Models\CommanderUsageRollupModel;
 use Packages\Commander\Services\CommanderQuotaMeasurerService;
 use Packages\Core\Database\Seeders\CoreDatabaseSeeder;
 use Packages\Core\Models\CoreUserModel;
@@ -34,16 +33,16 @@ class CommanderControlCenterTest extends CommanderTestCase
         return CoreUserModel::where('email', 'admin@snake.com')->firstOrFail();
     }
 
-    private function deployment(): CommanderDeploymentModel
+    /** Provisiona la instancia viva (1:1): la fila commander_packages ES la entidad operativa. */
+    private function package(): CommanderPackageModel
     {
-        $package = CommanderPackageModel::create([
-            'name' => 'Shop', 'subdomain' => 'shop', 'database' => 'shop', 'status' => 'active',
-            'changed_by' => 'operator', 'changed_at' => now(),
-        ]);
         $client = CommanderClientModel::create(['slug' => 'c', 'name' => 'C', 'email' => 'c@c.test', 'status' => 'active']);
 
-        return CommanderDeploymentModel::create([
-            'client_id' => $client->id, 'package_id' => $package->id,
+        return CommanderPackageModel::create([
+            'name' => 'Shop', 'label' => 'Shop', 'listing_status' => 'active',
+            'subdomain' => 'shop', 'database' => 'shop', 'status' => 'active',
+            'client_id' => $client->id, 'changed_by' => 'operator', 'changed_at' => now(),
+            'provisioned_at' => now(),
         ]);
     }
 
@@ -71,42 +70,36 @@ class CommanderControlCenterTest extends CommanderTestCase
             ->assertJsonPath('notify_on_overdue', false);
     }
 
-    public function test_quota_update_propagates_to_enforcement_metric(): void
+    public function test_quota_update_persists_limit_and_policy_for_enforcement(): void
     {
         $admin = $this->admin();
-        $dep = $this->deployment();
+        $pkg = $this->package();
 
-        // Espejo (commander_quotas) + metrica real (commander_quota_metrics) por package_id.
+        // Tabla unica: la fila que edita el panel ES la que mide/aplica el motor (sin propagacion).
         $quota = CommanderQuotaModel::create([
-            'deployment_id' => $dep->id, 'metric_key' => 'requests_day',
+            'package_id' => $pkg->id, 'metric_key' => 'requests_day',
             'current_value' => 0, 'limit_value' => 1000, 'on_exceed' => 'warn', 'unit' => 'count',
-        ]);
-        CommanderQuotaMetricModel::create([
-            'package_id' => $dep->package_id, 'metric_key' => 'requests_day',
-            'limit_value' => 1000, 'current_value' => 0, 'on_exceed' => 'warn',
         ]);
 
         $this->actingAs($admin, 'sanctum')->patchJson("/api/v1/quotas/{$quota->id}", [
             'limit_value' => 500, 'on_exceed' => 'suspend',
         ])->assertOk();
 
-        // El medidor solo mira commander_quota_metrics: la edicion del espejo debe haber llegado ahi.
-        $metric = CommanderQuotaMetricModel::where('package_id', $dep->package_id)
-            ->where('metric_key', 'requests_day')->first();
-        $this->assertSame(500, (int) $metric->limit_value);
-        $this->assertSame('suspend', $metric->on_exceed);
+        $fresh = CommanderQuotaModel::find($quota->id);
+        $this->assertSame(500, (int) $fresh->limit_value);
+        $this->assertSame('suspend', $fresh->on_exceed);
     }
 
     public function test_quota_enforcement_records_activity_event(): void
     {
         $admin = $this->admin();
-        $dep = $this->deployment(); // package Shop (subdomain shop, active) + deployment
-        $pid = $dep->package_id;
+        $pkg = $this->package(); // package Shop (subdomain shop, active)
+        $pid = $pkg->id;
 
-        // Metrica requests_day con limite 5 / suspend; y 8 logs hoy => supera el limite.
-        CommanderQuotaMetricModel::create([
+        // Cuota requests_day con limite 5 / suspend; y 8 logs hoy => supera el limite.
+        CommanderQuotaModel::create([
             'package_id' => $pid, 'metric_key' => 'requests_day',
-            'limit_value' => 5, 'current_value' => 0, 'on_exceed' => 'suspend',
+            'limit_value' => 5, 'current_value' => 0, 'on_exceed' => 'suspend', 'unit' => 'count',
         ]);
         for ($i = 0; $i < 8; $i++) {
             CommanderRequestLogModel::create([
@@ -122,19 +115,19 @@ class CommanderControlCenterTest extends CommanderTestCase
         $this->assertSame('grace', CommanderPackageModel::find($pid)->getRawOriginal('status'));
 
         // …y dejo rastro en el feed de actividad con by='quota' (antes no se registraba).
-        $event = CommanderActivityEventModel::where('deployment_id', $dep->id)->where('by', 'quota')->first();
+        $event = CommanderActivityEventModel::where('package_id', $pid)->where('by', 'quota')->first();
         $this->assertNotNull($event);
         $this->assertSame('grace', $event->kind);
         $this->assertSame('quota_exceeded:requests_day', $event->reason);
     }
 
-    public function test_global_logs_tag_each_row_with_deployment_id(): void
+    public function test_global_logs_tag_each_row_with_package(): void
     {
         $admin = $this->admin();
-        $dep = $this->deployment();
+        $pkg = $this->package();
 
         CommanderRequestLogModel::create([
-            'package_id' => $dep->package_id, 'occurred_at' => now(), 'method' => 'GET',
+            'package_id' => $pkg->id, 'occurred_at' => now(), 'method' => 'GET',
             'route' => '/api/v1/products', 'path' => 'api/v1/products', 'status' => 200,
             'duration_ms' => 7, 'user_id' => null, 'token_id' => 'tok_x', 'ip' => '127.0.0.1',
             'request_bytes' => 0, 'response_bytes' => 12, 'memory_kb' => 2,
@@ -142,8 +135,35 @@ class CommanderControlCenterTest extends CommanderTestCase
 
         $res = $this->actingAs($admin, 'sanctum')->getJson('/api/v1/logs')->assertOk();
         $res->assertJsonCount(1, 'data');
-        $this->assertSame('shop', $res->json('data.0.deployment_id')); // tag = slug legible
+        // Cada fila se etiqueta con el name (StudlyCase) y el subdomain del package por join.
+        $this->assertSame('Shop', $res->json('data.0.package'));
+        $this->assertSame('shop', $res->json('data.0.subdomain'));
         $this->assertSame(200, $res->json('data.0.status'));
+    }
+
+    public function test_platform_usage_aggregates_rollups_by_bucket(): void
+    {
+        $admin = $this->admin();
+        $pkg = $this->package();
+        $bucket = CarbonImmutable::now('UTC')->startOfHour();
+
+        // Dos rollups en el mismo bucket (distinta ruta/clase) -> /usage/platform debe sumarlos.
+        CommanderUsageRollupModel::create([
+            'package_id' => $pkg->id, 'period' => 'hour', 'period_start' => $bucket,
+            'route' => '/a', 'method' => 'GET', 'status_class' => '2xx',
+            'request_count' => 80, 'error_count' => 0, 'avg_duration_ms' => 10, 'p95_duration_ms' => 20,
+        ]);
+        CommanderUsageRollupModel::create([
+            'package_id' => $pkg->id, 'period' => 'hour', 'period_start' => $bucket,
+            'route' => '/a', 'method' => 'GET', 'status_class' => '5xx',
+            'request_count' => 20, 'error_count' => 20, 'avg_duration_ms' => 30, 'p95_duration_ms' => 50,
+        ]);
+
+        $res = $this->actingAs($admin, 'sanctum')->getJson('/api/v1/usage/platform?period=hour&hours=48')->assertOk();
+        $res->assertJsonCount(1, 'data');
+        $this->assertSame($pkg->id, $res->json('data.0.package_id'));
+        $this->assertSame(100, (int) $res->json('data.0.request_count'));
+        $this->assertSame(20, (int) $res->json('data.0.error_count'));
     }
 
     public function test_plan_rejects_package_without_code_on_disk(): void
@@ -174,24 +194,25 @@ class CommanderControlCenterTest extends CommanderTestCase
         $this->assertNotContains('Commander', $names);
 
         foreach ($packages as $p) {
-            $this->assertArrayHasKey('status', $p);
+            $this->assertArrayHasKey('listing_status', $p);
             $this->assertArrayHasKey('on_disk', $p);
             $this->assertArrayHasKey('plan_count', $p);
-            $this->assertArrayHasKey('has_deployment', $p);
+            $this->assertArrayHasKey('provisioned_at', $p);
         }
     }
 
     public function test_package_metadata_persists(): void
     {
         $admin = $this->admin();
-        CommanderRegisteredPackageModel::create(['name' => 'Shop', 'label' => 'Shop', 'status' => 'active']);
+        CommanderPackageModel::create(['name' => 'Shop', 'label' => 'Shop', 'listing_status' => 'active']);
 
+        // Los metadatos de catalogo (label/description/listing_status) se editan sobre la fila unica.
         $this->actingAs($admin, 'sanctum')->patchJson('/api/v1/packages/Shop', [
-            'label' => 'Tienda', 'description' => 'Mi tienda online', 'status' => 'inactive',
-        ])->assertOk()->assertJsonPath('label', 'Tienda')->assertJsonPath('status', 'inactive');
+            'label' => 'Tienda', 'description' => 'Mi tienda online', 'listing_status' => 'inactive',
+        ])->assertOk()->assertJsonPath('label', 'Tienda')->assertJsonPath('listing_status', 'inactive');
 
-        $row = CommanderRegisteredPackageModel::where('name', 'Shop')->first();
+        $row = CommanderPackageModel::where('name', 'Shop')->first();
         $this->assertSame('Tienda', $row->label);
-        $this->assertSame('inactive', $row->status);
+        $this->assertSame('inactive', $row->listing_status);
     }
 }

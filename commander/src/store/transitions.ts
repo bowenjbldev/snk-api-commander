@@ -2,8 +2,8 @@ import type {
   ActivityEvent,
   ActivityKind,
   ChangedBy,
-  DeploymentPackage,
-  DeploymentStatus,
+  Package,
+  PackageStatus,
   StateReason,
 } from './types'
 
@@ -21,14 +21,14 @@ export interface StateOpts {
   by?: ChangedBy
 }
 
-// Aplica una transición de estado sobre la instancia `package` anidada, sellando changed_at = now y
-// conservando la identidad (id/name/subdomain/…). Transiciones válidas: active→grace, active→suspended,
-// grace→suspended, grace→active, suspended→active. El caller valida el origen.
+// Aplica una transición de estado sobre el package provisionado (commander_packages, plano), sellando
+// changed_at = now y conservando la identidad (id/name/subdomain/…). Transiciones válidas:
+// active→grace, active→suspended, grace→suspended, grace→active, suspended→active. El caller valida el origen.
 export function applyPackageState(
-  pkg: DeploymentPackage,
-  status: DeploymentStatus,
+  pkg: Package,
+  status: PackageStatus,
   opts: StateOpts = {},
-): DeploymentPackage {
+): Package {
   return {
     ...pkg,
     status,
@@ -41,7 +41,7 @@ export function applyPackageState(
 }
 
 export interface ActivityOpts {
-  deployment_id?: number
+  package_id?: number
   invoice_id?: number
   reason?: StateReason | null
   by?: ChangedBy

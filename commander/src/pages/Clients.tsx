@@ -2,18 +2,18 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { Dropdown, Button, InlineNotification } from '@carbon/react'
 import { Add } from '@carbon/icons-react'
-import { useStore } from '../store/store'
+import { useStore, useProvisionedPackages } from '../store/store'
 import { useCan } from '../store/auth'
 import { useToast } from '../providers/ToastProvider'
 import { PageHeader } from '../components/PageHeader'
 import { DataTableShell, type ShellColumn } from '../components/DataTableShell'
 import { useFirstLoad } from '../hooks/useFirstLoad'
-import { ClientStatusTag, DeploymentStatusTag } from '../components/tags/StatusTag'
+import { ClientStatusTag, PackageStatusTag } from '../components/tags/StatusTag'
 import { Drawer } from '../components/Drawer'
 import { ClientFormModal } from '../components/modals/ClientFormModal'
 import { formatMonthYear, formatAbsoluteUTC, formatRelative } from '../lib/time'
 import { formatCurrency } from '../lib/format'
-import type { Client, Deployment, Invoice } from '../store/types'
+import type { Client, Package, Invoice } from '../store/types'
 
 const STATUS_ITEMS = [
   { id: 'all', label: 'Status: All' },
@@ -23,7 +23,7 @@ const STATUS_ITEMS = [
 
 export function Clients() {
   const clients = useStore((s) => s.clients)
-  const deployments = useStore((s) => s.deployments)
+  const packages = useProvisionedPackages()
   const invoices = useStore((s) => s.invoices)
   const can = useCan()
   const toast = useToast()
@@ -37,9 +37,9 @@ export function Clients() {
 
   const depCount = useMemo(() => {
     const m = new Map<number, number>()
-    for (const d of deployments) m.set(d.client_id, (m.get(d.client_id) ?? 0) + 1)
+    for (const p of packages) m.set(p.client_id, (m.get(p.client_id) ?? 0) + 1)
     return m
-  }, [deployments])
+  }, [packages])
 
   const filtered = useMemo(
     () => clients.filter((c) => statusFilter === 'all' || c.status === statusFilter),
@@ -71,7 +71,7 @@ export function Clients() {
     },
     {
       key: 'deployments',
-      header: 'Deployments',
+      header: 'Packages',
       sortable: true,
       sortValue: (c) => depCount.get(c.id) ?? 0,
       align: 'right',
@@ -131,14 +131,13 @@ export function Clients() {
       {open && (
         <ClientDrawer
           client={open}
-          deployments={deployments.filter((d) => d.client_id === open.id)}
+          packages={packages.filter((p) => p.client_id === open.id)}
           overdue={invoices.find((i) => i.client_id === open.id && i.status === 'overdue')}
           canEdit={can('update clients')}
           onClose={() => setOpenId(null)}
-          onOpenDeployment={(id) => {
+          onOpenPackage={(name) => {
             setOpenId(null)
-            const pkg = deployments.find((d) => d.id === id)?.package.name
-            navigate(pkg ? `/packages/${pkg}` : '/packages')
+            navigate(`/packages/${name}`)
           }}
           onEdit={(c) => setForm({ mode: 'edit', client: c })}
           onPlaceholder={(what) => toast.info(what, 'Coming online.')}
@@ -154,23 +153,26 @@ export function Clients() {
 
 function ClientDrawer({
   client,
-  deployments,
+  packages,
   overdue,
   canEdit,
   onClose,
-  onOpenDeployment,
+  onOpenPackage,
   onEdit,
   onPlaceholder,
 }: {
   client: Client
-  deployments: Deployment[]
+  packages: Package[]
   overdue: Invoice | undefined
   canEdit: boolean
   onClose: () => void
-  onOpenDeployment: (id: number) => void
+  onOpenPackage: (name: string) => void
   onEdit: (c: Client) => void
   onPlaceholder: (what: string) => void
 }) {
+  const overduePackage = overdue ? packages.find((p) => p.id === overdue.package_id) : undefined
+  const overduePackageLabel = overduePackage?.name ?? (overdue ? 'Unknown package' : '')
+
   return (
     <Drawer
       open
@@ -212,25 +214,25 @@ function ClientDrawer({
           kind="error"
           lowContrast
           hideCloseButton
-          title={`${overdue.id} · ${formatCurrency(overdue.amount)} overdue`}
-          subtitle={`${formatRelative(overdue.due_at, Date.now()).replace(' ago', '')} overdue — ${overdue.deployment_id} ${overdue.enforcement === 'suspended' ? 'auto-suspended' : overdue.enforcement === 'grace' ? 'in grace' : 'flagged'}.`}
+          title={`${overdue.number} · ${formatCurrency(overdue.amount)} overdue`}
+          subtitle={`${formatRelative(overdue.due_at, Date.now()).replace(' ago', '')} overdue — ${overduePackageLabel} ${overdue.enforcement === 'suspended' ? 'auto-suspended' : overdue.enforcement === 'grace' ? 'in grace' : 'flagged'}.`}
           style={{ maxWidth: '100%', marginBottom: 24 }}
         />
       )}
 
       <div>
-        <p className="scns-section-label">Deployments · {deployments.length}</p>
+        <p className="scns-section-label">Packages · {packages.length}</p>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          {deployments.length === 0 ? (
+          {packages.length === 0 ? (
             <div className="scns-helper" style={{ padding: '12px 0', fontSize: 13 }}>
-              No deployments for this client.
+              No packages for this client.
             </div>
           ) : (
-            deployments.map((d) => (
+            packages.map((p) => (
               <button
-                key={d.id}
+                key={p.id}
                 type="button"
-                onClick={() => onOpenDeployment(d.id)}
+                onClick={() => onOpenPackage(p.name)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -248,13 +250,13 @@ function ClientDrawer({
               >
                 <div>
                   <div className="scns-mono" style={{ color: 'var(--cds-link-primary)' }}>
-                    {d.package.name}
+                    {p.name}
                   </div>
                   <div className="scns-mono scns-helper" style={{ fontSize: 11 }}>
-                    {d.package.subdomain}
+                    {p.subdomain}
                   </div>
                 </div>
-                <DeploymentStatusTag pkg={d.package} />
+                <PackageStatusTag pkg={p} />
               </button>
             ))
           )}

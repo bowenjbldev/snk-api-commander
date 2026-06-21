@@ -15,12 +15,12 @@ interface Props {
   open: boolean
   /**
    * Business package this provisioning is scoped to. When set, only this package's plans are
-   * offered and the backend derives the package from the chosen plan. Omit for the global flow.
+   * offered and the backend derives the package from the chosen plan.
    */
   packageName?: string
   /**
    * Plans to offer (already package-scoped by the caller). Falls back to the full store catalog
-   * when omitted (global Catalog/Subscriptions flow).
+   * when omitted.
    */
   plans?: Plan[]
   planId?: number // pre-select a plan (from a row action)
@@ -115,7 +115,7 @@ export function ProvisionModal({ open, packageName, plans, planId, onClose, onPr
   return (
     <Modal
       open
-      modalHeading="New subscription"
+      modalHeading="Provision package"
       modalLabel={packageName ? `Provisioning · ${packageName}` : 'Provisioning'}
       primaryButtonText={busy ? 'Provisioning…' : 'Create & provision'}
       primaryButtonDisabled={busy}

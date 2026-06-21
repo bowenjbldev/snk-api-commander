@@ -1,12 +1,12 @@
 import { Button, ComposedModal, ModalBody, ModalFooter, ModalHeader, InlineNotification } from '@carbon/react'
-import type { Deployment, Invoice } from '../../store/types'
+import type { Invoice, Package } from '../../store/types'
 import { formatCurrency } from '../../lib/format'
 import { formatDateUTC as fmtDeadline } from '../../lib/time'
 
 interface Props {
   open: boolean
   invoice: Invoice
-  deployment: Deployment | undefined
+  pkg: Package | undefined
   clientName: string
   defaultGraceHours: number
   onClose: () => void
@@ -15,12 +15,12 @@ interface Props {
   onSuspend: () => void
 }
 
-// Follow-up after marking an invoice overdue: decide the linked deployment's fate.
+// Follow-up after marking an invoice overdue: decide the linked package's fate.
 // Three equal actions: Keep running / Grace Nh / Suspend now.
 export function OverdueEnforcementModal({
   open,
   invoice,
-  deployment,
+  pkg,
   clientName,
   defaultGraceHours,
   onClose,
@@ -30,18 +30,19 @@ export function OverdueEnforcementModal({
 }: Props) {
   if (!open) return null
   const deadline = fmtDeadline(new Date(Date.now() + defaultGraceHours * 3_600_000).toISOString())
+  const packageLabel = pkg?.name ?? 'Unknown package'
 
   return (
     <ComposedModal open onClose={onClose} size="md">
       <ModalHeader
-        label={`${invoice.id} · ${clientName} · ${formatCurrency(invoice.amount)}`}
+        label={`${invoice.number} · ${clientName} · ${formatCurrency(invoice.amount)}`}
         title="Invoice marked as overdue"
       />
       <ModalBody>
         <p style={{ marginBottom: 16 }}>
-          The linked deployment{' '}
-          <span className="scns-mono">{deployment?.package.name ?? invoice.deployment_id}</span> is still
-          operational. Auto-suspend is off for this subscription — choose what happens to the deployment
+          The linked package{' '}
+          <span className="scns-mono">{packageLabel}</span> is still
+          operational. Auto-suspend is off for this subscription — choose what happens to the package
           now.
         </p>
         <InlineNotification

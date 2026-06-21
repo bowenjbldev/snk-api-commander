@@ -55,7 +55,7 @@ export function Settings() {
               <div>
                 <div style={{ fontSize: 14, fontWeight: 600 }}>Platform Defaults</div>
                 <div className="scns-helper" style={{ fontSize: 13, marginTop: 4 }}>
-                  Default grace period applied when moving a deployment to grace or on overdue enforcement.
+                  Default grace period applied when moving a package to grace or on overdue enforcement.
                 </div>
               </div>
               <div style={{ maxWidth: 200 }}>

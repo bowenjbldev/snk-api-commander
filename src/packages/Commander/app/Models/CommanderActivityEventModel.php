@@ -16,7 +16,7 @@ class CommanderActivityEventModel extends Model
     {
         return [
             'id' => 'integer',
-            'deployment_id' => 'integer',
+            'package_id' => 'integer',
             'invoice_id' => 'integer',
             'at' => 'datetime',
         ];

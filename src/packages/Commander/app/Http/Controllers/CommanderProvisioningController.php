@@ -10,13 +10,11 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Packages\Commander\Models\CommanderClientModel;
-use Packages\Commander\Models\CommanderDeploymentModel;
 use Packages\Commander\Models\CommanderPlanModel;
 use Packages\Commander\Models\CommanderQuotaModel;
 use Packages\Commander\Models\CommanderSubscriptionModel;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Commander\Models\CommanderPackageModel;
-use Packages\Commander\Models\CommanderQuotaMetricModel;
 
 /**
  * Client-first provisioning, EN UN PASO e in-process: registra CLIENTE (nuevo o existente) + PLAN,
@@ -27,7 +25,7 @@ use Packages\Commander\Models\CommanderQuotaMetricModel;
 #[Group('Provisioning')]
 class CommanderProvisioningController extends CoreBaseApiController
 {
-    private const PROVISION_PERMISSION = 'provision deployments';
+    private const PROVISION_PERMISSION = 'provision packages';
 
     /** metric_key → unit, for the quota rows mirrored from a plan. */
     private const QUOTA_UNITS = [
@@ -73,7 +71,6 @@ class CommanderProvisioningController extends CoreBaseApiController
         $plan = CommanderPlanModel::findOrFail($data['plan_id']);
         $package = Str::studly($plan->package);
         $subdomain = $data['subdomain'] ?? Str::of($package)->snake()->replace('_', '-')->toString();
-        $deploymentId = $subdomain;
         $database = Str::snake($package); // BD propia del package (multi-tenant), ej. Shop -> shop
 
         // El codigo del package debe existir en disco (viaja por git, no se genera aqui).
@@ -81,16 +78,21 @@ class CommanderProvisioningController extends CoreBaseApiController
             return response()->json(['error' => "Package code '{$package}' is not deployed."], 422);
         }
 
-        // La instancia (commander_packages) es la fuente de verdad; su subdomain es unico => cubre el conflicto.
-        if (CommanderPackageModel::where('subdomain', $subdomain)->exists()) {
-            return response()->json(['error' => "A deployment '{$deploymentId}' already exists."], 409);
+        // Tabla unica: la fila de catalogo del package puede existir ya (sync desde disco). El conflicto
+        // es estar YA PROVISIONADO (provisioned_at no nulo), o que el subdominio ya lo use otra instancia viva.
+        $existing = CommanderPackageModel::where('name', $package)->first();
+        if ($existing && $existing->provisioned_at !== null) {
+            return response()->json(['error' => "Package '{$package}' is already provisioned."], 409);
+        }
+        if (CommanderPackageModel::query()->whereNotNull('provisioned_at')->where('subdomain', $subdomain)->exists()) {
+            return response()->json(['error' => "Subdomain '{$subdomain}' is already in use."], 409);
         }
 
         if (! empty($data['client']) && CommanderClientModel::where('slug', $data['client']['slug'])->exists()) {
             return response()->json(['error' => "Client '{$data['client']['slug']}' already exists."], 422);
         }
 
-        [$deployment, $commanderPackage] = DB::connection('commander')->transaction(function () use ($data, $plan, $package, $subdomain, $database) {
+        $commanderPackage = DB::connection('commander')->transaction(function () use ($data, $plan, $package, $subdomain, $database) {
             $now = CarbonImmutable::now();
 
             $clientId = $data['client_id'] ?? null;
@@ -106,60 +108,54 @@ class CommanderProvisioningController extends CoreBaseApiController
                 $clientId = $client->id; // bigint asignado por la BD
             }
 
-            // Instancia: la fila packages enciende el subdominio (la resuelve el middleware por host).
-            $commanderPackage = CommanderPackageModel::create([
-                'name' => $package,
+            // Instancia: rellena la fila (catalogo) con lo operativo y la marca provisionada. provisioned_at
+            // != null enciende el subdominio (lo resuelve el middleware por host). Conserva label/listing_status.
+            $commanderPackage = CommanderPackageModel::firstOrNew(['name' => $package]);
+            $commanderPackage->label = $commanderPackage->label ?? $package;
+            $commanderPackage->listing_status = $commanderPackage->listing_status ?? 'active';
+            $commanderPackage->forceFill([
                 'subdomain' => $subdomain,
                 'database' => $database,
+                'client_id' => $clientId,
                 'status' => 'active',
+                'reason' => null,
+                'message' => null,
+                'grace_until' => null,
                 'changed_by' => 'operator',
                 'changed_at' => $now,
-            ]);
-
-            // Identidad (slug/name/subdomain/package/base_url) NO se almacena: la derivan los accessors
-            // del modelo desde commanderPackage. Aqui solo enlaces + cache de KPIs.
-            $deployment = CommanderDeploymentModel::create([
-                'client_id' => $clientId,
-                'package_id' => $commanderPackage->id,
                 'requests_24h' => 0,
                 'quota_health' => 0,
+                'last_seen' => null,
+                'provisioned_at' => $now,
             ]);
+            $commanderPackage->save();
 
-            // Suscripcion: id bigint autoincrement; enlaza ambos lados con el id real.
+            // Suscripcion: id bigint autoincrement; package_id es la relacion autoritativa.
             $subscription = CommanderSubscriptionModel::create([
                 'client_id' => $clientId,
-                'deployment_id' => $deployment->id,
+                'package_id' => $commanderPackage->id,
                 'plan' => $plan->name,
                 'price_monthly' => $plan->price_monthly,
                 'billing_status' => 'pending',
                 'auto_suspend' => false,
                 'started_at' => $now,
             ]);
-            $deployment->subscription_id = $subscription->id;
-            $deployment->save();
+            $commanderPackage->subscription_id = $subscription->id;
+            $commanderPackage->save();
 
             foreach ($plan->quotaLimits() as $metric => $limit) {
-                // Espejo para el SPA (tab de cuotas del Commander)…
+                // Tabla unica: una fila por metrica, que el panel edita y el medidor mide/aplica.
                 CommanderQuotaModel::create([
-                    'deployment_id' => $deployment->id,
+                    'package_id' => $commanderPackage->id,
                     'metric_key' => $metric,
                     'current_value' => 0,
                     'limit_value' => $limit,
                     'on_exceed' => $limit !== null ? 'suspend' : 'none',
                     'unit' => self::QUOTA_UNITS[$metric] ?? 'count',
                 ]);
-
-                // …y la fila real que el medidor de cuotas de Core hace cumplir, por package.
-                CommanderQuotaMetricModel::create([
-                    'package_id' => $commanderPackage->id,
-                    'metric_key' => $metric,
-                    'limit_value' => $limit,
-                    'current_value' => 0,
-                    'on_exceed' => $limit !== null ? 'suspend' : 'none',
-                ]);
             }
 
-            return [$deployment, $commanderPackage];
+            return $commanderPackage;
         });
 
         // Crea la BD propia del package y migra/siembra ahi (DDL fuera de la transaccion commander):
@@ -176,7 +172,7 @@ class CommanderProvisioningController extends CoreBaseApiController
         }
 
         return response()->json([
-            'deployment' => $deployment->fresh()->load(['client', 'subscription', 'quotas', 'package']),
+            'package' => $commanderPackage->fresh()->load(['client', 'subscription', 'quotas']),
         ], 201);
     }
 }

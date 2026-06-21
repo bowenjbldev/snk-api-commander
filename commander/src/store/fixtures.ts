@@ -2,6 +2,9 @@
 // `nowMs` anchor (app-load time) so grace countdowns tick live and relative ages
 // ("3h ago", "9d overdue") stay correct. Historical dates (created_at) are absolute.
 //
+// Tabla unica: cada package es UN objeto `Package` (catalogo + operativo). En el demo todos estan
+// provisionados (provisioned_at != null). Las relaciones van por `package_id`.
+//
 // Narrative: acme-shop auto-suspended over overdue INV-2026-0139; kestrel-track in
 // grace (payment_overdue) ~13h42m left; quill-cms suspended for abuse; tetra-telemetry
 // in manual grace ~61h08m; helios-meter 124% over requests_day (policy warn → 429s).
@@ -9,14 +12,12 @@
 import type {
   ActivityEvent,
   Client,
-  Deployment,
-  DeploymentPackage,
   Invoice,
   LogEntry,
   OperatorSettings,
+  Package,
   Plan,
   QuotaMetric,
-  RegisteredPackage,
   Subscription,
   TopEndpoint,
 } from './types'
@@ -28,12 +29,11 @@ const D = 24 * H
 
 export interface Dataset {
   clients: Client[]
-  deployments: Deployment[]
+  packages: Package[]
   subscriptions: Subscription[]
   invoices: Invoice[]
   quotas: QuotaMetric[]
   plans: Plan[]
-  packages: RegisteredPackage[]
   logs: LogEntry[]
   activity: ActivityEvent[]
   settings: OperatorSettings
@@ -48,6 +48,15 @@ export interface Dataset {
 }
 
 export const DEMO_DOMAIN = 'snakecloud.io'
+
+// handle (kebab subdomain) → StudlyCase package name, e.g. 'acme-shop' → 'AcmeShop'.
+function studly(handle: string): string {
+  return handle
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join('')
+}
 
 export function buildFixtures(nowMs: number): Dataset {
   const ago = (ms: number) => new Date(nowMs - ms).toISOString()
@@ -114,7 +123,7 @@ export function buildFixtures(nowMs: number): Dataset {
       company: 'Northwind Labs Inc',
       email: 'ops@northwindlabs.io',
       phone: '+1 415 555 0177',
-      notes: 'Three deployments: prod ledger, batch runner, sandbox.',
+      notes: 'Three packages: prod ledger, batch runner, sandbox.',
       status: 'active',
       created_at: '2024-01-22T10:00:00Z',
     },
@@ -141,39 +150,27 @@ export function buildFixtures(nowMs: number): Dataset {
     },
   ]
 
-  // slug → numeric client id (PK migration: client_id FKs are bigint now)
+  // slug → numeric client id (client_id FKs are bigint).
   const clientIdBySlug = new Map(clients.map((c) => [c.slug, c.id]))
 
-  // [name, client, package, version, status, requests_24h, quota_health, last_seen_ms, secretSuffix, rotated_ms_ago, created_at]
-  type Row = [
-    string,
-    string,
-    string,
-    string,
-    DeploymentPackage['status'],
-    number,
-    number,
-    number,
-    string,
-    number,
-    string,
-  ]
+  // [handle (subdomain), client, status, requests_24h, quota_health, last_seen_ms, created_at]
+  type Row = [string, string, Package['status'], number, number, number, string]
   const rows: Row[] = [
-    ['acme-shop', 'acme', 'commerce-api', 'v2.4.1', 'suspended', 0, 0.64, 3 * H, '9b1c', 22 * D, '2024-03-06T10:00:00Z'],
-    ['acme-shop-staging', 'acme', 'commerce-api', 'v2.5.0-rc1', 'active', 1204, 0.12, 2 * M, 'a7e0', 9 * D, '2025-09-01T10:00:00Z'],
-    ['bluepeak', 'bluepeak', 'metrics-api', 'v4.0.2', 'active', 121008, 0.83, 8 * S, '4d44', 12 * D, '2024-08-20T10:00:00Z'],
-    ['bluepeak-eu', 'bluepeak', 'metrics-api', 'v4.0.2', 'active', 96544, 0.71, 5 * S, 'c19a', 12 * D, '2024-09-15T10:00:00Z'],
-    ['helios-archive', 'helios', 'archive-api', 'v1.0.4', 'active', 412, 0.06, 4 * M, '5520', 60 * D, '2025-05-20T10:00:00Z'],
-    ['helios-meter', 'helios', 'telemetry-api', 'v5.2.1', 'active', 1240332, 1.24, 2 * S, 'f0a3', 5 * D, '2025-05-12T10:00:00Z'],
-    ['kestrel-track', 'kestrel', 'tracking-api', 'v2.9.3', 'grace', 18772, 0.44, 30 * S, '3f2a', 41 * D, '2024-11-12T10:00:00Z'],
-    ['mori-assets', 'mori', 'asset-cdn', 'v1.2.0', 'active', 9341, 0.22, 1 * M, '7711', 30 * D, '2025-02-10T10:00:00Z'],
-    ['northwind-api', 'northwind', 'ledger-api', 'v3.1.0', 'active', 84210, 0.58, 12 * S, 'b2c8', 18 * D, '2024-01-25T10:00:00Z'],
-    ['northwind-batch', 'northwind', 'batch-runner', 'v1.8.2', 'active', 6902, 0.31, 45 * S, 'e4d1', 18 * D, '2024-04-01T10:00:00Z'],
-    ['northwind-sandbox', 'northwind', 'ledger-api', 'v3.1.0', 'active', 2318, 0.09, 70 * S, '0c9f', 18 * D, '2024-06-01T10:00:00Z'],
-    ['quill-cms', 'quill', 'content-api', 'v3.3.0', 'suspended', 0, 0.38, 2 * D, '8a20', 75 * D, '2023-06-20T10:00:00Z'],
-    ['tetra-fleet', 'tetra', 'fleet-api', 'v6.0.0', 'active', 54109, 0.49, 10 * S, 'd7b6', 14 * D, '2025-10-05T10:00:00Z'],
-    ['tetra-fleet-dev', 'tetra', 'fleet-api', 'v6.1.0-beta', 'active', 870, 0.04, 3 * M, '1e3c', 7 * D, '2025-11-20T10:00:00Z'],
-    ['tetra-telemetry', 'tetra', 'telemetry-api', 'v5.2.1', 'grace', 22450, 0.52, 18 * S, 'aa51', 20 * D, '2025-10-10T10:00:00Z'],
+    ['acme-shop', 'acme', 'suspended', 0, 0.64, 3 * H, '2024-03-06T10:00:00Z'],
+    ['acme-shop-staging', 'acme', 'active', 1204, 0.12, 2 * M, '2025-09-01T10:00:00Z'],
+    ['bluepeak', 'bluepeak', 'active', 121008, 0.83, 8 * S, '2024-08-20T10:00:00Z'],
+    ['bluepeak-eu', 'bluepeak', 'active', 96544, 0.71, 5 * S, '2024-09-15T10:00:00Z'],
+    ['helios-archive', 'helios', 'active', 412, 0.06, 4 * M, '2025-05-20T10:00:00Z'],
+    ['helios-meter', 'helios', 'active', 1240332, 1.24, 2 * S, '2025-05-12T10:00:00Z'],
+    ['kestrel-track', 'kestrel', 'grace', 18772, 0.44, 30 * S, '2024-11-12T10:00:00Z'],
+    ['mori-assets', 'mori', 'active', 9341, 0.22, 1 * M, '2025-02-10T10:00:00Z'],
+    ['northwind-api', 'northwind', 'active', 84210, 0.58, 12 * S, '2024-01-25T10:00:00Z'],
+    ['northwind-batch', 'northwind', 'active', 6902, 0.31, 45 * S, '2024-04-01T10:00:00Z'],
+    ['northwind-sandbox', 'northwind', 'active', 2318, 0.09, 70 * S, '2024-06-01T10:00:00Z'],
+    ['quill-cms', 'quill', 'suspended', 0, 0.38, 2 * D, '2023-06-20T10:00:00Z'],
+    ['tetra-fleet', 'tetra', 'active', 54109, 0.49, 10 * S, '2025-10-05T10:00:00Z'],
+    ['tetra-fleet-dev', 'tetra', 'active', 870, 0.04, 3 * M, '2025-11-20T10:00:00Z'],
+    ['tetra-telemetry', 'tetra', 'grace', 22450, 0.52, 18 * S, '2025-10-10T10:00:00Z'],
   ]
 
   const GRACE_REMAINING: Record<string, number> = {
@@ -191,58 +188,61 @@ export function buildFixtures(nowMs: number): Dataset {
   const GRACE_MSG =
     'Your subscription payment is overdue. Service continues during a short grace period; settle the balance to avoid suspension.'
 
-  const deployments: Deployment[] = rows.map((r, idx) => {
-    const [name, client, pkg, , status, req, health, seenMs, , , created] = r
-    let reason: string | null = null
+  // Each row → one unified package (commander_packages): catalogo + operativo. Todos provisionados.
+  const packages: Package[] = rows.map((r, idx) => {
+    const [handle, client, status, req, health, seenMs, created] = r
+    let reason: Package['reason'] = null
     let message: string | null = null
     let grace_until: string | null = null
-    let changed_by: DeploymentPackage['changed_by'] = 'cli'
+    let changed_by: Package['changed_by'] = 'cli'
     let changed_at = created
     if (status === 'suspended') {
-      reason = name === 'quill-cms' ? 'abuse' : 'payment_overdue'
-      message = name === 'quill-cms' ? 'This deployment has been suspended pending account review.' : SUSPEND_MSG
-      changed_by = name === 'quill-cms' ? 'operator' : 'auto-suspend'
-      changed_at = ago(STATE_CHANGED[name] ?? H)
+      reason = handle === 'quill-cms' ? 'abuse' : 'payment_overdue'
+      message = handle === 'quill-cms' ? 'This package has been suspended pending account review.' : SUSPEND_MSG
+      changed_by = handle === 'quill-cms' ? 'operator' : 'auto-suspend'
+      changed_at = ago(STATE_CHANGED[handle] ?? H)
     } else if (status === 'grace') {
-      reason = name === 'tetra-telemetry' ? 'manual' : 'payment_overdue'
+      reason = handle === 'tetra-telemetry' ? 'manual' : 'payment_overdue'
       message = GRACE_MSG
       changed_by = 'operator'
-      changed_at = ago(STATE_CHANGED[name] ?? H)
-      grace_until = ahead(GRACE_REMAINING[name] ?? 72 * H)
+      changed_at = ago(STATE_CHANGED[handle] ?? H)
+      grace_until = ahead(GRACE_REMAINING[handle] ?? 72 * H)
     }
     return {
       id: idx + 1, // bigint PK
+      name: studly(handle), // StudlyCase package name (1:1)
+      // ── catalogo ──
+      label: studly(handle),
+      description: null,
+      listing_status: 'active',
+      on_disk: true,
+      plan_count: 0, // asignado tras construir los planes
+      // ── operativo (provisionado) ──
+      provisioned_at: created,
+      subdomain: handle, // handle bare (NO el FQDN; el front lo deriva con baseDomain())
+      database: handle.replace(/-/g, '_'),
       client_id: clientIdBySlug.get(client)!,
-      // Identidad + estado viven en la instancia `package` anidada (commander_packages).
-      package: {
-        id: idx + 1,
-        name: pkg, // StudlyCase
-        subdomain: name, // handle bare (NO el FQDN; el front lo deriva con baseDomain())
-        database: name.replace(/-/g, '_'),
-        status,
-        reason,
-        message,
-        grace_until,
-        changed_by,
-        changed_at,
-        created_at: created,
-        updated_at: changed_at,
-      },
+      subscription_id: null, // bigint FK, asignado tras construir las subscriptions
+      status,
+      reason,
+      message,
+      grace_until,
+      changed_by,
+      changed_at,
       requests_24h: req,
       quota_health: health,
       last_seen: ago(seenMs),
-      subscription_id: null, // bigint FK, asignado tras construir las subscriptions
       created_at: created,
-      updated_at: created,
+      updated_at: changed_at,
     }
   })
 
-  // deployment handle (package.subdomain) → numeric deployment id (FKs son bigint)
-  const depIdBySlug = new Map(deployments.map((d) => [d.package.subdomain, d.id]))
+  // handle (subdomain) → numeric package id (FKs son bigint)
+  const pkgIdBySubdomain = new Map(packages.map((p) => [p.subdomain!, p.id]))
 
-  // ── Subscriptions (one per billable deployment) ──────────────────────────────
+  // ── Subscriptions (one per billable package) ─────────────────────────────────
   const subSpec: Array<[string, string, string, number, boolean]> = [
-    // deployment, plan, billing_status, price, auto_suspend
+    // package (subdomain), plan, billing_status, price, auto_suspend
     ['acme-shop', 'Commerce Pro', 'overdue', 290, true],
     ['bluepeak', 'Metrics Scale', 'paid', 480, false],
     ['helios-meter', 'Telemetry Pro', 'pending', 520, false],
@@ -254,28 +254,28 @@ export function buildFixtures(nowMs: number): Dataset {
     ['bluepeak-eu', 'Metrics Scale', 'paid', 480, false],
     ['tetra-telemetry', 'Telemetry Standard', 'paid', 260, false],
   ]
-  const subscriptions: Subscription[] = subSpec.map(([dep, plan, billing, price, auto], idx) => {
-    const dpl = deployments.find((d) => d.package.subdomain === dep)!
+  const subscriptions: Subscription[] = subSpec.map(([sub, plan, billing, price, auto], idx) => {
+    const p = packages.find((x) => x.subdomain === sub)!
     return {
       id: idx + 1, // bigint PK
-      client_id: dpl.client_id,
-      deployment_id: dpl.id,
+      client_id: p.client_id!,
+      package_id: p.id,
       plan,
       price_monthly: price,
       billing_status: billing as Subscription['billing_status'],
       auto_suspend: auto,
-      started_at: dpl.created_at,
+      started_at: p.created_at,
     }
   })
 
-  // Enlaza cada deployment con su subscription (FK bigint) por deployment_id.
-  const subIdByDeploymentId = new Map(subscriptions.map((sub) => [sub.deployment_id, sub.id]))
-  for (const d of deployments) {
-    d.subscription_id = subIdByDeploymentId.get(d.id) ?? null
+  // Enlaza cada package con su subscription (FK bigint) por package_id.
+  const subIdByPackageId = new Map(subscriptions.map((sub) => [sub.package_id, sub.id]))
+  for (const p of packages) {
+    p.subscription_id = subIdByPackageId.get(p.id) ?? null
   }
 
   // ── Invoices ─────────────────────────────────────────────────────────────────
-  // [number, client, deployment, amount, issued_ago_d, due_ago_d(+=overdue,-=future), status, enforcement]
+  // [number, client, package (subdomain), amount, issued_ago_d, due_ago_d(+=overdue,-=future), status, enforcement]
   const invSpec: Array<[string, string, string, number, number, number, Invoice['status'], Invoice['enforcement']]> = [
     ['INV-2026-0145', 'helios', 'helios-meter', 520, 12, 2, 'pending', null], // 2d late, still pending
     ['INV-2026-0144', 'bluepeak', 'bluepeak', 240, 7, -17, 'pending', null],
@@ -286,11 +286,11 @@ export function buildFixtures(nowMs: number): Dataset {
     ['INV-2026-0139', 'acme', 'acme-shop', 290, 23, 9, 'overdue', 'suspended'],
     ['INV-2026-0138', 'helios', 'helios-meter', 520, 42, 12, 'paid', null],
   ]
-  const invoices: Invoice[] = invSpec.map(([number, client, dep, amount, issuedD, dueD, status, enforcement], idx) => ({
+  const invoices: Invoice[] = invSpec.map(([number, client, sub, amount, issuedD, dueD, status, enforcement], idx) => ({
     id: idx + 1, // bigint PK
     number, // handle legible 'INV-...' (antes era la PK)
     client_id: clientIdBySlug.get(client)!,
-    deployment_id: depIdBySlug.get(dep)!,
+    package_id: pkgIdBySubdomain.get(sub)!,
     amount,
     issued_at: ago(issuedD * D),
     due_at: ago(dueD * D),
@@ -298,48 +298,48 @@ export function buildFixtures(nowMs: number): Dataset {
     enforcement,
   }))
 
-  // invoice number ('INV-...') → numeric invoice id (PK migration: invoice_id FKs are bigint now)
+  // invoice number ('INV-...') → numeric invoice id (invoice_id FKs are bigint).
   const invoiceIdByNumber = new Map(invoices.map((inv) => [inv.number, inv.id]))
 
-  // ── Quotas (4 metrics per deployment) ────────────────────────────────────────
+  // ── Quotas (4 metrics per package) ───────────────────────────────────────────
   const quotas: QuotaMetric[] = []
   const roundTo = (v: number, step: number) => Math.max(step, Math.round(v / step) * step)
-  for (const d of deployments) {
-    const h = d.quota_health
-    const serving = d.requests_24h > 0
-    if (d.package.subdomain === 'kestrel-track') {
+  for (const p of packages) {
+    const h = p.quota_health
+    const serving = p.requests_24h > 0
+    if (p.subdomain === 'kestrel-track') {
       quotas.push(
-        q(d.id, 'requests_day', 201330, 500000, 'suspend', null, 'count'),
-        q(d.id, 'disk_db_mb', 1204, 4096, 'suspend', null, 'mb'),
-        q(d.id, 'disk_storage_mb', 8920, 20480, 'none', null, 'mb'),
-        q(d.id, 'users_total', 322, null, 'none', null, 'count'),
+        q(p.id, 'requests_day', 201330, 500000, 'suspend', null, 'count'),
+        q(p.id, 'disk_db_mb', 1204, 4096, 'suspend', null, 'mb'),
+        q(p.id, 'disk_storage_mb', 8920, 20480, 'none', null, 'mb'),
+        q(p.id, 'users_total', 322, null, 'none', null, 'count'),
       )
       continue
     }
-    if (d.package.subdomain === 'helios-meter') {
+    if (p.subdomain === 'helios-meter') {
       quotas.push(
-        q(d.id, 'requests_day', 1240332, 1000000, 'warn', ago(3 * D), 'count'),
-        q(d.id, 'disk_db_mb', 7420, 10240, 'suspend', null, 'mb'),
-        q(d.id, 'disk_storage_mb', 12880, 20480, 'none', null, 'mb'),
-        q(d.id, 'users_total', 1840, null, 'none', null, 'count'),
+        q(p.id, 'requests_day', 1240332, 1000000, 'warn', ago(3 * D), 'count'),
+        q(p.id, 'disk_db_mb', 7420, 10240, 'suspend', null, 'mb'),
+        q(p.id, 'disk_storage_mb', 12880, 20480, 'none', null, 'mb'),
+        q(p.id, 'users_total', 1840, null, 'none', null, 'count'),
       )
       continue
     }
     // requests_day: dominant when serving (ratio == health), else 0 usage
-    const reqLimit = serving ? roundTo(d.requests_24h / Math.max(h, 0.01), 1000) : 500000
-    quotas.push(q(d.id, 'requests_day', serving ? d.requests_24h : 0, reqLimit, 'suspend', null, 'count'))
+    const reqLimit = serving ? roundTo(p.requests_24h / Math.max(h, 0.01), 1000) : 500000
+    quotas.push(q(p.id, 'requests_day', serving ? p.requests_24h : 0, reqLimit, 'suspend', null, 'count'))
     // disk_db_mb
     const dbLimit = 4096
-    quotas.push(q(d.id, 'disk_db_mb', Math.round(clamp(h * 0.55, 0.03, 0.95) * dbLimit), dbLimit, 'suspend', null, 'mb'))
+    quotas.push(q(p.id, 'disk_db_mb', Math.round(clamp(h * 0.55, 0.03, 0.95) * dbLimit), dbLimit, 'suspend', null, 'mb'))
     // disk_storage_mb: dominant when suspended (ratio == health)
     const stLimit = 20480
     const stRatio = serving ? clamp(h * 0.8, 0.04, 0.98) : h
-    quotas.push(q(d.id, 'disk_storage_mb', Math.round(stRatio * stLimit), stLimit, 'none', null, 'mb'))
+    quotas.push(q(p.id, 'disk_storage_mb', Math.round(stRatio * stLimit), stLimit, 'none', null, 'mb'))
     // users_total: unlimited for most
-    const usersLimited = ['bluepeak', 'northwind-api', 'tetra-fleet'].includes(d.package.subdomain)
+    const usersLimited = ['bluepeak', 'northwind-api', 'tetra-fleet'].includes(p.subdomain!)
     quotas.push(
       q(
-        d.id,
+        p.id,
         'users_total',
         Math.round(200 + h * 1500),
         usersLimited ? 5000 : null,
@@ -374,12 +374,12 @@ export function buildFixtures(nowMs: number): Dataset {
 
   // ── Activity feed ────────────────────────────────────────────────────────────
   const activity: ActivityEvent[] = [
-    { id: 1, at: ago(3 * H), kind: 'suspend', deployment_id: depIdBySlug.get('acme-shop'), invoice_id: invoiceIdByNumber.get('INV-2026-0139'), reason: 'payment_overdue', by: 'auto-suspend' },
-    { id: 2, at: ago(14 * H), kind: 'grace', deployment_id: depIdBySlug.get('kestrel-track'), reason: 'payment_overdue', by: 'operator' },
-    { id: 3, at: ago(1 * D), kind: 'paid', deployment_id: depIdBySlug.get('mori-assets'), invoice_id: invoiceIdByNumber.get('INV-2026-0141'), message: 'Mori Design Co · $120.00' },
-    { id: 4, at: ago(26 * H), kind: 'grace', deployment_id: depIdBySlug.get('tetra-telemetry'), reason: 'manual', by: 'operator' },
-    { id: 5, at: ago(2 * D), kind: 'suspend', deployment_id: depIdBySlug.get('quill-cms'), reason: 'abuse', by: 'operator' },
-    { id: 6, at: ago(3 * D), kind: 'quota', deployment_id: depIdBySlug.get('helios-meter'), message: 'exceeded requests_day · policy warn' },
+    { id: 1, at: ago(3 * H), kind: 'suspend', package_id: pkgIdBySubdomain.get('acme-shop'), invoice_id: invoiceIdByNumber.get('INV-2026-0139'), reason: 'payment_overdue', by: 'auto-suspend' },
+    { id: 2, at: ago(14 * H), kind: 'grace', package_id: pkgIdBySubdomain.get('kestrel-track'), reason: 'payment_overdue', by: 'operator' },
+    { id: 3, at: ago(1 * D), kind: 'paid', package_id: pkgIdBySubdomain.get('mori-assets'), invoice_id: invoiceIdByNumber.get('INV-2026-0141'), message: 'Mori Design Co · $120.00' },
+    { id: 4, at: ago(26 * H), kind: 'grace', package_id: pkgIdBySubdomain.get('tetra-telemetry'), reason: 'manual', by: 'operator' },
+    { id: 5, at: ago(2 * D), kind: 'suspend', package_id: pkgIdBySubdomain.get('quill-cms'), reason: 'abuse', by: 'operator' },
+    { id: 6, at: ago(3 * D), kind: 'quota', package_id: pkgIdBySubdomain.get('helios-meter'), message: 'exceeded requests_day · policy warn' },
   ]
 
   const settings: OperatorSettings = {
@@ -391,31 +391,27 @@ export function buildFixtures(nowMs: number): Dataset {
   }
 
   const plans: Plan[] = [
-    { id: 1, slug: 'commerce-pro', package: 'commerce-api', name: 'Commerce Pro', price_monthly: 290, q_requests_day: 500000, q_disk_db_mb: 4096, q_disk_storage_mb: 20480, q_users_total: null, status: 'active' },
-    { id: 2, slug: 'metrics-scale', package: 'metrics-api', name: 'Metrics Scale', price_monthly: 480, q_requests_day: 2000000, q_disk_db_mb: 10240, q_disk_storage_mb: 51200, q_users_total: 5000, status: 'active' },
+    { id: 1, slug: 'commerce-pro', package: 'AcmeShop', name: 'Commerce Pro', price_monthly: 290, q_requests_day: 500000, q_disk_db_mb: 4096, q_disk_storage_mb: 20480, q_users_total: null, status: 'active' },
+    { id: 2, slug: 'metrics-scale', package: 'Bluepeak', name: 'Metrics Scale', price_monthly: 480, q_requests_day: 2000000, q_disk_db_mb: 10240, q_disk_storage_mb: 51200, q_users_total: 5000, status: 'active' },
   ]
 
-  // Registered packages (types) derived from the demo deployments.
-  const packages: RegisteredPackage[] = Array.from(new Set(deployments.map((d) => d.package.name))).map((name) => ({
-    name,
-    label: name,
-    description: null,
-    status: 'active' as const,
-  }))
+  // plan_count por package (catalogo).
+  const planCountByPackage = new Map<string, number>()
+  for (const pl of plans) planCountByPackage.set(pl.package, (planCountByPackage.get(pl.package) ?? 0) + 1)
+  for (const p of packages) p.plan_count = planCountByPackage.get(p.name) ?? 0
 
   return {
     clients,
-    deployments,
+    packages,
     subscriptions,
     invoices,
     quotas,
     plans,
-    packages,
     logs,
     activity,
     settings,
     dashboard: {
-      requests_24h: deployments.reduce((s, d) => s + d.requests_24h, 0),
+      requests_24h: packages.reduce((s, p) => s + p.requests_24h, 0),
       requests_delta: 0.12,
       error_rate: 0.018,
       error_rate_delta: 0.006,
@@ -426,7 +422,7 @@ export function buildFixtures(nowMs: number): Dataset {
 }
 
 function q(
-  deployment_id: number,
+  package_id: number,
   metric_key: QuotaMetric['metric_key'],
   current_value: number,
   limit_value: number | null,
@@ -436,7 +432,7 @@ function q(
 ): QuotaMetric {
   return {
     id: 0, // PK bigint placeholder; reasignado secuencialmente tras construir el array
-    deployment_id,
+    package_id,
     metric_key,
     current_value,
     limit_value,
@@ -447,7 +443,7 @@ function q(
 }
 
 function log(
-  deployment_id: string,
+  subdomain: string,
   method: LogEntry['method'],
   route: string,
   status: number,
@@ -462,7 +458,8 @@ function log(
   return {
     id: `log_${occurred_at}_${route}`,
     occurred_at,
-    deployment_id,
+    package: studly(subdomain),
+    subdomain,
     method,
     route,
     status,
@@ -479,7 +476,7 @@ function clamp(v: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, v))
 }
 
-// Top endpoints per deployment for the Usage tab. kestrel-track is hand-authored
+// Top endpoints per package for the Usage tab. kestrel-track is hand-authored
 // (matches the design); others are derived deterministically from request volume.
 const KESTREL_ENDPOINTS: TopEndpoint[] = [
   { route: '/v1/track/{shipment}', method: 'GET', requests: 64209, error_rate: 0.008, p95_ms: 412 },
@@ -490,10 +487,10 @@ const KESTREL_ENDPOINTS: TopEndpoint[] = [
   { route: '/v1/auth/token', method: 'POST', requests: 6221, error_rate: 0.002, p95_ms: 188 },
 ]
 
-export function topEndpointsFor(d: Deployment): TopEndpoint[] {
-  if (d.package.subdomain === 'kestrel-track') return KESTREL_ENDPOINTS
-  const noun = d.package.name.replace(/-api$/, '').replace(/-/g, '/')
-  const base = Math.max(d.requests_24h, 200)
+export function topEndpointsFor(p: Package): TopEndpoint[] {
+  if (p.subdomain === 'kestrel-track') return KESTREL_ENDPOINTS
+  const noun = (p.subdomain ?? p.name).replace(/-api$/, '').replace(/-/g, '/')
+  const base = Math.max(p.requests_24h, 200)
   const specs: Array<[string, TopEndpoint['method'], number, number, number]> = [
     [`/v1/${noun}`, 'GET', 0.42, 0.006, 220],
     [`/v1/${noun}/{id}`, 'GET', 0.27, 0.009, 188],

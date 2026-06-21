@@ -205,16 +205,16 @@ stage_provision() {
 stage_invoices() {
   hr; echo "STAGE — generar invoices (estados variados: paid/pending/overdue)"; hr
   [ -n "${OP_TOKEN:-}" ] || login_operator
-  local row name sub _r idx=0 ids dep cli status num err
+  local row name sub _r idx=0 ids pkgid cli status num err
   local statuses=(paid pending overdue)
   for row in "${PACKAGES[@]}"; do
     read -r name _r _r sub _r _r _r <<<"$row"
-    ids="$(dbq -N commander -e "SELECT d.id, d.client_id FROM commander_deployments d JOIN commander_packages p ON p.id=d.package_id WHERE p.subdomain='$sub' LIMIT 1;" 2>/dev/null)"
-    dep="$(awk '{print $1}' <<<"$ids")"; cli="$(awk '{print $2}' <<<"$ids")"
-    [ -n "$dep" ] || { echo "    $name: sin deployment, salto"; continue; }
+    ids="$(dbq -N commander -e "SELECT id, client_id FROM commander_packages WHERE subdomain='$sub' LIMIT 1;" 2>/dev/null)"
+    pkgid="$(awk '{print $1}' <<<"$ids")"; cli="$(awk '{print $2}' <<<"$ids")"
+    [ -n "$pkgid" ] || { echo "    $name: sin package provisionado, salto"; continue; }
     status="${statuses[$((idx % 3))]}"; idx=$((idx + 1))
     num="INV-2026-$(printf '%04d' $((1000 + idx)))"
-    err="$(jval "$(capi POST /invoices "{\"number\":\"$num\",\"client_id\":$cli,\"deployment_id\":$dep,\"amount\":19.99,\"issued_at\":\"2026-06-01\",\"due_at\":\"2026-06-15\",\"status\":\"$status\"}")" error)"
+    err="$(jval "$(capi POST /invoices "{\"number\":\"$num\",\"client_id\":$cli,\"package_id\":$pkgid,\"amount\":19.99,\"issued_at\":\"2026-06-01\",\"due_at\":\"2026-06-15\",\"status\":\"$status\"}")" error)"
     if [ -n "$err" ]; then echo "    $name: invoice FALLO: $err"; else printf '    %-5s %s  status=%s  $19.99\n' "$name" "$num" "$status"; fi
   done
   return 0
@@ -247,15 +247,13 @@ stage_report() {
   hr; echo "REPORTE — estado del Commander"; hr
   echo "Packages (estado runtime + cuota req/dia):"
   dbq commander -e "SELECT p.name, p.subdomain, p.status, COALESCE(p.reason,'-') reason, p.changed_by,
-      d.requests_24h, d.quota_health
+      p.requests_24h, p.quota_health
     FROM commander_packages p
-    LEFT JOIN commander_deployments d ON d.package_id=p.id
     ORDER BY p.id;" 2>/dev/null || true
   echo; echo "Invoices (estados):"
-  dbq commander -e "SELECT number, deployment_id, amount, status FROM commander_invoices ORDER BY id;" 2>/dev/null || true
+  dbq commander -e "SELECT number, package_id, amount, status FROM commander_invoices ORDER BY id;" 2>/dev/null || true
   echo; echo "Tablas commander_* con filas:"
   dbq commander -N -e "SELECT 'packages',COUNT(*) FROM commander_packages
-    UNION ALL SELECT 'deployments',COUNT(*) FROM commander_deployments
     UNION ALL SELECT 'subscriptions',COUNT(*) FROM commander_subscriptions
     UNION ALL SELECT 'invoices',COUNT(*) FROM commander_invoices
     UNION ALL SELECT 'request_logs',COUNT(*) FROM commander_request_logs

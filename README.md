@@ -4,6 +4,18 @@ API modular sobre Laravel 13. **Un solo despliegue (una app) sirve TODOS los paq
 
 > **Modelo centralizado.** Anteriormente cada paquete/cliente era un despliegue aislado con su propia BD (orquestado por un script de host). Ahora es **una app centralizada**: una sola instancia carga todos los paquetes y el paquete activo se resuelve por el `Host` de cada request (no por despliegue), conmutando a la BD de ese paquete.
 
+## Documentación
+
+El proyecto se documenta en tres ficheros, cada uno con un alcance distinto:
+
+| Documento | Alcance |
+|-----------|---------|
+| **`README.md`** (este) | El backend Laravel: arquitectura multi-tenant, resolución de paquete por subdominio, provisioning, migraciones, comandos Artisan, despliegue y entorno local. |
+| [`commander/README.md`](commander/README.md) | El **frontend** del Commander (SPA React + Carbon): cómo correr/testear/desplegar, el flujo de control plane, las tablas `commander_*`, auth y la arquitectura del código. |
+| [`design/README.md`](design/README.md) | El **sistema de diseño** del Commander: reglas visuales, tokens de tema (g100/g10), semántica de estado, páginas implementadas, flujos UX y correspondencia con la API. |
+
+> Backend del Commander: paquete `src/packages/Commander/` (controllers, rutas, migraciones `commander_*`). Frontend: `commander/`. Diseño: `design/`.
+
 ## Stack
 
 - **PHP 8.3+** / **Laravel 13**
@@ -95,11 +107,11 @@ Monolito modular centralizado, multi-tenant por BD: **una app sirve todos los pa
 
 Al arrancar, `CoreServiceProvider` descubre y carga **Core + TODOS los paquetes** de `packages/` (providers, configs namespaced, rutas). El paquete activo NO se elige en boot: lo resuelve `CoreResolvePackageFromHostMiddleware` por el `Host` de cada request, y conmuta la conexion a la BD de ese paquete.
 
-Las rutas de cada paquete se envuelven en `Route::domain('{sub}.<BASE_DOMAIN>')`; las de Core (health/docs) se registran globales (cualquier host). Un subdominio solo "esta vivo" si existe su fila en `commander_packages` (creada al provisionar); si no, `404`.
+Las rutas de cada paquete se envuelven en `Route::domain('{sub}.<BASE_DOMAIN>')`; las de Core (health/docs) se registran globales (cualquier host). Un subdominio solo "esta vivo" si su fila en `commander_packages` esta **provisionada** (`provisioned_at` no nulo); si no, `404`.
 
-### `commander_packages`: registro de instancias
+### `commander_packages`: la tabla unica de packages
 
-Tabla del registro, en la BD `commander`. Una fila por paquete provisionado: `name` (StudlyCase, = directorio en `packages/`), `subdomain` (snake), **`database`** (su BD propia), y el **estado runtime** (`active|grace|suspended` + reason/message/grace_until). El middleware la lee para saber a que BD conectar. El metering usa `package_id` (FK a `commander_packages`).
+**Una sola tabla**, en la BD `commander`, con **una fila por package de negocio** (los de `packages/`, sincronizados desde disco). Mezcla el **catalogo** —`label`, `description`, `listing_status`; siempre presente— con lo **operativo de la instancia viva 1:1** —`subdomain` (snake), **`database`** (su BD propia), `client_id`, `subscription_id`, **estado runtime** (`active|grace|suspended` + reason/message/grace_until) y KPIs (requests_24h, quota_health, last_seen)—, que es **null hasta provisionar**. **`provisioned_at != null`** marca la instancia viva; el middleware lee la fila por `subdomain` para saber a que BD conectar. El de-provision es **soft**: anula lo operativo y conserva la fila (catalogo) + el historial de billing. No existe una tabla de registro aparte. El metering/billing usan `package_id` (FK a `commander_packages`).
 
 ### Identidad por paquete
 
@@ -211,7 +223,7 @@ El **codigo** de un paquete viaja por git (lo programas en local con `make:packa
 3. **Crea la BD del paquete** (`CREATE DATABASE`) y corre `core:migrate --package=<X>` (base Laravel + negocio; BD = snake(package)) + `core:seed --package=<X>` (admin del paquete) **en esa BD**.
 4. Activa + escribe las cuotas del plan (en la commander).
 
-El subdominio queda vivo al terminar. De-provisionar (`DELETE /deployments/{id}`) hace `DROP DATABASE` + limpia la commander.
+El subdominio queda vivo al terminar. De-provisionar (`DELETE /packages/{name}`) hace `DROP DATABASE` + limpia la commander.
 
 ## Comandos Artisan
 
@@ -247,7 +259,7 @@ php artisan commander:quota:measure                # mide disco/requests/usuario
 
 - Estados por paquete: `active` | `grace` (headers `X-Package-Status`) | `suspended` (402 en rutas de negocio; health y docs siguen respondiendo).
 - Metering por request en `commander_request_logs` (middleware terminable, cero latencia con FPM, columna `package_id`) + rollups en `commander_usage_rollups`.
-- El Commander cambia el estado de un paquete escribiendo `commander_packages` directamente: `POST /deployments/{id}/suspend|grace|resume`.
+- El Commander cambia el estado de un paquete escribiendo `commander_packages` directamente: `POST /packages/{name}/suspend|grace|resume`.
 
 ### Generadores package-aware
 
@@ -303,7 +315,7 @@ packages/MiPaquete/
 ## Migraciones
 
 - **Core** (`packages/Core/database/migrations/`, primer nivel): solo la **base Laravel**, que corre en la commander (para el operador) Y en CADA BD de paquete: roles/permisos (Spatie), schema base (`users`, `sessions`, `cache`, `jobs`...), tokens Sanctum.
-- **Commander** (`packages/Commander/database/migrations/`, tablas `commander_*`): el registro `commander_packages` + el metering (`commander_request_logs`, `commander_usage_rollups`, `commander_quota_metrics`, por `package_id`) + el panel del operador (`commander_clients`, `commander_deployments`...). Solo en la BD `commander`.
+- **Commander** (`packages/Commander/database/migrations/`, tablas `commander_*`): la **tabla única `commander_packages`** —una fila por package: catálogo (label/description/listing_status) + instancia viva 1:1 (cliente, suscripción, estado, KPIs) cuando está provisionada; no existen tablas `commander_deployments` ni `commander_registered_packages` separadas— + el metering (`commander_request_logs`, `commander_usage_rollups`, por `package_id`) + el resto del panel del operador (`commander_clients`, `commander_subscriptions`, `commander_invoices`, `commander_quotas` —tabla única de cuotas: el panel edita límites/política y el motor mide/aplica sobre la misma fila—, `commander_activity_events`...). Solo en la BD `commander`.
 - **Negocio**: `packages/{Pkg}/database/migrations/` (solo en la BD del paquete).
 
 `core:migrate` (sin `--package`) corre la base + las del Commander en la BD `commander`; el provisioning corre `core:migrate --package=<X>` (base + negocio) en la BD del paquete. Regla: `--package` ⟹ tenant (BD = snake(package)); sin `--package` ⟹ commander.

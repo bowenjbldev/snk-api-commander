@@ -9,8 +9,8 @@ return new class extends Migration {
     {
         Schema::create('commander_subscriptions', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('client_id');
-            $table->unsignedBigInteger('deployment_id');
+            $table->foreignId('client_id')->constrained('commander_clients')->restrictOnDelete();
+            $table->foreignId('package_id')->constrained('commander_packages')->cascadeOnDelete();
             $table->string('plan');
             $table->decimal('price_monthly', 10, 2)->default(0);
             $table->string('billing_status', 16)->default('paid'); // paid|pending|overdue
@@ -18,8 +18,7 @@ return new class extends Migration {
             $table->timestamp('started_at')->nullable();
             $table->timestamps();
 
-            $table->index('client_id');
-            $table->index('deployment_id');
+            $table->unique('package_id');
         });
     }
 

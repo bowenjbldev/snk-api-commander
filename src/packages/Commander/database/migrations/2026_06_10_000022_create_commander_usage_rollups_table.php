@@ -9,7 +9,7 @@ return new class extends Migration {
     {
         Schema::create('commander_usage_rollups', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('package_id')->nullable()->index();
+            $table->foreignId('package_id')->nullable()->constrained('commander_packages')->cascadeOnDelete();
             $table->string('period', 8); // hour|day
             $table->timestamp('period_start');
             // '' como centinela de "sin ruta" (404): NULL rompe la unique en MySQL
@@ -30,6 +30,10 @@ return new class extends Migration {
                 ['package_id', 'period', 'period_start', 'route', 'method', 'status_class'],
                 'commander_usage_rollups_bucket_unique'
             );
+
+            // Sirve el chart de plataforma (GET /usage/platform): GROUP BY package_id, period_start
+            // filtrado por period + period_start (la unique empieza por package_id, no cubre este filtro).
+            $table->index(['period', 'period_start']);
         });
     }
 

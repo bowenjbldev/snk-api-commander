@@ -18,7 +18,7 @@ class CommanderSubscriptionModel extends Model
         return [
             'id' => 'integer',
             'client_id' => 'integer',
-            'deployment_id' => 'integer',
+            'package_id' => 'integer',
             'price_monthly' => 'float',
             'auto_suspend' => 'boolean',
             'started_at' => 'datetime',
@@ -30,8 +30,8 @@ class CommanderSubscriptionModel extends Model
         return $this->belongsTo(CommanderClientModel::class, 'client_id');
     }
 
-    public function deployment(): BelongsTo
+    public function package(): BelongsTo
     {
-        return $this->belongsTo(CommanderDeploymentModel::class, 'deployment_id');
+        return $this->belongsTo(CommanderPackageModel::class, 'package_id');
     }
 }

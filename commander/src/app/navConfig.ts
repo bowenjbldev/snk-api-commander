@@ -2,10 +2,8 @@ import {
   Dashboard,
   User,
   Box,
-  Renew,
   Receipt,
   ChartBar,
-  Meter,
   Catalog,
   Settings,
   type CarbonIconType,
@@ -17,15 +15,13 @@ export interface NavItem {
   icon: CarbonIconType
 }
 
-// The nine operator sections, in design order. Packages es el hub central (fusiona Deployments + Catalog).
+// The seven operator sections, in design order. Packages es el hub central (el package provisionado 1:1 + Catalog + Quotas + Subscriptions).
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: Dashboard },
   { label: 'Clients', path: '/clients', icon: User },
   { label: 'Packages', path: '/packages', icon: Box },
-  { label: 'Subscriptions', path: '/subscriptions', icon: Renew },
   { label: 'Invoices', path: '/invoices', icon: Receipt },
   { label: 'Usage', path: '/usage', icon: ChartBar },
-  { label: 'Quotas', path: '/quotas', icon: Meter },
   { label: 'Request Logs', path: '/request-logs', icon: Catalog },
   { label: 'Settings', path: '/settings', icon: Settings },
 ]

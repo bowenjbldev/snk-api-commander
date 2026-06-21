@@ -1,18 +1,18 @@
 import type { ReactNode } from 'react'
 import { Button } from '@carbon/react'
 import { WarningAltFilled, ErrorFilled, CheckmarkFilled } from '@carbon/icons-react'
-import type { Deployment } from '../store/types'
+import type { Package } from '../store/types'
 import { useCan } from '../store/auth'
 import { useActions } from '../providers/ActionsProvider'
 import { GraceCountdown } from './GraceCountdown'
 import { RelativeTime } from './RelativeTime'
 import { formatDateUTC } from '../lib/time'
 
-export function StateCard({ dep }: { dep: Deployment }) {
+export function StateCard({ pkg }: { pkg: Package }) {
   const actions = useActions()
   const can = useCan()
-  const canControl = can('control deployments')
-  const { status } = dep.package
+  const canControl = can('control packages')
+  const { status } = pkg
   const accent =
     status === 'grace' ? 'var(--scns-warning)' : status === 'suspended' ? 'var(--scns-error)' : 'var(--scns-success)'
   const Icon = status === 'grace' ? WarningAltFilled : status === 'suspended' ? ErrorFilled : CheckmarkFilled
@@ -20,7 +20,7 @@ export function StateCard({ dep }: { dep: Deployment }) {
     status === 'grace'
       ? 'Grace period — payment overdue'
       : status === 'suspended'
-        ? `Suspended — ${dep.package.reason ?? 'manual'}`
+        ? `Suspended — ${pkg.reason ?? 'manual'}`
         : 'Operational'
 
   return (
@@ -32,21 +32,21 @@ export function StateCard({ dep }: { dep: Deployment }) {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 16 }}>
-          <Field label="Reason" value={<span className="scns-mono">{dep.package.reason ?? '—'}</span>} />
-          {status === 'grace' && dep.package.grace_until && (
-            <Field label="Deadline" value={<span className="scns-mono">{formatDateUTC(dep.package.grace_until)}</span>} />
+          <Field label="Reason" value={<span className="scns-mono">{pkg.reason ?? '—'}</span>} />
+          {status === 'grace' && pkg.grace_until && (
+            <Field label="Deadline" value={<span className="scns-mono">{formatDateUTC(pkg.grace_until)}</span>} />
           )}
           <Field
             label="Changed by"
             value={
               <span>
-                {dep.package.changed_by} · <RelativeTime iso={dep.package.changed_at} />
+                {pkg.changed_by} · <RelativeTime iso={pkg.changed_at} />
               </span>
             }
           />
         </div>
 
-        {dep.package.message && (
+        {pkg.message && (
           <div style={{ marginBottom: 16 }}>
             <div className="scns-helper" style={{ fontSize: 12, marginBottom: 4 }}>
               Client-facing message
@@ -60,7 +60,7 @@ export function StateCard({ dep }: { dep: Deployment }) {
                 fontStyle: 'italic',
               }}
             >
-              “{dep.package.message}”
+              “{pkg.message}”
             </blockquote>
           </div>
         )}
@@ -68,22 +68,22 @@ export function StateCard({ dep }: { dep: Deployment }) {
         {canControl && (
           <div style={{ display: 'flex', gap: 8 }}>
             {status !== 'active' && (
-              <Button size="md" kind="primary" onClick={() => actions.resume(dep)}>
+              <Button size="md" kind="primary" onClick={() => actions.resume(pkg)}>
                 Resume now
               </Button>
             )}
             {status === 'grace' && (
-              <Button size="md" kind="tertiary" onClick={() => actions.grace(dep)}>
+              <Button size="md" kind="tertiary" onClick={() => actions.grace(pkg)}>
                 Extend grace…
               </Button>
             )}
             {status !== 'suspended' && (
-              <Button size="md" kind="danger--tertiary" onClick={() => actions.suspend(dep)}>
+              <Button size="md" kind="danger--tertiary" onClick={() => actions.suspend(pkg)}>
                 Suspend now
               </Button>
             )}
             {status === 'active' && (
-              <Button size="md" kind="tertiary" onClick={() => actions.grace(dep)}>
+              <Button size="md" kind="tertiary" onClick={() => actions.grace(pkg)}>
                 Move to grace…
               </Button>
             )}
@@ -92,12 +92,12 @@ export function StateCard({ dep }: { dep: Deployment }) {
       </div>
 
       <div style={{ width: 280, flex: 'none', borderLeft: '1px solid var(--cds-border-subtle)', padding: 20 }}>
-        {status === 'grace' && dep.package.grace_until ? (
+        {status === 'grace' && pkg.grace_until ? (
           <>
             <div className="scns-helper" style={{ fontSize: 12, marginBottom: 8 }}>
               Suspends in
             </div>
-            <GraceCountdown until={dep.package.grace_until} mode="clock" />
+            <GraceCountdown until={pkg.grace_until} mode="clock" />
             <div className="scns-helper" style={{ fontSize: 12, marginTop: 8 }}>
               users will receive HTTP 402
             </div>

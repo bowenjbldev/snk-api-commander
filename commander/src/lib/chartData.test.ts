@@ -68,28 +68,34 @@ describe('rollupsToUsageSeries', () => {
 })
 
 describe('snapshotsToPlatformSeries', () => {
-  const snap = (deployment_id: string, period_start: string, request_count: number, error_count = 0): UsageSnapshot => ({
-    deployment_id,
+  const snap = (package_id: number, period_start: string, request_count: number, error_count = 0): UsageSnapshot => ({
+    package_id,
     period_start,
     request_count,
     error_count,
   })
 
-  it('stacks the top-4 deployments + other and computes per-hour error %', () => {
+  it('stacks the top-4 packages + other and computes per-hour error %', () => {
     const snapshots: UsageSnapshot[] = [
-      snap('a', A, 100, 10),
-      snap('b', A, 80),
-      snap('c', A, 60),
-      snap('d', A, 40),
-      snap('e', A, 20), // 5th → folds into 'other'
-      snap('a', B, 50, 5),
+      snap(1, A, 100, 10),
+      snap(2, A, 80),
+      snap(3, A, 60),
+      snap(4, A, 40),
+      snap(5, A, 20), // 5th → folds into 'other'
+      snap(1, B, 50, 5),
     ]
-    const s = snapshotsToPlatformSeries(snapshots)
+    const s = snapshotsToPlatformSeries(snapshots, new Map([
+      [1, 'Shop'],
+      [2, 'Blog'],
+      [3, 'Crm'],
+      [4, 'Billing'],
+      [5, 'Archive'],
+    ]))
 
-    expect(s.requests.groups).toEqual(['a', 'b', 'c', 'd', 'other'])
+    expect(s.requests.groups).toEqual(['Shop', 'Blog', 'Crm', 'Billing', 'other'])
     const atA = s.requests.data.filter((p) => +p.date === +new Date(A))
-    expect(atA.find((p) => p.group === 'a')?.value).toBe(100)
-    expect(atA.find((p) => p.group === 'other')?.value).toBe(20) // e
+    expect(atA.find((p) => p.group === 'Shop')?.value).toBe(100)
+    expect(atA.find((p) => p.group === 'other')?.value).toBe(20) // Archive
     // error rate at A = 10 errors / 300 total × 100.
     expect(s.errorRate.find((p) => +p.date === +new Date(A))?.value).toBeCloseTo((10 / 300) * 100, 5)
   })

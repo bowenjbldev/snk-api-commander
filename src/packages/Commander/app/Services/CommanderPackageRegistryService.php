@@ -2,12 +2,13 @@
 
 namespace Packages\Commander\Services;
 
-use Packages\Commander\Models\CommanderRegisteredPackageModel;
+use Packages\Commander\Models\CommanderPackageModel;
 
 /**
- * Registro de packages de negocio: el codigo vive en disco (packages/*, via git) y esta
- * tabla guarda los metadatos del operador (label/description/status). El disco es la fuente:
- * el sync crea filas para packages nuevos pero nunca borra (los metadatos persisten).
+ * Registro de packages de negocio: el codigo vive en disco (packages/*, via git) y la tabla unica
+ * commander_packages guarda una fila por package con sus metadatos del operador (label/description/
+ * listing_status). El disco es la fuente: el sync crea filas (solo-catalogo) para packages nuevos
+ * pero nunca borra (los metadatos + el historial persisten; el provisioning rellena lo operativo).
  */
 class CommanderPackageRegistryService
 {
@@ -22,15 +23,15 @@ class CommanderPackageRegistryService
         ));
     }
 
-    /** Idempotente: crea una fila por cada package en disco aun no registrado. Devuelve cuantos creo. */
+    /** Idempotente: crea una fila (solo-catalogo) por cada package en disco aun no registrado. Devuelve cuantos creo. */
     public function syncFromDisk(): int
     {
         $created = 0;
 
         foreach ($this->availableOnDisk() as $name) {
-            $row = CommanderRegisteredPackageModel::firstOrCreate(
+            $row = CommanderPackageModel::firstOrCreate(
                 ['name' => $name],
-                ['label' => $name, 'status' => 'active'],
+                ['label' => $name, 'listing_status' => 'active'],
             );
 
             if ($row->wasRecentlyCreated) {

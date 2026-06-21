@@ -18,9 +18,9 @@ class CommanderClientModel extends Model
         return ['id' => 'integer'];
     }
 
-    public function deployments(): HasMany
+    public function packages(): HasMany
     {
-        return $this->hasMany(CommanderDeploymentModel::class, 'client_id');
+        return $this->hasMany(CommanderPackageModel::class, 'client_id');
     }
 
     public function subscriptions(): HasMany

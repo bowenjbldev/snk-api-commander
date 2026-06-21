@@ -9,47 +9,61 @@ vi.mock('../lib/api', () => ({
   setToken: () => {},
   setUnauthorizedHandler: () => {},
   authApi: { login: vi.fn(), me: vi.fn(), logout: vi.fn() },
+  packagesApi: {
+    list: vi.fn(() => Promise.resolve([])),
+    update: vi.fn(() => Promise.resolve({})),
+    suspend: vi.fn(() => Promise.resolve({})),
+    grace: vi.fn(() => Promise.resolve({})),
+    resume: vi.fn(() => Promise.resolve({})),
+    deprovision: vi.fn(() => Promise.resolve({})),
+    usage: vi.fn(() => Promise.resolve({ data: [] })),
+    logs: vi.fn(() => Promise.resolve({ data: [] })),
+  },
+  settingsApi: { get: vi.fn(), update: vi.fn(() => Promise.resolve({})) },
 }))
 
 import { useStore } from './store'
 import { buildFixtures } from './fixtures'
+import type { Package } from './types'
 
 const s = () => useStore.getState()
 
 // The production store starts empty; seed the demo dataset before each test so the reducer logic
-// has deployments/invoices/quotas to mutate.
+// has provisioned packages/invoices/quotas to mutate.
 beforeEach(() => {
   useStore.setState(buildFixtures(Date.now()))
 })
 
 describe('store mutations', () => {
-  // Los ids de deployment son bigint ahora; se resuelven por su slug legible.
-  const depId = (slug: string) => s().deployments.find((d) => d.package.subdomain === slug)!.id
+  // El modelo es 1:1; el package provisionado se resuelve por su subdominio legible. Las acciones de
+  // estado se direccionan por `name`.
+  const pkgBySub = (slug: string): Package =>
+    s().packages.find((p) => p.subdomain === slug)!
 
   it('suspend → resume writes activity and flips status', () => {
-    const id = depId('bluepeak')
-    s().suspend(id, { reason: 'manual' })
-    expect(s().deployments.find((d) => d.id === id)?.package.status).toBe('suspended')
-    expect(s().activity[0]).toMatchObject({ kind: 'suspend', deployment_id: id })
+    const pkg = pkgBySub('bluepeak')
+    s().suspend(pkg.name, { reason: 'manual' })
+    expect(pkgBySub('bluepeak').status).toBe('suspended')
+    expect(s().activity[0]).toMatchObject({ kind: 'suspend', package_id: pkg.id })
 
-    s().resume(id)
-    expect(s().deployments.find((d) => d.id === id)?.package.status).toBe('active')
-    expect(s().activity[0]).toMatchObject({ kind: 'resume', deployment_id: id })
+    s().resume(pkg.name)
+    expect(pkgBySub('bluepeak').status).toBe('active')
+    expect(s().activity[0]).toMatchObject({ kind: 'resume', package_id: pkg.id })
   })
 
   it('grace sets a deadline', () => {
     const until = new Date(Date.now() + 72 * 3_600_000).toISOString()
-    const id = depId('mori-assets')
-    s().grace(id, { reason: 'manual', grace_until: until })
-    const dep = s().deployments.find((d) => d.id === id)
-    expect(dep?.package.status).toBe('grace')
-    expect(dep?.package.grace_until).toBe(until)
+    const pkg = pkgBySub('mori-assets')
+    s().grace(pkg.name, { reason: 'manual', grace_until: until })
+    const after = pkgBySub('mori-assets')
+    expect(after.status).toBe('grace')
+    expect(after.grace_until).toBe(until)
   })
 
-  it('markInvoicePaid reports a resumable deployment when it was suspended for payment_overdue', () => {
+  it('markInvoicePaid reports a resumable package when it was suspended for payment_overdue', () => {
     const inv = s().invoices.find((i) => i.number === 'INV-2026-0139')!
-    const { resumableDeploymentId } = s().markInvoicePaid(inv.id)
-    expect(resumableDeploymentId).toBe(depId('acme-shop'))
+    const { resumablePackageName } = s().markInvoicePaid(inv.id)
+    expect(resumablePackageName).toBe(pkgBySub('acme-shop').name)
     expect(s().invoices.find((i) => i.number === 'INV-2026-0139')?.status).toBe('paid')
   })
 

@@ -11,12 +11,12 @@ import {
   TableRow,
 } from '@carbon/react'
 import { StackedBarChart, AreaChart } from '@carbon/charts-react'
-import { useStore } from '../store/store'
+import { useStore, useProvisionedPackages } from '../store/store'
 import { useAppTheme } from '../providers/ThemeProvider'
 import { PageHeader } from '../components/PageHeader'
 import { ChartCard, ChartLegend } from '../components/ChartCard'
 import { KpiCluster, KpiTile } from '../components/KpiCluster'
-import { DeploymentStatusTag } from '../components/tags/StatusTag'
+import { PackageStatusTag } from '../components/tags/StatusTag'
 import { QuotaBar } from '../components/QuotaBar'
 import { EmptyState } from '../components/EmptyState'
 import { stackedBarOptions, areaOptions, legendItems } from '../lib/chartOptions'
@@ -61,8 +61,9 @@ function deriveUsageKpis(snapshots: UsageSnapshot[]): UsageKpis {
 export function Usage() {
   const { theme } = useAppTheme()
   const navigate = useNavigate()
-  const deployments = useStore((s) => s.deployments)
+  const packages = useProvisionedPackages()
   const dash = useStore((s) => s.dashboard)
+  const packageLabels = useMemo(() => new Map(packages.map((p) => [p.id, p.name])), [packages])
 
   const [platform, setPlatform] = useState<{
     loading: boolean
@@ -80,7 +81,7 @@ export function Usage() {
     platformUsage({ period: 'hour', hours: 48 })
       .then((res) => {
         const snapshots = res.data ?? []
-        if (!cancelled) setPlatform({ loading: false, series: snapshotsToPlatformSeries(snapshots), kpis: deriveUsageKpis(snapshots), error: null })
+        if (!cancelled) setPlatform({ loading: false, series: snapshotsToPlatformSeries(snapshots, packageLabels), kpis: deriveUsageKpis(snapshots), error: null })
       })
       .catch((e: unknown) => {
         if (!cancelled) setPlatform({ loading: false, series: null, kpis: { errorRate: 0, requestsDelta: null, errorRateDelta: null }, error: e instanceof Error ? e.message : 'Failed to load usage' })
@@ -88,7 +89,7 @@ export function Usage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [packageLabels])
 
   const groups = useMemo(() => platform.series?.requests.groups ?? [], [platform.series])
   const reqData = platform.series?.requests.data ?? []
@@ -98,12 +99,12 @@ export function Usage() {
   const errOpts = useMemo(() => areaOptions(theme, { 'error %': '#fa4d56' }, '300px'), [theme])
 
   const top = useMemo(
-    () => [...deployments].sort((a, b) => b.requests_24h - a.requests_24h).slice(0, 8),
-    [deployments],
+    () => [...packages].sort((a, b) => b.requests_24h - a.requests_24h).slice(0, 8),
+    [packages],
   )
   const clientName = useMemo(() => {
     const m = new Map(useStore.getState().clients.map((c) => [c.id, c.name]))
-    return (id: number) => m.get(id) ?? String(id)
+    return (id: number) => m.get(id) ?? 'Unknown client'
   }, [])
 
   return (
@@ -121,14 +122,14 @@ export function Usage() {
           value={formatPercent(platform.kpis.errorRate, 1)}
           helper={<PointsTrend points={platform.kpis.errorRateDelta} suffix="vs prior 24h" invert />}
         />
-        <KpiTile label="Active deployments" value={deployments.filter((d) => d.package.status === 'active').length} helper={`of ${deployments.length}`} />
+        <KpiTile label="Active packages" value={packages.filter((p) => p.status === 'active').length} helper={`of ${packages.length}`} />
         <KpiTile label="MRR" value={`$${formatInt(dash.mrr)}`} />
       </KpiCluster>
 
       <div className="scns-charts-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, marginTop: 24 }}>
         <ChartCard
           title="Requests per hour"
-          subtitle="last 48h, stacked by deployment"
+          subtitle="last 48h, by package"
           right={<ChartLegend items={legendItems(groups)} />}
         >
           {hasChart ? (
@@ -151,12 +152,12 @@ export function Usage() {
       </div>
 
       <div className="scns-card" style={{ marginTop: 24 }}>
-        <div style={{ padding: '16px 16px 8px', fontSize: 16, fontWeight: 600 }}>Top deployments by requests</div>
+        <div style={{ padding: '16px 16px 8px', fontSize: 16, fontWeight: 600 }}>Top packages by requests</div>
         <TableContainer>
           <Table size="md">
             <TableHead>
               <TableRow>
-                <TableHeader>Deployment</TableHeader>
+                <TableHeader>Package</TableHeader>
                 <TableHeader>Client</TableHeader>
                 <TableHeader>State</TableHeader>
                 <TableHeader style={{ textAlign: 'right' }}>Req (24h)</TableHeader>
@@ -167,20 +168,20 @@ export function Usage() {
               {top.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5}>
-                    <EmptyState title="No active deployments" />
+                    <EmptyState title="No active packages" />
                   </TableCell>
                 </TableRow>
               ) : (
-                top.map((d) => (
-                  <TableRow key={d.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/packages/${d.package.name}`)}>
-                    <TableCell className="scns-mono" style={{ color: 'var(--cds-link-primary)' }}>{d.package.name}</TableCell>
-                    <TableCell>{clientName(d.client_id)}</TableCell>
+                top.map((p) => (
+                  <TableRow key={p.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/packages/${p.name}`)}>
+                    <TableCell className="scns-mono" style={{ color: 'var(--cds-link-primary)' }}>{p.name}</TableCell>
+                    <TableCell>{clientName(p.client_id)}</TableCell>
                     <TableCell>
-                      <DeploymentStatusTag pkg={d.package} />
+                      <PackageStatusTag pkg={p} />
                     </TableCell>
-                    <TableCell style={{ textAlign: 'right' }} className="scns-num">{formatInt(d.requests_24h)}</TableCell>
+                    <TableCell style={{ textAlign: 'right' }} className="scns-num">{formatInt(p.requests_24h)}</TableCell>
                     <TableCell style={{ width: 160 }}>
-                      <QuotaBar current={d.quota_health} limit={1} width={80} showLabel />
+                      <QuotaBar current={p.quota_health} limit={1} width={80} showLabel />
                     </TableCell>
                   </TableRow>
                 ))

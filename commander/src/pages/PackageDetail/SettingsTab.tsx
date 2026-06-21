@@ -1,4 +1,4 @@
-import { useNavigate, useOutletContext, Link } from 'react-router'
+import { useNavigate, useOutletContext } from 'react-router'
 import {
   Button,
   StructuredListWrapper,
@@ -6,40 +6,40 @@ import {
   StructuredListRow,
   StructuredListCell,
 } from '@carbon/react'
-import type { Deployment, PackageContext } from '../../store/types'
+import type { Package, PackageContext } from '../../store/types'
 import { useStore } from '../../store/store'
 import { useCan } from '../../store/auth'
 import { useActions } from '../../providers/ActionsProvider'
 import { CopyableCode } from '../../components/CopyableCode'
 import { EmptyState } from '../../components/EmptyState'
 import { formatDateUTC } from '../../lib/time'
-import { deploymentBaseUrl, deploymentFqdn } from '../../lib/deployment'
+import { packageBaseUrl, packageFqdn } from '../../lib/package'
 
 export function SettingsTab() {
-  const { deployment } = useOutletContext<PackageContext>()
+  const { packageRow } = useOutletContext<PackageContext>()
 
-  if (!deployment) {
+  if (!packageRow) {
     return (
       <EmptyState
-        title="No deployment yet — provision one to manage its settings"
+        title="No live instance yet — provision one to manage its settings"
         description="Deployment settings and the danger zone appear here once this package is deployed."
       />
     )
   }
 
-  return <SettingsView dep={deployment} />
+  return <SettingsView pkg={packageRow} />
 }
 
-function SettingsView({ dep }: { dep: Deployment }) {
+function SettingsView({ pkg }: { pkg: Package }) {
   const navigate = useNavigate()
   const actions = useActions()
   const can = useCan()
-  const subscription = useStore((s) => s.subscriptions.find((sub) => sub.id === dep.subscription_id))
+  const subscription = useStore((s) => s.subscriptions.find((sub) => sub.id === pkg.subscription_id))
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 640 }}>
       <div className="scns-card" style={{ padding: 16 }}>
-        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Deployment</div>
+        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Package</div>
         <StructuredListWrapper isCondensed>
           <StructuredListBody>
             <StructuredListRow>
@@ -47,7 +47,7 @@ function SettingsView({ dep }: { dep: Deployment }) {
                 Name
               </StructuredListCell>
               <StructuredListCell>
-                <span className="scns-mono">{dep.package.name}</span>
+                <span className="scns-mono">{pkg.name}</span>
               </StructuredListCell>
             </StructuredListRow>
             <StructuredListRow>
@@ -55,7 +55,7 @@ function SettingsView({ dep }: { dep: Deployment }) {
                 Subdomain
               </StructuredListCell>
               <StructuredListCell>
-                <span className="scns-mono">{deploymentFqdn(dep)}</span>
+                <span className="scns-mono">{packageFqdn(pkg)}</span>
               </StructuredListCell>
             </StructuredListRow>
             <StructuredListRow>
@@ -63,7 +63,7 @@ function SettingsView({ dep }: { dep: Deployment }) {
                 Package
               </StructuredListCell>
               <StructuredListCell>
-                <span className="scns-mono">{dep.package.name}</span>
+                <span className="scns-mono">{pkg.name}</span>
               </StructuredListCell>
             </StructuredListRow>
             <StructuredListRow>
@@ -71,7 +71,7 @@ function SettingsView({ dep }: { dep: Deployment }) {
                 Subscription
               </StructuredListCell>
               <StructuredListCell>
-                {subscription ? <Link className="scns-link" to="/subscriptions">{subscription.plan}</Link> : '—'}
+                {subscription ? subscription.plan : '—'}
               </StructuredListCell>
             </StructuredListRow>
             <StructuredListRow>
@@ -79,7 +79,7 @@ function SettingsView({ dep }: { dep: Deployment }) {
                 Created
               </StructuredListCell>
               <StructuredListCell>
-                <span className="scns-mono">{formatDateUTC(dep.created_at)}</span>
+                <span className="scns-mono">{formatDateUTC(pkg.created_at)}</span>
               </StructuredListCell>
             </StructuredListRow>
           </StructuredListBody>
@@ -88,18 +88,18 @@ function SettingsView({ dep }: { dep: Deployment }) {
           <div className="scns-helper" style={{ fontSize: 12, marginBottom: 6 }}>
             base_url
           </div>
-          <CopyableCode value={deploymentBaseUrl(dep)} />
+          <CopyableCode value={packageBaseUrl(pkg)} />
         </div>
       </div>
 
-      {can('delete deployments') && (
+      {can('delete packages') && (
         <div className="scns-card" style={{ padding: 16, borderLeft: '3px solid var(--scns-error)' }}>
           <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Danger zone</div>
           <p className="scns-helper" style={{ fontSize: 13, marginBottom: 12 }}>
-            Deleting removes the deployment, its quotas and subscription link. This cannot be undone.
+            De-provisioning removes the package's live instance — its database, quotas and subscription link. This cannot be undone.
           </p>
-          <Button kind="danger--tertiary" onClick={() => actions.deleteDeployment(dep, () => navigate('/packages'))}>
-            Delete deployment…
+          <Button kind="danger--tertiary" onClick={() => actions.deprovision(pkg, () => navigate('/packages'))}>
+            De-provision package…
           </Button>
         </div>
       )}

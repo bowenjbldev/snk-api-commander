@@ -12,10 +12,10 @@ import {
   TableRow,
 } from '@carbon/react'
 import { Renew } from '@carbon/icons-react'
-import type { Deployment, LogEntry, PackageContext } from '../../store/types'
+import type { Package, LogEntry, PackageContext } from '../../store/types'
 import { EmptyState } from '../../components/EmptyState'
 import { MethodTag } from '../../components/tags/MethodTag'
-import { deploymentLogs } from '../../lib/api'
+import { packagesApi } from '../../lib/api'
 import { formatInt } from '../../lib/format'
 
 function logTime(iso: string): string {
@@ -35,29 +35,29 @@ interface LogsLoad {
 }
 
 export function LogsTab() {
-  const { deployment } = useOutletContext<PackageContext>()
+  const { packageRow } = useOutletContext<PackageContext>()
 
-  if (!deployment) {
+  if (!packageRow) {
     return (
       <EmptyState
-        title="No deployment yet — provision one to see logs"
+        title="No live instance yet — provision one to see logs"
         description="Recent request logs appear here once this package is deployed and serving traffic."
       />
     )
   }
 
-  return <LogsView dep={deployment} />
+  return <LogsView pkg={packageRow} />
 }
 
-// Real recent requests for this deployment — read in-process from commander_request_logs.
-function LogsView({ dep }: { dep: Deployment }) {
+// Real recent requests for this package — read in-process from commander_request_logs.
+function LogsView({ pkg }: { pkg: Package }) {
   const [tick, setTick] = useState(0)
   const [state, setState] = useState<LogsLoad>({ loading: true, logs: null, error: null })
 
   useEffect(() => {
     let cancelled = false
     setState({ loading: true, logs: null, error: null })
-    deploymentLogs(dep.id, { limit: 50 })
+    packagesApi.logs(pkg.name, { limit: 50 })
       .then((res) => {
         if (!cancelled) setState({ loading: false, logs: res.data ?? [], error: null })
       })
@@ -68,7 +68,7 @@ function LogsView({ dep }: { dep: Deployment }) {
     return () => {
       cancelled = true
     }
-  }, [dep.id, tick])
+  }, [pkg.name, tick])
 
   const logs = state.logs ?? []
 
@@ -76,7 +76,7 @@ function LogsView({ dep }: { dep: Deployment }) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <span className="scns-helper" style={{ fontSize: 13 }}>
-          Recent requests for this deployment ·{' '}
+          Recent requests for this package ·{' '}
           <Link className="scns-link" to="/request-logs">
             full request logs →
           </Link>

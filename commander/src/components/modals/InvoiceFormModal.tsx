@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Modal, Dropdown, NumberInput, DatePicker, DatePickerInput } from '@carbon/react'
-import { useStore } from '../../store/store'
+import { useStore, useProvisionedPackages } from '../../store/store'
 import type { Invoice } from '../../store/types'
 
-type CreateInput = { client_id: number; deployment_id: number; amount: number; issued_at: string; due_at: string }
+type CreateInput = { client_id: number; package_id: number; amount: number; issued_at: string; due_at: string }
 type EditPatch = { amount: number; issued_at: string; due_at: string }
 
 interface Props {
@@ -23,10 +23,10 @@ function toIso(d: Date | undefined): string {
 
 export function InvoiceFormModal({ open, mode, invoice, onSubmit, onClose }: Props) {
   const clients = useStore((s) => s.clients)
-  const deployments = useStore((s) => s.deployments)
+  const packages = useProvisionedPackages()
 
   const [clientId, setClientId] = useState<number | ''>('')
-  const [deploymentId, setDeploymentId] = useState<number | ''>('')
+  const [packageId, setPackageId] = useState<number | ''>('')
   const [amount, setAmount] = useState('0')
   const [issuedAt, setIssuedAt] = useState<Date | undefined>(undefined)
   const [dueAt, setDueAt] = useState<Date | undefined>(undefined)
@@ -35,7 +35,7 @@ export function InvoiceFormModal({ open, mode, invoice, onSubmit, onClose }: Pro
   useEffect(() => {
     if (open) {
       setClientId(invoice?.client_id ?? '')
-      setDeploymentId(invoice?.deployment_id ?? '')
+      setPackageId(invoice?.package_id ?? '')
       setAmount(String(invoice?.amount ?? 0))
       setIssuedAt(invoice ? new Date(invoice.issued_at) : undefined)
       setDueAt(invoice ? new Date(invoice.due_at) : undefined)
@@ -43,24 +43,24 @@ export function InvoiceFormModal({ open, mode, invoice, onSubmit, onClose }: Pro
     }
   }, [open, invoice])
 
-  // Deployments scoped to the selected client; in edit the pair is fixed.
-  const clientDeployments = useMemo(
-    () => deployments.filter((d) => d.client_id === clientId),
-    [deployments, clientId],
+  // Packages scoped to the selected client; in edit the pair is fixed.
+  const clientPackages = useMemo(
+    () => packages.filter((p) => p.client_id === clientId),
+    [packages, clientId],
   )
 
   if (!open) return null
 
   const selectedClient = clients.find((c) => c.id === clientId) ?? null
-  const selectedDeployment = clientDeployments.find((d) => d.id === deploymentId) ?? null
+  const selectedPackage = clientPackages.find((p) => p.id === packageId) ?? null
   const amountNum = Number(amount)
 
   const clientError = !clientId ? 'Required' : ''
-  const deploymentError = !deploymentId ? 'Required' : ''
+  const packageError = !packageId ? 'Required' : ''
   const amountError = !Number.isFinite(amountNum) || amountNum < 0 ? 'Enter an amount ≥ 0' : ''
   const issuedError = !issuedAt ? 'Required' : ''
   const dueError = !dueAt ? 'Required' : ''
-  const valid = !clientError && !deploymentError && !amountError && !issuedError && !dueError
+  const valid = !clientError && !packageError && !amountError && !issuedError && !dueError
 
   const submit = () => {
     setSubmitted(true)
@@ -70,7 +70,7 @@ export function InvoiceFormModal({ open, mode, invoice, onSubmit, onClose }: Pro
     } else {
       onSubmit({
         client_id: Number(clientId),
-        deployment_id: Number(deploymentId),
+        package_id: Number(packageId),
         amount: amountNum,
         issued_at: toIso(issuedAt),
         due_at: toIso(dueAt),
@@ -83,7 +83,7 @@ export function InvoiceFormModal({ open, mode, invoice, onSubmit, onClose }: Pro
     <Modal
       open
       modalHeading={mode === 'edit' ? 'Edit invoice' : 'Create invoice'}
-      modalLabel={mode === 'edit' ? invoice?.id : 'Invoices'}
+      modalLabel={mode === 'edit' ? invoice?.number : 'Invoices'}
       primaryButtonText={mode === 'edit' ? 'Save changes' : 'Create invoice'}
       secondaryButtonText="Cancel"
       primaryButtonDisabled={submitted && !valid}
@@ -103,20 +103,20 @@ export function InvoiceFormModal({ open, mode, invoice, onSubmit, onClose }: Pro
           invalidText={clientError}
           onChange={({ selectedItem }) => {
             setClientId(selectedItem?.id ?? '')
-            setDeploymentId('') // reset: deployments are scoped to the client
+            setPackageId('') // reset: packages are scoped to the client
           }}
         />
         <Dropdown
-          id="inv-deployment"
-          titleText="Deployment"
-          label={clientId ? 'Select a deployment' : 'Select a client first'}
+          id="inv-package"
+          titleText="Package"
+          label={clientId ? 'Select a package' : 'Select a client first'}
           disabled={mode === 'edit' || !clientId}
-          items={clientDeployments}
-          itemToString={(d) => d?.package.name ?? ''}
-          selectedItem={selectedDeployment}
-          invalid={submitted && !!deploymentError}
-          invalidText={deploymentError}
-          onChange={({ selectedItem }) => setDeploymentId(selectedItem?.id ?? '')}
+          items={clientPackages}
+          itemToString={(p) => p?.name ?? ''}
+          selectedItem={selectedPackage}
+          invalid={submitted && !!packageError}
+          invalidText={packageError}
+          onChange={({ selectedItem }) => setPackageId(selectedItem?.id ?? '')}
         />
         <NumberInput
           id="inv-amount"

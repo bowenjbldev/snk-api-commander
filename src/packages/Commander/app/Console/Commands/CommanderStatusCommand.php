@@ -5,7 +5,7 @@ namespace Packages\Commander\Console\Commands;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Packages\Core\Enums\CorePackageStatusEnum;
-use Packages\Commander\Models\CommanderQuotaMetricModel;
+use Packages\Commander\Models\CommanderQuotaModel;
 use Packages\Core\Services\CorePackageStateService;
 
 class CommanderStatusCommand extends Command
@@ -61,7 +61,7 @@ class CommanderStatusCommand extends Command
             ['changed_by', $state->changedBy ?? '-'],
         ]);
 
-        $quotas = CommanderQuotaMetricModel::query()->orderBy('metric_key')->get();
+        $quotas = CommanderQuotaModel::query()->orderBy('metric_key')->get();
 
         if ($quotas->isNotEmpty()) {
             $this->table(

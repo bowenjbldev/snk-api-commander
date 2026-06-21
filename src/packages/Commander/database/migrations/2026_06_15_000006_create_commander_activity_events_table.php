@@ -11,15 +11,14 @@ return new class extends Migration {
             $table->id();
             $table->timestamp('at')->nullable();
             $table->string('kind', 16); // suspend|grace|resume|paid|quota
-            $table->unsignedBigInteger('deployment_id')->nullable();
-            $table->unsignedBigInteger('invoice_id')->nullable(); // FK -> commander_invoices.id
+            $table->foreignId('package_id')->nullable()->constrained('commander_packages')->cascadeOnDelete();
+            $table->foreignId('invoice_id')->nullable()->constrained('commander_invoices')->cascadeOnDelete();
             $table->string('reason', 100)->nullable();
             $table->string('by', 50)->nullable();
             $table->text('message')->nullable();
             $table->timestamps();
 
             $table->index('at');
-            $table->index('deployment_id');
         });
     }
 

@@ -1,5 +1,5 @@
 // Deterministic chart-data generators (seeded PRNG → stable shapes across renders).
-import type { Deployment, HttpMethod, TopEndpoint, UsageRollup, UsageSnapshot } from '../store/types'
+import type { HttpMethod, Package, TopEndpoint, UsageRollup, UsageSnapshot } from '../store/types'
 
 export interface Point {
   group: string
@@ -49,15 +49,15 @@ function seedFrom(s: string): number {
   return h >>> 0
 }
 
-// Dashboard: requests/hour, last 48h, stacked by top-4 deployments + "other".
-export function requestsPerHourStacked(deployments: Deployment[]): { data: Point[]; groups: string[] } {
-  const sorted = [...deployments].sort((a, b) => b.requests_24h - a.requests_24h)
+// Dashboard: requests/hour, last 48h, stacked by top-4 packages + "other".
+export function requestsPerHourStacked(packages: Package[]): { data: Point[]; groups: string[] } {
+  const sorted = [...packages].sort((a, b) => b.requests_24h - a.requests_24h)
   const top = sorted.slice(0, 4)
   const rest = sorted.slice(4)
-  const groups = [...top.map((d) => String(d.id)), 'other']
+  const groups = [...top.map((p) => p.name), 'other']
   const data: Point[] = []
-  top.forEach((d, idx) => data.push(...hourly(String(d.id), d.requests_24h / 24, seedFrom(String(d.id)) + idx, 48)))
-  const otherBase = rest.reduce((s, d) => s + d.requests_24h, 0) / 24
+  top.forEach((p, idx) => data.push(...hourly(p.name, p.requests_24h / 24, seedFrom(String(p.id)) + idx, 48)))
+  const otherBase = rest.reduce((s, p) => s + p.requests_24h, 0) / 24
   data.push(...hourly('other', otherBase, 99, 48))
   return { data, groups }
 }
@@ -70,27 +70,27 @@ export function errorRate48(): Point[] {
   }))
 }
 
-// Usage tab (per deployment).
-export function usageRequests(dep: Deployment): Point[] {
-  return hourly('requests', Math.max(dep.requests_24h / 24, 20), seedFrom(String(dep.id)), 48, { diurnal: 0.4 })
+// Usage tab (per package).
+export function usageRequests(pkg: Package): Point[] {
+  return hourly('requests', Math.max(pkg.requests_24h / 24, 20), seedFrom(String(pkg.id)), 48, { diurnal: 0.4 })
 }
-export function usageErrorRate(dep: Deployment): Point[] {
-  const s = seedFrom(String(dep.id))
+export function usageErrorRate(pkg: Package): Point[] {
+  const s = seedFrom(String(pkg.id))
   return [
     ...hourly('4xx', 1.2, s + 1, 48, { diurnal: 0.2, noise: 0.5 }),
     ...hourly('5xx', 0.4, s + 2, 48, { diurnal: 0.15, noise: 0.6 }),
   ]
 }
-export function usageLatency(dep: Deployment): Point[] {
-  const s = seedFrom(String(dep.id))
+export function usageLatency(pkg: Package): Point[] {
+  const s = seedFrom(String(pkg.id))
   return [
     ...hourly('avg', 129, s + 3, 48, { diurnal: 0.18, noise: 0.2 }),
     ...hourly('p95', 472, s + 4, 48, { diurnal: 0.22, noise: 0.25 }),
   ]
 }
-export function usageTransfer(dep: Deployment): Point[] {
-  const s = seedFrom(String(dep.id))
-  const base = Math.max(dep.requests_24h / 24 / 8, 5)
+export function usageTransfer(pkg: Package): Point[] {
+  const s = seedFrom(String(pkg.id))
+  const base = Math.max(pkg.requests_24h / 24 / 8, 5)
   return [
     ...hourly('in', base, s + 5, 48, { diurnal: 0.35 }),
     ...hourly('out', base * 3.5, s + 6, 48, { diurnal: 0.35 }),
@@ -201,29 +201,30 @@ export function rollupsToUsageSeries(rollups: UsageRollup[]): UsageSeries {
 // ── Real platform charts — from the Commander usage-snapshot cache (GET /usage/platform) ──
 
 export interface PlatformSeries {
-  requests: { data: Point[]; groups: string[] } // stacked: top-4 deployments + 'other'
+  requests: { data: Point[]; groups: string[] } // stacked: top-4 packages + 'other'
   errorRate: Point[] // group 'error %'
 }
 
-export function snapshotsToPlatformSeries(snapshots: UsageSnapshot[]): PlatformSeries {
-  // Pick the top-4 deployments by total requests; everything else folds into 'other'.
-  // Keyed by the numeric deployment_id; the chart group labels are the id stringified.
+export function snapshotsToPlatformSeries(snapshots: UsageSnapshot[], packageLabels: ReadonlyMap<number, string> = new Map()): PlatformSeries {
+  // Pick the top-4 packages by total requests; everything else folds into 'other'.
+  // Keyed by numeric package_id internally; chart labels use operator-facing package names.
   const totals = new Map<number, number>()
-  for (const s of snapshots) totals.set(s.deployment_id, (totals.get(s.deployment_id) ?? 0) + s.request_count)
+  for (const s of snapshots) totals.set(s.package_id, (totals.get(s.package_id) ?? 0) + s.request_count)
   const top = [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([id]) => id)
   const topSet = new Set(top)
-  const groups = [...top.map((id) => String(id)), 'other']
+  const labelFor = (id: number) => packageLabels.get(id) ?? `package ${id}`
+  const groups = [...top.map(labelFor), 'other']
 
-  const buckets = new Map<string, { perDep: Map<number, number>; other: number; total: number; errors: number }>()
+  const buckets = new Map<string, { perPkg: Map<number, number>; other: number; total: number; errors: number }>()
   for (const s of snapshots) {
     let b = buckets.get(s.period_start)
     if (!b) {
-      b = { perDep: new Map(), other: 0, total: 0, errors: 0 }
+      b = { perPkg: new Map(), other: 0, total: 0, errors: 0 }
       buckets.set(s.period_start, b)
     }
     b.total += s.request_count
     b.errors += s.error_count
-    if (topSet.has(s.deployment_id)) b.perDep.set(s.deployment_id, (b.perDep.get(s.deployment_id) ?? 0) + s.request_count)
+    if (topSet.has(s.package_id)) b.perPkg.set(s.package_id, (b.perPkg.get(s.package_id) ?? 0) + s.request_count)
     else b.other += s.request_count
   }
 
@@ -232,7 +233,7 @@ export function snapshotsToPlatformSeries(snapshots: UsageSnapshot[]): PlatformS
   for (const key of [...buckets.keys()].sort()) {
     const b = buckets.get(key)!
     const date = new Date(key)
-    for (const id of top) data.push({ group: String(id), date, value: b.perDep.get(id) ?? 0 })
+    for (const id of top) data.push({ group: labelFor(id), date, value: b.perPkg.get(id) ?? 0 })
     data.push({ group: 'other', date, value: b.other })
     errorRate.push({ group: 'error %', date, value: b.total > 0 ? (b.errors / b.total) * 100 : 0 })
   }

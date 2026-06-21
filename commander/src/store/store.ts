@@ -6,13 +6,12 @@ import { api, packagesApi, settingsApi } from '../lib/api'
 import type {
   ActivityEvent,
   Client,
-  Deployment,
   Invoice,
   OnExceed,
   OperatorSettings,
+  Package,
   Plan,
   QuotaMetric,
-  RegisteredPackage,
   Subscription,
 } from './types'
 
@@ -28,7 +27,7 @@ export interface ProvisionInput {
 /** Payload for creating an invoice from the panel (POST /invoices). */
 export interface InvoiceInput {
   client_id: number
-  deployment_id: number
+  package_id: number
   amount: number
   issued_at: string
   due_at: string
@@ -53,17 +52,17 @@ interface StoreActions {
   actionError: { message: string; at: number } | null
   loadData: () => Promise<void>
 
-  // ── deployment state machine (in-process: writes the package's commander_packages row) ──
-  suspend: (id: number, input: SuspendInput) => void
-  grace: (id: number, input: GraceInput) => void
-  resume: (id: number, by?: StateOpts['by']) => void
+  // ── package state machine (in-process: writes the package's commander_packages row), por `name` ──
+  suspend: (name: string, input: SuspendInput) => void
+  grace: (name: string, input: GraceInput) => void
+  resume: (name: string, by?: StateOpts['by']) => void
 
   // ── quotas ──
   editQuotaLimit: (quotaId: number, limit: number | null) => void
   setQuotaPolicy: (quotaId: number, policy: OnExceed) => void
 
   // ── billing ──
-  markInvoicePaid: (invoiceId: number) => { resumableDeploymentId?: number }
+  markInvoicePaid: (invoiceId: number) => { resumablePackageName?: string }
   markInvoiceOverdue: (invoiceId: number) => void
   setInvoiceEnforcement: (invoiceId: number, enforcement: Invoice['enforcement']) => void
   addInvoice: (input: InvoiceInput) => string
@@ -73,7 +72,9 @@ interface StoreActions {
   // ── CRUD ──
   addClient: (client: Omit<Client, 'id' | 'created_at' | 'slug'>) => string
   updateClient: (id: number, patch: Partial<Client>) => void
-  deleteDeployment: (id: number) => void
+  // De-provision (soft): nulls the package's operational columns (DROP DATABASE + clear metering) but
+  // keeps the catalog row + billing history. The package becomes catalog-only (provisioned_at = null).
+  deprovision: (name: string) => void
   updateSettings: (patch: Partial<OperatorSettings>) => void
 
   // ── catalog (plans) ──
@@ -81,23 +82,28 @@ interface StoreActions {
   updatePlan: (id: number, patch: Partial<Plan>) => void
   deletePlan: (id: number) => void
 
-  // ── packages (registry metadata) ──
-  updatePackage: (name: string, patch: Partial<Pick<RegisteredPackage, 'label' | 'description' | 'status'>>) => void
+  // ── package catalog metadata ──
+  updatePackage: (name: string, patch: Partial<Pick<Package, 'label' | 'description' | 'listing_status'>>) => void
 
   // ── client-first provisioning (one-step, in-process) ──
-  // Creates client (new/existing) + subscription + live instance (migrates + seeds + activates),
-  // then refreshes the registry. No host step.
+  // Creates client (new/existing) + subscription + fills the package's live columns (migrates + seeds +
+  // activates), then refreshes the registry. No host step.
   provision: (input: ProvisionInput) => Promise<void>
 }
 
 export type StoreState = Dataset & StoreActions
 
-// Production starts empty — no demo data. loadData() fills clients/deployments/etc. from the API;
-// the registry is populated by provisioning (POST /provisioning) and the panel's CRUD. (Tests seed
+// The live provisioned packages (commander_packages rows with a live instance). Catalog-only rows
+// (provisioned_at == null) are filtered out — they're business package types not yet deployed.
+export function provisionedPackages(packages: Package[]): Package[] {
+  return packages.filter((p) => p.provisioned_at != null)
+}
+
+// Production starts empty — no demo data. loadData() fills clients/packages/etc. from the API; the
+// registry is synced from disk + populated by provisioning and the panel's CRUD. (Tests seed
 // buildFixtures explicitly; see store.test.ts.)
 const initial: Dataset = {
   clients: [],
-  deployments: [],
   subscriptions: [],
   invoices: [],
   quotas: [],
@@ -156,21 +162,34 @@ export const useStore = create<StoreState>((set, get) => {
       void get().loadData()
     })
   }
-  const replaceDep = (d: Deployment) =>
-    set((s) => ({ deployments: s.deployments.map((x) => (x.id === d.id ? d : x)) }))
-  // Per-deployment action sequence: each optimistic state action bumps it, and a reconcile is
-  // applied only if it is the response to the LATEST issued action for that deployment. This makes
-  // two rapid out-of-order responses safe WITHOUT comparing the server's changed_at to the
-  // optimistic client clock — that comparison dropped legitimate no-status-flip echoes (e.g.
-  // re-suspending with a new reason) and mis-fired on benign client/server clock skew.
-  const depActionSeq = new Map<number, number>()
-  const reconcileDep = (id: number) => {
-    const seq = (depActionSeq.get(id) ?? 0) + 1
-    depActionSeq.set(id, seq)
-    return (d: Deployment) => {
-      if (depActionSeq.get(id) === seq) replaceDep(d)
+
+  // The numeric package_id (= the unified row id) for a package name (for activity rows / relations).
+  const pkgId = (name: string): number | undefined => get().packages.find((p) => p.name === name)?.id
+
+  // Reconcile the server's authoritative package row into the registry, merging over the existing
+  // entry so enrichment (on_disk, plan_count) survives a state-action response that omits it.
+  const replacePackageRow = (row: Package) =>
+    set((s) => ({ packages: s.packages.map((p) => (p.name === row.name ? { ...p, ...row } : p)) }))
+  // Per-package action sequence: each optimistic state action bumps it, and a reconcile is applied
+  // only if it is the response to the LATEST issued action for that package. Makes two rapid
+  // out-of-order responses safe without comparing the server's changed_at to the client clock.
+  const pkgActionSeq = new Map<string, number>()
+  const reconcilePackage = (name: string) => {
+    const seq = (pkgActionSeq.get(name) ?? 0) + 1
+    pkgActionSeq.set(name, seq)
+    return (row: Package) => {
+      if (pkgActionSeq.get(name) === seq) replacePackageRow(row)
     }
   }
+
+  // Optimistic state transition on the package row (by name), only if it has a live instance.
+  const applyLocalState = (name: string, status: Package['status'], opts: StateOpts) =>
+    set((s) => ({
+      packages: s.packages.map((p) =>
+        p.name === name && p.provisioned_at != null ? applyPackageState(p, status, opts) : p,
+      ),
+    }))
+
   const replaceInvoice = (i: Invoice) =>
     set((s) => ({ invoices: s.invoices.map((x) => (x.id === i.id ? i : x)) }))
   // addInvoice: reconcilia por `number` (el id bigint lo asigna el servidor).
@@ -205,25 +224,24 @@ export const useStore = create<StoreState>((set, get) => {
 
     loadData: async () => {
       try {
-        const [clients, deployments, subscriptions, invoices, quotas, plans, packages, activityFeed, settingsRow] = await Promise.all([
+        const [clients, packages, subscriptions, invoices, quotas, plans, activityFeed, settingsRow] = await Promise.all([
           api<Client[]>('/clients'),
-          api<Deployment[]>('/deployments'),
+          packagesApi.list(),
           api<Subscription[]>('/subscriptions'),
           api<Invoice[]>('/invoices'),
           api<QuotaMetric[]>('/quotas'),
           api<Plan[]>('/plans'),
-          packagesApi.list(),
           api<ActivityEvent[]>('/activity'),
           settingsApi.get(),
         ])
+        const provisioned = provisionedPackages(packages)
         set((s) => ({
           clients,
-          deployments,
+          packages,
           subscriptions,
           invoices,
           quotas,
           plans,
-          packages,
           activity: activityFeed,
           // Operator profile + preferences are now server-persisted (commander_settings singleton).
           settings: {
@@ -236,7 +254,7 @@ export const useStore = create<StoreState>((set, get) => {
           // Charts/deltas/error-rate stay synthetic; recompute the two real KPIs from live data.
           dashboard: {
             ...s.dashboard,
-            requests_24h: deployments.reduce((a, d) => a + Number(d.requests_24h || 0), 0),
+            requests_24h: provisioned.reduce((a, p) => a + Number(p.requests_24h || 0), 0),
             mrr: subscriptions.reduce(
               (a, x) => a + (x.billing_status !== 'overdue' ? Number(x.price_monthly || 0) : 0),
               0,
@@ -249,71 +267,51 @@ export const useStore = create<StoreState>((set, get) => {
       }
     },
 
-    suspend: (id, input) => {
+    suspend: (name, input) => {
+      applyLocalState(name, 'suspended', {
+        reason: input.reason,
+        message: input.message,
+        by: input.by ?? 'operator',
+      })
       set((s) => ({
-        deployments: s.deployments.map((d) =>
-          d.id === id
-            ? {
-                ...d,
-                package: applyPackageState(d.package, 'suspended', {
-                  reason: input.reason,
-                  message: input.message ?? d.package.message,
-                  by: input.by ?? 'operator',
-                }),
-              }
-            : d,
-        ),
         activity: [
-          activity('suspend', { deployment_id: id, reason: input.reason, by: input.by ?? 'operator' }),
+          activity('suspend', { package_id: pkgId(name), reason: input.reason, by: input.by ?? 'operator' }),
           ...s.activity,
         ],
       }))
       persist(
-        api<Deployment>(`/deployments/${id}/suspend`, {
-          method: 'POST',
-          body: { reason: input.reason, message: input.message ?? null },
-        }),
-        reconcileDep(id),
+        packagesApi.suspend(name, { reason: input.reason, message: input.message ?? null }),
+        reconcilePackage(name),
       )
     },
 
-    grace: (id, input) => {
+    grace: (name, input) => {
+      applyLocalState(name, 'grace', {
+        reason: input.reason,
+        message: input.message,
+        grace_until: input.grace_until,
+        by: input.by ?? 'operator',
+      })
       set((s) => ({
-        deployments: s.deployments.map((d) =>
-          d.id === id
-            ? {
-                ...d,
-                package: applyPackageState(d.package, 'grace', {
-                  reason: input.reason,
-                  message: input.message ?? d.package.message,
-                  grace_until: input.grace_until,
-                  by: input.by ?? 'operator',
-                }),
-              }
-            : d,
-        ),
         activity: [
-          activity('grace', { deployment_id: id, reason: input.reason, by: input.by ?? 'operator' }),
+          activity('grace', { package_id: pkgId(name), reason: input.reason, by: input.by ?? 'operator' }),
           ...s.activity,
         ],
       }))
       persist(
-        api<Deployment>(`/deployments/${id}/grace`, {
-          method: 'POST',
-          body: { reason: input.reason, message: input.message ?? null, grace_until: input.grace_until },
+        packagesApi.grace(name, {
+          reason: input.reason,
+          message: input.message ?? null,
+          grace_until: input.grace_until,
         }),
-        reconcileDep(id),
+        reconcilePackage(name),
       )
     },
 
-    resume: (id, by = 'operator') => {
-      set((s) => ({
-        deployments: s.deployments.map((d) =>
-          d.id === id ? { ...d, package: applyPackageState(d.package, 'active', { by }) } : d,
-        ),
-        activity: [activity('resume', { deployment_id: id, by }), ...s.activity],
-      }))
-      persist(api<Deployment>(`/deployments/${id}/resume`, { method: 'POST' }), reconcileDep(id))
+    resume: (name, by = 'operator') => {
+      applyLocalState(name, 'active', { by })
+      set((s) => ({ activity: [activity('resume', { package_id: pkgId(name), by }), ...s.activity] }))
+      persist(packagesApi.resume(name), reconcilePackage(name))
     },
 
     editQuotaLimit: (quotaId, limit) => {
@@ -340,11 +338,11 @@ export const useStore = create<StoreState>((set, get) => {
 
     markInvoicePaid: (invoiceId) => {
       const inv = get().invoices.find((i) => i.id === invoiceId)
-      let resumableDeploymentId: number | undefined
+      let resumablePackageName: string | undefined
       if (inv) {
-        const dep = get().deployments.find((d) => d.id === inv.deployment_id)
-        if (dep && dep.package.status === 'suspended' && dep.package.reason === 'payment_overdue') {
-          resumableDeploymentId = dep.id
+        const reg = get().packages.find((p) => p.id === inv.package_id && p.provisioned_at != null)
+        if (reg && reg.status === 'suspended' && reg.reason === 'payment_overdue') {
+          resumablePackageName = reg.name
         }
       }
       set((s) => ({
@@ -355,7 +353,7 @@ export const useStore = create<StoreState>((set, get) => {
           ? [
               activity('paid', {
                 invoice_id: invoiceId,
-                deployment_id: inv.deployment_id,
+                package_id: inv.package_id,
                 by: 'operator',
               }),
               ...s.activity,
@@ -369,7 +367,7 @@ export const useStore = create<StoreState>((set, get) => {
         }),
         replaceInvoice,
       )
-      return { resumableDeploymentId }
+      return { resumablePackageName }
     },
 
     markInvoiceOverdue: (invoiceId) => {
@@ -431,13 +429,36 @@ export const useStore = create<StoreState>((set, get) => {
       persist(api<Client>(`/clients/${id}`, { method: 'PATCH', body: patch }), replaceClient)
     },
 
-    deleteDeployment: (id) => {
+    deprovision: (name) => {
+      const id = pkgId(name)
       set((s) => ({
-        deployments: s.deployments.filter((d) => d.id !== id),
-        quotas: s.quotas.filter((q) => q.deployment_id !== id),
-        subscriptions: s.subscriptions.filter((sub) => sub.deployment_id !== id),
+        // Soft: la fila persiste como solo-catalogo (provisioned_at null), conservando label/description.
+        packages: s.packages.map((p) =>
+          p.name === name
+            ? {
+                ...p,
+                provisioned_at: null,
+                subdomain: null,
+                database: null,
+                client_id: null,
+                subscription_id: null,
+                status: 'active',
+                reason: null,
+                message: null,
+                grace_until: null,
+                requests_24h: 0,
+                quota_health: 0,
+                last_seen: null,
+                client: null,
+                subscription: null,
+                quotas: [],
+              }
+            : p,
+        ),
+        // El metering/cuotas de la instancia muere; el billing (subscriptions/invoices) se conserva.
+        quotas: id != null ? s.quotas.filter((q) => q.package_id !== id) : s.quotas,
       }))
-      persist(api(`/deployments/${id}`, { method: 'DELETE' }))
+      persist(packagesApi.deprovision(name))
     },
 
     updateSettings: (patch) => {
@@ -452,7 +473,7 @@ export const useStore = create<StoreState>((set, get) => {
         id: tempId,
         number,
         client_id: input.client_id,
-        deployment_id: input.deployment_id,
+        package_id: input.package_id,
         amount: input.amount,
         issued_at: input.issued_at,
         due_at: input.due_at,
@@ -466,7 +487,7 @@ export const useStore = create<StoreState>((set, get) => {
           body: {
             number,
             client_id: input.client_id,
-            deployment_id: input.deployment_id,
+            package_id: input.package_id,
             amount: input.amount,
             issued_at: input.issued_at,
             due_at: input.due_at,
@@ -510,29 +531,38 @@ export const useStore = create<StoreState>((set, get) => {
     },
 
     provision: async (input) => {
-      // One-step, in-process: the server creates the client + subscription + live instance
-      // (migrates + seeds + activates the package) atomically. Refresh the registry on success.
-      await api<{ deployment: Deployment }>('/provisioning', { method: 'POST', body: input })
+      // One-step, in-process: the server creates the client + subscription + fills the package's live
+      // columns (migrates + seeds + activates the package) atomically. Refresh the registry on success.
+      await api<{ package: Package }>('/provisioning', { method: 'POST', body: input })
       await get().loadData()
     },
   }
 })
 
 // ── Convenience selectors ──────────────────────────────────────────────────────
-export const useDeployment = (id: number | undefined): Deployment | undefined =>
-  useStore((s) => (id != null ? s.deployments.find((d) => d.id === id) : undefined))
-
-export const usePackage = (name: string | undefined): RegisteredPackage | undefined =>
+export const usePackage = (name: string | undefined): Package | undefined =>
   useStore((s) => (name ? s.packages.find((p) => p.name === name) : undefined))
+
+// The package row only if it has a live instance (provisioned), else undefined.
+export const useProvisionedPackage = (name: string | undefined): Package | undefined =>
+  useStore((s) =>
+    name ? s.packages.find((p) => p.name === name && p.provisioned_at != null) : undefined,
+  )
+
+// All live provisioned package rows, as a stable array.
+export function useProvisionedPackages(): Package[] {
+  const packages = useStore((s) => s.packages)
+  return useMemo(() => provisionedPackages(packages), [packages])
+}
 
 export const useClient = (id: number | undefined): Client | undefined =>
   useStore((s) => (id != null ? s.clients.find((c) => c.id === id) : undefined))
 
-export const useDeploymentQuotas = (id: number | undefined) => {
-  // Select the stable array, derive with useMemo — returning a filtered array
-  // straight from the selector would change identity every render and loop.
+export const usePackageQuotas = (packageId: number | undefined) => {
+  // Select the stable array, derive with useMemo — returning a filtered array straight from the
+  // selector would change identity every render and loop.
   const quotas = useStore((s) => s.quotas)
-  return useMemo(() => quotas.filter((q) => q.deployment_id === id), [quotas, id])
+  return useMemo(() => quotas.filter((q) => q.package_id === packageId), [quotas, packageId])
 }
 
 export function clientName(state: StoreState, clientId: number): string {

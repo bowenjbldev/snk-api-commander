@@ -5,11 +5,9 @@ namespace Tests\Feature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Packages\Commander\Database\Seeders\CommanderDatabaseSeeder;
 use Packages\Commander\Models\CommanderClientModel;
-use Packages\Commander\Models\CommanderDeploymentModel;
 use Packages\Commander\Models\CommanderPlanModel;
 use Packages\Core\Database\Seeders\CoreDatabaseSeeder;
 use Packages\Commander\Models\CommanderPackageModel;
-use Packages\Commander\Models\CommanderQuotaMetricModel;
 use Packages\Core\Models\CoreUserModel;
 use Tests\CommanderTestCase;
 
@@ -67,17 +65,18 @@ class CommanderProvisioningTest extends CommanderTestCase
         ]);
 
         $res->assertStatus(201);
-        // One-step: live immediately. Identidad + estado vienen en la relacion anidada `package`.
-        $res->assertJsonPath('deployment.package.status', 'active');
-        $res->assertJsonPath('deployment.package.name', 'Demo');
-        $res->assertJsonPath('deployment.package.subdomain', 'demo');
-        $res->assertJsonPath('deployment.subscription.plan', 'Pro');
+        // One-step: live immediately. The live instance (commander_packages) is returned flat under `package`.
+        $res->assertJsonPath('package.status', 'active');
+        $res->assertJsonPath('package.name', 'Demo');
+        $res->assertJsonPath('package.subdomain', 'demo');
+        $res->assertJsonPath('package.subscription.plan', 'Pro');
 
         // Instance row (commander_packages) created + active + its own database name → subdomain is live.
         $cp = CommanderPackageModel::where('subdomain', 'demo')->first();
         $this->assertNotNull($cp);
         $this->assertSame('active', $cp->getRawOriginal('status'));
         $this->assertSame('demo', $cp->database); // BD propia del package
+        $this->assertNotNull($cp->provisioned_at); // marcada como instancia viva
 
         // Client created with full billing.
         $client = CommanderClientModel::where('slug', 'acme')->first();
@@ -85,21 +84,17 @@ class CommanderProvisioningTest extends CommanderTestCase
         $this->assertSame('ESB12345678', $client->tax_id);
         $this->assertSame('ES', $client->country);
 
-        // Deployment + subscription + quotas (SPA mirror) from the plan.
-        $dep = CommanderDeploymentModel::where('package_id', $cp->id)->first();
-        $this->assertNotNull($dep->subscription_id);
-        $this->assertSame($cp->id, $dep->package_id);
-        $this->assertCount(4, $dep->quotas);
-        $this->assertSame(100000, (int) $dep->quotas->firstWhere('metric_key', 'requests_day')->limit_value);
-        $this->assertSame('suspend', $dep->quotas->firstWhere('metric_key', 'requests_day')->on_exceed);
-        $this->assertNull($dep->quotas->firstWhere('metric_key', 'disk_storage_mb')->limit_value);
-
-        // Real enforcement rows (quota_metrics) seeded per package (commander).
-        $this->assertSame(100000, (int) CommanderQuotaMetricModel::where('package_id', $cp->id)
-            ->where('metric_key', 'requests_day')->value('limit_value'));
+        // Subscription + quotas (tabla unica) hang off the package row (1:1). El motor mide/aplica
+        // estas mismas filas — no hay tabla de metrics aparte.
+        $this->assertNotNull($cp->subscription_id);
+        $this->assertSame($client->id, $cp->client_id);
+        $this->assertCount(4, $cp->quotas);
+        $this->assertSame(100000, (int) $cp->quotas->firstWhere('metric_key', 'requests_day')->limit_value);
+        $this->assertSame('suspend', $cp->quotas->firstWhere('metric_key', 'requests_day')->on_exceed);
+        $this->assertNull($cp->quotas->firstWhere('metric_key', 'disk_storage_mb')->limit_value);
 
         // Nota: la BD del package (su base Laravel + negocio + admin) se crea con CREATE DATABASE +
-        // core:migrate --connection=tenant, que sqlite no soporta; se omite en tests y se verifica
+        // core:migrate --package, que sqlite no soporta; se omite en tests y se verifica
         // en vivo (demo/blog como BDs separadas).
     }
 
@@ -138,13 +133,10 @@ class CommanderProvisioningTest extends CommanderTestCase
         $admin = $this->admin();
         $plan = $this->plan();
 
-        $client = CommanderClientModel::create(['slug' => 'x', 'name' => 'X', 'email' => 'x@x.test', 'status' => 'active']);
-        // El conflicto lo detecta la instancia (commander_packages.subdomain unico), no el deployment.
-        $package = CommanderPackageModel::create([
-            'name' => 'Demo', 'subdomain' => 'demo', 'database' => 'demo', 'status' => 'active',
-        ]);
-        CommanderDeploymentModel::create([
-            'client_id' => $client->id, 'package_id' => $package->id,
+        // El conflicto lo detecta una instancia YA PROVISIONADA (provisioned_at no nulo) del mismo package.
+        CommanderPackageModel::create([
+            'name' => 'Demo', 'label' => 'Demo', 'listing_status' => 'active',
+            'subdomain' => 'demo', 'database' => 'demo', 'status' => 'active', 'provisioned_at' => now(),
         ]);
 
         $this->actingAs($admin, 'sanctum')->postJson('/api/v1/provisioning', [

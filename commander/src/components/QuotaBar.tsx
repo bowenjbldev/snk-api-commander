@@ -16,7 +16,7 @@ export function fillColor(ratio: number): string {
 }
 
 // Thin usage bar: green < 80%, amber ≥ 80%, red + OVER badge > 100%, gray when
-// unlimited. Used in the Deployments mini-bar, Quotas table, and detail gauges.
+// unlimited. Used in the package mini-bar, Quotas table, and detail gauges.
 export function QuotaBar({ current, limit, width = '100%', height = 6, showLabel }: Props) {
   const unlimited = limit == null
   const ratio = unlimited || limit === 0 ? 0 : current / limit

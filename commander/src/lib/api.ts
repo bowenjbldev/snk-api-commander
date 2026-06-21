@@ -2,7 +2,7 @@
 // path that Vite proxies to the backend (see vite.config.ts) — no CORS, no cert prompt.
 // For a production build, set VITE_API_BASE to the deploy's origin (e.g. https://commander.host/api/v1).
 
-import type { LogEntry, OperatorSettings, RegisteredPackage, UsageRollup, UsageSnapshot } from '../store/types'
+import type { LogEntry, OperatorSettings, Package, UsageRollup, UsageSnapshot } from '../store/types'
 
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? '/api/v1'
 const TOKEN_KEY = 'commander_token'
@@ -92,33 +92,6 @@ export const authApi = {
   logout: () => api('/auth/logout', { method: 'POST' }),
 }
 
-// A package's real usage rollups (commander_usage_rollups, queried in-process by package_id) for the Usage tab.
-export function deploymentUsage(
-  id: number,
-  params: { period?: 'hour' | 'day'; from?: string; to?: string } = {},
-): Promise<{ data: UsageRollup[] }> {
-  const qs = new URLSearchParams()
-  if (params.period) qs.set('period', params.period)
-  if (params.from) qs.set('from', params.from)
-  if (params.to) qs.set('to', params.to)
-  const q = qs.toString()
-  return api<{ data: UsageRollup[] }>(`/deployments/${id}/usage${q ? `?${q}` : ''}`)
-}
-
-// A package's real recent request logs (commander_request_logs, queried in-process by package_id,
-// tagged with deployment_id) for the Logs view. No real-time stream — fetch on demand / poll.
-export function deploymentLogs(
-  id: number,
-  params: { limit?: number; since?: string; status_class?: 2 | 3 | 4 | 5 } = {},
-): Promise<{ data: LogEntry[] }> {
-  const qs = new URLSearchParams()
-  if (params.limit) qs.set('limit', String(params.limit))
-  if (params.since) qs.set('since', params.since)
-  if (params.status_class) qs.set('status_class', String(params.status_class))
-  const q = qs.toString()
-  return api<{ data: LogEntry[] }>(`/deployments/${id}/logs${q ? `?${q}` : ''}`)
-}
-
 // Platform-wide hourly usage (aggregated Commander snapshot cache) for the Dashboard/Usage charts.
 export function platformUsage(
   params: { period?: 'hour' | 'day'; hours?: number } = {},
@@ -131,13 +104,13 @@ export function platformUsage(
 }
 
 // Platform-wide request logs (all packages). The API joins commander_request_logs to
-// commander_deployments (by package_id) to tag each row's deployment_id. deployment_id is an
-// OPTIONAL filter — omit it for the cross-fleet view.
+// commander_packages (by package_id) to tag each row's package name + subdomain. `package` is an
+// OPTIONAL filter (the StudlyCase package name) — omit it for the cross-fleet view.
 export function platformLogs(
-  params: { deployment_id?: string; limit?: number; since?: string; status_class?: 2 | 3 | 4 | 5; method?: string } = {},
+  params: { package?: string; limit?: number; since?: string; status_class?: 2 | 3 | 4 | 5; method?: string } = {},
 ): Promise<{ data: LogEntry[] }> {
   const qs = new URLSearchParams()
-  if (params.deployment_id) qs.set('deployment_id', params.deployment_id)
+  if (params.package) qs.set('package', params.package)
   if (params.limit) qs.set('limit', String(params.limit))
   if (params.since) qs.set('since', params.since)
   if (params.status_class) qs.set('status_class', String(params.status_class))
@@ -146,12 +119,49 @@ export function platformLogs(
   return api<{ data: LogEntry[] }>(`/logs${q ? `?${q}` : ''}`)
 }
 
-// Registro de packages de negocio (tipos): el hub package-céntrico. index() sincroniza desde disco
-// y enriquece con on_disk + conteos de deployments/planes. Metadatos editables (label/description/status).
+// Registro de packages de negocio (tipos): el hub package-céntrico. list() sincroniza desde disco y
+// enriquece cada fila con on_disk + el package provisionado anidado + conteos de planes. Metadatos
+// editables (label/description/status). Como el modelo es 1:1, las acciones operativas del package
+// provisionado (estado, usage, logs, de-provision) también cuelgan de aquí, direccionadas por `name`.
 export const packagesApi = {
-  list: () => api<RegisteredPackage[]>('/packages'),
-  update: (name: string, patch: Partial<Pick<RegisteredPackage, 'label' | 'description' | 'status'>>) =>
-    api<RegisteredPackage>(`/packages/${name}`, { method: 'PATCH', body: patch }),
+  list: () => api<Package[]>('/packages'),
+  update: (name: string, patch: Partial<Pick<Package, 'label' | 'description' | 'listing_status'>>) =>
+    api<Package>(`/packages/${name}`, { method: 'PATCH', body: patch }),
+
+  // ── operaciones del package provisionado (commander_packages), por `name` ──
+  suspend: (name: string, body: { reason: string; message?: string | null }) =>
+    api<Package>(`/packages/${name}/suspend`, { method: 'POST', body }),
+  grace: (name: string, body: { reason: string; message?: string | null; grace_until?: string }) =>
+    api<Package>(`/packages/${name}/grace`, { method: 'POST', body }),
+  resume: (name: string) => api<Package>(`/packages/${name}/resume`, { method: 'POST' }),
+  deprovision: (name: string) => api(`/packages/${name}`, { method: 'DELETE' }),
+
+  // A package's real usage rollups (commander_usage_rollups, queried in-process by package_id).
+  usage: (
+    name: string,
+    params: { period?: 'hour' | 'day'; from?: string; to?: string } = {},
+  ): Promise<{ data: UsageRollup[] }> => {
+    const qs = new URLSearchParams()
+    if (params.period) qs.set('period', params.period)
+    if (params.from) qs.set('from', params.from)
+    if (params.to) qs.set('to', params.to)
+    const q = qs.toString()
+    return api<{ data: UsageRollup[] }>(`/packages/${name}/usage${q ? `?${q}` : ''}`)
+  },
+
+  // A package's real recent request logs (commander_request_logs, queried in-process by package_id).
+  // No real-time stream — fetch on demand / poll.
+  logs: (
+    name: string,
+    params: { limit?: number; since?: string; status_class?: 2 | 3 | 4 | 5 } = {},
+  ): Promise<{ data: LogEntry[] }> => {
+    const qs = new URLSearchParams()
+    if (params.limit) qs.set('limit', String(params.limit))
+    if (params.since) qs.set('since', params.since)
+    if (params.status_class) qs.set('status_class', String(params.status_class))
+    const q = qs.toString()
+    return api<{ data: LogEntry[] }>(`/packages/${name}/logs${q ? `?${q}` : ''}`)
+  },
 }
 
 // Operator profile + platform preferences (singleton, persisted server-side).

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Dropdown, OverflowMenu, OverflowMenuItem } from '@carbon/react'
 import { Add } from '@carbon/icons-react'
-import { useStore } from '../store/store'
+import { useStore, useProvisionedPackages } from '../store/store'
 import { useCan } from '../store/auth'
 import { useActions } from '../providers/ActionsProvider'
 import { useToast } from '../providers/ToastProvider'
@@ -27,7 +27,7 @@ const DAY = 86_400_000
 export function Invoices() {
   const invoices = useStore((s) => s.invoices)
   const clients = useStore((s) => s.clients)
-  const deployments = useStore((s) => s.deployments)
+  const packages = useProvisionedPackages()
   const addInvoice = useStore((s) => s.addInvoice)
   const updateInvoice = useStore((s) => s.updateInvoice)
   const deleteInvoice = useStore((s) => s.deleteInvoice)
@@ -44,13 +44,13 @@ export function Invoices() {
 
   const clientName = useMemo(() => {
     const m = new Map(clients.map((c) => [c.id, c.name]))
-    return (id: number) => m.get(id) ?? String(id)
+    return (id: number) => m.get(id) ?? 'Unknown client'
   }, [clients])
 
-  const deploymentName = useMemo(() => {
-    const m = new Map(deployments.map((d) => [d.id, d.package.name]))
-    return (id: number) => m.get(id) ?? String(id)
-  }, [deployments])
+  const packageName = useMemo(() => {
+    const m = new Map(packages.map((p) => [p.id, p.name]))
+    return (id: number) => m.get(id) ?? 'Unknown package'
+  }, [packages])
 
   const filtered = useMemo(
     () => invoices.filter((i) => statusFilter === 'all' || i.status === statusFilter),
@@ -79,11 +79,11 @@ export function Invoices() {
     },
     { key: 'client', header: 'Client', sortable: true, sortValue: (i) => clientName(i.client_id), render: (i) => clientName(i.client_id) },
     {
-      key: 'deployment',
-      header: 'Deployment',
+      key: 'package',
+      header: 'Package',
       sortable: true,
-      sortValue: (i) => deploymentName(i.deployment_id),
-      render: (i) => <span className="scns-mono" style={{ fontSize: 12 }}>{deploymentName(i.deployment_id)}</span>,
+      sortValue: (i) => packageName(i.package_id),
+      render: (i) => <span className="scns-mono" style={{ fontSize: 12 }}>{packageName(i.package_id)}</span>,
     },
     {
       key: 'amount',
@@ -144,7 +144,7 @@ export function Invoices() {
         rows={filtered}
         columns={columns}
         getId={(i) => i.id}
-        searchText={(i) => `${i.number} ${clientName(i.client_id)} ${i.deployment_id}`}
+        searchText={(i) => `${i.number} ${clientName(i.client_id)} ${packageName(i.package_id)}`}
         searchPlaceholder="Search invoices"
         initialSort={{ key: 'number', dir: 'DESC' }}
         itemLabel="invoices"

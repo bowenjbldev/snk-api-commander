@@ -5,17 +5,17 @@ import { useStore } from '../store/store'
 import { PageHeader } from '../components/PageHeader'
 import { DataTableShell, type ShellColumn } from '../components/DataTableShell'
 import { useFirstLoad } from '../hooks/useFirstLoad'
-import type { RegisteredPackage } from '../store/types'
+import type { Package } from '../store/types'
 
-// Hub package-céntrico: lista los packages de negocio registrados (sync desde disco). Cada fila
-// entra a /packages/{name} con sus tabs (Overview, Plans, Deployments, Usage, Logs, Settings).
+// Hub package-céntrico: lista los packages de negocio (tabla única, sync desde disco). Cada fila
+// entra a /packages/{name} con sus tabs (Overview, Plans, Usage, Logs, Settings).
 export function Packages() {
   const packages = useStore((s) => s.packages)
   const navigate = useNavigate()
 
-  const liveCount = useMemo(() => packages.filter((p) => p.has_deployment).length, [packages])
+  const liveCount = useMemo(() => packages.filter((p) => p.provisioned_at != null).length, [packages])
 
-  const columns: ShellColumn<RegisteredPackage>[] = [
+  const columns: ShellColumn<Package>[] = [
     {
       key: 'name',
       header: 'Package',
@@ -38,27 +38,27 @@ export function Packages() {
       key: 'status',
       header: 'Status',
       sortable: true,
-      sortValue: (p) => p.status,
+      sortValue: (p) => p.listing_status,
       width: 120,
       render: (p) => (
-        <Tag type={p.status === 'active' ? 'green' : 'gray'} size="sm">
-          {p.status}
+        <Tag type={p.listing_status === 'active' ? 'green' : 'gray'} size="sm">
+          {p.listing_status}
         </Tag>
       ),
     },
     {
-      key: 'deployment',
-      header: 'Deployment',
+      key: 'provisioned',
+      header: 'Provisioned',
       sortable: true,
-      sortValue: (p) => (p.has_deployment ? 1 : 0),
+      sortValue: (p) => (p.provisioned_at != null ? 1 : 0),
       width: 160,
       render: (p) =>
-        p.has_deployment ? (
+        p.provisioned_at != null ? (
           <Tag type="blue" size="sm">
             live
           </Tag>
         ) : (
-          <span className="scns-helper">not deployed</span>
+          <span className="scns-helper">not provisioned</span>
         ),
     },
     {
@@ -78,7 +78,7 @@ export function Packages() {
         title="Packages"
         subtitle={
           <>
-            {packages.length} packages · {liveCount} deployed
+            {packages.length} packages · {liveCount} provisioned
           </>
         }
       />

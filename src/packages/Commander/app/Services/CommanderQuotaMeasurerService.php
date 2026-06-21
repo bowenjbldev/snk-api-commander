@@ -6,9 +6,8 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Packages\Commander\Models\CommanderActivityEventModel;
-use Packages\Commander\Models\CommanderDeploymentModel;
 use Packages\Commander\Models\CommanderPackageModel;
-use Packages\Commander\Models\CommanderQuotaMetricModel;
+use Packages\Commander\Models\CommanderQuotaModel;
 use Packages\Commander\Models\CommanderRequestLogModel;
 use Packages\Core\Enums\CorePackageStatusEnum;
 use Packages\Core\Services\CorePackageStateService;
@@ -45,7 +44,7 @@ class CommanderQuotaMeasurerService
     }
 
     /**
-     * @return array<int, array{metric: CommanderQuotaMetricModel, value: ?int, over: bool}>
+     * @return array<int, array{metric: CommanderQuotaModel, value: ?int, over: bool}>
      */
     public function measureAll(bool $persist = true, bool $enforce = true): array
     {
@@ -53,7 +52,7 @@ class CommanderQuotaMeasurerService
 
         // Agrupa por package: fija el contexto activo de cada grupo para que enforce()
         // (state->set/current) apunte a la fila packages correcta.
-        $byPackage = CommanderQuotaMetricModel::query()
+        $byPackage = CommanderQuotaModel::query()
             ->orderBy('package_id')
             ->orderBy('metric_key')
             ->get()
@@ -64,7 +63,7 @@ class CommanderQuotaMeasurerService
             $this->active->set($package);
 
             // Apunta la conexion 'tenant' a la BD del package para medir lo LOCAL (users, tamaño BD).
-            // requests_day y las escrituras de commander_quota_metrics siguen yendo a 'commander'.
+            // requests_day y las escrituras de commander_quotas siguen yendo a 'commander'.
             if (! empty($package?->database)) {
                 config(['database.connections.tenant.database' => $package->database]);
                 DB::purge('tenant');
@@ -99,7 +98,7 @@ class CommanderQuotaMeasurerService
         return $results;
     }
 
-    public function enforce(CommanderQuotaMetricModel $metric): void
+    public function enforce(CommanderQuotaModel $metric): void
     {
         $reason = "quota_exceeded:{$metric->metric_key}";
         $state = $this->stateService->current();
@@ -165,21 +164,14 @@ class CommanderQuotaMeasurerService
 
     /**
      * Registra el cambio de estado AUTOMATICO en el feed de actividad (commander_activity_events),
-     * igual que las acciones manuales del operador, pero con by='quota'. Resuelve el deployment del
-     * package medido. Sin esto, las suspensiones por cuota no dejaban rastro en el feed del SPA.
+     * igual que las acciones manuales del operador, pero con by='quota'.
      */
     private function recordActivity(int $packageId, string $kind, ?string $reason, ?string $message): void
     {
-        $deploymentId = CommanderDeploymentModel::query()->where('package_id', $packageId)->value('id');
-
-        if ($deploymentId === null) {
-            return;
-        }
-
         CommanderActivityEventModel::create([
             'at' => CarbonImmutable::now(),
             'kind' => $kind,
-            'deployment_id' => $deploymentId,
+            'package_id' => $packageId,
             'invoice_id' => null,
             'reason' => $reason,
             'by' => 'quota',

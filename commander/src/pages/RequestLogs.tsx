@@ -4,7 +4,7 @@ import {
   Dropdown,
 } from '@carbon/react'
 import { Renew } from '@carbon/icons-react'
-import { useStore } from '../store/store'
+import { useProvisionedPackages } from '../store/store'
 import { PageHeader } from '../components/PageHeader'
 import { DataTableShell, type ShellColumn } from '../components/DataTableShell'
 import { EmptyState } from '../components/EmptyState'
@@ -14,8 +14,8 @@ import { platformLogs } from '../lib/api'
 import { formatInt } from '../lib/format'
 import type { LogEntry } from '../store/types'
 
-// Sentinel for the "no deployment filter" Dropdown option (cross-fleet view).
-const ALL_DEPLOYMENTS = 'All deployments'
+// Sentinel for the "no package filter" Dropdown option (cross-fleet view).
+const ALL_PACKAGES = 'All packages'
 
 function logTime(iso: string): string {
   return `${new Date(iso).toISOString().slice(11, 23)} UTC`
@@ -34,10 +34,10 @@ interface LogsLoad {
 }
 
 // Platform-wide request log: read commander_request_logs in-process (no /control, no proxy). By
-// default we tail every package; the deployment Dropdown is an optional filter (deployment_id).
+// default we tail every package; the package Dropdown is an optional filter (by package name).
 export function RequestLogs() {
-  const deployments = useStore((s) => s.deployments)
-  // null == "All deployments" (cross-fleet). A non-null id filters to one package.
+  const packages = useProvisionedPackages()
+  // null == "All packages" (cross-fleet). A non-null name filters to one package.
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [tick, setTick] = useState(0)
   const [state, setState] = useState<LogsLoad>({ loading: false, logs: null, error: null })
@@ -46,7 +46,7 @@ export function RequestLogs() {
   useEffect(() => {
     let cancelled = false
     setState({ loading: true, logs: null, error: null })
-    platformLogs({ limit: 100, ...(selectedId ? { deployment_id: selectedId } : {}) })
+    platformLogs({ limit: 100, ...(selectedId ? { package: selectedId } : {}) })
       .then((res) => {
         if (!cancelled) setState({ loading: false, logs: res.data ?? [], error: null })
       })
@@ -59,14 +59,14 @@ export function RequestLogs() {
     }
   }, [selectedId, tick])
 
-  // El backend filtra logs por commander_packages.subdomain (== log.deployment_id), no por el id
-  // numerico. El dropdown muestra el nombre del package y manda el subdominio como valor.
+  // El backend filtra logs por package NAME (param `package`), no por subdominio ni id numerico.
+  // El dropdown muestra el nombre del package y manda ese mismo nombre como valor.
   const items = useMemo(
     () => [
-      { id: '', label: ALL_DEPLOYMENTS },
-      ...deployments.map((d) => ({ id: d.package.subdomain, label: d.package.name })),
+      { id: '', label: ALL_PACKAGES },
+      ...packages.map((p) => ({ id: p.name, label: p.name })),
     ],
-    [deployments],
+    [packages],
   )
   const logs = state.logs ?? []
 
@@ -82,10 +82,10 @@ export function RequestLogs() {
       ? []
       : [
           {
-            key: 'deployment',
-            header: 'Deployment',
+            key: 'package',
+            header: 'Package',
             width: 180,
-            render: (l: LogEntry) => <span className="scns-mono" style={{ fontSize: 12 }}>{l.deployment_id}</span>,
+            render: (l: LogEntry) => <span className="scns-mono" style={{ fontSize: 12 }}>{l.package}</span>,
           } satisfies ShellColumn<LogEntry>,
         ]),
     {
@@ -132,7 +132,7 @@ export function RequestLogs() {
           rows={logs}
           columns={columns}
           getId={(l) => l.id}
-          searchText={(l) => `${l.deployment_id} ${l.method} ${l.route} ${l.status} ${l.ip}`}
+          searchText={(l) => `${l.package} ${l.method} ${l.route} ${l.status} ${l.ip}`}
           searchPlaceholder="Search logs"
           itemLabel="logs"
           loading={state.loading || firstLoad}
@@ -140,9 +140,9 @@ export function RequestLogs() {
             <>
               <Dropdown
                 id="logs-deploy"
-                titleText="Deployment"
+                titleText="Package"
                 hideLabel
-                label="Filter by deployment"
+                label="Filter by package"
                 items={items}
                 itemToString={(i) => i?.label ?? ''}
                 selectedItem={items.find((i) => i.id === (selectedId ?? '')) ?? items[0]}

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Modal, Select, SelectItem, TextArea, NumberInput, InlineNotification } from '@carbon/react'
-import type { Deployment } from '../../store/types'
+import type { Package } from '../../store/types'
 import { formatDateUTC } from '../../lib/time'
-import { deploymentFqdn } from '../../lib/deployment'
+import { packageFqdn } from '../../lib/package'
 
 export interface StateChangeResult {
   reason: string
@@ -12,7 +12,7 @@ export interface StateChangeResult {
 
 interface Props {
   mode: 'suspend' | 'grace'
-  targets: Deployment[]
+  targets: Package[]
   defaultGraceHours: number
   open: boolean
   onClose: () => void
@@ -36,7 +36,7 @@ export function StateChangeModal({ mode, targets, defaultGraceHours, open, onClo
   useEffect(() => {
     if (open) {
       setReason(mode === 'grace' ? 'payment_overdue' : 'payment_overdue')
-      setMessage(single?.package.message ?? '')
+      setMessage(single?.message ?? '')
       setHours(defaultGraceHours)
     }
   }, [open, mode, single, defaultGraceHours])
@@ -46,14 +46,14 @@ export function StateChangeModal({ mode, targets, defaultGraceHours, open, onClo
   const isSuspend = mode === 'suspend'
   const heading = single
     ? isSuspend
-      ? `Suspend deployment ${single.package.name}?`
-      : `Move ${single.package.name} to grace`
+      ? `Suspend package ${single.name}?`
+      : `Move ${single.name} to grace`
     : isSuspend
-      ? `Suspend ${targets.length} deployments?`
-      : `Move ${targets.length} deployments to grace`
-  const label = single ? deploymentFqdn(single) : `${targets.length} deployments selected`
+      ? `Suspend ${targets.length} packages?`
+      : `Move ${targets.length} packages to grace`
+  const label = single ? packageFqdn(single) : `${targets.length} packages selected`
   const graceUntilPreview = formatDateUTC(new Date(Date.now() + hours * 3_600_000).toISOString())
-  const suspendingGrace = isSuspend && single?.package.status === 'grace'
+  const suspendingGrace = isSuspend && single?.status === 'grace'
 
   return (
     <Modal
@@ -61,7 +61,7 @@ export function StateChangeModal({ mode, targets, defaultGraceHours, open, onClo
       danger={isSuspend}
       modalLabel={label}
       modalHeading={heading}
-      primaryButtonText={isSuspend ? 'Suspend deployment' : 'Move to grace'}
+      primaryButtonText={isSuspend ? 'Suspend package' : 'Move to grace'}
       secondaryButtonText="Cancel"
       onRequestClose={onClose}
       onRequestSubmit={() => onConfirm({ reason, message, graceHours: isSuspend ? undefined : hours })}
@@ -69,7 +69,7 @@ export function StateChangeModal({ mode, targets, defaultGraceHours, open, onClo
       <p style={{ marginBottom: 16 }}>
         {isSuspend ? (
           <>
-            The API stops serving immediately. All users of {single ? 'this deployment' : 'these deployments'}{' '}
+            The API stops serving immediately. All users of {single ? 'this package' : 'these packages'}{' '}
             will receive <strong>HTTP 402 Payment Required</strong> until resumed.
           </>
         ) : (
@@ -80,13 +80,13 @@ export function StateChangeModal({ mode, targets, defaultGraceHours, open, onClo
         )}
       </p>
 
-      {suspendingGrace && single?.package.grace_until && (
+      {suspendingGrace && single?.grace_until && (
         <InlineNotification
           kind="warning"
           lowContrast
           hideCloseButton
           title="Skips the grace deadline"
-          subtitle="This deployment is in grace. Suspending now ends service before the deadline."
+          subtitle="This package is in grace. Suspending now ends service before the deadline."
           style={{ marginBottom: 16, maxWidth: '100%' }}
         />
       )}

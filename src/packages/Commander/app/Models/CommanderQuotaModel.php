@@ -17,15 +17,21 @@ class CommanderQuotaModel extends Model
     {
         return [
             'id' => 'integer',
-            'deployment_id' => 'integer',
+            'package_id' => 'integer',
             'current_value' => 'integer',
             'limit_value' => 'integer',
             'exceeded_at' => 'datetime',
+            'measured_at' => 'datetime',
         ];
     }
 
-    public function deployment(): BelongsTo
+    public function package(): BelongsTo
     {
-        return $this->belongsTo(CommanderDeploymentModel::class, 'deployment_id');
+        return $this->belongsTo(CommanderPackageModel::class, 'package_id');
+    }
+
+    public function isOverLimit(): bool
+    {
+        return $this->limit_value !== null && $this->current_value > $this->limit_value;
     }
 }

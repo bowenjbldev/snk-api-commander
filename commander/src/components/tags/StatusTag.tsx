@@ -1,11 +1,11 @@
 import { Tag } from '@carbon/react'
-import type { BillingStatus, ClientStatus, DeploymentPackage } from '../../store/types'
+import type { BillingStatus, ClientStatus, Package } from '../../store/types'
 import { AmberTag } from './AmberTag'
 import { GraceCountdown } from '../GraceCountdown'
 
-// Deployment lifecycle: active → green "Operational", grace → amber w/ live
-// countdown, suspended → red "Suspended". Lee el estado de la instancia `package`.
-export function DeploymentStatusTag({ pkg }: { pkg: DeploymentPackage }) {
+// Package lifecycle: active → green "Operational", grace → amber w/ live
+// countdown, suspended → red "Suspended". Lee el estado del package provisionado (commander_packages).
+export function PackageStatusTag({ pkg }: { pkg: Package }) {
   if (pkg.status === 'active') {
     return (
       <Tag type="green" size="sm">

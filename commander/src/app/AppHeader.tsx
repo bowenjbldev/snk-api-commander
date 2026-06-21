@@ -54,7 +54,7 @@ export function AppHeader({ onOpenSearch, showMenu, menuActive, onMenuToggle }: 
         <button
           type="button"
           onClick={onOpenSearch}
-          aria-label="Search deployments, clients, invoices"
+          aria-label="Search packages, clients, invoices"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -71,7 +71,7 @@ export function AppHeader({ onOpenSearch, showMenu, menuActive, onMenuToggle }: 
         >
           <Search size={16} style={{ color: '#8d8d8d', flex: 'none' }} />
           <span style={{ fontSize: 13, color: '#6f6f6f', flex: 1, textAlign: 'left' }}>
-            Search deployments, clients, invoices…
+            Search packages, clients, invoices…
           </span>
           <span
             className="scns-mono"

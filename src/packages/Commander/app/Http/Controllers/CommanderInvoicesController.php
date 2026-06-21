@@ -17,12 +17,12 @@ class CommanderInvoicesController extends CoreBaseApiController
     protected string $updatePermission = 'update invoices';
     protected string $destroyPermission = 'delete invoices';
 
-    protected array $allowedWith = ['client', 'deployment'];
+    protected array $allowedWith = ['client', 'package'];
 
     protected array $validationRulesStore = [
         'number' => 'required|string|max:64|unique:commander_invoices,number', // INV-... (handle de negocio)
         'client_id' => 'required|integer|exists:commander_clients,id',
-        'deployment_id' => 'required|integer|exists:commander_deployments,id',
+        'package_id' => 'required|integer|exists:commander_packages,id',
         'amount' => 'required|numeric|min:0',
         'issued_at' => 'nullable|date',
         'due_at' => 'nullable|date',

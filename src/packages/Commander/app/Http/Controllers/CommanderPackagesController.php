@@ -2,37 +2,53 @@
 
 namespace Packages\Commander\Http\Controllers;
 
+use Carbon\CarbonImmutable;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Packages\Commander\Models\CommanderDeploymentModel;
+use Illuminate\Support\Facades\DB;
+use Packages\Commander\Models\CommanderActivityEventModel;
+use Packages\Commander\Models\CommanderPackageModel;
 use Packages\Commander\Models\CommanderPlanModel;
-use Packages\Commander\Models\CommanderRegisteredPackageModel;
+use Packages\Commander\Models\CommanderQuotaModel;
+use Packages\Commander\Models\CommanderRequestLogModel;
+use Packages\Commander\Models\CommanderUsageRollupModel;
 use Packages\Commander\Services\CommanderPackageRegistryService;
+use Packages\Core\Enums\CorePackageStatusEnum;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
+use Packages\Core\Services\CorePackageStateService;
 
 /**
- * Registro de packages de negocio (tipos): hub del panel package-centrico. index() sincroniza
- * desde disco y enriquece cada fila con on_disk + conteos de deployments/planes. Los metadatos
- * (label/description/status) son editables.
+ * Hub del panel package-centrico sobre la tabla UNICA commander_packages: una fila por package en
+ * disco. index() sincroniza desde disco y enriquece cada fila con on_disk + conteo de planes; la fila
+ * lleva catalogo (label/description/listing_status) y —si esta provisionada— lo operativo (subdomain,
+ * cliente, estado runtime, KPIs) + relaciones. Las acciones operativas (estado, usage, logs,
+ * de-provision) exigen una fila provisionada y se direccionan por `name`.
  */
 #[Group('Packages')]
 class CommanderPackagesController extends CoreBaseApiController
 {
-    protected string $modelClass = CommanderRegisteredPackageModel::class;
+    protected string $modelClass = CommanderPackageModel::class;
 
-    protected string $indexPermission = 'index plans';
-    protected string $showPermission = 'show plans';
-    protected string $updatePermission = 'update plans';
+    protected string $indexPermission = 'index packages';
+    protected string $showPermission = 'show packages';
+    protected string $storePermission = 'create packages';
+    protected string $updatePermission = 'update packages';
+    protected string $destroyPermission = 'delete packages';
 
     protected array $validationRulesUpdate = [
         'label' => 'nullable|string|max:255',
         'description' => 'nullable|string',
-        'status' => 'nullable|in:active,inactive',
+        'listing_status' => 'nullable|in:active,inactive',
     ];
 
-    public function __construct(private readonly CommanderPackageRegistryService $registry)
+    private const CONTROL_PERMISSION = 'control packages';
+
+    public function __construct(
+        private readonly CommanderPackageRegistryService $registry,
+        private readonly CorePackageStateService $state,
+    )
     {
     }
 
@@ -44,32 +60,44 @@ class CommanderPackagesController extends CoreBaseApiController
 
         $this->registry->syncFromDisk();
         $onDisk = $this->registry->availableOnDisk();
-
-        // deployments ya no guarda `package`: el nombre se resuelve por join a commander_packages.
-        $deploymentCounts = CommanderDeploymentModel::query()
-            ->join('commander_packages as p', 'p.id', '=', 'commander_deployments.package_id')
-            ->selectRaw('p.name as package, COUNT(*) as c')->groupBy('p.name')->pluck('c', 'package');
         $planCounts = CommanderPlanModel::query()
             ->selectRaw('package, COUNT(*) as c')->groupBy('package')->pluck('c', 'package');
 
-        $rows = CommanderRegisteredPackageModel::query()->orderBy('name')->get()
-            ->map(function (CommanderRegisteredPackageModel $p) use ($onDisk, $deploymentCounts, $planCounts) {
-                return array_merge($p->toArray(), [
-                    'on_disk' => in_array($p->name, $onDisk, true),
-                    'deployment_count' => (int) ($deploymentCounts[$p->name] ?? 0),
-                    'has_deployment' => (int) ($deploymentCounts[$p->name] ?? 0) > 0,
-                    'plan_count' => (int) ($planCounts[$p->name] ?? 0),
-                ]);
-            });
+        $rows = CommanderPackageModel::query()
+            ->with(['client', 'subscription', 'quotas'])
+            ->orderBy('name')
+            ->get()
+            ->map(fn (CommanderPackageModel $p) => array_merge($p->toArray(), [
+                'on_disk' => in_array($p->name, $onDisk, true),
+                'plan_count' => (int) ($planCounts[$p->name] ?? 0),
+            ]));
 
         return response()->json($rows);
     }
 
     public function show($package = null): JsonResponse
     {
+        if ($response = $this->requirePermission($this->showPermission)) {
+            return $response;
+        }
+
         $this->registry->syncFromDisk();
 
-        return parent::show($package);
+        $record = CommanderPackageModel::query()
+            ->with(['client', 'subscription', 'quotas'])
+            ->where('name', $package)
+            ->first();
+
+        if ($record === null) {
+            return response()->json(['error' => 'Record not found'], 404);
+        }
+
+        $planCount = CommanderPlanModel::query()->where('package', $record->name)->count();
+
+        return response()->json(array_merge($record->toArray(), [
+            'on_disk' => in_array($record->name, $this->registry->availableOnDisk(), true),
+            'plan_count' => $planCount,
+        ]));
     }
 
     public function update(Request $request, $package = null): JsonResponse
@@ -78,17 +106,252 @@ class CommanderPackagesController extends CoreBaseApiController
     }
 
     /**
-     * El registro lleva PK numerica (id), pero la ruta `packages/{package}` direcciona por
-     * `name` (StudlyCase) — la clave de negocio compartida con commander_plans/deployments.
+     * La PK es numerica (id), pero la ruta `packages/{package}` direcciona por `name` (StudlyCase) —
+     * la clave de negocio compartida con commander_plans.
      */
     protected function findModel($id, bool $applyWith = false): ?Model
     {
-        $query = CommanderRegisteredPackageModel::query();
+        $query = CommanderPackageModel::query();
 
         if ($applyWith) {
             $query = $this->applyWith($query);
         }
 
         return $query->where('name', $id)->first();
+    }
+
+    /** Suspend (402) the provisioned package: write its commander_packages row directly. */
+    public function suspend(Request $request, $package = null): JsonResponse
+    {
+        if ($response = $this->requirePermission(self::CONTROL_PERMISSION)) {
+            return $response;
+        }
+
+        if (($packageRow = $this->findPackageRow($package)) === null) {
+            return response()->json(['error' => 'Package not provisioned'], 404);
+        }
+
+        $data = $request->validate([
+            'reason' => 'required|string|in:payment_overdue,abuse,manual',
+            'message' => 'nullable|string|max:280',
+        ]);
+
+        $this->state->set(
+            CorePackageStatusEnum::Suspended,
+            $data['reason'],
+            $data['message'] ?? null,
+            null,
+            'operator',
+            $packageRow->id,
+        );
+
+        $this->recordActivity('suspend', $packageRow, $data['reason'], $data['message'] ?? null);
+
+        return response()->json($packageRow->fresh()->load(['client', 'subscription', 'quotas']));
+    }
+
+    /** Grace period (time-boxed) for the provisioned package. */
+    public function grace(Request $request, $package = null): JsonResponse
+    {
+        if ($response = $this->requirePermission(self::CONTROL_PERMISSION)) {
+            return $response;
+        }
+
+        if (($packageRow = $this->findPackageRow($package)) === null) {
+            return response()->json(['error' => 'Package not provisioned'], 404);
+        }
+
+        $data = $request->validate([
+            'reason' => 'required|string|in:payment_overdue,abuse,manual',
+            'message' => 'nullable|string|max:280',
+            'grace_until' => 'nullable|date',
+            'grace_hours' => 'nullable|integer|min:1|max:720',
+        ]);
+
+        $graceUntil = isset($data['grace_until'])
+            ? CarbonImmutable::parse($data['grace_until'])
+            : CarbonImmutable::now()->addHours((int) ($data['grace_hours'] ?? config('core.quotas.grace_hours', 72)));
+
+        $this->state->set(
+            CorePackageStatusEnum::Grace,
+            $data['reason'],
+            $data['message'] ?? null,
+            $graceUntil,
+            'operator',
+            $packageRow->id,
+        );
+
+        $this->recordActivity('grace', $packageRow, $data['reason'], $data['message'] ?? null);
+
+        return response()->json($packageRow->fresh()->load(['client', 'subscription', 'quotas']));
+    }
+
+    /** Restore the provisioned package to active. */
+    public function resume(Request $request, $package = null): JsonResponse
+    {
+        if ($response = $this->requirePermission(self::CONTROL_PERMISSION)) {
+            return $response;
+        }
+
+        if (($packageRow = $this->findPackageRow($package)) === null) {
+            return response()->json(['error' => 'Package not provisioned'], 404);
+        }
+
+        $this->state->set(
+            CorePackageStatusEnum::Active,
+            null,
+            null,
+            null,
+            'operator',
+            $packageRow->id,
+        );
+
+        $this->recordActivity('resume', $packageRow, null, null);
+
+        return response()->json($packageRow->fresh()->load(['client', 'subscription', 'quotas']));
+    }
+
+    /** Real usage rollups (commander_usage_rollups) for the package. */
+    public function usage(Request $request, $package = null): JsonResponse
+    {
+        if ($response = $this->requirePermission($this->showPermission)) {
+            return $response;
+        }
+
+        if (($packageRow = $this->findPackageRow($package)) === null) {
+            return response()->json(['error' => 'Package not provisioned'], 404);
+        }
+
+        $data = $request->validate([
+            'period' => 'nullable|in:hour,day',
+            'from' => 'nullable|date',
+            'to' => 'nullable|date',
+            'per_page' => 'nullable|integer|min:1|max:1000',
+        ]);
+
+        $rollups = CommanderUsageRollupModel::query()
+            ->where('package_id', $packageRow->id)
+            ->where('period', $data['period'] ?? 'hour')
+            ->when(isset($data['from']), fn ($q) => $q->where('period_start', '>=', $data['from']))
+            ->when(isset($data['to']), fn ($q) => $q->where('period_start', '<=', $data['to']))
+            ->orderBy('period_start')
+            ->paginate($data['per_page'] ?? 1000);
+
+        return response()->json($rollups);
+    }
+
+    /** Real request logs (commander_request_logs) for the package. */
+    public function logs(Request $request, $package = null): JsonResponse
+    {
+        if ($response = $this->requirePermission($this->showPermission)) {
+            return $response;
+        }
+
+        if (($packageRow = $this->findPackageRow($package)) === null) {
+            return response()->json(['error' => 'Package not provisioned'], 404);
+        }
+
+        $data = $request->validate([
+            'limit' => 'nullable|integer|min:1|max:500',
+            'since' => 'nullable|date',
+            'status_class' => 'nullable|integer|in:2,3,4,5',
+        ]);
+
+        $rows = CommanderRequestLogModel::query()
+            ->where('package_id', $packageRow->id)
+            ->when(isset($data['since']), fn ($q) => $q->where('occurred_at', '>=', $data['since']))
+            ->when(isset($data['status_class']), function ($q) use ($data) {
+                $base = ((int) $data['status_class']) * 100;
+
+                return $q->where('status', '>=', $base)->where('status', '<', $base + 100);
+            })
+            ->orderByDesc('occurred_at')
+            ->limit($data['limit'] ?? 100)
+            ->get()
+            ->map(fn ($row) => array_merge($row->toArray(), [
+                'package' => $packageRow->name,
+                'subdomain' => $packageRow->subdomain,
+            ]))
+            ->all();
+
+        return response()->json(['data' => $rows]);
+    }
+
+    /**
+     * De-provision (soft): borra la BD del package y los datos OPERATIVOS de la instancia
+     * (metering, cuotas), y anula las columnas operativas de la fila. La fila (catalogo: name/label/
+     * description/listing_status) y el historial de billing (subscriptions/invoices) se conservan.
+     */
+    public function destroy($package = null): JsonResponse
+    {
+        if ($response = $this->requirePermission($this->destroyPermission)) {
+            return $response;
+        }
+
+        if (($packageRow = $this->findPackageRow($package)) === null) {
+            return response()->json(['error' => 'Package not provisioned'], 404);
+        }
+
+        $database = $packageRow->database;
+        $packageId = $packageRow->id;
+
+        DB::connection('commander')->transaction(function () use ($packageRow, $packageId) {
+            // Datos operativos/metering de la instancia muerta (no son historial de billing).
+            CommanderRequestLogModel::query()->where('package_id', $packageId)->delete();
+            CommanderQuotaModel::query()->where('package_id', $packageId)->delete();
+            CommanderUsageRollupModel::query()->where('package_id', $packageId)->delete();
+
+            // Soft: anula lo operativo, conserva el catalogo + el historial de billing (FKs siguen validas).
+            $packageRow->forceFill([
+                'subdomain' => null,
+                'database' => null,
+                'client_id' => null,
+                'subscription_id' => null,
+                'status' => 'active',
+                'reason' => null,
+                'message' => null,
+                'grace_until' => null,
+                'changed_by' => 'operator',
+                'changed_at' => CarbonImmutable::now(),
+                'requests_24h' => 0,
+                'quota_health' => 0,
+                'last_seen' => null,
+                'provisioned_at' => null,
+            ])->save();
+        });
+
+        // DROP DATABASE fuera de la transaccion (DDL). sqlite no aplica.
+        if (! empty($database) && DB::connection('commander')->getDriverName() !== 'sqlite') {
+            DB::connection('commander')->statement("DROP DATABASE IF EXISTS `{$database}`");
+        }
+
+        return response()->json(['message' => 'Package de-provisioned.']);
+    }
+
+    /** La fila del package SOLO si esta provisionada (tiene instancia viva). */
+    private function findPackageRow($package): ?CommanderPackageModel
+    {
+        if ($package === null) {
+            return null;
+        }
+
+        return CommanderPackageModel::query()
+            ->provisioned()
+            ->with(['client', 'subscription', 'quotas'])
+            ->where('name', $package)
+            ->first();
+    }
+
+    private function recordActivity(string $kind, CommanderPackageModel $packageRow, ?string $reason, ?string $message): void
+    {
+        CommanderActivityEventModel::create([
+            'at' => CarbonImmutable::now(),
+            'kind' => $kind,
+            'package_id' => $packageRow->id,
+            'invoice_id' => null,
+            'reason' => $reason,
+            'by' => 'operator',
+            'message' => $message,
+        ]);
     }
 }

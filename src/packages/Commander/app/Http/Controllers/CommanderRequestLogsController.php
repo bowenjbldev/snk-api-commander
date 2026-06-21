@@ -8,16 +8,15 @@ use Packages\Commander\Models\CommanderRequestLogModel;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 
 /**
- * Logs de request de TODA la plataforma (no por-deployment). Lee commander_request_logs y hace
- * join con commander_deployments (por package_id) para etiquetar cada fila con su deployment_id.
- * El dropdown de deployment del SPA pasa a ser un filtro OPCIONAL.
+ * Logs de request de TODA la plataforma. Lee commander_request_logs y hace join con
+ * commander_packages para etiquetar cada fila con package/subdomain. El filtro por package es opcional.
  */
 #[Group('Request Logs')]
 class CommanderRequestLogsController extends CoreBaseApiController
 {
     protected string $modelClass = CommanderRequestLogModel::class;
 
-    protected string $indexPermission = 'index deployments';
+    protected string $indexPermission = 'index packages';
 
     // Firma compatible con CoreBaseApiController::index(): la request se toma del helper request().
     public function index(): JsonResponse
@@ -27,7 +26,7 @@ class CommanderRequestLogsController extends CoreBaseApiController
         }
 
         $data = request()->validate([
-            'deployment_id' => 'nullable|string|max:64', // filtra por el slug legible del deployment
+            'package' => 'nullable|string|max:100',
             'limit' => 'nullable|integer|min:1|max:500',
             'since' => 'nullable|date',
             'status_class' => 'nullable|integer|in:2,3,4,5',
@@ -37,7 +36,7 @@ class CommanderRequestLogsController extends CoreBaseApiController
         $rows = CommanderRequestLogModel::query()
             ->from('commander_request_logs as l')
             ->leftJoin('commander_packages as p', 'p.id', '=', 'l.package_id')
-            ->when(isset($data['deployment_id']), fn ($q) => $q->where('p.subdomain', $data['deployment_id']))
+            ->when(isset($data['package']), fn ($q) => $q->where('p.name', $data['package']))
             ->when(isset($data['since']), fn ($q) => $q->where('l.occurred_at', '>=', $data['since']))
             ->when(isset($data['method']), fn ($q) => $q->where('l.method', strtoupper($data['method'])))
             ->when(isset($data['status_class']), function ($q) use ($data) {
@@ -47,7 +46,7 @@ class CommanderRequestLogsController extends CoreBaseApiController
             })
             ->orderByDesc('l.occurred_at')
             ->limit($data['limit'] ?? 100)
-            ->get(['l.*', 'p.subdomain as deployment_id']) // tag legible (subdomain), no el bigint
+            ->get(['l.*', 'p.name as package', 'p.subdomain as subdomain'])
             ->all();
 
         return response()->json(['data' => $rows]);

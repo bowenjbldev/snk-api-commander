@@ -2,22 +2,21 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router'
 import { Search } from '@carbon/icons-react'
-import { useStore } from '../store/store'
+import { useProvisionedPackages, useStore } from '../store/store'
 import { useFocusTrap } from '../hooks/useFocusTrap'
-import { baseDomain } from '../lib/deployment'
 
 interface Cmd {
   id: string | number
   label: string
   sublabel: string
-  kind: 'Package' | 'Deployment' | 'Client' | 'Invoice'
+  kind: 'Package' | 'Client' | 'Invoice'
   to: string
 }
 
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate()
   const packages = useStore((s) => s.packages)
-  const deployments = useStore((s) => s.deployments)
+  const provisioned = useProvisionedPackages()
   const clients = useStore((s) => s.clients)
   const invoices = useStore((s) => s.invoices)
   const [query, setQuery] = useState('')
@@ -27,13 +26,16 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   useFocusTrap(boxRef, open)
 
   const all = useMemo<Cmd[]>(
-    () => [
-      ...packages.map((p) => ({ id: p.name, label: p.label ?? p.name, sublabel: p.name, kind: 'Package' as const, to: `/packages/${p.name}` })),
-      ...deployments.map((d) => ({ id: d.id, label: d.package.name, sublabel: `${d.package.subdomain}.${baseDomain()}`, kind: 'Deployment' as const, to: `/packages/${d.package.name}` })),
-      ...clients.map((c) => ({ id: c.id, label: c.name, sublabel: c.company, kind: 'Client' as const, to: '/clients' })),
-      ...invoices.map((i) => ({ id: i.id, label: i.number, sublabel: String(i.deployment_id), kind: 'Invoice' as const, to: '/invoices' })),
-    ],
-    [packages, deployments, clients, invoices],
+    () => {
+      const packageNames = new Map(provisioned.map((p) => [p.id, p.name]))
+
+      return [
+        ...packages.map((p) => ({ id: p.name, label: p.label ?? p.name, sublabel: p.name, kind: 'Package' as const, to: `/packages/${p.name}` })),
+        ...clients.map((c) => ({ id: c.id, label: c.name, sublabel: c.company, kind: 'Client' as const, to: '/clients' })),
+        ...invoices.map((i) => ({ id: i.id, label: i.number, sublabel: packageNames.get(i.package_id) ?? 'Unknown package', kind: 'Invoice' as const, to: '/invoices' })),
+      ]
+    },
+    [packages, provisioned, clients, invoices],
   )
 
   const results = useMemo(() => {
@@ -70,7 +72,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             ref={inputRef}
             className="scns-cmdk__input"
             style={{ paddingLeft: 44 }}
-            placeholder="Search deployments, clients, invoices…"
+            placeholder="Search packages, clients, invoices…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
