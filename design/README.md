@@ -51,11 +51,15 @@ Principios:
 - **UI monocromática**: el color aparece SOLO como semántica de estado (verde/ámbar/rojo),
   azul de enlace, la **única acción primaria por pantalla** (IBM Blue 60 `#0f62fe`) y las
   series de las gráficas.
+- **Enlaces** en toda la app: texto azul de enlace, **UPPERCASE** (tracking 0.3px) y
+  subrayado **punteado** (offset 2px). Aplica a los enlaces propios y al componente `Link`
+  de Carbon.
 - **Plex Mono** para identificadores (nombres de package/subdominio, nº de factura, emails, IPs,
   secretos, rutas, versiones), toda celda numérica de tabla (alineada a la derecha, cifras
   tabulares), timestamps, etiquetas de eje y countdowns.
-- **Fechas relativas** en todas partes (`3h ago`) con subrayado punteado → tooltip de hora
-  absoluta al hover (`2026-06-11 14:02 UTC`).
+- **Fechas relativas** en todas partes (`3h ago`) → tooltip de hora absoluta al hover
+  (`2026-06-11 14:02 UTC`). (Sin subrayado: se retiró para alinear el timestamp con las
+  métricas mono del mismo estilo.)
 
 ---
 

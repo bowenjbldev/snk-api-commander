@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 
 export function ChartLegend({ items }: { items: { label: string; color: string }[] }) {
   return (
-    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
       {items.map((it) => (
         <span key={it.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <span style={{ width: 9, height: 9, background: it.color, flex: 'none' }} aria-hidden="true" />
@@ -40,7 +40,7 @@ export function ChartCard({
       </div>
       <div className="scns-card" style={{ padding: 16, flex: 1, display: 'flex', flexDirection: 'column' }}>
         {right && (
-          <div style={{ alignSelf: 'flex-end', marginBottom: 16 }}>
+          <div style={{ alignSelf: 'flex-start', marginBottom: 16 }}>
             {right}
           </div>
         )}

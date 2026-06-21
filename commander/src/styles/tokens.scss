@@ -86,11 +86,14 @@ body {
   text-align: right;
 }
 
+// Links carry an underline everywhere (clarity over the sober monochrome surface).
 .scns-link {
   color: var(--cds-link-primary);
-  text-decoration: none;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
   cursor: pointer;
-  &:hover { text-decoration: underline; }
 }
 
 // Link-styled <button> for keyboard-accessible name cells that open drawers/panels.
@@ -102,7 +105,18 @@ body {
   color: var(--cds-link-primary);
   cursor: pointer;
   text-align: left;
-  &:hover { text-decoration: underline; }
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+// Carbon's <Link> component defaults to no underline; underline it globally to match.
+.cds--link {
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 // Relative timestamps: Plex Mono (per the art direction) + dotted underline →
@@ -112,7 +126,6 @@ body {
   font-variant-numeric: tabular-nums;
   font-size: 12px;
   color: var(--cds-text-helper);
-  border-bottom: 1px dotted var(--cds-text-helper);
   cursor: default;
 }
 
@@ -193,6 +206,17 @@ body {
   gap: 10px;
   min-width: 0;
 }
+.scns-kpi-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.scns-kpi-icon {
+  flex: none;
+  color: var(--cds-text-helper);
+  display: inline-flex;
+}
 // Carbon label-01 treatment: small, uppercase, tracked — reads as a field label and
 // lets the value below own the visual weight.
 .scns-kpi-label {
@@ -230,6 +254,70 @@ body {
 .scns-card {
   background: var(--cds-layer);
   border: 1px solid var(--scns-card-border);
+}
+
+// ── Dense list rows — Attention required AND Recent activity share this shape ────
+// icon (status tint) · entity (mono link) · detail (fills) · value (right, mono).
+.scns-list-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  background: none;
+  border: none;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.scns-list-row:hover {
+  background: var(--cds-layer-hover, var(--cds-layer-accent));
+}
+.scns-list-tag {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 24px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.scns-list-entity {
+  flex: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cds-link-primary);
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.scns-list-detail {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--cds-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+// Right-hand value: kept deliberately quiet (mono, helper) so it matches the
+// Recent-activity timestamp — the status colour lives in the left label pill, not here.
+.scns-list-value {
+  flex: none;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--cds-text-helper);
 }
 
 // ── Drawer (424px) + detail panel (340px) ────────────────────────────────────

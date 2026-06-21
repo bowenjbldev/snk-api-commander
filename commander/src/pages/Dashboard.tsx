@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
-import { Tag, Loading } from '@carbon/react'
+import { Loading } from '@carbon/react'
+import { Activity, CheckmarkOutline, Time, PauseOutline, Warning, Money } from '@carbon/icons-react'
 import { StackedBarChart, AreaChart } from '@carbon/charts-react'
 import { useStore, useProvisionedPackages } from '../store/store'
 import { useAppTheme } from '../providers/ThemeProvider'
@@ -135,32 +136,33 @@ export function Dashboard() {
   const errOpts = useMemo(() => areaOptions(theme, { 'error %': '#fa4d56' }, '320px'), [theme])
 
   const attention = useMemo(() => {
-    const items: { tone: 'red' | 'amber'; sev: string; entity: string; desc: ReactNode; cta: string; to: string }[] = []
+    const items: { tone: Tone; label: string; entity: string; desc: ReactNode; metric: ReactNode; to: string }[] = []
     for (const q of quotas) {
       if (q.limit_value != null && q.current_value / q.limit_value > 1) {
         const pkg = packages.find((p) => p.id === q.package_id)
         items.push({
-          tone: 'red', sev: 'QUOTA OVER', entity: packageLabel(q.package_id),
-          desc: <>{q.metric_key} at {formatPercent(q.current_value / q.limit_value)} of limit</>,
-          cta: 'Review quota ->', to: pkg ? `/packages/${pkg.name}/quotas` : '/packages',
+          tone: 'red', label: 'Quota over', entity: packageLabel(q.package_id),
+          desc: <>{q.metric_key} over limit</>, metric: formatPercent(q.current_value / q.limit_value),
+          to: pkg ? `/packages/${pkg.name}/quotas` : '/packages',
         })
       }
     }
     for (const p of packages) {
       if (p.status === 'grace' && p.grace_until) {
         items.push({
-          tone: 'amber', sev: 'GRACE ENDS', entity: p.name,
-          desc: <>suspends in <GraceCountdown until={p.grace_until} /> · {p.reason}</>,
-          cta: 'Open package ->', to: `/packages/${p.name}`,
+          tone: 'amber', label: 'Grace ends', entity: p.name,
+          desc: <>{p.reason ?? 'payment overdue'}</>, metric: <GraceCountdown until={p.grace_until} mode="short" />,
+          to: `/packages/${p.name}`,
         })
       }
     }
     for (const i of invoices) {
       if (i.status === 'overdue') {
         items.push({
-          tone: 'red', sev: 'OVERDUE', entity: i.number,
-          desc: <>{formatCurrency(i.amount)} — linked {packageLabel(i.package_id)} {i.enforcement === 'suspended' ? 'suspended' : 'in grace'}</>,
-          cta: 'Open invoice ->', to: '/invoices',
+          tone: 'red', label: 'Overdue', entity: i.number,
+          desc: <>linked {packageLabel(i.package_id)} {i.enforcement === 'suspended' ? 'suspended' : 'in grace'}</>,
+          metric: formatCurrency(i.amount),
+          to: '/invoices',
         })
       }
     }
@@ -181,55 +183,26 @@ export function Dashboard() {
 
       {/* KPI row */}
       <KpiCluster columns={6}>
-        <KpiTile label="Active" value={counts.active} helper={`of ${packages.length}`} />
-        <KpiTile label="In grace" value={counts.grace} valueClass="scns-val-amber" helper="awaiting payment" />
-        <KpiTile label="Suspended" value={counts.suspended} valueClass="scns-val-red" helper="serving HTTP 402" />
+        <KpiTile label="Active" value={counts.active} helper={`of ${packages.length}`} icon={<CheckmarkOutline size={20} />} iconClass="scns-val-green" />
+        <KpiTile label="In grace" value={counts.grace} valueClass="scns-val-amber" helper="awaiting payment" icon={<Time size={20} />} iconClass="scns-val-amber" />
+        <KpiTile label="Suspended" value={counts.suspended} valueClass="scns-val-red" helper="serving HTTP 402" icon={<PauseOutline size={20} />} iconClass={counts.suspended > 0 ? 'scns-val-red' : undefined} />
         <KpiTile
           label="Requests (24h)"
           value={formatCompact(dash.requests_24h)}
           helper={<RatioTrend ratio={platform.kpis.requestsDelta} suffix="vs prior 24h" />}
+          icon={<Activity size={20} />}
         />
         <KpiTile
           label="Error rate (24h)"
           value={formatPercent(platform.kpis.errorRate, 1)}
           helper={<PointsTrend points={platform.kpis.errorRateDelta} suffix="vs prior 24h" invert />}
+          icon={<Warning size={20} />}
         />
-        <KpiTile label="MRR" value={formatCurrencyShort(dash.mrr)} />
+        <KpiTile label="MRR" value={formatCurrencyShort(dash.mrr)} icon={<Money size={20} />} />
       </KpiCluster>
 
-      {/* Attention required */}
-      <div style={{ marginTop: 32 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <span style={{ fontSize: 16, fontWeight: 600 }}>Attention required</span>
-          <Tag type="red" size="sm">{attention.length}</Tag>
-        </div>
-        <div className="scns-card">
-          {attention.length === 0 ? (
-            <EmptyState title="No issues detected" />
-          ) : (
-            attention.map((a, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => navigate(a.to)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 16, width: '100%', height: 48, padding: '0 16px',
-                  background: 'none', border: 'none', borderTop: idx ? '1px solid var(--cds-border-subtle)' : 'none',
-                  cursor: 'pointer', textAlign: 'left',
-                }}
-              >
-                <Pill tone={a.tone}>{a.sev}</Pill>
-                <span className="scns-mono" style={{ color: 'var(--cds-link-primary)', minWidth: 140 }}>{a.entity}</span>
-                <span style={{ flex: 1, fontSize: 13, color: 'var(--cds-text-secondary)' }}>{a.desc}</span>
-                <span className="scns-link" style={{ fontSize: 13 }}>{a.cta}</span>
-              </button>
-            ))
-          )}
-        </div>
-      </div>
-
       {/* Charts row */}
-      <div className="scns-charts-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, marginTop: 32 }}>
+      <div className="scns-charts-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, marginTop: 40 }}>
         <ChartCard
           title="Requests per hour"
           subtitle="last 48h, stacked by package"
@@ -254,63 +227,122 @@ export function Dashboard() {
         </ChartCard>
       </div>
 
-      {/* Recent activity */}
-      <div style={{ marginTop: 32 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
-          <span style={{ fontSize: 16, fontWeight: 600 }}>Recent activity</span>
-          <span className="scns-helper" style={{ fontSize: 13 }}>
-            state changes, last 3 days
-          </span>
-        </div>
-        <div className="scns-card">
-          {activity.length === 0 ? (
-            <EmptyState title="No recent activity" />
-          ) : (
-            activity.map((ev, idx) => (
-              <div
-                key={ev.id}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 12, height: 44, padding: '0 16px',
-                  borderTop: idx ? '1px solid var(--cds-border-subtle)' : 'none',
-                }}
-              >
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor(ev.kind), flex: 'none' }} aria-hidden="true" />
-                <span style={{ flex: 1, fontSize: 13 }}>{activitySentence(ev, packageLabel, invoiceLabel)}</span>
-                <RelativeTime iso={ev.at} />
-              </div>
-            ))
-          )}
-        </div>
+      {/* Triage: attention required + recent activity, side by side */}
+      <div className="scns-grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginTop: 40 }}>
+        {/* Attention required */}
+        <section>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <span style={{ fontSize: 16, fontWeight: 600 }}>Needs attention</span>
+            <span className="scns-helper" style={{ fontSize: 13 }}>quotas, grace &amp; billing</span>
+          </div>
+          <div className="scns-card">
+            {attention.length === 0 ? (
+              <EmptyState title="No issues detected" />
+            ) : (
+              attention.map((a, idx) => {
+                const t = toneTint(a.tone)
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => navigate(a.to)}
+                    className="scns-list-row"
+                    style={{ borderTop: idx ? '1px solid var(--cds-border-subtle)' : 'none' }}
+                  >
+                    <span className="scns-list-tag" style={{ background: t.bg, color: t.fg }}>{a.label}</span>
+                    <span className="scns-mono scns-list-entity">{a.entity}</span>
+                    <span className="scns-list-detail">{a.desc}</span>
+                    <span className="scns-list-value">{a.metric}</span>
+                  </button>
+                )
+              })
+            )}
+          </div>
+        </section>
+
+        {/* Recent activity */}
+        <section>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <span style={{ fontSize: 16, fontWeight: 600 }}>Recent activity</span>
+            <span className="scns-helper" style={{ fontSize: 13 }}>last 3 days</span>
+          </div>
+          <div className="scns-card">
+            {activity.length === 0 ? (
+              <EmptyState title="No recent activity" />
+            ) : (
+              activity.map((ev, idx) => {
+                const m = activityMeta(ev, packageLabel, invoiceLabel)
+                const t = toneTint(m.tone)
+                return (
+                  <button
+                    key={ev.id}
+                    type="button"
+                    onClick={() => navigate(m.to)}
+                    className="scns-list-row"
+                    style={{ borderTop: idx ? '1px solid var(--cds-border-subtle)' : 'none' }}
+                  >
+                    <span className="scns-list-tag" style={{ background: t.bg, color: t.fg }}>{m.label}</span>
+                    <span className="scns-mono scns-list-entity">{m.entity}</span>
+                    <span className="scns-list-detail">{m.detail}</span>
+                    <RelativeTime iso={ev.at} />
+                  </button>
+                )
+              })
+            )}
+          </div>
+        </section>
       </div>
     </div>
   )
 }
 
-function dotColor(kind: ActivityEvent['kind']): string {
-  if (kind === 'suspend') return 'var(--scns-error)'
-  if (kind === 'grace' || kind === 'quota') return 'var(--scns-warning)'
-  return 'var(--scns-success)'
+// Shared status tone for the dense list rows (Attention + Activity). The tint tokens carry both
+// themes, so the pill stays legible in g100 and g10.
+type Tone = 'red' | 'amber' | 'green' | 'blue'
+
+function toneTint(tone: Tone): { bg: string; fg: string } {
+  switch (tone) {
+    case 'red':
+      return { bg: 'var(--scns-tag-red-bg)', fg: 'var(--scns-tag-red-text)' }
+    case 'amber':
+      return { bg: 'var(--scns-amber-bg)', fg: 'var(--scns-amber-text)' }
+    case 'green':
+      return { bg: 'var(--scns-method-green-bg)', fg: 'var(--scns-method-green-text)' }
+    case 'blue':
+      return { bg: 'var(--scns-method-blue-bg)', fg: 'var(--scns-method-blue-text)' }
+  }
 }
 
-function activitySentence(
+interface ActivityMeta {
+  tone: Tone
+  label: string
+  entity: string
+  detail: string
+  to: string
+}
+
+// Maps an activity event to the same row shape Attention uses (label · entity · detail · value),
+// so both lists read identically. The label pill carries the category; tone mirrors severity.
+function activityMeta(
   ev: ActivityEvent,
   packageLabel: (id: number | undefined) => string,
   invoiceLabel: (id: number | undefined) => string,
-): ReactNode {
-  const ent = (s?: string | number) => <span className="scns-mono" style={{ color: 'var(--cds-link-primary)' }}>{s}</span>
+): ActivityMeta {
+  const pkg = packageLabel(ev.package_id)
+  const pkgTo = `/packages/${pkg}`
   switch (ev.kind) {
     case 'suspend':
-      return <>{ent(packageLabel(ev.package_id))} suspended — {ev.reason} · by {ev.by}</>
+      return { tone: 'red', label: 'Suspended', entity: pkg, detail: `${ev.reason ?? 'manual'} · by ${ev.by}`, to: pkgTo }
     case 'grace':
-      return <>{ent(packageLabel(ev.package_id))} moved to grace — {ev.reason} · by {ev.by}</>
+      return { tone: 'amber', label: 'Grace', entity: pkg, detail: `${ev.reason ?? 'payment overdue'} · by ${ev.by}`, to: pkgTo }
     case 'resume':
-      return <>{ent(packageLabel(ev.package_id))} resumed · by {ev.by}</>
+      return { tone: 'green', label: 'Resumed', entity: pkg, detail: `by ${ev.by}`, to: pkgTo }
     case 'paid':
-      return <>{ent(invoiceLabel(ev.invoice_id))} marked paid{ev.message ? ` — ${ev.message}` : ''}</>
+      return { tone: 'green', label: 'Paid', entity: invoiceLabel(ev.invoice_id), detail: ev.message ?? 'settled', to: '/invoices' }
     case 'quota':
-      return <>{ent(packageLabel(ev.package_id))} {ev.message}</>
+      return { tone: 'amber', label: 'Quota', entity: pkg, detail: ev.message ?? 'limit exceeded', to: pkgTo }
     case 'change_plan':
-      return <>{ent(packageLabel(ev.package_id))} changed plan{ev.reason ? ` to ${ev.reason.replace(/^plan:/, '')}` : ''} · by {ev.by}</>
+      return { tone: 'blue', label: 'Plan', entity: pkg, detail: `${ev.reason ? `to ${ev.reason.replace(/^plan:/, '')}` : 'updated'} · by ${ev.by}`, to: pkgTo }
   }
 }
 
@@ -353,18 +385,3 @@ function PointsTrend({ points, suffix, invert }: { points: number | null; suffix
   )
 }
 
-function Pill({ tone, children }: { tone: 'red' | 'amber'; children: ReactNode }) {
-  const bg = tone === 'red' ? 'var(--scns-tag-red-bg)' : 'var(--scns-amber-bg)'
-  const color = tone === 'red' ? 'var(--scns-tag-red-text)' : 'var(--scns-amber-text)'
-  return (
-    <span
-      className="scns-mono"
-      style={{
-        fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.4, background: bg, color,
-        padding: '3px 8px', borderRadius: 24, flex: 'none', minWidth: 92, textAlign: 'center',
-      }}
-    >
-      {children}
-    </span>
-  )
-}
