@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { Button, InlineNotification, TextInput, TextArea, Select, SelectItem, Toggle, OverflowMenu, OverflowMenuItem } from '@carbon/react'
+import { Button, InlineNotification, TextInput, TextArea, Select, SelectItem, Toggle, OverflowMenu, OverflowMenuItem, MenuButton, MenuItem, MenuItemDivider } from '@carbon/react'
 import { Box, Money, Activity, MeterAlt, Save } from '@carbon/icons-react'
 import { Breadcrumbs } from '../app/Breadcrumbs'
 import { useStore, useClient, useProvisionedPackages } from '../store/store'
@@ -84,16 +84,50 @@ export function ClientDetail() {
     <div className="scns-page">
       <Breadcrumbs />
 
-      <div style={{ minWidth: 0 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 400, margin: 0 }}>{client.name}</h1>
-        <div className="scns-helper" style={{ fontSize: 13, marginTop: 6 }}>
-          client since {formatMonthYear(client.created_at)}
-          {client.company ? ` · ${client.company}` : ''}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <h1 style={{ fontSize: 24, fontWeight: 400, margin: 0 }}>{client.name}</h1>
+            <div className="scns-title-tags">
+              <ClientStatusTag status={client.status} />
+            </div>
+          </div>
+          <div className="scns-helper" style={{ fontSize: 13, marginTop: 6 }}>
+            Customer account
+            {client.company && client.company !== client.name ? <> · {client.company}</> : null}
+            {' · since '}{formatMonthYear(client.created_at)}
+          </div>
         </div>
-        <div style={{ marginTop: 12 }}>
-          <ClientStatusTag status={client.status} />
-        </div>
+        {(canProvision || canCreateInvoice || canEdit) && (
+          <div style={{ flex: 'none' }}>
+            <MenuButton label="Actions" kind="tertiary" size="md" menuAlignment="bottom-end">
+              {canProvision && (
+                <MenuItem label="New package for this client" onClick={() => setProvisionOpen(true)} />
+              )}
+              {canCreateInvoice && <MenuItem label="New invoice" onClick={() => setInvoiceOpen(true)} />}
+              {(canProvision || canCreateInvoice) && canEdit && <MenuItemDivider />}
+              {canEdit && (
+                <MenuItem
+                  label="Delete client…"
+                  kind="danger"
+                  onClick={() => toast.info('Delete client', 'Not available yet.')}
+                />
+              )}
+            </MenuButton>
+          </div>
+        )}
       </div>
+
+      {overdue && (
+        <InlineNotification
+          kind="error"
+          lowContrast
+          hideCloseButton
+          title={`${overdue.number} · ${formatCurrency(overdue.amount)} overdue`}
+          subtitle={`${formatRelative(overdue.due_at, Date.now()).replace(' ago', '')} overdue — ${overduePackageLabel} ${overdue.enforcement === 'suspended' ? 'auto-suspended' : overdue.enforcement === 'grace' ? 'in grace' : 'flagged'}.`}
+          style={{ maxWidth: '100%', margin: '24px 0 0' }}
+        />
+      )}
 
       <div style={{ margin: '24px 0' }}>
         <KpiCluster columns={4}>
@@ -115,17 +149,6 @@ export function ClientDetail() {
         </KpiCluster>
       </div>
 
-      {overdue && (
-        <InlineNotification
-          kind="error"
-          lowContrast
-          hideCloseButton
-          title={`${overdue.number} · ${formatCurrency(overdue.amount)} overdue`}
-          subtitle={`${formatRelative(overdue.due_at, Date.now()).replace(' ago', '')} overdue — ${overduePackageLabel} ${overdue.enforcement === 'suspended' ? 'auto-suspended' : overdue.enforcement === 'grace' ? 'in grace' : 'flagged'}.`}
-          style={{ maxWidth: '100%', marginBottom: 24 }}
-        />
-      )}
-
       <div className="scns-client-grid">
         <ClientEditForm key={client.id} client={client} canEdit={canEdit} />
         <aside className="scns-client-rail">
@@ -133,15 +156,9 @@ export function ClientDetail() {
             packages={packages}
             subByPackage={subByPackage}
             onOpen={(pid) => navigate(`/packages/${pid}`)}
-            canProvision={canProvision}
-            onNewPackage={() => setProvisionOpen(true)}
+            onViewAll={() => navigate('/packages')}
           />
-          <InvoicesPanel
-            invoices={invoices}
-            canCreate={canCreateInvoice}
-            onNewInvoice={() => setInvoiceOpen(true)}
-            onViewAll={() => navigate('/invoices')}
-          />
+          <InvoicesPanel invoices={invoices} onViewAll={() => navigate('/invoices')} />
         </aside>
       </div>
 
@@ -173,25 +190,21 @@ function PackagesPanel({
   packages,
   subByPackage,
   onOpen,
-  canProvision,
-  onNewPackage,
+  onViewAll,
 }: {
   packages: Package[]
   subByPackage: Map<number, Subscription>
   onOpen: (id: number) => void
-  canProvision: boolean
-  onNewPackage: () => void
+  onViewAll: () => void
 }) {
   return (
     <Card
       title="Packages"
       bodyPadding="8px 16px 12px"
       action={
-        canProvision ? (
-          <OverflowMenu size="sm" flipped aria-label="Packages actions">
-            <OverflowMenuItem itemText="New package for this client" onClick={onNewPackage} />
-          </OverflowMenu>
-        ) : undefined
+        <OverflowMenu size="sm" flipped aria-label="Packages actions">
+          <OverflowMenuItem itemText="View all packages" onClick={onViewAll} />
+        </OverflowMenu>
       }
     >
       {packages.length === 0 ? (
@@ -227,13 +240,9 @@ function PackagesPanel({
 
 function InvoicesPanel({
   invoices,
-  canCreate,
-  onNewInvoice,
   onViewAll,
 }: {
   invoices: Invoice[]
-  canCreate: boolean
-  onNewInvoice: () => void
   onViewAll: () => void
 }) {
   return (
@@ -242,8 +251,7 @@ function InvoicesPanel({
       bodyPadding="8px 16px 12px"
       action={
         <OverflowMenu size="sm" flipped aria-label="Invoices actions">
-          {canCreate && <OverflowMenuItem itemText="New invoice" onClick={onNewInvoice} />}
-          <OverflowMenuItem hasDivider={canCreate} itemText="View all invoices" onClick={onViewAll} />
+          <OverflowMenuItem itemText="View all invoices" onClick={onViewAll} />
         </OverflowMenu>
       }
     >
@@ -365,12 +373,6 @@ function ClientEditForm({ client, canEdit }: { client: Client; canEdit: boolean 
   const menu = canEdit ? (
     <OverflowMenu size="sm" flipped aria-label="Client actions">
       <OverflowMenuItem itemText="Discard changes" disabled={!dirty} onClick={reset} />
-      <OverflowMenuItem
-        hasDivider
-        isDelete
-        itemText="Delete client…"
-        onClick={() => toast.info('Delete client', 'Not available yet.')}
-      />
     </OverflowMenu>
   ) : undefined
 

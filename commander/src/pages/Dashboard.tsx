@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
-import { Loading } from '@carbon/react'
+import { Loading, OverflowMenu, OverflowMenuItem } from '@carbon/react'
 import { Activity, CheckmarkOutline, Time, PauseOutline, Warning, Money } from '@carbon/icons-react'
 import { StackedBarChart, AreaChart, SimpleBarChart } from '@carbon/charts-react'
 import { useStore, useProvisionedPackages } from '../store/store'
@@ -218,6 +218,11 @@ export function Dashboard() {
           title="Requests per hour"
           subtitle="last 48h, stacked by package"
           right={<ChartLegend items={legendItems(groups)} />}
+          action={
+            <OverflowMenu size="sm" flipped aria-label="Chart actions">
+              <OverflowMenuItem itemText="Open in Usage" onClick={() => navigate('/usage')} />
+            </OverflowMenu>
+          }
         >
           {hasChart ? (
             <StackedBarChart data={reqData} options={reqOpts} />
@@ -226,13 +231,26 @@ export function Dashboard() {
           )}
         </ChartCard>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          <ChartCard title="Requests · 24h" subtitle="by package">
+          <ChartCard
+            title="Requests · 24h"
+            subtitle="by package"
+            action={
+              <OverflowMenu size="sm" flipped aria-label="Chart actions">
+                <OverflowMenuItem itemText="Open in Usage" onClick={() => navigate('/usage')} />
+              </OverflowMenu>
+            }
+          >
             <SimpleBarChart data={reqByPkg} options={reqByPkgOpts} />
           </ChartCard>
           <ChartCard
             title="Error rate"
             subtitle="%"
             right={<ChartLegend items={[{ label: 'error %', color: '#fa4d56' }]} />}
+            action={
+              <OverflowMenu size="sm" flipped aria-label="Chart actions">
+                <OverflowMenuItem itemText="Open in Usage" onClick={() => navigate('/usage')} />
+              </OverflowMenu>
+            }
           >
             {hasChart ? (
               <AreaChart data={errData} options={errOpts} />

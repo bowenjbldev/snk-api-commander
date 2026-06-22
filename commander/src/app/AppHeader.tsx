@@ -10,6 +10,16 @@ interface AppHeaderProps {
   onMenuToggle?: () => void
 }
 
+// Deployment environment badge. Derived from Vite's build mode so a dev server
+// shows DEV and a production build shows PROD; override with VITE_APP_ENV.
+const ENV_LABEL =
+  (import.meta.env.VITE_APP_ENV as string | undefined)?.toUpperCase() ??
+  (import.meta.env.PROD ? 'PROD' : 'DEV')
+// PROD stays neutral; anything else (DEV/STAGING) gets an amber warning tint.
+const ENV_IS_PROD = ENV_LABEL === 'PROD'
+const ENV_COLOR = ENV_IS_PROD ? '#f4f4f4' : '#f1c21b'
+const ENV_BORDER = ENV_IS_PROD ? '#6f6f6f' : '#8e6a00'
+
 // Top bar. Always g100 (dark) in BOTH themes — IBM Cloud pattern — via a nested
 // <Theme theme="g100"> zone.
 export function AppHeader({ onOpenSearch, showMenu, menuActive, onMenuToggle }: AppHeaderProps) {
@@ -29,7 +39,8 @@ export function AppHeader({ onOpenSearch, showMenu, menuActive, onMenuToggle }: 
             onClick={onMenuToggle}
           />
         )}
-        {/* Wordmark */}
+        {/* Wordmark — pinned to the SideNav width (16rem) so the divider that
+            follows lands exactly on the nav's right edge. */}
         <a
           href="/"
           onClick={(e) => e.preventDefault()}
@@ -37,6 +48,9 @@ export function AppHeader({ onOpenSearch, showMenu, menuActive, onMenuToggle }: 
             display: 'flex',
             alignItems: 'baseline',
             gap: 6,
+            width: showMenu ? undefined : '16rem',
+            flex: 'none',
+            boxSizing: 'border-box',
             padding: '0 24px 0 16px',
             fontSize: 14,
             textDecoration: 'none',
@@ -48,7 +62,7 @@ export function AppHeader({ onOpenSearch, showMenu, menuActive, onMenuToggle }: 
           <span style={{ fontWeight: 400, color: '#c6c6c6' }}>Commander</span>
         </a>
 
-        <span style={{ width: 1, height: 24, background: '#393939' }} />
+        <span style={{ width: 1, height: 24, background: '#393939', flex: 'none' }} />
 
         {/* Global search — opens the ⌘K command palette */}
         <button
@@ -98,15 +112,16 @@ export function AppHeader({ onOpenSearch, showMenu, menuActive, onMenuToggle }: 
           >
             <span
               className="scns-mono"
+              title={`Environment: ${ENV_LABEL}`}
               style={{
                 fontSize: 10,
                 letterSpacing: '1.2px',
-                color: '#f4f4f4',
-                border: '1px solid #6f6f6f',
+                color: ENV_COLOR,
+                border: `1px solid ${ENV_BORDER}`,
                 padding: '3px 8px',
               }}
             >
-              PROD
+              {ENV_LABEL}
             </span>
             <span
               style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: '#c6c6c6' }}

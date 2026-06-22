@@ -44,6 +44,8 @@ interface Props<R> {
   searchPlaceholder?: string
   filters?: ReactNode
   toolbarExtra?: ReactNode
+  /** Primary action (e.g. a "Create" button). Rendered rightmost, after the search. */
+  primaryAction?: ReactNode
   batchActions?: BatchAction[]
   rowActions?: (row: R) => ReactNode
   onRowClick?: (row: R) => void
@@ -66,6 +68,7 @@ export function DataTableShell<R>({
   searchPlaceholder = 'Search',
   filters,
   toolbarExtra,
+  primaryAction,
   batchActions,
   rowActions,
   onRowClick,
@@ -188,6 +191,7 @@ export function DataTableShell<R>({
               }}
             />
           )}
+          {primaryAction}
         </TableToolbarContent>
       </TableToolbar>
       <Table>

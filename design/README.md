@@ -191,6 +191,18 @@ aire al form multi-campo y es menos bloqueante (guía Carbon de *create flows*).
 **`ClientCreatePanel`** (sustituye al antiguo `ClientFormModal`). Pendiente migrar
 invoice/plan/provisioning al mismo patrón.
 
+**Acción primaria de tabla → siempre a la DERECHA.** El botón de crear (Create/New) de una colección
+nunca va a la izquierda intercalado entre filtros y search:
+- **Páginas top-level con `PageHeader`** (Clients, Invoices…) → en el slot `primaryAction` del
+  `PageHeader` (**arriba-derecha** de la página). El toolbar de la tabla queda solo para **filtros +
+  search**.
+- **Tablas sin `PageHeader`** (tabs de detalle, p. ej. Plans) → en el slot **`primaryAction` del
+  `DataTableShell`**, que se renderiza **después del search** (lo más a la derecha). Orden del toolbar:
+  `filtros → search → primaryAction`. (El slot `toolbarExtra` queda para controles auxiliares —
+  dropdowns/refresh — a la izquierda del search.)
+- Botón `kind="primary" size="lg"` (48px, encaja con la altura del toolbar). Carbon-canónico: la
+  acción primaria es el elemento terminal del toolbar (flujo *filtra → busca → actúa*).
+
 Convenciones del **Drawer / side panel** (`components/Drawer.tsx`, `CreatePanel`):
 - **Ancho 424px**, fijo a la derecha, portaled a `<body>` (la zona de tema vive ahí), con focus-trap;
   **Esc** y click en overlay cierran.

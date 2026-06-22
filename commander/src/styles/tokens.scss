@@ -141,6 +141,13 @@ body {
   cursor: default;
 }
 
+// Status tags shown in a detail-page title block read uppercase (the page title's "chip" line).
+.scns-title-tags .cds--tag,
+.scns-title-tags .scns-tag {
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
 .scns-helper { color: var(--cds-text-helper); }
 .scns-secondary { color: var(--cds-text-secondary); }
 
@@ -517,7 +524,6 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 84px;
   height: 20px;
   padding: 0 8px;
   border-radius: 24px;
@@ -650,6 +656,39 @@ body {
   text-transform: uppercase;
   color: var(--cds-text-secondary);
   margin: 0 0 8px;
+}
+
+// ── KV detail list (Package Overview · Details) ──────────────────────────────
+// One row per field, label left / value right, divided by hairlines.
+.scns-kvlist {
+  display: flex;
+  flex-direction: column;
+}
+.scns-kvlist__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 40px;
+  padding: 8px 0;
+  border-top: 1px solid var(--cds-border-subtle);
+}
+.scns-kvlist__row:first-child {
+  border-top: none;
+}
+.scns-kvlist__k {
+  flex: none;
+  font-size: 13px;
+  color: var(--cds-text-secondary);
+}
+.scns-kvlist__v {
+  min-width: 0;
+  font-size: 14px;
+  color: var(--cds-text-primary);
+  text-align: right;
+}
+.scns-kvlist__v--wide {
+  max-width: 75%;
 }
 
 // ── Pulsing live-tail dot ──────────────────────────────────────────────────────

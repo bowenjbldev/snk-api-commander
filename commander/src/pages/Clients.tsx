@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { Dropdown, Button } from '@carbon/react'
+import { Dropdown, Button, Tag } from '@carbon/react'
 import { Add, UserMultiple, CheckmarkOutline, Box, Money, WarningAlt, Close } from '@carbon/icons-react'
 import { useStore, useProvisionedPackages } from '../store/store'
 import { useCan } from '../store/auth'
@@ -13,6 +13,7 @@ import { RelativeTime } from '../components/RelativeTime'
 import { useFirstLoad } from '../hooks/useFirstLoad'
 import { ClientCreatePanel } from '../components/ClientCreatePanel'
 import { platformUsage } from '../lib/api'
+import { formatMonthYear, formatAbsoluteUTC } from '../lib/time'
 import { formatCurrencyShort, formatCompact } from '../lib/format'
 import type { Client, UsageSnapshot } from '../store/types'
 
@@ -224,23 +225,15 @@ export function Clients() {
       ),
     },
     {
-      key: 'email',
-      header: 'Email',
-      sortable: true,
-      sortValue: (c) => c.email,
-      render: (c) => <span className="scns-mono" style={{ fontSize: 12 }}>{c.email}</span>,
-    },
-    {
       key: 'mrr',
       header: 'MRR',
       sortable: true,
       sortValue: (c) => mrrByClient.get(c.id) ?? 0,
-      align: 'right',
-      width: 110,
+      width: 120,
       render: (c) => {
         const v = mrrByClient.get(c.id) ?? 0
         return v > 0 ? (
-          <span className="scns-num">{formatCurrencyShort(v)}</span>
+          <Tag type="cool-gray" size="sm">{formatCurrencyShort(v)}/mo</Tag>
         ) : (
           <span className="scns-num scns-helper">—</span>
         )
@@ -291,13 +284,32 @@ export function Clients() {
         )
       },
     },
+    {
+      key: 'email',
+      header: 'Email',
+      sortable: true,
+      sortValue: (c) => c.email,
+      render: (c) => <span className="scns-mono" style={{ fontSize: 12 }}>{c.email}</span>,
+    },
+    {
+      key: 'created',
+      header: 'Created',
+      sortable: true,
+      sortValue: (c) => c.created_at,
+      width: 110,
+      render: (c) => (
+        <span className="scns-reltime" title={formatAbsoluteUTC(c.created_at)}>
+          {formatMonthYear(c.created_at)}
+        </span>
+      ),
+    },
   ]
 
   return (
     <div className="scns-page">
       <PageHeader
         title="Clients"
-        subtitle={`${clients.length} clients · ${active} active`}
+        subtitle="Customer accounts, billing and package usage"
         primaryAction={
           can('create clients')
             ? { label: 'Create client', icon: Add, onClick: () => setCreateOpen(true) }

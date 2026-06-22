@@ -20,15 +20,17 @@ export function ChartCard({
   title,
   subtitle,
   right,
+  action,
   children,
 }: {
   title: string
   subtitle?: string
   right?: ReactNode
+  action?: ReactNode
   children: ReactNode
 }) {
   return (
-    <Card title={title} subtitle={subtitle} className="scns-chartcard" bodyPadding={16}>
+    <Card title={title} subtitle={subtitle} action={action} className="scns-chartcard" bodyPadding={16}>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         {right && <div style={{ alignSelf: 'flex-start', marginBottom: 16 }}>{right}</div>}
         <div style={{ flex: 1 }}>{children}</div>

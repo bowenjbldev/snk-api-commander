@@ -119,7 +119,7 @@ class CommanderQuotaMeasurerService
             }
 
             if ($state->status === CorePackageStatusEnum::Active) {
-                $message = "Cuota [{$metric->metric_key}] excedida. El servicio se suspendera si no se corrige.";
+                $message = "A usage limit was exceeded. Your service will be suspended if usage isn't reduced.";
                 $this->stateService->set(
                     CorePackageStatusEnum::Grace,
                     $reason,
@@ -135,7 +135,7 @@ class CommanderQuotaMeasurerService
             if ($state->status === CorePackageStatusEnum::Grace
                 && $state->reason === $reason
                 && $state->effectiveStatus() === CorePackageStatusEnum::Suspended) {
-                $message = "Cuota [{$metric->metric_key}] excedida y periodo de gracia agotado.";
+                $message = "A usage limit was exceeded and the grace period has ended.";
                 $this->stateService->set(
                     CorePackageStatusEnum::Suspended,
                     $reason,
