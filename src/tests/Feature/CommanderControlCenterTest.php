@@ -43,7 +43,7 @@ class CommanderControlCenterTest extends CommanderTestCase
 
         return CommanderPackageModel::create([
             'name' => 'Shop', 'label' => 'Shop', 'listing_status' => 'active',
-            'subdomain' => 'shop', 'database' => 'shop', 'status' => 'active',
+            'slug' => 'shop', 'database' => 'c_shop', 'status' => 'active',
             'client_id' => $client->id, 'changed_by' => 'operator', 'changed_at' => now(),
             'provisioned_at' => now(),
         ]);
@@ -138,9 +138,10 @@ class CommanderControlCenterTest extends CommanderTestCase
 
         $res = $this->actingAs($admin, 'sanctum')->getJson('/api/v1/logs')->assertOk();
         $res->assertJsonCount(1, 'data');
-        // Cada fila se etiqueta con el name (StudlyCase) y el subdomain del package por join.
+        // Cada fila se etiqueta con el name (StudlyCase), el slug, y el subdominio = slug del CLIENTE.
         $this->assertSame('Shop', $res->json('data.0.package'));
-        $this->assertSame('shop', $res->json('data.0.subdomain'));
+        $this->assertSame('shop', $res->json('data.0.slug'));
+        $this->assertSame('c', $res->json('data.0.subdomain')); // subdominio ES el del cliente
         $this->assertSame(200, $res->json('data.0.status'));
     }
 
@@ -173,14 +174,19 @@ class CommanderControlCenterTest extends CommanderTestCase
     {
         $admin = $this->admin();
 
-        // 'Ghostpkg' no existe en packages/: el catalogo no debe aceptar un plan para el.
+        // Ni 'Ghostpkg' (inexistente) ni 'Commander' (framework, no per-cliente) son packages de
+        // negocio desplegados bajo algún cliente -> el catálogo no acepta un plan para ellos.
         $this->actingAs($admin, 'sanctum')->postJson('/api/v1/plans', [
             'slug' => 'ghost-basic', 'package' => 'Ghostpkg', 'name' => 'Basic', 'price_monthly' => 10,
         ])->assertStatus(422)->assertJsonValidationErrors('package');
 
-        // 'Commander' si existe en disco -> pasa el guard de package desplegado.
         $this->actingAs($admin, 'sanctum')->postJson('/api/v1/plans', [
             'slug' => 'cmd-basic', 'package' => 'Commander', 'name' => 'Basic', 'price_monthly' => 10,
+        ])->assertStatus(422)->assertJsonValidationErrors('package');
+
+        // 'Shop' SÍ existe bajo un cliente (packages/Acme/Shop) -> pasa el guard de package desplegado.
+        $this->actingAs($admin, 'sanctum')->postJson('/api/v1/plans', [
+            'slug' => 'shop-basic', 'package' => 'Shop', 'name' => 'Basic', 'price_monthly' => 10,
         ])->assertStatus(201);
     }
 

@@ -36,6 +36,7 @@ class CommanderRequestLogsController extends CoreBaseApiController
         $rows = CommanderRequestLogModel::query()
             ->from('commander_request_logs as l')
             ->leftJoin('commander_packages as p', 'p.id', '=', 'l.package_id')
+            ->leftJoin('commander_clients as c', 'c.id', '=', 'p.client_id')
             ->when(isset($data['package']), fn ($q) => $q->where('p.name', $data['package']))
             ->when(isset($data['since']), fn ($q) => $q->where('l.occurred_at', '>=', $data['since']))
             ->when(isset($data['method']), fn ($q) => $q->where('l.method', strtoupper($data['method'])))
@@ -46,7 +47,8 @@ class CommanderRequestLogsController extends CoreBaseApiController
             })
             ->orderByDesc('l.occurred_at')
             ->limit($data['limit'] ?? 100)
-            ->get(['l.*', 'p.name as package', 'p.subdomain as subdomain'])
+            // El subdominio ES el del cliente (clients.slug); el slug del package va aparte.
+            ->get(['l.*', 'p.name as package', 'p.slug as slug', 'c.slug as subdomain'])
             ->all();
 
         return response()->json(['data' => $rows]);

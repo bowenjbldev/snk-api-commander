@@ -1,9 +1,9 @@
 <?php
 
-namespace Packages\{{package}}\Http\Controllers;
+namespace Packages\{{namespace}}\Http\Controllers;
 
 use Packages\Core\Http\Controllers\CoreUsersController;
 
-class {{package}}UsersController extends CoreUsersController
+class {{class}}UsersController extends CoreUsersController
 {
 }

@@ -345,7 +345,7 @@ class CommanderPackagesController extends CoreBaseApiController
             ->get()
             ->map(fn ($row) => array_merge($row->toArray(), [
                 'package' => $packageRow->name,
-                'subdomain' => $packageRow->subdomain,
+                'subdomain' => $packageRow->client?->slug, // el subdominio ES el del cliente
             ]))
             ->all();
 
@@ -382,9 +382,10 @@ class CommanderPackagesController extends CoreBaseApiController
                 ->whereNull('ended_at')
                 ->update(['ended_at' => CarbonImmutable::now()]);
 
-            // Soft: anula lo operativo, conserva el catalogo + el historial de billing (FKs siguen validas).
+            // Soft: anula lo operativo (incluida la identidad client_id/slug, que libera el par), conserva
+            // el catalogo (name/label) + el historial de billing (subscriptions/invoices via package_id).
             $packageRow->forceFill([
-                'subdomain' => null,
+                'slug' => null,
                 'database' => null,
                 'client_id' => null,
                 'subscription_id' => null,

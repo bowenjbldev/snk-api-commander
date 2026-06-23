@@ -1,10 +1,10 @@
 <?php
 
-namespace Packages\{{package}}\Providers;
+namespace Packages\{{namespace}}\Providers;
 
 use Illuminate\Support\ServiceProvider;
 
-class {{package}}ServiceProvider extends ServiceProvider
+class {{class}}ServiceProvider extends ServiceProvider
 {
     public function register(): void
     {

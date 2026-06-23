@@ -7,14 +7,22 @@ use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Composer;
 use Illuminate\Support\Str;
 use Packages\Core\Support\CoreTemplateRendererSupport;
+
+/**
+ * Scaffold de un package de negocio per-cliente, ANIDADO: packages/{Client}/{Package} con namespace
+ * Packages\{Client}\{Package}\ y clases prefijadas {Client}{Package}* (N2). Nivel 1 = framework
+ * (Core/Commander); cada otra carpeta de nivel 1 es un paraguas de cliente con sus packages dentro.
+ * La herencia entre packages (un cliente extiende el de otro) la decide el programador a mano.
+ */
 class CoreMakePackageCommand extends Command
 {
     protected $signature = 'make:package
-        {name : Package name (e.g. Analytics)}
+        {client : Cliente / paraguas (e.g. Acme)}
+        {package : Package dentro del cliente (e.g. Shop)}
         {--force : Overwrite package if it already exists}
         {--no-dump : Skip the composer dump-autoload step}';
 
-    protected $description = 'Create a new package scaffold in packages/ based on Core folder structure';
+    protected $description = 'Create a nested per-client package scaffold in packages/{Client}/{Package}';
 
     public function __construct(private readonly Filesystem $files, private readonly Composer $composer)
     {
@@ -23,20 +31,24 @@ class CoreMakePackageCommand extends Command
 
     public function handle(): int
     {
-        $package = $this->normalizePackageName((string) $this->argument('name'));
+        $client = $this->normalizeName((string) $this->argument('client'));
+        $package = $this->normalizeName((string) $this->argument('package'));
 
-        if ($package === null) {
-            $this->error('Invalid package name. Use letters and numbers (e.g. Analytics).');
+        if ($client === null || $package === null) {
+            $this->error('Invalid client/package name. Use letters and numbers (e.g. Acme Shop).');
             return self::FAILURE;
         }
 
-        if ($package === 'Core') {
-            $this->error('Package name "Core" is reserved.');
+        if (in_array($client, ['Core', 'Commander'], true)) {
+            $this->error("Client name \"{$client}\" is reserved (framework).");
             return self::FAILURE;
         }
+
+        $namespace = "{$client}\\{$package}"; // Acme\Shop  (path del namespace)
+        $class = "{$client}{$package}";       // AcmeShop    (prefijo de clase, N2)
 
         $corePath = base_path('packages/Core');
-        $targetPath = base_path("packages/{$package}");
+        $targetPath = base_path("packages/{$client}/{$package}");
 
         if (!$this->files->isDirectory($corePath)) {
             $this->error('Core package path not found: ' . $corePath);
@@ -54,12 +66,14 @@ class CoreMakePackageCommand extends Command
 
         $this->files->ensureDirectoryExists($targetPath);
         $this->cloneCoreGitkeepMarkedDirectories($corePath, $targetPath);
-        $this->writePackageFiles($package, $targetPath);
-        $this->syncComposerAutoload($package);
+        $this->writePackageFiles($namespace, $class, $targetPath);
+        $this->syncComposerAutoload($client, $package);
         $this->dumpAutoload();
 
-        $this->info("Package {$package} created at {$targetPath}");
-        $this->line("Provisionalo desde el Commander para servirlo en su subdominio (crea su BD), o migra su BD con: php artisan core:migrate --package={$package}");
+        $slug = str_replace('_', '-', Str::snake($package));
+        $sub = str_replace('_', '-', Str::snake($client));
+        $this->info("Package {$class} created at {$targetPath}");
+        $this->line("Provisiónalo desde el Commander (cliente '{$sub}' + plan del package {$package}) para servirlo en {$sub}.<BASE_DOMAIN>/api/v1/{$slug} (crea su BD).");
 
         return self::SUCCESS;
     }
@@ -86,7 +100,7 @@ class CoreMakePackageCommand extends Command
         }
     }
 
-    private function normalizePackageName(string $raw): ?string
+    private function normalizeName(string $raw): ?string
     {
         $raw = trim($raw);
         if ($raw === '') {
@@ -128,19 +142,20 @@ class CoreMakePackageCommand extends Command
         }
     }
 
-    private function writePackageFiles(string $package, string $targetPath): void
+    private function writePackageFiles(string $namespace, string $class, string $targetPath): void
     {
         $files = [
-            "/app/Providers/{$package}ServiceProvider.php" => 'provider.tpl',
-            "/app/Http/Controllers/{$package}AuthController.php" => 'auth-controller.tpl',
-            "/app/Http/Controllers/{$package}UsersController.php" => 'users-controller.tpl',
+            "/app/Providers/{$class}ServiceProvider.php" => 'provider.tpl',
+            "/app/Http/Controllers/{$class}AuthController.php" => 'auth-controller.tpl',
+            "/app/Http/Controllers/{$class}UsersController.php" => 'users-controller.tpl',
             '/routes/api.php' => 'routes-api.tpl',
-            "/database/seeders/{$package}DatabaseSeeder.php" => 'database-seeder.tpl',
+            "/database/seeders/{$class}DatabaseSeeder.php" => 'database-seeder.tpl',
             '/config/scramble.php' => 'config-scramble.tpl',
             '/config/sanctum.php' => 'config-sanctum.tpl',
         ];
         $variables = [
-            'package' => $package,
+            'namespace' => $namespace,
+            'class' => $class,
         ];
         $renderer = new CoreTemplateRendererSupport(
             $this->files,
@@ -155,7 +170,7 @@ class CoreMakePackageCommand extends Command
         }
     }
 
-    private function syncComposerAutoload(string $package): void
+    private function syncComposerAutoload(string $client, string $package): void
     {
         $composerPath = base_path('composer.json');
 
@@ -181,11 +196,11 @@ class CoreMakePackageCommand extends Command
         $composer['autoload'] ??= [];
         $composer['autoload']['psr-4'] ??= [];
 
-        $packageNamespace = "Packages\\{$package}\\";
-        $seedersNamespace = "Packages\\{$package}\\Database\\Seeders\\";
+        $packageNamespace = "Packages\\{$client}\\{$package}\\";
+        $seedersNamespace = "Packages\\{$client}\\{$package}\\Database\\Seeders\\";
 
-        $composer['autoload']['psr-4'][$packageNamespace] = "packages/{$package}/app/";
-        $composer['autoload']['psr-4'][$seedersNamespace] = "packages/{$package}/database/seeders/";
+        $composer['autoload']['psr-4'][$packageNamespace] = "packages/{$client}/{$package}/app/";
+        $composer['autoload']['psr-4'][$seedersNamespace] = "packages/{$client}/{$package}/database/seeders/";
 
         ksort($composer['autoload']['psr-4'], SORT_STRING);
 
@@ -194,7 +209,6 @@ class CoreMakePackageCommand extends Command
             json_encode($composer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL
         );
 
-        $this->line("Updated composer autoload for package {$package}.");
+        $this->line("Updated composer autoload for package {$client}/{$package}.");
     }
-
 }

@@ -4,66 +4,69 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Packages\Commander\Models\CommanderClientModel;
 use Packages\Commander\Models\CommanderPackageModel;
-use Packages\Core\Http\Middleware\CoreApplyPackageConfigMiddleware;
+use Packages\Core\Http\Middleware\CoreResolvePackageFromHostMiddleware;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\TestCase;
 
+/**
+ * El override de config global por package vive en el RESOLUTOR (cliente-primero): el subdominio es
+ * el cliente y el slug del package va en el path. El namespace de config es {cliente}.{slug}
+ * (acme.shop), cargado por el discovery desde packages/{Client}/{Package}/config/*.php.
+ */
 class CorePackageConfigOverrideTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** Corre el middleware global para un host y captura la config vista dentro del request. */
-    private function captureFor(string $host): array
+    private function provisionedPackage(string $clientSlug, string $slug): void
     {
-        $request = Request::create("https://{$host}/api/v1/x", 'GET');
+        $client = CommanderClientModel::create([
+            'slug' => $clientSlug, 'name' => strtoupper($clientSlug), 'email' => "ops@{$clientSlug}.test", 'status' => 'active',
+        ]);
+
+        CommanderPackageModel::create([
+            'name' => 'Shop', 'slug' => $slug, 'database' => null, // database null => el resolutor no conmuta BD
+            'client_id' => $client->id, 'status' => 'active', 'provisioned_at' => now(),
+        ]);
+    }
+
+    /** Corre el resolutor para (host, slug) y captura la config global vista dentro del request. */
+    private function captureFor(string $host, string $slug): array
+    {
+        $request = Request::create("https://{$host}/api/v1/{$slug}/x", 'GET');
         $seen = [];
 
-        (new CoreApplyPackageConfigMiddleware())->handle($request, function (Request $req) use (&$seen) {
+        app(CoreResolvePackageFromHostMiddleware::class)->handle($request, function () use (&$seen) {
             $seen = [
                 'app_name' => config('app.name'),
                 'session_lifetime' => config('session.lifetime'),
-                'stashed' => $req->attributes->get('core_active_package'),
             ];
 
             return response('ok');
-        });
+        }, $slug);
 
         return $seen;
     }
 
-    public function test_package_overrides_apply_on_its_subdomain(): void
+    public function test_package_overrides_apply_in_resolver(): void
     {
-        CommanderPackageModel::create(['name' => 'Demo', 'subdomain' => 'demo', 'database' => 'demo', 'status' => 'active']);
-        config(['demo.app' => ['name' => 'DemoOverride'], 'demo.session' => ['lifetime' => 999]]);
+        $this->provisionedPackage('acme', 'shop');
+        // Namespace {cliente}.{slug}: lo carga el discovery; aquí lo declaramos a mano.
+        config(['acme.shop.app' => ['name' => 'ShopOverride'], 'acme.shop.session' => ['lifetime' => 999]]);
 
-        $seen = $this->captureFor('demo.snake.test');
+        $seen = $this->captureFor('acme.snake.test', 'shop');
 
-        $this->assertSame('DemoOverride', $seen['app_name']);
+        $this->assertSame('ShopOverride', $seen['app_name']);
         $this->assertSame(999, $seen['session_lifetime']);
-        // Stashea el package para que CoreResolvePackageFromHostMiddleware lo reuse sin re-query.
-        $this->assertInstanceOf(CommanderPackageModel::class, $seen['stashed']);
     }
 
-    public function test_no_override_on_operator_host(): void
+    public function test_unprovisioned_aborts_404(): void
     {
-        $original = config('app.name');
-        CommanderPackageModel::create(['name' => 'Demo', 'subdomain' => 'demo', 'status' => 'active']);
-        config(['demo.app' => ['name' => 'DemoOverride']]);
+        config(['ghost.shop.app' => ['name' => 'GhostOverride']]); // declarado pero sin cliente/fila
 
-        $seen = $this->captureFor('commander.snake.test');
+        $this->expectException(NotFoundHttpException::class);
 
-        $this->assertSame($original, $seen['app_name']);
-        $this->assertNull($seen['stashed']);
-    }
-
-    public function test_no_override_for_unprovisioned_subdomain(): void
-    {
-        $original = config('app.name');
-        config(['ghost.app' => ['name' => 'GhostOverride']]); // declarado pero sin fila 'ghost'
-
-        $seen = $this->captureFor('ghost.snake.test');
-
-        $this->assertSame($original, $seen['app_name']);
-        $this->assertNull($seen['stashed']);
+        $this->captureFor('ghost.snake.test', 'shop');
     }
 }

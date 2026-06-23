@@ -1,10 +1,10 @@
 <?php
 
-namespace Packages\{{package}}\Database\Seeders;
+namespace Packages\{{namespace}}\Database\Seeders;
 
 use Illuminate\Database\Seeder;
 
-class {{package}}DatabaseSeeder extends Seeder
+class {{class}}DatabaseSeeder extends Seeder
 {
     public function run(): void
     {

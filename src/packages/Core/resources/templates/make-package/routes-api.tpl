@@ -1,16 +1,16 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Packages\{{package}}\Http\Controllers\{{package}}AuthController;
-use Packages\{{package}}\Http\Controllers\{{package}}UsersController;
+use Packages\{{namespace}}\Http\Controllers\{{class}}AuthController;
+use Packages\{{namespace}}\Http\Controllers\{{class}}UsersController;
 
 Route::middleware(['api'])->group(function () {
-    Route::post('auth/login', [{{package}}AuthController::class, 'login'])->middleware('throttle:login');
+    Route::post('auth/login', [{{class}}AuthController::class, 'login'])->middleware('throttle:login');
 
     Route::middleware('auth:sanctum')->group(function () {
-        Route::get('auth/me', [{{package}}AuthController::class, 'me']);
-        Route::post('auth/logout', [{{package}}AuthController::class, 'logout']);
-        Route::apiResource('users', {{package}}UsersController::class);
+        Route::get('auth/me', [{{class}}AuthController::class, 'me']);
+        Route::post('auth/logout', [{{class}}AuthController::class, 'logout']);
+        Route::apiResource('users', {{class}}UsersController::class);
     });
 });
 

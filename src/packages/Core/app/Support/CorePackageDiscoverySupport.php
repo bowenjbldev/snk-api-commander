@@ -4,6 +4,9 @@ namespace Packages\Core\Support;
 
 final class CorePackageDiscoverySupport
 {
+    /** Subdirectorios de recurso que marcan el fin del namespace del módulo. */
+    private const RESOURCE_DIRS = ['app', 'config', 'routes', 'database'];
+
     private string $packagesBasePath;
     /**
      * @var string[]|null
@@ -12,7 +15,7 @@ final class CorePackageDiscoverySupport
 
     public function __construct(string $packagesBasePath)
     {
-        $this->packagesBasePath = $packagesBasePath;
+        $this->packagesBasePath = rtrim($packagesBasePath, '/');
     }
 
     public static function fromEnvironment(string $packagesBasePath): self
@@ -25,14 +28,13 @@ final class CorePackageDiscoverySupport
      */
     public function discoverProviderClasses(): array
     {
-        $paths = $this->globSorted('/*/app/Providers/*ServiceProvider.php');
-        $paths = $this->filterPathsByLoadableModule($paths, 3, false);
+        $paths = $this->filterByLoadableModule($this->globModules('/app/Providers/*ServiceProvider.php'), false);
 
         $providers = [];
 
         foreach ($paths as $path) {
-            $module = $this->moduleFromPath($path, 3);
-            $expectedClass = $module . 'ServiceProvider';
+            $module = $this->moduleNamespace($path);            // Core | Acme\Shop
+            $expectedClass = $this->classBase($module) . 'ServiceProvider'; // AcmeShopServiceProvider
             $class = pathinfo($path, PATHINFO_FILENAME);
 
             if ($class !== $expectedClass) {
@@ -54,14 +56,13 @@ final class CorePackageDiscoverySupport
      */
     public function discoverConfigFiles(): array
     {
-        $paths = $this->globSorted('/*/config/*.php');
-        $paths = $this->filterPathsByLoadableModule($paths, 2);
+        $paths = $this->filterByLoadableModule($this->globModules('/config/*.php'), true);
 
         $configs = [];
 
         foreach ($paths as $path) {
             $fileKey = pathinfo($path, PATHINFO_FILENAME);
-            $moduleKey = strtolower($this->moduleFromPath($path, 2));
+            $moduleKey = $this->moduleConfigKey($path); // core | acme.shop
 
             // Core/config/core.php is merged explicitly by CoreServiceProvider.
             if ($moduleKey === 'core' && $fileKey === 'core') {
@@ -70,7 +71,7 @@ final class CorePackageDiscoverySupport
             // Solo Core puede escribir claves globales de Laravel (auth, cors, scramble...).
             // Con TODOS los packages cargados a la vez, permitir overrides globales desde
             // packages de negocio causaria colisiones no deterministas (gana el ultimo).
-            // Sus configs van SIEMPRE namespaced (shop.sanctum, shop.scramble...).
+            // Sus configs van SIEMPRE namespaced (acme.shop.sanctum, acme.shop.scramble...).
             $key = ($moduleKey === 'core' && $this->shouldUseGlobalConfigKey($fileKey))
                 ? $fileKey
                 : $moduleKey . '.' . $fileKey;
@@ -104,9 +105,7 @@ final class CorePackageDiscoverySupport
      */
     public function discoverRouteFiles(): array
     {
-        $paths = $this->globSorted('/*/routes/api.php');
-
-        return $this->filterPathsByLoadableModule($paths, 2);
+        return $this->filterByLoadableModule($this->globModules('/routes/api.php'), true);
     }
 
     /**
@@ -114,9 +113,7 @@ final class CorePackageDiscoverySupport
      */
     public function discoverMigrationPaths(): array
     {
-        $paths = $this->globSorted('/*/database/migrations');
-
-        return $this->filterPathsByLoadableModule($paths, 2);
+        return $this->filterByLoadableModule($this->globModules('/database/migrations'), true);
     }
 
     /**
@@ -124,13 +121,12 @@ final class CorePackageDiscoverySupport
      */
     public function discoverSeederClasses(?string $excludeClass = null): array
     {
-        $paths = $this->globSorted('/*/database/seeders/*DatabaseSeeder.php');
-        $paths = $this->filterPathsByLoadableModule($paths, 3);
+        $paths = $this->filterByLoadableModule($this->globModules('/database/seeders/*DatabaseSeeder.php'), true);
 
         $seeders = [];
 
         foreach ($paths as $path) {
-            $module = $this->moduleFromPath($path, 3);
+            $module = $this->moduleNamespace($path);
             $class = pathinfo($path, PATHINFO_FILENAME);
             $fqcn = "Packages\\{$module}\\Database\\Seeders\\{$class}";
 
@@ -146,21 +142,30 @@ final class CorePackageDiscoverySupport
         return array_values(array_unique($seeders));
     }
 
+    /** Namespace del módulo de un route file: Core | Commander | Acme\Shop. */
     public function moduleNameFromRouteFile(string $routeFilePath): string
     {
-        return $this->moduleFromPath($routeFilePath, 2);
+        return $this->moduleNamespace($routeFilePath);
     }
 
     /**
+     * Glob de un recurso en packages de framework (1 nivel: packages/Core/...) Y de negocio
+     * anidados por cliente (2 niveles: packages/Acme/Shop/...). Las carpetas paraguas de cliente
+     * (packages/Acme) no tienen recursos propios, así que no colisionan.
+     *
      * @return string[]
      */
-    private function globSorted(string $pattern): array
+    private function globModules(string $tail): array
     {
         if (!is_dir($this->packagesBasePath)) {
             return [];
         }
 
-        $paths = glob($this->packagesBasePath . $pattern) ?: [];
+        $paths = array_merge(
+            glob($this->packagesBasePath . '/*' . $tail) ?: [],
+            glob($this->packagesBasePath . '/*/*' . $tail) ?: [],
+        );
+
         sort($paths, SORT_STRING);
 
         return $paths;
@@ -170,7 +175,7 @@ final class CorePackageDiscoverySupport
      * @param string[] $paths
      * @return string[]
      */
-    private function filterPathsByLoadableModule(array $paths, int $levelsUp, bool $allowCore = true): array
+    private function filterByLoadableModule(array $paths, bool $allowCore): array
     {
         // Siempre centralizado: se cargan todos los packages. Solo se excluye Core cuando el
         // llamante lo pide (su provider/recursos se registran explicitamente, no por descubrimiento).
@@ -180,19 +185,38 @@ final class CorePackageDiscoverySupport
 
         return array_values(array_filter(
             $paths,
-            fn (string $path): bool => strcasecmp($this->moduleFromPath($path, $levelsUp), 'Core') !== 0,
+            fn (string $path): bool => strcasecmp($this->moduleNamespace($path), 'Core') !== 0,
         ));
     }
 
-    private function moduleFromPath(string $path, int $levelsUp): string
+    /** Namespace del módulo a partir de la ruta de un recurso: lo que va entre packages/ y app|config|routes|database. */
+    private function moduleNamespace(string $path): string
     {
-        $target = $path;
+        $rel = ltrim(substr($path, strlen($this->packagesBasePath)), '/');
+        $segments = explode('/', $rel);
+        $module = [];
 
-        for ($index = 0; $index < $levelsUp; $index += 1) {
-            $target = dirname($target);
+        foreach ($segments as $segment) {
+            if (in_array($segment, self::RESOURCE_DIRS, true)) {
+                break;
+            }
+
+            $module[] = $segment;
         }
 
-        return basename($target);
+        return implode('\\', $module);
+    }
+
+    /** Clave de config namespaced del módulo: Core -> core; Acme\Shop -> acme.shop. */
+    private function moduleConfigKey(string $path): string
+    {
+        return strtolower(str_replace('\\', '.', $this->moduleNamespace($path)));
+    }
+
+    /** Base de clase (sin namespace) del módulo: Core -> Core; Acme\Shop -> AcmeShop. */
+    private function classBase(string $module): string
+    {
+        return str_replace('\\', '', $module);
     }
 
     private function shouldUseGlobalConfigKey(string $fileKey): bool
@@ -241,10 +265,8 @@ final class CorePackageDiscoverySupport
     {
         if (!str_contains($key, '.')) {
             usort($paths, function (string $a, string $b): int {
-                $moduleA = $this->moduleFromPath($a, 2);
-                $moduleB = $this->moduleFromPath($b, 2);
-                $aIsCore = strcasecmp($moduleA, 'Core') === 0;
-                $bIsCore = strcasecmp($moduleB, 'Core') === 0;
+                $aIsCore = strcasecmp($this->moduleNamespace($a), 'Core') === 0;
+                $bIsCore = strcasecmp($this->moduleNamespace($b), 'Core') === 0;
 
                 if ($aIsCore !== $bIsCore) {
                     return $aIsCore ? -1 : 1;

@@ -3,10 +3,10 @@
 return [
     'info' => [
         'version' => env('API_VERSION', '1.0.0'),
-        'description' => '{{package}} API.',
+        'description' => '{{class}} API.',
     ],
     'ui' => [
-        'title' => '{{package}} documentation',
+        'title' => '{{class}} documentation',
     ],
     'rapidoc' => [
         'base' => [

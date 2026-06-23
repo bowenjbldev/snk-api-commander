@@ -59,11 +59,11 @@ class CommanderPlansController extends CoreBaseApiController
     }
 
     /**
-     * Un plan solo es provisionable si su package existe en disco. Validar aqui evita crear
-     * ofertas en el catalogo que luego revientan con 422 al pulsar Provision (mismo criterio
-     * is_dir que CommanderProvisioningController::store).
+     * Un plan oferta un TIPO lógico de package (Shop). Es provisionable si su código existe en disco
+     * bajo ALGÚN cliente (packages/<Client>/<Package>) — el código es per-cliente y anidado. El check
+     * fino (que ESTE cliente tenga el código) lo hace CommanderProvisioningController::store al provisionar.
      *
-     * @throws ValidationException si el package no esta desplegado.
+     * @throws ValidationException si ningún cliente tiene ese package en disco.
      */
     private function guardPackageDeployed(Request $request): void
     {
@@ -75,9 +75,10 @@ class CommanderPlansController extends CoreBaseApiController
 
         $studly = Str::studly($package);
 
-        if (! is_dir(base_path("packages/{$studly}"))) {
+        // packages/*/Studly: cualquier cliente que tenga ese package anidado.
+        if ((glob(base_path("packages/*/{$studly}"), GLOB_ONLYDIR) ?: []) === []) {
             throw ValidationException::withMessages([
-                'package' => ["Package code '{$studly}' is not deployed."],
+                'package' => ["Package code '{$studly}' is not deployed for any client."],
             ]);
         }
     }

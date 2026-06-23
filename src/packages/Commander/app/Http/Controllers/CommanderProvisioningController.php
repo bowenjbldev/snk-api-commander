@@ -14,6 +14,7 @@ use Packages\Commander\Models\CommanderPlanModel;
 use Packages\Commander\Models\CommanderQuotaModel;
 use Packages\Commander\Models\CommanderSubscriptionModel;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
+use Packages\Core\Support\CorePackageSelectorSupport;
 use Packages\Commander\Models\CommanderPackageModel;
 
 /**
@@ -43,7 +44,6 @@ class CommanderProvisioningController extends CoreBaseApiController
 
         $data = $request->validate([
             'plan_id' => 'required|integer|exists:commander_plans,id',
-            'subdomain' => 'nullable|string|max:255|regex:/^[a-z][a-z0-9-]{1,30}$/',
             // Existing client …
             'client_id' => 'nullable|integer|exists:commander_clients,id',
             // … or a new client object (required unless client_id given). client.slug = handle legible;
@@ -69,30 +69,42 @@ class CommanderProvisioningController extends CoreBaseApiController
         }
 
         $plan = CommanderPlanModel::findOrFail($data['plan_id']);
-        $package = Str::studly($plan->package);
-        $subdomain = $data['subdomain'] ?? Str::of($package)->snake()->replace('_', '-')->toString();
-        $database = Str::snake($package); // BD propia del package (multi-tenant), ej. Shop -> shop
+        $package = Str::studly($plan->package);          // Shop
+        $slug = CorePackageSelectorSupport::packageToSubdomain($package); // shop (segmento de path)
 
-        // El codigo del package debe existir en disco (viaja por git, no se genera aqui).
-        if (! is_dir(base_path("packages/{$package}"))) {
-            return response()->json(['error' => "Package code '{$package}' is not deployed."], 422);
+        // El cliente se resuelve PRIMERO: su slug forma la carpeta de código anidada y la BD.
+        $clientSlug = ! empty($data['client_id'])
+            ? CommanderClientModel::whereKey($data['client_id'])->value('slug')
+            : ($data['client']['slug'] ?? null);
+
+        if ($clientSlug === null) {
+            return response()->json(['error' => 'Could not resolve client slug.'], 422);
         }
 
-        // Tabla unica: la fila de catalogo del package puede existir ya (sync desde disco). El conflicto
-        // es estar YA PROVISIONADO (provisioned_at no nulo), o que el subdominio ya lo use otra instancia viva.
-        $existing = CommanderPackageModel::where('name', $package)->first();
-        if ($existing && $existing->provisioned_at !== null) {
-            return response()->json(['error' => "Package '{$package}' is already provisioned."], 409);
+        $clientStudly = Str::studly($clientSlug);
+        $database = CorePackageSelectorSupport::databaseName($clientSlug, $package); // acme_shop
+
+        // El código del package per-cliente debe existir en disco (viaja por git, no se genera aquí):
+        // packages/{Client}/{Package} (p.ej. packages/Acme/Shop).
+        if (! is_dir(base_path("packages/{$clientStudly}/{$package}"))) {
+            return response()->json(['error' => "Package code '{$clientStudly}/{$package}' is not deployed."], 422);
         }
-        if (CommanderPackageModel::query()->whereNotNull('provisioned_at')->where('subdomain', $subdomain)->exists()) {
-            return response()->json(['error' => "Subdomain '{$subdomain}' is already in use."], 409);
+
+        // Conflicto: ese cliente YA tiene una instancia viva de este package (client_id, slug).
+        if (! empty($data['client_id'])
+            && CommanderPackageModel::query()
+                ->whereNotNull('provisioned_at')
+                ->where('client_id', $data['client_id'])
+                ->where('slug', $slug)
+                ->exists()) {
+            return response()->json(['error' => "Client already has package '{$slug}' provisioned."], 409);
         }
 
         if (! empty($data['client']) && CommanderClientModel::where('slug', $data['client']['slug'])->exists()) {
             return response()->json(['error' => "Client '{$data['client']['slug']}' already exists."], 422);
         }
 
-        $commanderPackage = DB::connection('commander')->transaction(function () use ($data, $plan, $package, $subdomain, $database) {
+        $commanderPackage = DB::connection('commander')->transaction(function () use ($data, $plan, $package, $slug, $database) {
             $now = CarbonImmutable::now();
 
             $clientId = $data['client_id'] ?? null;
@@ -108,15 +120,16 @@ class CommanderProvisioningController extends CoreBaseApiController
                 $clientId = $client->id; // bigint asignado por la BD
             }
 
-            // Instancia: rellena la fila (catalogo) con lo operativo y la marca provisionada. provisioned_at
-            // != null enciende el subdominio (lo resuelve el middleware por host). Conserva label/listing_status.
-            $commanderPackage = CommanderPackageModel::firstOrNew(['name' => $package]);
+            // Instancia viva 1:1 por (cliente, package). El de-provision soft conserva la fila; re-provisionar
+            // reusa la del par (client_id, slug). provisioned_at != null la enciende (la resuelve el middleware).
+            $commanderPackage = CommanderPackageModel::firstOrNew(['client_id' => $clientId, 'slug' => $slug]);
+            $commanderPackage->name = $package;
             $commanderPackage->label = $commanderPackage->label ?? $package;
             $commanderPackage->listing_status = $commanderPackage->listing_status ?? 'active';
             $commanderPackage->forceFill([
-                'subdomain' => $subdomain,
                 'database' => $database,
                 'client_id' => $clientId,
+                'slug' => $slug,
                 'status' => 'active',
                 'reason' => null,
                 'message' => null,
@@ -169,9 +182,9 @@ class CommanderProvisioningController extends CoreBaseApiController
                 "CREATE DATABASE IF NOT EXISTS `{$database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
             );
 
-            // --package => migracion/seed de TENANT; la BD se deriva (snake(package)).
-            Artisan::call('core:migrate', ['--package' => $package, '--force' => true]);
-            Artisan::call('core:seed', ['--package' => $package, '--force' => true]);
+            // --client + --package => TENANT anidado; la BD se deriva snake(client)_snake(package).
+            Artisan::call('core:migrate', ['--client' => $clientSlug, '--package' => $package, '--force' => true]);
+            Artisan::call('core:seed', ['--client' => $clientSlug, '--package' => $package, '--force' => true]);
         }
 
         return response()->json([

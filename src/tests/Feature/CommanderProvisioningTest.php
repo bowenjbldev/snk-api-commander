@@ -15,19 +15,25 @@ class CommanderProvisioningTest extends CommanderTestCase
 {
     use RefreshDatabase;
 
-    /** Paquete fixture: provisioning solo exige is_dir(packages/<Pkg>); en sqlite no migra la BD tenant. */
+    /**
+     * Fixture: el package es per-cliente y ANIDADO. provisioning exige is_dir(packages/<Client>/<Pkg>);
+     * el cliente de los tests es 'acme' (Studly Acme), así que el código vive en packages/Acme/Demo.
+     * En sqlite no se migra la BD tenant (solo se valida la parte commander).
+     */
     private const FIXTURE_PACKAGE = 'Demo';
+    private const FIXTURE_CLIENT_DIR = 'Acme';
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        @mkdir(base_path('packages/'.self::FIXTURE_PACKAGE), 0777, true);
+        @mkdir(base_path('packages/'.self::FIXTURE_CLIENT_DIR.'/'.self::FIXTURE_PACKAGE), 0777, true);
     }
 
     protected function tearDown(): void
     {
-        @rmdir(base_path('packages/'.self::FIXTURE_PACKAGE));
+        @rmdir(base_path('packages/'.self::FIXTURE_CLIENT_DIR.'/'.self::FIXTURE_PACKAGE));
+        @rmdir(base_path('packages/'.self::FIXTURE_CLIENT_DIR));
 
         parent::tearDown();
     }
@@ -40,7 +46,7 @@ class CommanderProvisioningTest extends CommanderTestCase
         return CoreUserModel::where('email', 'admin@snake.com')->firstOrFail();
     }
 
-    /** Plan de un paquete que existe en disco (fixture Demo), para que provisioning lo de de alta. */
+    /** Plan de un tipo de package que existe en disco bajo algún cliente (fixture Acme/Demo). */
     private function plan(): CommanderPlanModel
     {
         return CommanderPlanModel::create([
@@ -68,38 +74,35 @@ class CommanderProvisioningTest extends CommanderTestCase
         // One-step: live immediately. The live instance (commander_packages) is returned flat under `package`.
         $res->assertJsonPath('package.status', 'active');
         $res->assertJsonPath('package.name', 'Demo');
-        $res->assertJsonPath('package.subdomain', 'demo');
+        $res->assertJsonPath('package.slug', 'demo');           // slug del package (path)
         $res->assertJsonPath('package.subscription.plan', 'Pro');
 
-        // Instance row (commander_packages) created + active + its own database name → subdomain is live.
-        $cp = CommanderPackageModel::where('subdomain', 'demo')->first();
+        // Instance row created + active + its own database (snake(client)_snake(package) = acme_demo).
+        $cp = CommanderPackageModel::where('slug', 'demo')->first();
         $this->assertNotNull($cp);
         $this->assertSame('active', $cp->getRawOriginal('status'));
-        $this->assertSame('demo', $cp->database); // BD propia del package
+        $this->assertSame('acme_demo', $cp->database); // BD propia: {client}_{package}
         $this->assertNotNull($cp->provisioned_at); // marcada como instancia viva
 
-        // Client created with full billing.
+        // Client created with full billing; el subdominio ES su slug.
         $client = CommanderClientModel::where('slug', 'acme')->first();
         $this->assertSame('billing@acme.com', $client->billing_email);
         $this->assertSame('ESB12345678', $client->tax_id);
         $this->assertSame('ES', $client->country);
+        $this->assertSame($client->id, $cp->client_id);
 
-        // Subscription + quotas (tabla unica) hang off the package row (1:1). El motor mide/aplica
-        // estas mismas filas — no hay tabla de metrics aparte.
+        // Subscription + quotas (tabla unica) hang off the package row (1:1).
         $this->assertNotNull($cp->subscription_id);
-        // El término de subscripción inicial es el vigente (ended_at null) y traza el plan.
         $term = $cp->subscription;
         $this->assertSame($plan->id, $term->plan_id);
         $this->assertNull($term->ended_at);
-        $this->assertSame($client->id, $cp->client_id);
         $this->assertCount(4, $cp->quotas);
         $this->assertSame(100000, (int) $cp->quotas->firstWhere('metric_key', 'requests_day')->limit_value);
         $this->assertSame('suspend', $cp->quotas->firstWhere('metric_key', 'requests_day')->on_exceed);
         $this->assertNull($cp->quotas->firstWhere('metric_key', 'disk_storage_mb')->limit_value);
 
-        // Nota: la BD del package (su base Laravel + negocio + admin) se crea con CREATE DATABASE +
-        // core:migrate --package, que sqlite no soporta; se omite en tests y se verifica
-        // en vivo (demo/blog como BDs separadas).
+        // Nota: la BD del package (base Laravel + negocio + admin) se crea con CREATE DATABASE +
+        // core:migrate --client --package, que sqlite no soporta; se omite en tests y se verifica en vivo.
     }
 
     public function test_provisioning_requires_permission(): void
@@ -121,11 +124,12 @@ class CommanderProvisioningTest extends CommanderTestCase
     public function test_provisioning_rejects_package_without_code(): void
     {
         $admin = $this->admin();
+        // Plan de 'Ghost': ningún cliente tiene packages/<Client>/Ghost en disco.
         $plan = CommanderPlanModel::create([
             'slug' => 'ghost-pro', 'package' => 'Ghost', 'name' => 'Pro', 'price_monthly' => 10,
         ]);
 
-        // 'Ghost' package has no code on disk → 422.
+        // El cliente acme no tiene packages/Acme/Ghost → 422.
         $this->actingAs($admin, 'sanctum')->postJson('/api/v1/provisioning', [
             'plan_id' => $plan->id,
             'client' => ['slug' => 'acme', 'name' => 'Acme', 'email' => 'a@a.com'],
@@ -137,15 +141,18 @@ class CommanderProvisioningTest extends CommanderTestCase
         $admin = $this->admin();
         $plan = $this->plan();
 
-        // El conflicto lo detecta una instancia YA PROVISIONADA (provisioned_at no nulo) del mismo package.
+        // Cliente con una instancia YA PROVISIONADA del mismo package (client_id, slug).
+        $client = CommanderClientModel::create(['slug' => 'acme', 'name' => 'Acme', 'email' => 'a@a.com', 'status' => 'active']);
         CommanderPackageModel::create([
             'name' => 'Demo', 'label' => 'Demo', 'listing_status' => 'active',
-            'subdomain' => 'demo', 'database' => 'demo', 'status' => 'active', 'provisioned_at' => now(),
+            'slug' => 'demo', 'database' => 'acme_demo', 'client_id' => $client->id,
+            'status' => 'active', 'provisioned_at' => now(),
         ]);
 
+        // Re-provisionar el MISMO cliente + Demo => 409 (ya tiene 'demo').
         $this->actingAs($admin, 'sanctum')->postJson('/api/v1/provisioning', [
             'plan_id' => $plan->id,
-            'client' => ['slug' => 'acme', 'name' => 'Acme', 'email' => 'a@a.com'],
+            'client_id' => $client->id,
         ])->assertStatus(409);
     }
 }

@@ -8,6 +8,12 @@
 > **Histórico:** este directorio contuvo el prototipo inicial (mockups `*.dc.html` +
 > handoff). Ese prototipo ya está superado; la app real lo implementa y lo evoluciona.
 > Aquí queda solo la especificación viva, alineada con lo que existe en `commander/`.
+>
+> ⚠️ **Modelo backend actual (2026-06-24):** cliente-primero, paquetes anidados per-cliente
+> (`packages/<Cliente>/<Paquete>`), subdominio = cliente + slug del paquete en el path, y
+> `commander_packages` como instancia viva 1:1 por `(client_id, slug)` (sin `commander_deployments`).
+> Ver [`../README.md`](../README.md). Las páginas/flujos aquí descritos siguen el modelo anterior y
+> están **pendientes de alinear** con la nueva navegación cliente→paquetes.
 
 ---
 

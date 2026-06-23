@@ -41,11 +41,11 @@ class CoreRouteServiceProvider extends ServiceProvider
     {
         $router = $this->app->make(Router::class);
 
-        // GLOBAL (pre-routing): aplica los overrides de config global del package del subdominio
-        // antes del routing y del StartSession. Se engancha en el Kernel HTTP desde Core (no se
-        // toca el skeleton bootstrap/app.php). Ver packages/{Pkg}/config/overrides.php.
-        $this->app->make(\Illuminate\Contracts\Http\Kernel::class)
-            ->prependMiddleware(\Packages\Core\Http\Middleware\CoreApplyPackageConfigMiddleware::class);
+        // El override de config por package YA NO es global pre-routing: con subdominio = cliente
+        // (varios packages comparten host), el package solo se conoce con el slug del path. El
+        // override vive ahora dentro del resolutor (CoreResolvePackageFromHostMiddleware), una vez
+        // resuelto (cliente, slug) -> package. API stateless (sin sesión), así que no necesita
+        // aplicarse antes del StartSession.
 
         $router->pushMiddlewareToGroup('api', 'throttle:api');
 
@@ -91,18 +91,30 @@ class CoreRouteServiceProvider extends ServiceProvider
             }
 
             foreach ($packageFiles as $module => $routeFile) {
-                $subdomain = CorePackageSelectorSupport::packageToSubdomain($module);
-                $isCommander = strcasecmp($module, 'Commander') === 0;
+                // Commander (operador): subdominio fijo, SIN resolutor (no es tenant).
+                if (strcasecmp($module, 'Commander') === 0) {
+                    Route::domain('commander.' . $base)
+                        ->prefix('api/v1')
+                        ->middleware(['api'])
+                        ->group($routeFile);
+                    continue;
+                }
 
-                // Solo las apps de negocio resuelven package por host. El Commander (operador)
-                // no es un tenant: sin resolutor (su contexto queda sin package activo).
-                $middleware = $isCommander
-                    ? ['api']
-                    : [CoreResolvePackageFromHostMiddleware::class, 'api'];
+                // Negocio anidado: module = Cliente\Package (p.ej. Acme\Shop). El SUBDOMINIO es el
+                // CLIENTE y el SLUG del package va en el path -> acme.{BASE}/api/v1/shop. Dos clientes
+                // con el mismo slug montan en subdominios distintos: cero colisión en el comodín.
+                $segments = explode('\\', $module);
+                if (count($segments) !== 2) {
+                    continue; // un package de negocio debe ser Cliente\Package (anidado)
+                }
+                [$clientSeg, $packageSeg] = $segments;
+                $clientSubdomain = CorePackageSelectorSupport::packageToSubdomain($clientSeg);
+                $packageSlug = CorePackageSelectorSupport::packageToSubdomain($packageSeg);
 
-                Route::domain($subdomain . '.' . $base)
-                    ->prefix('api/v1')
-                    ->middleware($middleware)
+                Route::domain($clientSubdomain . '.' . $base)
+                    ->prefix('api/v1/' . $packageSlug)
+                    // El resolutor recibe el slug del package; el cliente lo da el host.
+                    ->middleware([CoreResolvePackageFromHostMiddleware::class . ':' . $packageSlug, 'api'])
                     ->group($routeFile);
             }
         });

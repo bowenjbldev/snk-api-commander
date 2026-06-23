@@ -1,8 +1,8 @@
 # Snake Laravel API
 
-API modular sobre Laravel 13. **Un solo despliegue (una app) sirve TODOS los paquetes de negocio**, resueltos por subdominio en cada request: `{paquete}.dominio.com`. Multi-tenant por **base de datos**: una BD commander (`commander`) con el registro + el panel de operador + el metering, y **una BD propia por paquete** (`shop`, `blog`...) con sus tablas de negocio + su base Laravel (users/roles/tokens). El Commander da de alta clientes y paquetes y los provisiona en un paso (crea la BD incluida), sin scripts de host.
+API modular sobre Laravel 13. **Un solo despliegue (una app) sirve TODOS los clientes y paquetes**. El **subdominio es el CLIENTE** (`{cliente}.dominio.com`) y el **slug del paquete va en el path** (`{cliente}.dominio.com/api/v1/{paquete}/...`), resueltos en cada request. El **código de cada paquete es per-cliente y vive ANIDADO** en `packages/<Cliente>/<Paquete>` (p.ej. `packages/Acme/Shop`); un cliente puede tener varios paquetes y dos clientes pueden tener el mismo paquete lógico (`shop`) con código y BD distintos. Multi-tenant por **base de datos**: una BD commander (`commander`) con el registro + el panel de operador + el metering, y **una BD propia por cada par (cliente, paquete)** —`{cliente}_{paquete}`, p.ej. `acme_shop`— con sus tablas de negocio + su base Laravel (users/roles/tokens). El Commander da de alta clientes y paquetes y los provisiona en un paso (crea la BD incluida), sin scripts de host.
 
-> **Modelo centralizado.** Anteriormente cada paquete/cliente era un despliegue aislado con su propia BD (orquestado por un script de host). Ahora es **una app centralizada**: una sola instancia carga todos los paquetes y el paquete activo se resuelve por el `Host` de cada request (no por despliegue), conmutando a la BD de ese paquete.
+> **Modelo centralizado, cliente-primero, paquetes anidados.** El subdominio es el **cliente**; el paquete va en el path. Una sola instancia carga Core + Commander + todos los paquetes de cliente (`packages/*/*`); en cada request se resuelve el cliente por el `Host` y el paquete por el primer segmento de ruta, y se conmuta a la BD de ese par (cliente, paquete). La instancia viva de cada par es **una fila en `commander_packages`** (relación 1:1, sin tabla de deployments aparte).
 
 ## Documentación
 
@@ -10,7 +10,7 @@ El proyecto se documenta en tres ficheros, cada uno con un alcance distinto:
 
 | Documento | Alcance |
 |-----------|---------|
-| **`README.md`** (este) | El backend Laravel: arquitectura multi-tenant, resolución de paquete por subdominio, provisioning, migraciones, comandos Artisan, despliegue y entorno local. |
+| **`README.md`** (este) | El backend Laravel: arquitectura multi-tenant, resolución de cliente por subdominio + paquete por path, paquetes anidados, provisioning, migraciones, comandos Artisan, despliegue y entorno local. |
 | [`commander/README.md`](commander/README.md) | El **frontend** del Commander (SPA React + Carbon): cómo correr/testear/desplegar, el flujo de control plane, las tablas `commander_*`, auth y la arquitectura del código. |
 | [`design/README.md`](design/README.md) | El **sistema de diseño** del Commander: reglas visuales, tokens de tema (g100/g10), semántica de estado, páginas implementadas, flujos UX y correspondencia con la API. |
 
@@ -62,11 +62,11 @@ src/
 │   │   │   ├── Http/
 │   │   │   │   ├── Controllers/
 │   │   │   │   │   ├── CoreBaseApiController.php   # CRUD abstracto con permisos
-│   │   │   │   │   ├── CoreAuthController.php      # Login/Logout/Me (scoped por paquete)
+│   │   │   │   │   ├── CoreAuthController.php      # Login/Logout/Me (scoped por (cliente,paquete))
 │   │   │   │   │   ├── CoreHealthController.php    # Health check
-│   │   │   │   │   └── CoreUsersController.php     # Users REST (scoped por paquete)
+│   │   │   │   │   └── CoreUsersController.php     # Users REST (scoped por (cliente,paquete))
 │   │   │   │   └── Middleware/
-│   │   │   │       ├── CoreResolvePackageFromHostMiddleware.php  # subdominio -> paquete activo
+│   │   │   │       ├── CoreResolvePackageFromHostMiddleware.php  # cliente(host)+slug(path) -> paquete activo + BD
 │   │   │   │       ├── CoreMeteringMiddleware.php  # registra cada request (por paquete)
 │   │   │   │       └── CoreEnsureActiveMiddleware.php  # kill-switch 402 (por paquete)
 │   │   │   ├── Models/
@@ -79,10 +79,15 @@ src/
 │   │   ├── database/migrations + seeders
 │   │   └── routes/api.php       # Core: health check
 │   ├── Commander/              # Panel de operador (clientes, planes, provisioning, estado)
-│   └── Shop / Blog / Crm ...   # Paquetes de negocio (creados con make:package)
+│   ├── Acme/                   # Paraguas del cliente "acme" (NO es un paquete)
+│   │   ├── Shop/               # AcmeShop: acme.dom/api/v1/shop, BD acme_shop
+│   │   └── Blog/               # AcmeBlog
+│   └── Initech/Crm ...         # InitechCrm: initech.dom/api/v1/crm, BD initech_crm
 ├── routes/web.php
 └── tests/
 ```
+
+> **Nivel 1 = SOLO framework** (`Core`, `Commander`). Cualquier otra carpeta de nivel 1 es un **paraguas de cliente** (`Acme`, `Initech`…) y sus hijos (`Acme/Shop`) son paquetes. Clases con prefijo cliente+paquete (`AcmeShopAuthController`), namespace `Packages\Acme\Shop\`. Se crean con `make:package <Cliente> <Paquete>`.
 
 Fuera de `src/`, en la raíz del repo:
 
@@ -97,25 +102,25 @@ El backend del Commander es el paquete `src/packages/Commander/` (controllers, r
 
 ### Concepto general
 
-Monolito modular centralizado, multi-tenant por BD: **una app sirve todos los paquetes, cada uno con su propia base de datos**. Toda la logica de negocio vive en `packages/`, no en `app/`.
+Monolito modular centralizado, multi-tenant por BD: **una app sirve todos los clientes y paquetes; cada par (cliente, paquete) tiene su propia base de datos**. Toda la logica de negocio vive en `packages/<Cliente>/<Paquete>`, no en `app/`.
 
 - **Core** es el paquete base, siempre activo. Provee infraestructura: autenticacion, CRUD base, permisos, descubrimiento automatico, scaffolding, metering, cuotas y kill-switch.
-- Los paquetes de negocio se sirven cada uno en su subdominio `{paquete}.<BASE_DOMAIN>`. El paquete activo del request lo resuelve `CoreResolvePackageFromHostMiddleware` por el `Host`.
-- **Una BD por paquete** (aislamiento fisico). Conexiones: `commander` (fija, BD `commander`) + `tenant` (BD dinamica). El default es `commander`; en un subdominio de negocio, `CoreResolvePackageFromHostMiddleware` conmuta la conexion default a la BD del paquete (`packages.database`). Seguro bajo PHP-FPM (cada request es share-nothing). Las tablas de la BD commander (registro, metering, operador — todas `commander_*`) van pinneadas a `commander`; el metering sigue indexado por `package_id`. Los `users` NO llevan `package_id`: el aislamiento es por BD.
+- El **subdominio es el cliente** (`{cliente}.<BASE_DOMAIN>`) y el **slug del paquete va en el path** (`/api/v1/{slug}/...`). El paquete activo (ese par cliente x paquete) lo resuelve `CoreResolvePackageFromHostMiddleware`: el cliente por el `Host`, el slug por el argumento de middleware (lo conoce el registro de rutas).
+- **Una BD por par (cliente, paquete)** (aislamiento fisico). Conexiones: `commander` (fija, BD `commander`) + `tenant` (BD dinamica). El default es `commander`; en un subdominio de cliente, el resolutor conmuta la conexion default a la BD del paquete (`commander_packages.database`, p.ej. `acme_shop`). Seguro bajo PHP-FPM (share-nothing). Las tablas commander (`commander_*`) van pinneadas a `commander`; el metering se indexa por `package_id`. Los `users` NO llevan `package_id`: el aislamiento es por BD.
 
 ### Resolucion del paquete activo
 
-Al arrancar, `CoreServiceProvider` descubre y carga **Core + TODOS los paquetes** de `packages/` (providers, configs namespaced, rutas). El paquete activo NO se elige en boot: lo resuelve `CoreResolvePackageFromHostMiddleware` por el `Host` de cada request, y conmuta la conexion a la BD de ese paquete.
+Al arrancar, `CoreServiceProvider` descubre y carga **Core + Commander + TODOS los paquetes de cliente** (`packages/*/*`: providers, configs namespaced `cliente.paquete.*`, rutas). El paquete activo NO se elige en boot: lo resuelve `CoreResolvePackageFromHostMiddleware` en cada request —cliente por el `Host` (`commander_clients.slug`, que ES el host) + slug del paquete por su argumento de middleware → la fila viva de `commander_packages` con ese `(client_id, slug)`— y conmuta la conexion `tenant` a su BD.
 
-Las rutas de cada paquete se envuelven en `Route::domain('{sub}.<BASE_DOMAIN>')`; las de Core (health/docs) se registran globales (cualquier host). Un subdominio solo "esta vivo" si su fila en `commander_packages` esta **provisionada** (`provisioned_at` no nulo); si no, `404`.
+Las rutas de cada paquete de cliente se montan en su **subdominio concreto**: `Route::domain('{cliente}.<BASE_DOMAIN>')->prefix('api/v1/{slug}')`, derivado de la carpeta `packages/<Cliente>/<Paquete>` en boot (disk-only → `route:cache` intacto). Dos clientes con el mismo slug montan en subdominios distintos → cero colision. Core (health/docs) globales; Commander en `commander.<BASE_DOMAIN>`. Un par (cliente, slug) solo "esta vivo" si su fila en `commander_packages` esta **provisionada** (`provisioned_at` no nulo); si no, `404`. El override de config global por paquete ocurre **dentro del resolutor** (namespace `{cliente}.{slug}`).
 
-### `commander_packages`: la tabla unica de packages
+### `commander_packages`: la instancia viva 1:1 (sin tabla de deployments)
 
-**Una sola tabla**, en la BD `commander`, con **una fila por package de negocio** (los de `packages/`, sincronizados desde disco). Mezcla el **catalogo** —`label`, `description`, `listing_status`; siempre presente— con lo **operativo de la instancia viva 1:1** —`subdomain` (snake), **`database`** (su BD propia), `client_id`, `subscription_id`, **estado runtime** (`active|grace|suspended` + reason/message/grace_until) y KPIs (requests_24h, quota_health, last_seen)—, que es **null hasta provisionar**. **`provisioned_at != null`** marca la instancia viva; el middleware lee la fila por `subdomain` para saber a que BD conectar. El de-provision es **soft**: anula lo operativo y conserva la fila (catalogo) + el historial de billing. No existe una tabla de registro aparte. El metering/billing usan `package_id` (FK a `commander_packages`).
+**Una sola tabla**, en la BD `commander`, con **una fila por par (cliente, paquete) provisionado**: la instancia viva. Lleva `client_id` (FK clients) + `slug` (del path) + `name` (StudlyCase del paquete) + **`database`** (su BD propia `{cliente}_{slug}`) + `subscription_id` (puntero) + **estado runtime** (`active|grace|suspended` + reason/message/grace_until/changed_by/changed_at) + KPIs (requests_24h, quota_health, last_seen) + `provisioned_at`. **`UNIQUE(client_id, slug)`** (un cliente, un "shop"); **no hay columna `subdomain`** —el subdominio ES `clients.slug`, se llega por la relacion. `provisioned_at != null` marca la instancia viva; el resolutor la busca por `(client_id via host, slug)`. El de-provision es **soft**: anula lo operativo (incluida `slug`/`database`/`client_id`/`provisioned_at`) y conserva la fila + el historial de billing. El metering/billing/cuotas usan `package_id` (FK a `commander_packages`).
 
 ### Identidad por paquete
 
-Aislamiento **fisico**: cada paquete tiene su propia tabla `users` + `personal_access_tokens` en su propia BD; el operador, las suyas en la commander. `admin@snake.com` existe en Shop y Blog por separado (BDs distintas). Un token de un paquete simplemente **no existe** en la BD de otro → 401 automatico, sin codigo de comprobacion. No hay `users.package_id` ni middleware de aislamiento: lo da la separacion de BD.
+Aislamiento **fisico**: cada par (cliente, paquete) tiene su propia tabla `users` + `personal_access_tokens` en su propia BD; el operador, las suyas en la commander. `admin@snake.com` existe en cada BD por separado. Un token de un paquete simplemente **no existe** en la BD de otro → 401 automatico, sin codigo de comprobacion. No hay `users.package_id` ni middleware de aislamiento: lo da la separacion de BD.
 
 ### Despliegue (IONOS Ubuntu 24.04, sin Plesk)
 
@@ -123,8 +128,9 @@ Un solo despliegue sirve todo:
 
 ```
 *.dominio.com  ->  A-record wildcard  ->  el unico servidor
-   shop.dominio.com      -> paquete Shop
-   blog.dominio.com      -> paquete Blog
+   {cliente}.dominio.com -> el cliente; el paquete va en el path:
+       acme.dominio.com/api/v1/shop/...   -> paquete Acme/Shop (BD acme_shop)
+       acme.dominio.com/api/v1/blog/...   -> paquete Acme/Blog (BD acme_blog)
    commander.dominio.com -> panel de operador
    api.dominio.com       -> health/docs (Core, agnostico)
 ```
@@ -151,7 +157,7 @@ Una sola stack Docker (app + nginx + db + commander-web) replica produccion 1:1.
 2. Certificado wildcard: `bash scripts/setup-ssl.sh` (genera `*.BASE_DOMAIN` con mkcert; auto-descarga si falta; en WSL importa la CA al store de Windows con una sola ventana UAC para el candado verde).
 3. **Resolver `*.<BASE_DOMAIN>` -> 127.0.0.1** para que el navegador abra los subdominios. Ejecuta `bash scripts/dns-wildcard.sh` (configura dnsmasq donde existe; si no, imprime la config de Acrylic/hosts). Opciones:
    - **Wildcard (recomendado, 1:1 con prod):** dnsmasq (Linux/WSL) o Acrylic DNS (Windows) con `address=/snake.test/127.0.0.1`.
-   - **Simple:** anadir cada subdominio al hosts de Windows (`C:\Windows\System32\drivers\etc\hosts`): `127.0.0.1  api.snake.test commander.snake.test shop.snake.test blog.snake.test ...` (son pocos y conocidos: uno por paquete).
+   - **Simple:** anadir cada subdominio al hosts de Windows (`C:\Windows\System32\drivers\etc\hosts`): `127.0.0.1  api.snake.test commander.snake.test acme.snake.test initech.snake.test ...` (uno por cliente; el paquete va en el path).
 
 Dentro de WSL, hasta tener DNS, prueba con `curl --resolve <sub>.snake.test:8443:127.0.0.1 ...`.
 
@@ -162,18 +168,18 @@ Dentro de WSL, hasta tener DNS, prueba con `curl --resolve <sub>.snake.test:8443
 
 #### Override de una clave GLOBAL por paquete (en runtime)
 
-Si un paquete necesita un valor distinto en una clave **global** del framework, crea un config con el **nombre de esa clave del skeleton** (`app`, `session`, `cache`, `mail`...) y declara solo lo que cambia (se fusiona con `array_replace_recursive`). Para overridear `app.name`:
+Si un paquete necesita un valor distinto en una clave **global** del framework, crea un config con el **nombre de esa clave del skeleton** (`app`, `session`, `cache`, `mail`...) y declara solo lo que cambia (se fusiona con `array_replace_recursive`). Para overridear `app.name` en Acme/Shop:
 
 ```php
-// packages/Shop/config/app.php
-return ['name' => 'Shop'];
+// packages/Acme/Shop/config/app.php
+return ['name' => 'Acme Shop'];
 ```
 
-El discovery lo carga namespaced (`shop.app`); `CoreApplyPackageConfigMiddleware` (global, **pre-routing**) resuelve el paquete por `Host` y **fusiona** ese config sobre la clave global `app` **solo en los requests de ese subdominio** (FPM share-nothing: muere al acabar el request). Aplica a config leida durante el request (incluida la pre-routing como `session`), no a la leida en boot/providers.
+El discovery lo carga namespaced por `{cliente}.{slug}` (`acme.shop.app`); el **resolutor** (`CoreResolvePackageFromHostMiddleware`, que ya conoce cliente+slug) **fusiona** ese config sobre la clave global `app` **solo en los requests de ese paquete** (FPM share-nothing: muere al acabar el request). API stateless (Sanctum bearer): el override en el resolutor basta (ya no hay middleware global pre-routing).
 
 ### Rutas
 
-- Las rutas de cada paquete bajo `Route::domain('{sub}.<BASE_DOMAIN>')->prefix('api/v1')`. Las de Core (health) son globales (cualquier host). El Commander en `commander.<BASE_DOMAIN>`.
+- Cada paquete de cliente bajo `Route::domain('{cliente}.<BASE_DOMAIN>')->prefix('api/v1/{slug}')`, con el resolutor recibiendo el slug. Las de Core (health) son globales (cualquier host). El Commander en `commander.<BASE_DOMAIN>`.
 
 ## Rutas API
 
@@ -181,11 +187,11 @@ El discovery lo carga namespaced (`shop.app`); `CoreApplyPackageConfigMiddleware
 |--------|------|-------------|------|
 | `GET` | `/api/v1/` | Health check (Core, cualquier host) | - |
 | `GET` | `/api/v1/docs` | Documentacion OpenAPI (RapiDoc UI) | - |
-| `POST` | `{sub}.dom/api/v1/auth/login` | Login del paquete del subdominio (Bearer token) | - |
-| `POST` | `{sub}.dom/api/v1/auth/logout` | Logout (revoca token) | Sanctum |
-| `GET` | `{sub}.dom/api/v1/auth/me` | Usuario actual con roles y permisos | Sanctum |
-| `*` | `{sub}.dom/api/v1/users` | CRUD usuarios (scoped al paquete) | Sanctum |
-| `*` | `{sub}.dom/api/v1/{...}` | Rutas de negocio del paquete del subdominio | Sanctum |
+| `POST` | `{cliente}.dom/api/v1/{paquete}/auth/login` | Login del paquete (cliente x paquete) (Bearer token) | - |
+| `POST` | `{cliente}.dom/api/v1/{paquete}/auth/logout` | Logout (revoca token) | Sanctum |
+| `GET` | `{cliente}.dom/api/v1/{paquete}/auth/me` | Usuario actual con roles y permisos | Sanctum |
+| `*` | `{cliente}.dom/api/v1/{paquete}/users` | CRUD usuarios (scoped al paquete) | Sanctum |
+| `*` | `{cliente}.dom/api/v1/{paquete}/{...}` | Rutas de negocio del paquete | Sanctum |
 
 ## Autenticacion
 
@@ -193,44 +199,47 @@ Sanctum en modo **Bearer token exclusivamente**. No hay modo stateful ni sesione
 
 **Flujo de login:**
 
-1. `POST {sub}.dom/api/v1/auth/login` con `email` y `password`
-2. Se busca el usuario en la **BD del subdominio** (la conexion ya conmuto); el operador, en la commander
+1. `POST {cliente}.dom/api/v1/{paquete}/auth/login` con `email` y `password`
+2. Se busca el usuario en la **BD del par (cliente, paquete)** (la conexion ya conmuto); el operador, en la commander
 3. Si las credenciales son validas, se genera un token Sanctum (en esa misma BD)
 4. Se devuelve `{ token, token_type: "Bearer", user, token_id }`
 
-Un token solo vale en su subdominio: en otra BD no existe → 401. El panel de operador (`commander.<BASE_DOMAIN>`) corre sobre la commander, asi que un token de tenant tampoco entra ahi.
+Un token solo vale en su paquete: en otra BD no existe → 401. El panel de operador (`commander.<BASE_DOMAIN>`) corre sobre la commander, asi que un token de tenant tampoco entra ahi.
 
 ## Descubrimiento automatico
 
 `CoreServiceProvider` descubre y carga los recursos de Core + de TODOS los paquetes:
 
+El "módulo" es un namespace derivado de la ruta: `Core`/`Commander` (framework, 1 nivel) o `Cliente\Paquete` (negocio, 2 niveles). Cada recurso se globea en ambos niveles:
+
 | Recurso | Patron glob | Accion |
 |---------|-------------|--------|
-| Providers | `packages/*/app/Providers/*ServiceProvider.php` | Registra en el container |
-| Configs | `packages/*/config/*.php` | Namespaced (globales solo de Core) |
-| Rutas | `packages/*/routes/api.php` | `Route::domain` por subdominio (Core globales) |
-| Migraciones | `packages/*/database/migrations/` | Carga paths |
-| Seeders | `packages/*/database/seeders/*DatabaseSeeder.php` | Ejecuta con `core:seed` |
+| Providers | `packages/*/app/Providers/*` + `packages/*/*/app/Providers/*` | Registra en el container |
+| Configs | `packages/*/config/*` + `packages/*/*/config/*` | Namespaced (`acme.shop.*`; globales solo de Core) |
+| Rutas | `packages/*/routes/api.php` + `packages/*/*/routes/api.php` | `Route::domain('{cliente}')->prefix('api/v1/{slug}')` |
+| Migraciones | `…/database/migrations/` (1 y 2 niveles) | Carga paths |
+| Seeders | `…/database/seeders/*DatabaseSeeder.php` (1 y 2 niveles) | Ejecuta con `core:seed` |
 
 ## Provisioning (dar de alta un paquete)
 
-El **codigo** de un paquete viaja por git (lo programas en local con `make:package` y haces deploy). El Commander instancia un paquete **existente** en un paso, in-process:
+El **codigo** per-cliente viaja por git (lo programas en local con `make:package <Cliente> <Paquete>` y haces deploy). El Commander instancia un paquete **existente en disco** para un cliente, en un paso, in-process:
 
-`POST /provisioning` (en `commander.<BASE_DOMAIN>`, con `plan_id` + cliente nuevo/existente):
+`POST /provisioning` (en `commander.<BASE_DOMAIN>`, con `plan_id` + `client_id` existente **o** un objeto `client` nuevo, cuyo `slug` ES su host):
 
-1. Crea/resuelve cliente + suscripcion.
-2. Crea la fila `commander_packages` (la instancia: enciende el subdominio).
-3. **Crea la BD del paquete** (`CREATE DATABASE`) y corre `core:migrate --package=<X>` (base Laravel + negocio; BD = snake(package)) + `core:seed --package=<X>` (admin del paquete) **en esa BD**.
-4. Activa + escribe las cuotas del plan (en la commander).
+1. Crea/resuelve cliente + suscripcion. El `slug` del cliente forma la carpeta de código y la BD.
+2. Valida que existe el código `packages/<Cliente>/<Paquete>` (si no, 422).
+3. Crea la fila `commander_packages` (la instancia viva `(client_id, slug)`).
+4. **Crea la BD del paquete** (`CREATE DATABASE {cliente}_{slug}`) y corre `core:migrate --client=<cliente> --package=<X>` (base Laravel + negocio) + `core:seed --client=<cliente> --package=<X>` (admin) **en esa BD**.
+5. Activa + escribe las cuotas del plan sobre `package_id` (en la commander).
 
-El subdominio queda vivo al terminar. De-provisionar (`DELETE /packages/{name}`) hace `DROP DATABASE` + limpia la commander.
+El paquete queda vivo al terminar (`{cliente}.dom/api/v1/{slug}/...`). De-provisionar (`DELETE /packages/{name}`) hace `DROP DATABASE` + de-provision **soft** en la commander (conserva la fila + el historial de billing). Un plan oferta un tipo lógico (`Shop`); es provisionable si ese código existe bajo **algún** cliente (`packages/*/Shop`).
 
 ## Comandos Artisan
 
 ### Gestion de paquetes (desarrollo)
 
 ```bash
-php artisan make:package NombrePaquete       # scaffold completo de un paquete nuevo (local)
+php artisan make:package Acme Shop            # scaffold anidado packages/Acme/Shop (clases AcmeShop*)
 php artisan remove:package NombrePaquete      # eliminar
 composer dump-autoload
 ```
@@ -238,13 +247,13 @@ composer dump-autoload
 ### Base de datos
 
 ```bash
-php artisan core:migrate                  # COMMANDER: registro + metering + operador + base operador
-php artisan core:seed                     # COMMANDER: admin + permisos del operador
-php artisan core:migrate --package=Shop   # TENANT: base + negocio en la BD del paquete (BD = snake(package))
-php artisan core:seed    --package=Shop   # TENANT: admin + seeders del paquete (en su BD)
-php artisan core:migrate --rollback       # rollback de la commander
-# Regla: --package => tenant (BD=snake(package)); sin --package => commander.
-# (normalmente las BD de paquete las gestiona el provisioning del Commander, no a mano)
+php artisan core:migrate                              # COMMANDER: registro + metering + operador + base
+php artisan core:seed                                 # COMMANDER: admin + permisos del operador
+php artisan core:migrate --client=acme --package=Shop # TENANT: base + negocio (packages/Acme/Shop, BD acme_shop)
+php artisan core:seed    --client=acme --package=Shop # TENANT: admin + seeders del paquete (en su BD)
+php artisan core:migrate --rollback                   # rollback de la commander
+# Regla: --client + --package juntos => tenant (packages/Studly(client)/Package, BD snake(client)_snake(package));
+#        sin ninguno => commander. (normalmente las BD las gestiona el provisioning del Commander, no a mano)
 ```
 
 ### Control plane (estado, metering, cuotas)
@@ -268,7 +277,7 @@ Script end-to-end para poblar el Commander en local (corre contra el stack Docke
 ```bash
 bash scripts/simulate.sh                  # flujo completo: limpia BD → scaffold → provisiona →
                                           # invoices → trafico (HTTP) → pipeline → reporte
-bash scripts/simulate.sh traffic <sub> [n]# SOLO trafico autenticado por HTTP contra un subdominio
+bash scripts/simulate.sh traffic <cliente> <slug> [n] # SOLO trafico HTTP contra un (cliente, paquete)
 bash scripts/simulate.sh invoices         # SOLO genera invoices (paid/pending/overdue)
 bash scripts/simulate.sh pipeline         # SOLO rollup + quota:measure + refresh de KPIs
 bash scripts/simulate.sh report           # SOLO el reporte de estado
@@ -295,13 +304,9 @@ Overrides por entorno: `ADMIN_EMAIL` / `ADMIN_PASSWORD` (operador), `SCENARIO=sh
 
 ### Generadores package-aware
 
-Todos los `make:*` soportan `--package`:
-
-```bash
-php artisan make:model MiModelo --package=Shop
-php artisan make:controller MiController --package=Shop
-php artisan make:migration create_products_table --package=Shop
-```
+`make:package <Cliente> <Paquete>` scaffolda el paquete anidado. Los demás `make:*` (model,
+controller, migration…) aún esperan `--package` plano (`packages/<Paquete>`); para el modelo
+anidado, créalos a mano dentro de `packages/<Cliente>/<Paquete>/...` o adáptalos a `--client` (pendiente).
 
 ## CoreBaseApiController
 
@@ -324,31 +329,34 @@ class MiController extends CoreBaseApiController
 
 ## Convencion de un paquete
 
-**Cada clase lleva el nombre del paquete como prefijo** (StudlyCase): en `MiPaquete` →
-`MiPaqueteClientModel`, `MiPaqueteAuthController`, `MiPaqueteServiceProvider`,
-`MiPaqueteQuotaMeasurerService`, etc. Aplica a models, controllers, providers, services,
-commands y seeders. Asi el nombre del fichero/clase identifica sin ambiguedad el paquete en
-el editor (Core → `Core*`, Commander → `Commander*`). Los generadores `make:*` ya scaffolan
-con el prefijo a partir de `--package`.
+Paquetes de negocio **anidados por cliente** `packages/<Cliente>/<Paquete>`, namespace
+`Packages\<Cliente>\<Paquete>\`. **Cada clase lleva el prefijo cliente+paquete (N2)**: en
+`packages/Acme/Shop` → `AcmeShopAuthController`, `AcmeShopServiceProvider`,
+`AcmeShopDatabaseSeeder`, etc. Asi el nombre del fichero identifica cliente+paquete sin
+ambiguedad en el editor (framework: Core → `Core*`, Commander → `Commander*`). `make:package
+<Cliente> <Paquete>` scaffolda con el prefijo. Un paquete puede `extends` el de otro cliente
+(decisión manual del programador).
 
 ```
-packages/MiPaquete/
+packages/Acme/Shop/
 ├── app/
-│   ├── Providers/MiPaqueteServiceProvider.php
+│   ├── Providers/AcmeShopServiceProvider.php
 │   ├── Http/Controllers/
-│   │   ├── MiPaqueteAuthController.php     # Extiende CoreAuthController
-│   │   └── MiPaqueteUsersController.php    # Extiende CoreUsersController
+│   │   ├── AcmeShopAuthController.php      # Extiende CoreAuthController
+│   │   └── AcmeShopUsersController.php     # Extiende CoreUsersController
 │   ├── Models/  Services/  Jobs/
 ├── config/scramble.php   # (opcional) docs
-├── database/migrations + seeders/MiPaqueteDatabaseSeeder.php
+├── database/migrations + seeders/AcmeShopDatabaseSeeder.php
 └── routes/api.php        # auth (heredada) + negocio
 ```
 
 ## Migraciones
 
 - **Core** (`packages/Core/database/migrations/`, primer nivel): solo la **base Laravel**, que corre en la commander (para el operador) Y en CADA BD de paquete: roles/permisos (Spatie), schema base (`users`, `sessions`, `cache`, `jobs`...), tokens Sanctum.
-- **Commander** (`packages/Commander/database/migrations/`, tablas `commander_*`): la **tabla única `commander_packages`** —una fila por package: catálogo (label/description/listing_status) + instancia viva 1:1 (cliente, suscripción, estado, KPIs) cuando está provisionada; no existen tablas `commander_deployments` ni `commander_registered_packages` separadas— + el metering (`commander_request_logs`, `commander_usage_rollups`, por `package_id`) + el resto del panel del operador (`commander_clients`, `commander_subscriptions`, `commander_invoices`, `commander_quotas` —tabla única de cuotas: el panel edita límites/política y el motor mide/aplica sobre la misma fila—, `commander_activity_events`...). Solo en la BD `commander`.
-- **Negocio**: `packages/{Pkg}/database/migrations/` (solo en la BD del paquete).
+- **Commander** (`packages/Commander/database/migrations/`, tablas `commander_*`): la **tabla única `commander_packages`** —la instancia viva 1:1 por par (cliente, paquete): `client_id` + `slug` + `name` + `database` + suscripción + estado + KPIs + `provisioned_at`, con `UNIQUE(client_id, slug)` (sin columna `subdomain`); **no existe tabla `commander_deployments`**— + el metering (`commander_request_logs`, `commander_usage_rollups`, por `package_id`) + el resto del panel (`commander_clients` —su `slug` ES el host del cliente—, `commander_subscriptions`, `commander_invoices`, `commander_quotas` —tabla única: el panel edita límites/política y el motor mide/aplica sobre la misma fila—, `commander_activity_events`...). Solo en la BD `commander`.
+- **Negocio**: `packages/<Cliente>/<Paquete>/database/migrations/` (solo en la BD del paquete).
+
+`core:migrate` (sin args) corre base + Commander en la BD `commander`; el provisioning corre `core:migrate --client=<cliente> --package=<X>` (base + negocio) en la BD del paquete. Regla: `--client` + `--package` juntos ⟹ tenant (BD `{cliente}_{paquete}`); sin ninguno ⟹ commander.
 
 `core:migrate` (sin `--package`) corre la base + las del Commander en la BD `commander`; el provisioning corre `core:migrate --package=<X>` (base + negocio) en la BD del paquete. Regla: `--package` ⟹ tenant (BD = snake(package)); sin `--package` ⟹ commander.
 
@@ -405,4 +413,4 @@ composer test    # tests
 
 ## Documentacion API
 
-`{sub}.dom/api/v1/docs` (RapiDoc UI, Scramble) y la spec en `/api/v1/docs.json`.
+`{cliente}.dom/api/v1/{paquete}/docs` (RapiDoc UI, Scramble) y la spec en `/api/v1/docs.json` (Core, global).

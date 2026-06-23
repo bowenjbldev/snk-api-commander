@@ -17,7 +17,9 @@ return new class extends Migration {
     {
         Schema::create('commander_packages', function (Blueprint $table) {
             $table->id();
-            $table->string('name', 100)->unique(); // StudlyCase, = directorio en packages/ (clave de negocio)
+            // StudlyCase del package dentro del cliente (p.ej. Shop). NO único global: dos clientes
+            // pueden tener su propio "Shop" (packages/Acme/Shop, packages/Initech/Shop).
+            $table->string('name', 100);
 
             // ── Catalogo (registro): existe siempre, sincronizado desde disco; metadatos del operador ──
             $table->string('label')->nullable();
@@ -25,9 +27,11 @@ return new class extends Migration {
             $table->string('listing_status', 16)->default('active'); // active|inactive (visible en catalogo)
 
             // ── Operativo (instancia viva): nullable hasta provisionar; el de-provision lo anula ──
-            $table->string('subdomain', 100)->nullable()->unique(); // snake-case, = host {sub}.{BASE_DOMAIN}
-            $table->string('database', 64)->nullable();              // BD del package (multi-tenant)
+            // El CLIENTE (client_id -> clients.slug) ES el subdominio del host; el slug del package va
+            // en el path. URL: {client.slug}.{BASE_DOMAIN}/api/v1/{slug}. BD: {client.slug}_{slug}.
             $table->foreignId('client_id')->nullable()->constrained('commander_clients')->restrictOnDelete();
+            $table->string('slug', 100)->nullable();    // snake-case del package (segmento de path)
+            $table->string('database', 64)->nullable(); // BD del package: snake(client.slug)_snake(slug)
             // Enlace operativo al subscription activo. Sin FK para evitar el ciclo:
             // commander_subscriptions.package_id es la relacion autoritativa y si va constrained.
             $table->unsignedBigInteger('subscription_id')->nullable();
@@ -43,6 +47,9 @@ return new class extends Migration {
             $table->timestamp('provisioned_at')->nullable(); // marca la instancia viva (null == solo catalogo)
             $table->timestamps();
 
+            // Una instancia viva por (cliente, package): el resolutor llega al cliente por el host
+            // (clients.slug) y filtra por slug del package. Un cliente, un "shop".
+            $table->unique(['client_id', 'slug']);
             $table->index('subscription_id');
             $table->index('provisioned_at');
         });

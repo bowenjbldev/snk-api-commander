@@ -1,11 +1,11 @@
 <?php
 
-namespace Packages\{{package}}\Http\Controllers;
+namespace Packages\{{namespace}}\Http\Controllers;
 
 use Dedoc\Scramble\Attributes\Group;
 use Packages\Core\Http\Controllers\CoreAuthController;
 
 #[Group('Auth')]
-class {{package}}AuthController extends CoreAuthController
+class {{class}}AuthController extends CoreAuthController
 {
 }

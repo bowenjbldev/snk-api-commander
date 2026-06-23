@@ -30,16 +30,16 @@
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/",
             "Packages\\": "packages/",
-            "Packages\\Blog\\": "packages/Blog/app/",
-            "Packages\\Blog\\Database\\Seeders\\": "packages/Blog/database/seeders/",
+            "Packages\\Acme\\Blog\\": "packages/Acme/Blog/app/",
+            "Packages\\Acme\\Blog\\Database\\Seeders\\": "packages/Acme/Blog/database/seeders/",
+            "Packages\\Acme\\Shop\\": "packages/Acme/Shop/app/",
+            "Packages\\Acme\\Shop\\Database\\Seeders\\": "packages/Acme/Shop/database/seeders/",
             "Packages\\Commander\\": "packages/Commander/app/",
             "Packages\\Commander\\Database\\Seeders\\": "packages/Commander/database/seeders/",
             "Packages\\Core\\": "packages/Core/app/",
             "Packages\\Core\\Database\\Seeders\\": "packages/Core/database/seeders/",
-            "Packages\\Crm\\": "packages/Crm/app/",
-            "Packages\\Crm\\Database\\Seeders\\": "packages/Crm/database/seeders/",
-            "Packages\\Shop\\": "packages/Shop/app/",
-            "Packages\\Shop\\Database\\Seeders\\": "packages/Shop/database/seeders/"
+            "Packages\\Initech\\Crm\\": "packages/Initech/Crm/app/",
+            "Packages\\Initech\\Crm\\Database\\Seeders\\": "packages/Initech/Crm/database/seeders/"
         }
     },
     "autoload-dev": {

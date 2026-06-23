@@ -10,6 +10,14 @@ API** (`src/packages/Commander`). In production it is served at `commander.<BASE
 
 > Design system reference (rules, pages, flows): [`../design/README.md`](../design/README.md).
 
+> ⚠️ **Modelo backend actual (2026-06-24): cliente-primero, paquetes anidados.** El backend pasó a
+> **subdominio = cliente**, **slug del paquete en el path** (`{cliente}.dom/api/v1/{slug}`), código
+> per-cliente anidado `packages/<Cliente>/<Paquete>`, y `commander_packages` como **instancia viva 1:1
+> por `(client_id, slug)`** (sin `commander_deployments`, sin columna `subdomain`). Ver
+> [`../README.md`](../README.md). **Esta SPA aún refleja el modelo anterior (subdominio = paquete) y
+> está pendiente de alinear** — su trabajo en curso quedó en `git stash`. Tómese como referencia de
+> UI/flujo, no como contrato de datos vigente.
+
 ## Run
 
 ```bash

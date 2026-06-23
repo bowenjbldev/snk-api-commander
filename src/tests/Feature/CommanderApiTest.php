@@ -56,10 +56,11 @@ class CommanderApiTest extends CommanderTestCase
             'email' => 'it@kestrel.test', 'status' => 'active',
         ]);
 
-        // Tabla unica: la fila es a la vez catalogo e instancia viva (provisioned_at no nulo). Plana.
+        // Instancia viva 1:1 por (cliente, package): el subdominio ES el del cliente (kestrel), el slug
+        // del package va en el path. Plana (provisioned_at no nulo).
         $package = CommanderPackageModel::create([
             'name' => 'TrackingApi', 'label' => 'TrackingApi', 'listing_status' => 'active',
-            'subdomain' => 'kestrel-track', 'database' => 'kestrel_track',
+            'slug' => 'tracking-api', 'database' => 'kestrel_tracking_api',
             'client_id' => $client->id, 'status' => 'grace',
             'reason' => 'payment_overdue', 'message' => null,
             'grace_until' => now()->addHours(48), 'changed_by' => 'operator', 'changed_at' => now(),
@@ -80,7 +81,8 @@ class CommanderApiTest extends CommanderTestCase
 
         // La fila unificada llega plana (identidad + estado + relaciones), no anidada bajo `package`.
         $this->assertSame('TrackingApi', $body['name']);
-        $this->assertSame('kestrel-track', $body['subdomain']);
+        $this->assertSame('tracking-api', $body['slug']);            // slug del package (path)
+        $this->assertSame('kestrel', $body['client']['slug']);      // el subdominio ES el del cliente
         $this->assertSame('grace', $body['status']);
         $this->assertSame('payment_overdue', $body['reason']);
         $this->assertNotNull($body['grace_until']);
@@ -98,7 +100,7 @@ class CommanderApiTest extends CommanderTestCase
         $client = CommanderClientModel::create(['slug' => 'c', 'name' => 'C', 'email' => 'c@c.test', 'status' => 'active']);
         $package = CommanderPackageModel::create([
             'name' => 'Shop', 'label' => 'Shop', 'listing_status' => 'active',
-            'subdomain' => 'shop', 'database' => 'shop',
+            'slug' => 'shop', 'database' => 'c_shop',
             'client_id' => $client->id, 'status' => 'active', 'provisioned_at' => now(),
         ]);
 
@@ -125,7 +127,7 @@ class CommanderApiTest extends CommanderTestCase
         $client = CommanderClientModel::create(['slug' => 'c', 'name' => 'C', 'email' => 'c@c.test', 'status' => 'active']);
         $package = CommanderPackageModel::create([
             'name' => 'Shop', 'label' => 'Shop', 'listing_status' => 'active',
-            'subdomain' => 'shop', 'database' => 'shop',
+            'slug' => 'shop', 'database' => 'c_shop',
             'client_id' => $client->id, 'status' => 'active', 'provisioned_at' => now(),
         ]);
         CommanderQuotaModel::create([
@@ -152,7 +154,7 @@ class CommanderApiTest extends CommanderTestCase
         $fresh = CommanderPackageModel::find($package->id);
         $this->assertNotNull($fresh);                 // la fila persiste (catalogo)
         $this->assertNull($fresh->provisioned_at);    // ya no es instancia viva
-        $this->assertNull($fresh->subdomain);
+        $this->assertNull($fresh->slug);              // identidad (client_id, slug) liberada
         $this->assertNull($fresh->getRawOriginal('client_id'));
         $this->assertNull($fresh->getRawOriginal('subscription_id'));
         $this->assertSame('Shop', $fresh->label);     // catalogo conservado

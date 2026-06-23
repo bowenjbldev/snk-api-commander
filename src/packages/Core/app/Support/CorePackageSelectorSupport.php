@@ -7,12 +7,26 @@ use Illuminate\Support\Str;
 final class CorePackageSelectorSupport
 {
     /**
-     * StudlyCase package name -> subdominio snake con guiones (MiPaquete -> mi-paquete).
-     * Debe coincidir con el provisioning del Commander.
+     * StudlyCase package name -> slug snake con guiones (MiPaquete -> mi-paquete). Sirve para el
+     * slug del package en el path Y para el subdominio del cliente. Debe coincidir con el provisioning.
      */
     public static function packageToSubdomain(string $package): string
     {
         return str_replace('_', '-', Str::snake($package));
+    }
+
+    /**
+     * Nombre de la BD del package anidado: snake(client.slug)_snake(package). Los guiones del slug
+     * pasan a guion_bajo (MySQL no admite guiones en nombres de BD). Ej.: (acme, Shop) -> acme_shop.
+     */
+    public static function databaseName(string $clientSlug, string $package): string
+    {
+        return self::dbSlug($clientSlug) . '_' . self::dbSlug($package);
+    }
+
+    private static function dbSlug(string $value): string
+    {
+        return str_replace('-', '_', Str::snake($value));
     }
 
     /**

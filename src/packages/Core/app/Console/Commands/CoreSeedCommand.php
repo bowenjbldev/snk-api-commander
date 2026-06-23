@@ -7,15 +7,17 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Packages\Core\Database\Seeders\CorePackagesDatabaseSeeder;
+use Packages\Core\Support\CorePackageSelectorSupport;
 
 /**
- * Igual que core:migrate: --package -> TENANT (BD = snake(package)); sin --package -> COMMANDER
- * (operador: seeders de Core + Commander en la BD commander).
+ * Igual que core:migrate: --client + --package -> TENANT (package anidado, BD
+ * snake(client)_snake(package)); sin ambos -> COMMANDER (operador: seeders de Core + Commander).
  */
 class CoreSeedCommand extends Command
 {
     protected $signature = 'core:seed
-        {--package= : Package -> TENANT (BD = snake(package)). Sin --package = COMMANDER (operador).}
+        {--client= : Cliente (slug) del TENANT. Requiere --package.}
+        {--package= : Package del TENANT (StudlyCase). Requiere --client. Sin ambos = COMMANDER.}
         {--class= : Specific seeder class to run}
         {--force : Force the operation to run in production}';
 
@@ -23,13 +25,25 @@ class CoreSeedCommand extends Command
 
     public function handle(): int
     {
-        $package = $this->resolvePackage();
+        $client = trim((string) $this->option('client')) ?: null;
+        $package = trim((string) $this->option('package')) ?: null;
 
-        if ($package !== null) {
+        if ($client !== null || $package !== null) {
+            if ($client === null || $package === null) {
+                $this->fail('TENANT requiere --client Y --package. Sin ambos => commander.');
+            }
+
+            $clientStudly = Str::studly($client);
+            $packageStudly = Str::studly($package);
+
+            if (! is_dir(base_path("packages/{$clientStudly}/{$packageStudly}"))) {
+                $this->fail("Package [{$clientStudly}/{$packageStudly}] no existe en packages/.");
+            }
+
             $connection = 'tenant';
-            config(['database.connections.tenant.database' => Str::snake($package)]);
+            config(['database.connections.tenant.database' => CorePackageSelectorSupport::databaseName($client, $package)]);
             DB::purge('tenant');
-            $target = $package;
+            $target = "{$clientStudly}\\{$packageStudly}"; // namespace del módulo: Acme\Shop
         } else {
             $connection = 'commander';
             $target = 'Commander'; // el operador vive en la commander
@@ -52,23 +66,5 @@ class CoreSeedCommand extends Command
         CorePackagesDatabaseSeeder::$targetPackage = null;
 
         return self::SUCCESS;
-    }
-
-    /** --package validado (StudlyCase + existe en disco), o null = commander. */
-    private function resolvePackage(): ?string
-    {
-        $raw = trim((string) $this->option('package'));
-
-        if ($raw === '') {
-            return null;
-        }
-
-        $package = Str::studly($raw);
-
-        if (! is_dir(base_path("packages/{$package}"))) {
-            $this->fail("Package [{$package}] no existe en packages/.");
-        }
-
-        return $package;
     }
 }

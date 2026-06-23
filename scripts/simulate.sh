@@ -4,25 +4,27 @@
 #   limpiar BD  ->  scaffold packages  ->  provisionar (cuotas variadas)
 #   ->  invoices (estados variados)  ->  trafico  ->  pipeline  ->  reporte
 #
-# Unifica el antiguo simulate-traffic.sh (el generador de trafico queda como
-# el subcomando `traffic`).
+# Modelo CLIENTE-PRIMERO, packages ANIDADOS por cliente: el subdominio es el
+# CLIENTE ({client}.{BASE_DOMAIN}) y el slug del package va en el path
+# (/api/v1/{slug}). El codigo vive en packages/{Client}/{Package} y cada par
+# (cliente, package) corre en su propia BD {client}_{slug}.
 #
 # Uso:
-#   bash scripts/simulate.sh                  # flujo completo (spec por defecto)
-#   bash scripts/simulate.sh traffic <sub> [n]# SOLO trafico via HTTP (ex simulate-traffic.sh)
-#   bash scripts/simulate.sh invoices         # SOLO generar invoices
-#   bash scripts/simulate.sh pipeline         # SOLO rollup + measure + refresh
-#   bash scripts/simulate.sh volume [filas]   # bulk-seed masivo (default 100000/package) en 48h
-#   bash scripts/simulate.sh report           # SOLO el reporte de estado
+#   bash scripts/simulate.sh                     # flujo completo (spec por defecto)
+#   bash scripts/simulate.sh traffic <cli> <slug> [n]  # SOLO trafico HTTP a un deploy
+#   bash scripts/simulate.sh invoices            # SOLO generar invoices
+#   bash scripts/simulate.sh pipeline            # SOLO rollup + measure + refresh
+#   bash scripts/simulate.sh volume [filas]      # bulk-seed masivo (default 100000/package)
+#   bash scripts/simulate.sh report              # SOLO el reporte de estado
 #
 # Overrides por entorno:
 #   ADMIN_EMAIL / ADMIN_PASSWORD   credenciales del operador (commander)
 #   SCENARIO=shop|blog|generic     escenario de trafico (en `traffic`)
 #   DOCKER_COMPOSE="docker compose"  runner de artisan/composer/mariadb
 #
-# La spec de packages (nombre, plan, cuota req/dia, subdominio, cliente, iters)
-# se edita abajo en PACKAGES[]. El ultimo (Crm) lleva una cuota diminuta a
-# proposito para que el medidor lo mande a `grace` y veas el enforcement.
+# La spec se edita abajo en PACKAGES[] (cliente, package, plan, cuota, iters).
+# El ultimo (Initech/Crm) lleva una cuota diminuta a proposito para que el
+# medidor lo mande a `grace` y veas el enforcement.
 # -----------------------------------------------------------------------------
 set -euo pipefail
 
@@ -42,12 +44,18 @@ artisan()  { $DC exec -T app php artisan "$@"; }
 composer_() { $DC exec -T app composer "$@"; }
 dbq()      { $DC exec -T db mariadb -uroot "$@"; }
 
-# name | plan-slug | q_requests_day | subdomain | client-slug | client-name | traffic-iters
+# client-slug | client-name | Package | plan-slug | q_requests_day | traffic-iters
+# El codigo vive en packages/{StudlyClient}/{Package}; URL {client}.dom/api/v1/{slug}; BD {client}_{slug}.
 PACKAGES=(
-  "Shop shop-pro   100000 shop acme    ACME-Inc 40"
-  "Blog blog-basic  50000 blog globex  Globex   30"
-  "Crm  crm-mini       50 crm  initech Initech  45"
+  "acme    ACME-Inc Shop shop-pro   100000 40"
+  "acme    ACME-Inc Blog blog-basic  50000 30"
+  "initech Initech  Crm  crm-mini       50 45"
 )
+
+# Helpers de derivacion (demo: packages de una sola palabra -> slug = minusculas).
+slug_of() { tr '[:upper:]' '[:lower:]' <<<"$1"; }                 # Shop -> shop
+studly_of() { local s="$1"; echo "$(tr '[:lower:]' '[:upper:]' <<<"${s:0:1}")${s:1}"; } # acme -> Acme
+db_of() { echo "$(slug_of "$1")_$(slug_of "$2")"; }              # (acme, Shop) -> acme_shop
 
 # ---------------------------------------------------------------- helpers JSON
 jval() { # jval <json> <key>
@@ -62,12 +70,12 @@ except Exception: print('')" 2>/dev/null <<<"$1" || true
 hr() { printf '%s\n' "------------------------------------------------------------"; }
 
 # ------------------------------------------------------------------ trafico
-# Genera trafico autenticado contra un deploy (tenant) para alimentar el
-# metering. El escenario se elige por subdominio (shop|blog) o SCENARIO=...
-run_traffic() { # run_traffic <sub> <iter>
-  local SUB="$1" ITER="${2:-40}"
-  local FQDN="$SUB.$BASE_DOMAIN"
-  local BASE="https://$FQDN:$PORT/api/v1"
+# Genera trafico autenticado contra un deploy (cliente x package) para alimentar
+# el metering. URL: {client}.{BASE}/api/v1/{slug}. Escenario por slug o SCENARIO=.
+run_traffic() { # run_traffic <client> <slug> <iter>
+  local CLI="$1" SLUG="$2" ITER="${3:-40}"
+  local FQDN="$CLI.$BASE_DOMAIN"
+  local BASE="https://$FQDN:$PORT/api/v1/$SLUG"
   local CURL=(curl -sk --resolve "$FQDN:$PORT:127.0.0.1")
   local TALLY; TALLY="$(mktemp)"
   local TOKEN=""
@@ -82,13 +90,13 @@ run_traffic() { # run_traffic <sub> <iter>
   }
   rnd() { echo $(( RANDOM % $1 )); }
 
-  echo "==> [$SUB] login $EMAIL @ $BASE"
+  echo "==> [$CLI/$SLUG] login $EMAIL @ $BASE"
   local LOGIN; LOGIN="$("${CURL[@]}" -X POST "$BASE/auth/login" -H 'Content-Type: application/json' \
       -H 'Accept: application/json' -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}")"
   TOKEN="$(jval "$LOGIN" token)"
   if [ -z "$TOKEN" ]; then echo "    ERROR login: $LOGIN"; rm -f "$TALLY"; return 1; fi
 
-  case "${SCENARIO:-$SUB}" in
+  case "${SCENARIO:-$SLUG}" in
     shop)
       local PRODUCTS=() CUSTOMERS=() id body i n
       for i in $(seq 1 5); do
@@ -100,6 +108,9 @@ run_traffic() { # run_traffic <sub> <iter>
         id="$(jval "$body" id)"; [ -n "$id" ] && CUSTOMERS+=("$id")
       done
       for n in $(seq 1 "$ITER"); do
+        # Rutas definidas del scaffold (metered): generan carga real aunque el tenant aun no tenga
+        # endpoints de negocio. Los /products etc. dan 404 (el tenant no los ha construido todavia).
+        api GET /users >/dev/null; api GET /auth/me >/dev/null
         api GET /products >/dev/null; api GET /customers >/dev/null
         [ ${#PRODUCTS[@]} -gt 0 ] && api GET "/products/${PRODUCTS[$(rnd ${#PRODUCTS[@]})]}" >/dev/null
         [ $(( n % 5 )) -eq 0 ] && api GET "/products/999999" >/dev/null
@@ -116,6 +127,8 @@ run_traffic() { # run_traffic <sub> <iter>
         id="$(jval "$body" id)"; [ -n "$id" ] && AUTHORS+=("$id")
       done
       for n in $(seq 1 "$ITER"); do
+        # Rutas definidas del scaffold (metered) + intentos de negocio (404 hasta que el tenant los cree).
+        api GET /users >/dev/null; api GET /auth/me >/dev/null
         api GET /authors >/dev/null; api GET /posts >/dev/null
         if [ ${#AUTHORS[@]} -gt 0 ]; then
           au="${AUTHORS[$(rnd ${#AUTHORS[@]})]}"
@@ -158,12 +171,19 @@ capi() { # capi METHOD PATH [body]  -> request autenticado al commander
   curl -sk "${args[@]}"
 }
 
+# Busca el id de la fila viva del package por (cliente, slug). Echo: "id client_id".
+pkg_ids() { # pkg_ids <client-slug> <package-slug>
+  dbq -N commander -e "SELECT p.id, p.client_id FROM commander_packages p
+    JOIN commander_clients c ON c.id = p.client_id
+    WHERE c.slug='$1' AND p.slug='$2' AND p.provisioned_at IS NOT NULL LIMIT 1;" 2>/dev/null
+}
+
 stage_clean() {
   hr; echo "STAGE 1/5 — limpiar BD (drop tenants + fresh commander + seed)"; hr
-  local row name sub
+  local row cli cname name
   for row in "${PACKAGES[@]}"; do
-    read -r name _ _ sub _ _ _ <<<"$row"
-    dbq -e "DROP DATABASE IF EXISTS \`$sub\`;" 2>/dev/null || true
+    read -r cli cname name _ _ _ <<<"$row"
+    dbq -e "DROP DATABASE IF EXISTS \`$(db_of "$cli" "$name")\`;" 2>/dev/null || true
   done
   artisan core:migrate --fresh --force >/dev/null
   artisan core:seed --force >/dev/null
@@ -171,14 +191,15 @@ stage_clean() {
 }
 
 stage_scaffold() {
-  hr; echo "STAGE 2/5 — scaffold de packages (make:package)"; hr
-  local row name made=0
+  hr; echo "STAGE 2/5 — scaffold de packages (make:package <Client> <Package>)"; hr
+  local row cli cname name made=0 cstudly
   for row in "${PACKAGES[@]}"; do
-    read -r name _ <<<"$row"
-    if [ -d "$ROOT_DIR/src/packages/$name" ]; then
-      echo "    $name ya existe en disco — se reutiliza"
+    read -r cli cname name _ _ _ <<<"$row"
+    cstudly="$(studly_of "$cli")"
+    if [ -d "$ROOT_DIR/src/packages/$cstudly/$name" ]; then
+      echo "    $cstudly/$name ya existe en disco — se reutiliza"
     else
-      artisan make:package "$name" >/dev/null && echo "    $name scaffolded" && made=1
+      artisan make:package "$cli" "$name" --no-dump >/dev/null && echo "    $cstudly/$name scaffolded" && made=1
     fi
   done
   if [ "$made" -eq 1 ]; then composer_ dump-autoload -o >/dev/null && echo "    composer dump-autoload"; fi
@@ -186,19 +207,28 @@ stage_scaffold() {
 }
 
 stage_provision() {
-  hr; echo "STAGE 3/5 — provisionar vía Commander API"; hr
+  hr; echo "STAGE 3/5 — provisionar vía Commander API (cliente-primero)"; hr
   login_operator
-  local row name slug qreq sub cslug cname _it pid resp err
+  local row cli cname name slug qreq _it pid resp err
   for row in "${PACKAGES[@]}"; do
-    read -r name slug qreq sub cslug cname _it <<<"$row"
+    read -r cli cname name slug qreq _it <<<"$row"
     pid="$(jval "$(capi POST /plans "{\"slug\":\"$slug\",\"package\":\"$name\",\"name\":\"$name plan\",\"price_monthly\":19.99,\"q_requests_day\":$qreq,\"q_disk_db_mb\":1024,\"q_users_total\":50,\"status\":\"active\"}")" id)"
-    [ -n "$pid" ] || { echo "    $name: plan FALLO"; continue; }
-    resp="$(capi POST /provisioning "{\"plan_id\":$pid,\"subdomain\":\"$sub\",\"client\":{\"slug\":\"$cslug\",\"name\":\"$cname\",\"email\":\"ops@$cslug.test\"}}")"
+    [ -n "$pid" ] || { echo "    $cli/$name: plan FALLO"; continue; }
+    resp="$(capi POST /provisioning "{\"plan_id\":$pid,\"client\":{\"slug\":\"$cli\",\"name\":\"$cname\",\"email\":\"ops@$cli.test\"}}")"
     err="$(jval "$resp" error)"
     if [ -n "$err" ]; then
-      printf '    %-5s plan=%-3s -> FALLO: %s\n' "$name" "$pid" "$err"
+      # Cliente ya existe (2ª package del mismo cliente): reintenta con client_id.
+      local cid; cid="$(dbq -N commander -e "SELECT id FROM commander_clients WHERE slug='$cli' LIMIT 1;" 2>/dev/null | tr -d '[:space:]')"
+      if [ -n "$cid" ]; then
+        resp="$(capi POST /provisioning "{\"plan_id\":$pid,\"client_id\":$cid}")"
+        err="$(jval "$resp" error)"
+      fi
+    fi
+    if [ -n "$err" ]; then
+      printf '    %-7s %-4s -> FALLO: %s\n' "$cli" "$name" "$err"
     else
-      printf '    %-5s plan=%-3s subdominio=%s cuota_req/dia=%s -> OK\n' "$name" "$pid" "$sub" "$qreq"
+      printf '    %-7s %-4s url=%s.%s/api/v1/%s  BD=%s  cuota_req/dia=%s -> OK\n' \
+        "$cli" "$name" "$cli" "$BASE_DOMAIN" "$(jval "$resp" package.slug)" "$(jval "$resp" package.database)" "$qreq"
     fi
   done
 }
@@ -206,16 +236,16 @@ stage_provision() {
 stage_change_plan() {
   hr; echo "STAGE — cambiar de plan (1ª package): cierra el término vigente, abre uno nuevo (historial)"; hr
   [ -n "${OP_TOKEN:-}" ] || login_operator
-  local name slug qreq sub _r pid err
-  read -r name slug qreq sub _r _r _r <<<"${PACKAGES[0]}"
-  # Segundo plan activo para ese package, y cambio a él (by name).
+  local cli cname name slug qreq _it pid err
+  read -r cli cname name slug qreq _it <<<"${PACKAGES[0]}"
+  # Segundo plan activo para ese package lógico, y cambio a él (el operador direcciona por name).
   pid="$(jval "$(capi POST /plans "{\"slug\":\"${slug}-v2\",\"package\":\"$name\",\"name\":\"$name Pro\",\"price_monthly\":49.99,\"q_requests_day\":$qreq,\"q_disk_db_mb\":2048,\"q_users_total\":100,\"status\":\"active\"}")" id)"
   [ -n "$pid" ] || { echo "    $name: 2º plan FALLO"; return 0; }
   err="$(jval "$(capi POST "/packages/$name/change-plan" "{\"plan_id\":$pid}")" error)"
   if [ -n "$err" ]; then
-    echo "    $name: change-plan FALLO: $err"
+    echo "    $cli/$name: change-plan FALLO: $err"
   else
-    printf '    %-5s -> plan nuevo id=%s (%s Pro); el término anterior queda en el historial\n' "$name" "$pid" "$name"
+    printf '    %-7s %-4s -> plan nuevo id=%s (%s Pro); el término anterior queda en el historial\n' "$cli" "$name" "$pid" "$name"
   fi
   return 0
 }
@@ -223,48 +253,45 @@ stage_change_plan() {
 stage_invoices() {
   hr; echo "STAGE — generar invoices (estados variados: paid/pending/overdue)"; hr
   [ -n "${OP_TOKEN:-}" ] || login_operator
-  local row name sub _r idx=0 ids pkgid cli status num err
+  local row cli cname name slug _r idx=0 ids pkgid cliid status num err
   local statuses=(paid pending overdue)
   for row in "${PACKAGES[@]}"; do
-    read -r name _r _r sub _r _r _r <<<"$row"
-    ids="$(dbq -N commander -e "SELECT id, client_id FROM commander_packages WHERE subdomain='$sub' LIMIT 1;" 2>/dev/null)"
-    pkgid="$(awk '{print $1}' <<<"$ids")"; cli="$(awk '{print $2}' <<<"$ids")"
-    [ -n "$pkgid" ] || { echo "    $name: sin package provisionado, salto"; continue; }
+    read -r cli cname name slug _r _r <<<"$row"
+    ids="$(pkg_ids "$cli" "$(slug_of "$name")")"
+    pkgid="$(awk '{print $1}' <<<"$ids")"; cliid="$(awk '{print $2}' <<<"$ids")"
+    [ -n "$pkgid" ] || { echo "    $cli/$name: sin package provisionado, salto"; continue; }
     status="${statuses[$((idx % 3))]}"; idx=$((idx + 1))
     num="INV-2026-$(printf '%04d' $((1000 + idx)))"
-    err="$(jval "$(capi POST /invoices "{\"number\":\"$num\",\"client_id\":$cli,\"package_id\":$pkgid,\"amount\":19.99,\"issued_at\":\"2026-06-01\",\"due_at\":\"2026-06-15\",\"status\":\"$status\"}")" error)"
-    if [ -n "$err" ]; then echo "    $name: invoice FALLO: $err"; else printf '    %-5s %s  status=%s  $19.99\n' "$name" "$num" "$status"; fi
+    err="$(jval "$(capi POST /invoices "{\"number\":\"$num\",\"client_id\":$cliid,\"package_id\":$pkgid,\"amount\":19.99,\"issued_at\":\"2026-06-01\",\"due_at\":\"2026-06-15\",\"status\":\"$status\"}")" error)"
+    if [ -n "$err" ]; then echo "    $cli/$name: invoice FALLO: $err"; else printf '    %-7s %-4s %s  status=%s  $19.99\n' "$cli" "$name" "$num" "$status"; fi
   done
   return 0
 }
 
 stage_traffic() {
-  hr; echo "STAGE 4/5 — generar trafico"; hr
-  local row name sub iter
+  hr; echo "STAGE 4/5 — generar trafico (cliente.dom/api/v1/slug)"; hr
+  local row cli cname name iter
   for row in "${PACKAGES[@]}"; do
-    read -r name _ _ sub _ _ iter <<<"$row"
-    SCENARIO="${SCENARIO:-generic}" run_traffic "$sub" "$iter" || true
+    read -r cli cname name _ _ iter <<<"$row"
+    SCENARIO="${SCENARIO:-}" run_traffic "$cli" "$(slug_of "$name")" "$iter" || true
   done
 }
 
 # ------------------------------------------------------------------ volumen
 # Siembra cientos de miles de commander_request_logs por package, repartidos en
 # las ultimas 48h, con UN SOLO `INSERT ... SELECT FROM seq_1_to_N` (motor SEQUENCE
-# de MariaDB): set-based, sin loops ni HTTP — ordenes de magnitud mas rapido. Luego
-# `commander:usage:rollup` agrega TODOS los buckets cerrados (48 horas) y se pueblan
-# las graficas de la plataforma. Uso: simulate.sh volume [filas_por_package].
+# de MariaDB): set-based, sin loops ni HTTP. Luego `commander:usage:rollup` agrega
+# TODOS los buckets cerrados (48h). Uso: simulate.sh volume [filas_por_package].
 stage_seed_volume() {
   local ROWS="${1:-100000}"
   hr; echo "STAGE — seed VOLUMEN (~$ROWS filas/package base, repartidas en 48h, bulk INSERT)"; hr
-  local factors=(1.0 0.6 0.3) idx=0 row name sub pid n
+  local factors=(1.0 0.6 0.3) idx=0 row cli cname name pid n
   for row in "${PACKAGES[@]}"; do
-    read -r name _ _ sub _ _ _ <<<"$row"
-    pid="$(dbq -N commander -e "SELECT id FROM commander_packages WHERE subdomain='$sub' LIMIT 1;" 2>/dev/null | tr -d '[:space:]')"
-    [ -n "$pid" ] || { echo "    $name: sin package provisionado, salto"; continue; }
+    read -r cli cname name _ _ _ <<<"$row"
+    pid="$(awk '{print $1}' <<<"$(pkg_ids "$cli" "$(slug_of "$name")")")"
+    [ -n "$pid" ] || { echo "    $cli/$name: sin package provisionado, salto"; continue; }
     n="$(awk "BEGIN{printf \"%d\", $ROWS * ${factors[$((idx % 3))]}}")"; idx=$((idx + 1))
-    echo "    $name (id=$pid): bulk insert de $n filas…"
-    # status: ~95% 2xx, ~4% 404, ~1% 5xx → error-rate realista. occurred_at uniforme en 48h
-    # (rellena los 48 buckets horarios). Todo generado en MariaDB, una sola sentencia.
+    echo "    $cli/$name (id=$pid): bulk insert de $n filas…"
     if ! dbq commander <<SQL
 INSERT INTO commander_request_logs
   (package_id, occurred_at, method, route, status, duration_ms, user_id, token_id, ip, request_bytes, response_bytes)
@@ -286,13 +313,9 @@ SQL
       echo "    ERROR en el bulk insert (¿motor SEQUENCE de MariaDB disponible?)"
     fi
   done
-  # El rollup es incremental (arranca desde max(period_start) ya agregado). Para sembrar las
-  # 48h historicas hay que RESETEAR los rollups: asi windowStart cae al log crudo mas antiguo y
-  # recomputa todos los buckets. Los logs crudos quedan intactos (el rollup es idempotente).
   echo "    recomputando rollups de las 48h (reset + rollup hour+day)…"
   dbq commander -e "DELETE FROM commander_usage_rollups;" >/dev/null 2>&1 || true
   artisan commander:usage:rollup --period=both >/dev/null || true
-  # measure + bucket actual + refresh de KPIs (reusa el pipeline existente)
   stage_pipeline
 }
 
@@ -312,10 +335,12 @@ $r->invoke($s,"hour",$n->startOfHour());$r->invoke($s,"day",$n->startOfDay());' 
 
 stage_report() {
   hr; echo "REPORTE — estado del Commander"; hr
-  echo "Packages (estado runtime + cuota req/dia):"
-  dbq commander -e "SELECT p.name, p.subdomain, p.status, COALESCE(p.reason,'-') reason, p.changed_by,
-      p.requests_24h, p.quota_health
+  echo "Packages (cliente x package; estado runtime + cuota req/dia):"
+  dbq commander -e "SELECT c.slug AS client, p.slug AS package, p.database AS db, p.status,
+      COALESCE(p.reason,'-') reason, p.changed_by, p.requests_24h, p.quota_health
     FROM commander_packages p
+    JOIN commander_clients c ON c.id = p.client_id
+    WHERE p.provisioned_at IS NOT NULL
     ORDER BY p.id;" 2>/dev/null || true
   echo; echo "Invoices (estados):"
   dbq commander -e "SELECT number, package_id, amount, status FROM commander_invoices ORDER BY id;" 2>/dev/null || true
@@ -333,12 +358,12 @@ stage_report() {
 
 # ------------------------------------------------------------------ main
 case "${1:-all}" in
-  traffic)  run_traffic "${2:?uso: simulate.sh traffic <sub> [iter]}" "${3:-40}" ;;
+  traffic)  run_traffic "${2:?uso: simulate.sh traffic <client> <slug> [iter]}" "${3:?uso: simulate.sh traffic <client> <slug> [iter]}" "${4:-40}" ;;
   invoices) stage_invoices ;;
   change-plan) stage_change_plan; stage_report ;;
   pipeline) stage_pipeline; stage_report ;;
   volume)   stage_seed_volume "${2:-100000}"; stage_report ;;
   report)   stage_report ;;
   all)      stage_clean; stage_scaffold; stage_provision; stage_change_plan; stage_invoices; stage_traffic; stage_pipeline; stage_report ;;
-  *) echo "uso: simulate.sh [all|traffic <sub> [n]|invoices|change-plan|pipeline|volume [filas]|report]"; exit 1 ;;
+  *) echo "uso: simulate.sh [all|traffic <client> <slug> [n]|invoices|change-plan|pipeline|volume [filas]|report]"; exit 1 ;;
 esac
