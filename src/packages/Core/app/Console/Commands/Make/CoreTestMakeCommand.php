@@ -17,11 +17,11 @@ class CoreTestMakeCommand extends TestMakeCommand
 
     protected function rootNamespace()
     {
-        $package = $this->corePackageOption();
+        $root = $this->corePackageRootNamespace();
 
-        return $package === null
+        return $root === null
             ? parent::rootNamespace()
-            : "Packages\\{$package}\\Tests";
+            : $root . 'Tests'; // Packages\Acme\Shop\Tests
     }
 
     protected function getPath($name)

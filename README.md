@@ -305,8 +305,15 @@ Overrides por entorno: `ADMIN_EMAIL` / `ADMIN_PASSWORD` (operador), `SCENARIO=sh
 ### Generadores package-aware
 
 `make:package <Cliente> <Paquete>` scaffolda el paquete anidado. Los demás `make:*` (model,
-controller, migration…) aún esperan `--package` plano (`packages/<Paquete>`); para el modelo
-anidado, créalos a mano dentro de `packages/<Cliente>/<Paquete>/...` o adáptalos a `--client` (pendiente).
+controller, migration, seeder, test, factory…) aceptan **`--client` + `--package`** y generan en
+`packages/<Cliente>/<Paquete>/...` con namespace `Packages\<Cliente>\<Paquete>\` y prefijo de clase
+N2 `<Cliente><Paquete>`:
+
+```bash
+php artisan make:model Product --client=acme --package=Shop      # Packages\Acme\Shop\Models\AcmeShopProductModel
+php artisan make:migration create_products_table --client=acme --package=Shop
+php artisan make:controller ProductController --client=acme --package=Shop
+```
 
 ## CoreBaseApiController
 

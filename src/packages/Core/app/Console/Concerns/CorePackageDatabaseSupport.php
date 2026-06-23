@@ -9,31 +9,47 @@ trait CorePackageDatabaseSupport
 {
     protected function coreWithPackageDatabaseOption(array $options): array
     {
+        $hasClient = $hasPackage = false;
+
         foreach ($options as $option) {
-            if (($option[0] ?? null) === 'package') {
-                return $options;
-            }
+            $hasClient = $hasClient || ($option[0] ?? null) === 'client';
+            $hasPackage = $hasPackage || ($option[0] ?? null) === 'package';
         }
 
-        $options[] = ['package', null, InputOption::VALUE_REQUIRED, 'Target package (e.g. Shop)'];
+        if (!$hasClient) {
+            $options[] = ['client', null, InputOption::VALUE_REQUIRED, 'Cliente del paquete (e.g. Acme). Requiere --package.'];
+        }
+
+        if (!$hasPackage) {
+            $options[] = ['package', null, InputOption::VALUE_REQUIRED, 'Paquete dentro del cliente (e.g. Shop). Requiere --client.'];
+        }
 
         return $options;
     }
 
-    protected function resolvePackageForConsole(): string
+    /**
+     * Resuelve (--client, --package) del paquete anidado.
+     *
+     * @return array{0: string, 1: string} [clientStudly, packageStudly]
+     */
+    protected function resolvePackageForConsole(): array
     {
-        $raw = $this->option('package');
+        $rawClient = $this->option('client');
+        $rawPackage = $this->option('package');
 
-        if (!is_string($raw) || trim($raw) === '') {
-            $this->fail('--package is required (e.g. --package=Shop).');
+        if (!is_string($rawClient) || trim($rawClient) === '' || !is_string($rawPackage) || trim($rawPackage) === '') {
+            $this->fail('--client y --package son obligatorios (e.g. --client=acme --package=Shop).');
         }
 
-        $package = Str::studly(trim($raw));
+        $client = Str::studly(trim($rawClient));
+        $package = Str::studly(trim($rawPackage));
 
-        if (!is_dir(base_path("packages/{$package}"))) {
-            $this->fail("Package [{$package}] does not exist at " . base_path("packages/{$package}") . '.');
+        $path = base_path("packages/{$client}/{$package}");
+
+        if (!is_dir($path)) {
+            $this->fail("Package [{$client}/{$package}] does not exist at {$path}.");
         }
 
-        return $package;
+        return [$client, $package];
     }
 }

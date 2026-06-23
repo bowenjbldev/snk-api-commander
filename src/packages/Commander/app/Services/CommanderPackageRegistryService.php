@@ -2,43 +2,32 @@
 
 namespace Packages\Commander\Services;
 
-use Packages\Commander\Models\CommanderPackageModel;
-
 /**
- * Registro de packages de negocio: el codigo vive en disco (packages/*, via git) y la tabla unica
- * commander_packages guarda una fila por package con sus metadatos del operador (label/description/
- * listing_status). El disco es la fuente: el sync crea filas (solo-catalogo) para packages nuevos
- * pero nunca borra (los metadatos + el historial persisten; el provisioning rellena lo operativo).
+ * Registro de packages de negocio anidados por cliente: el codigo vive en disco
+ * (packages/<Cliente>/<Paquete>, via git). En el modelo INSTANCIA, una fila de commander_packages
+ * ES un par (cliente, paquete) provisionado: las crea el provisioning, NO un sync de catalogo.
+ * Este servicio solo informa de los TIPOS de paquete desplegados en disco (para el flag on_disk
+ * y "que se puede provisionar").
  */
 class CommanderPackageRegistryService
 {
-    /** Directorios de package en disco, excluyendo Core y Commander (nombres StudlyCase). */
+    /**
+     * Tipos de paquete (StudlyCase) presentes en disco bajo algun cliente: el 2º nivel de
+     * packages/<Cliente>/<Paquete>. El framework (Core, Commander) es de 1er nivel -> excluido.
+     */
     public function availableOnDisk(): array
     {
-        $dirs = glob(base_path('packages/*'), GLOB_ONLYDIR) ?: [];
+        $dirs = glob(base_path('packages/*/*'), GLOB_ONLYDIR) ?: [];
 
-        return array_values(array_filter(
-            array_map('basename', $dirs),
-            fn ($name) => ! in_array($name, ['Core', 'Commander'], true),
-        ));
+        return array_values(array_unique(array_map('basename', $dirs)));
     }
 
-    /** Idempotente: crea una fila (solo-catalogo) por cada package en disco aun no registrado. Devuelve cuantos creo. */
+    /**
+     * No-op en el modelo instancia: las filas de commander_packages las crea el provisioning
+     * (con client_id + slug). No hay catalogo name-only que sincronizar. Devuelve 0.
+     */
     public function syncFromDisk(): int
     {
-        $created = 0;
-
-        foreach ($this->availableOnDisk() as $name) {
-            $row = CommanderPackageModel::firstOrCreate(
-                ['name' => $name],
-                ['label' => $name, 'listing_status' => 'active'],
-            );
-
-            if ($row->wasRecentlyCreated) {
-                $created++;
-            }
-        }
-
-        return $created;
+        return 0;
     }
 }

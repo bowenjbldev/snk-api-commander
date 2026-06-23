@@ -17,11 +17,11 @@ class CoreSeederMakeCommand extends SeederMakeCommand
 
     protected function rootNamespace()
     {
-        $package = $this->corePackageOption();
+        $root = $this->corePackageRootNamespace();
 
-        return $package === null
+        return $root === null
             ? parent::rootNamespace()
-            : "Packages\\{$package}\\Database\\Seeders\\";
+            : $root . 'Database\\Seeders\\'; // Packages\Acme\Shop\Database\Seeders\
     }
 
     protected function getPath($name)

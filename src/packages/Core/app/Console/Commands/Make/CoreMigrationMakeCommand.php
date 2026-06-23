@@ -15,14 +15,15 @@ class CoreMigrationMakeCommand extends MigrateMakeCommand
         {--path= : The location where the migration file should be created}
         {--realpath : Indicate any provided migration file paths are pre-resolved absolute paths}
         {--fullpath : Output the full path of the migration (Deprecated)}
-        {--package= : Target package (e.g. Rebooking)}';
+        {--client= : Cliente del paquete anidado (e.g. Acme). Requiere --package.}
+        {--package= : Paquete dentro del cliente (e.g. Shop). Requiere --client.}';
 
     public function handle()
     {
-        $packageBasePath = $this->corePackageBasePath();
+        $relativeBasePath = $this->corePackageRelativeBasePath();
 
-        if ($packageBasePath !== null && $this->input->getOption('path') === null) {
-            $path = "packages/{$this->corePackageOption()}/database/migrations";
+        if ($relativeBasePath !== null && $this->input->getOption('path') === null) {
+            $path = $relativeBasePath . '/database/migrations'; // packages/Acme/Shop/database/migrations
             $this->input->setOption('path', $path);
             app('files')->ensureDirectoryExists(base_path($path));
         }

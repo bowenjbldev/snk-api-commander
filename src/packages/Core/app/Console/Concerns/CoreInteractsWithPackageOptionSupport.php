@@ -5,73 +5,123 @@ namespace Packages\Core\Console\Concerns;
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Input\InputOption;
 
+/**
+ * Soporte de generadores para paquetes de negocio ANIDADOS por cliente: --client + --package
+ * apuntan a packages/<Client>/<Package> (namespace Packages\Client\Package\, prefijo de clase N2
+ * ClientPackage). Ambos juntos => paquete anidado; ninguno => base Laravel (app/); solo uno => error.
+ */
 trait CoreInteractsWithPackageOptionSupport
 {
-    private bool $corePackageOptionResolved = false;
-    private ?string $coreResolvedPackageName = null;
+    private bool $coreTargetResolved = false;
+    private ?string $coreClientName = null;   // Studly: Acme
+    private ?string $corePackageName = null;  // Studly: Shop
 
-    protected function corePackageOption(): ?string
+    private function coreResolveTarget(): void
     {
-        if ($this->corePackageOptionResolved) {
-            return $this->coreResolvedPackageName;
+        if ($this->coreTargetResolved) {
+            return;
         }
 
-        $this->corePackageOptionResolved = true;
-        $raw = $this->option('package');
+        $this->coreTargetResolved = true;
 
-        if (!is_string($raw) || trim($raw) === '') {
-            return $this->coreResolvedPackageName = null;
+        $rawClient = $this->option('client');
+        $rawPackage = $this->option('package');
+        $hasClient = is_string($rawClient) && trim($rawClient) !== '';
+        $hasPackage = is_string($rawPackage) && trim($rawPackage) !== '';
+
+        if (!$hasClient && !$hasPackage) {
+            return; // sin target: generador base de Laravel (app/)
         }
 
-        $normalized = preg_replace('/[^A-Za-z0-9]+/', ' ', trim($raw)) ?? '';
-        $package = Str::studly($normalized);
-
-        if ($package === '' || !preg_match('/^[A-Z][A-Za-z0-9]*$/', $package)) {
-            $this->fail('Invalid package name provided in --package.');
+        if (!$hasClient || !$hasPackage) {
+            $this->fail('Un paquete anidado requiere --client Y --package (packages/<Client>/<Package>).');
         }
 
-        $path = base_path("packages/{$package}");
+        $this->coreClientName = $this->coreStudlyName((string) $rawClient, 'client');
+        $this->corePackageName = $this->coreStudlyName((string) $rawPackage, 'package');
+
+        $path = base_path("packages/{$this->coreClientName}/{$this->corePackageName}");
 
         if (!is_dir($path)) {
-            $this->fail("Package [{$package}] does not exist in {$path}.");
+            $this->fail("Package [{$this->coreClientName}/{$this->corePackageName}] does not exist in {$path}.");
+        }
+    }
+
+    private function coreStudlyName(string $raw, string $what): string
+    {
+        $normalized = preg_replace('/[^A-Za-z0-9]+/', ' ', trim($raw)) ?? '';
+        $studly = Str::studly($normalized);
+
+        if ($studly === '' || !preg_match('/^[A-Z][A-Za-z0-9]*$/', $studly)) {
+            $this->fail("Invalid {$what} name provided in --{$what}.");
         }
 
-        return $this->coreResolvedPackageName = $package;
+        return $studly;
+    }
+
+    /** Prefijo de clase N2 (ClientPackage, p.ej. AcmeShop), o null si no hay target. */
+    protected function corePackageOption(): ?string
+    {
+        $this->coreResolveTarget();
+
+        return $this->corePackageName === null ? null : $this->coreClientName . $this->corePackageName;
     }
 
     protected function corePackageBasePath(): ?string
     {
-        $package = $this->corePackageOption();
+        $this->coreResolveTarget();
 
-        return $package === null ? null : base_path("packages/{$package}");
+        return $this->corePackageName === null
+            ? null
+            : base_path("packages/{$this->coreClientName}/{$this->corePackageName}");
+    }
+
+    /** Path RELATIVO del paquete anidado (packages/Acme/Shop), o null. Para opciones tipo --path. */
+    protected function corePackageRelativeBasePath(): ?string
+    {
+        $this->coreResolveTarget();
+
+        return $this->corePackageName === null
+            ? null
+            : "packages/{$this->coreClientName}/{$this->corePackageName}";
     }
 
     protected function corePackageRootNamespace(): ?string
     {
-        $package = $this->corePackageOption();
+        $this->coreResolveTarget();
 
-        return $package === null ? null : "Packages\\{$package}\\";
+        return $this->corePackageName === null
+            ? null
+            : "Packages\\{$this->coreClientName}\\{$this->corePackageName}\\";
     }
 
     protected function coreWithPackageOption(array $options): array
     {
+        $hasClient = $hasPackage = false;
+
         foreach ($options as $option) {
-            if (($option[0] ?? null) === 'package') {
-                return $options;
-            }
+            $hasClient = $hasClient || ($option[0] ?? null) === 'client';
+            $hasPackage = $hasPackage || ($option[0] ?? null) === 'package';
         }
 
-        $options[] = ['package', null, InputOption::VALUE_REQUIRED, 'Target package (e.g. Rebooking)'];
+        if (!$hasClient) {
+            $options[] = ['client', null, InputOption::VALUE_REQUIRED, 'Cliente del paquete anidado (e.g. Acme). Requiere --package.'];
+        }
+
+        if (!$hasPackage) {
+            $options[] = ['package', null, InputOption::VALUE_REQUIRED, 'Paquete dentro del cliente (e.g. Shop). Requiere --client.'];
+        }
 
         return $options;
     }
 
     protected function corePassPackageToCalledCommand(array $arguments): array
     {
-        $package = $this->corePackageOption();
+        $this->coreResolveTarget();
 
-        if ($package !== null) {
-            $arguments['--package'] = $package;
+        if ($this->corePackageName !== null) {
+            $arguments['--client'] = $this->coreClientName;
+            $arguments['--package'] = $this->corePackageName;
         }
 
         return $arguments;
