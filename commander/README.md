@@ -137,7 +137,52 @@ and cached KPIs — once provisioned (`provisioned_at != null`). There is no sep
 | `commander_request_logs` | Write-heavy raw request log: package id, route/path, status, duration, user/token, IP, bytes and memory. | `package_id` is indexed but deliberately not constrained. |
 | `commander_usage_rollups` | Aggregated usage buckets by package, period, route, method and status class. Powers both the per-package Usage tab and the platform chart (`GET /usage/platform` sums by package+bucket on the fly — no cache table). | FK to package (`CASCADE`), unique bucket key for upserts; indexed by `(period, period_start)` for the platform query. |
 | `commander_activity_events` | Operator and automatic activity feed: suspend, grace, resume, paid and quota events. | Nullable FKs to package and invoice (`CASCADE`). |
-| `commander_settings` | Singleton operator settings: default grace period, operator contact and notification toggles. | Single row, no FK. |
+| `commander_settings` | Singleton operator settings stored as a single `settings` JSON blob (the API still exposes/accepts flat keys). | Single row (id=1), no FK. |
+| `commander_package_repos` | Git source per package (1:1) + incremental sync cursor for the Insights feature. `path_prefix` keeps the schema repo-agnostic; `provider` is the only place a provider is named. | FK to package (`CASCADE`), unique `package_id`. |
+| `commander_package_commits` | Raw per-package commits with path-scoped line counts — source of truth for git insights. | FK to package (`CASCADE`), unique `package_id + sha`. |
+| `commander_package_activity_daily` | Daily git-activity rollup (ContributionCalendar heatmap + code frequency). | FK to package (`CASCADE`), unique `package_id + day`. |
+
+## TODO — migrations reference & SPA realignment (next session)
+
+> ⚠️ The schema below is current as of the **2026-06-24 table cleanup + git-insights feature**. **The
+> React SPA (`src/store/types.ts`, store, components) has fallen out of sync** with it — see "SPA drift
+> to reconcile" at the end. Address the realignment (and the new Insights tab) in a dedicated session.
+
+### Every commander migration with its columns
+
+Migrations live in `src/packages/Commander/database/migrations/`. `ts` = `created_at` + `updated_at`;
+FK = foreign key, idx = index, uniq = unique. Listed in run order.
+
+| Table | Columns |
+|-------|---------|
+| `commander_clients` | `id` · `slug`(uniq) · `name` · `status`(idx) · `email` · `billing_email` · `phone` · `company` · `tax_id` · `payment_terms` · `address_line1` · `address_line2` · `city` · `postal_code` · `country` · `notes` · ts |
+| `commander_packages` | `id` · `client_id`(FK) · `subscription_id` · `slug` · `name` · `database` · `label` · `description` · `listing_status` · `status` · `reason` · `message` · `grace_until` · `changed_at` · `requests_24h` · `quota_health` · `last_seen` · `provisioned_at` · ts — uniq(`client_id,slug`), idx(`subscription_id`), idx(`provisioned_at`) |
+| `commander_request_logs` | `id` · `package_id`(FK,idx) · `user_id` · `token_id` · `method` · `route` · `path` · `status` · `duration_ms` · `ip` · `request_bytes` · `response_bytes` · `memory_kb` · ts — idx(`created_at`) |
+| `commander_usage_rollups` | `id` · `package_id`(FK) · `period` · `period_start` · `route` · `method` · `status_class` · `request_count` · `error_count` · `avg_duration_ms` · `p95_duration_ms` · `total_request_bytes` · `total_response_bytes` · `unique_users` · ts — uniq(bucket), idx(`period,period_start`) |
+| `commander_subscriptions` | `id` · `client_id`(FK) · `package_id`(FK) · `plan_id`(idx) · `plan` · `price_monthly` · `billing_status` · `auto_suspend` · `started_at` · `ended_at` · ts — idx(`package_id,ended_at`) |
+| `commander_invoices` | `id` · `client_id`(FK) · `package_id`(FK) · `number`(uniq) · `amount` · `status`(idx) · `enforcement` · `issued_at` · `due_at`(idx) · ts |
+| `commander_quotas` | `id` · `package_id`(FK) · `metric_key` · `current_value` · `limit_value` · `unit` · `on_exceed` · `exceeded_at` · `measured_at` · ts — uniq(`package_id,metric_key`) |
+| `commander_activity_events` | `id` · `package_id`(FK) · `invoice_id`(FK) · `kind` · `reason` · `message` · ts — idx(`created_at`) |
+| `commander_plans` | `id` · `slug`(uniq) · `package` · `name` · `status` · `description` · `price_monthly` · `q_requests_day` · `q_disk_db_mb` · `q_disk_storage_mb` · `q_users_total` · ts — idx(`package`), idx(`status`) |
+| `commander_settings` | `id` · `settings`(JSON) · ts — singleton (id=1) |
+| `commander_package_repos` | `id` · `package_id`(FK,uniq) · `provider` · `workspace` · `repo_slug` · `path_prefix` · `default_branch` · `last_synced_at` · `last_synced_sha` · ts |
+| `commander_package_commits` | `id` · `package_id`(FK) · `sha` · `committed_at`(idx) · `author_name` · `author_email` · `message` · `additions` · `deletions` · `files_changed` · ts — uniq(`package_id,sha`) |
+| `commander_package_activity_daily` | `id` · `package_id`(FK) · `day` · `commit_count` · `additions` · `deletions` · `files_changed` · ts — uniq(`package_id,day`) |
+
+### SPA drift to reconcile
+
+- **Removed columns the SPA still references**: `commander_packages.changed_by` + the `ChangedBy`
+  type, and `commander_activity_events.by` (`ev.by` in Dashboard). The actor is no longer stored —
+  event origin is read from `reason` (`quota_exceeded:*` vs the manual reasons).
+- **Renamed timestamps**: `commander_request_logs.occurred_at` → `created_at`, and
+  `commander_activity_events.at` → `created_at`. The SPA still uses the old field names.
+- **`commander_settings`** is now a single `settings` JSON blob server-side; the flat API contract is
+  preserved (low risk), but confirm the SPA reads still line up.
+- **New tables with no UI yet**: `commander_package_repos` / `commander_package_commits` /
+  `commander_package_activity_daily` → build the **Insights tab** (ContributionCalendar heatmap +
+  code frequency) fed by `commander:git:sync`.
+- The SPA also still carries assumptions from the **older `subdomain = package` model** predating the
+  per-client nested refactor. Reconcile everything in a focused session.
 
 ## Auth
 
