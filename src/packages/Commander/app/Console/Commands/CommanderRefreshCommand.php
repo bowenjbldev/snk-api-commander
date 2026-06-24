@@ -28,10 +28,10 @@ class CommanderRefreshCommand extends Command
         foreach ($packages as $package) {
             $requests24h = (int) CommanderRequestLogModel::query()
                 ->where('package_id', $package->id)
-                ->where('occurred_at', '>=', $since24)
+                ->where('created_at', '>=', $since24)
                 ->count();
 
-            $lastSeen = CommanderRequestLogModel::query()->where('package_id', $package->id)->max('occurred_at');
+            $lastSeen = CommanderRequestLogModel::query()->where('package_id', $package->id)->max('created_at');
 
             // quota_health = peor ratio current/limit sobre las cuotas del package (tabla unica: el
             // motor ya escribio current_value/exceeded_at aqui mismo, no hay espejo que refrescar).

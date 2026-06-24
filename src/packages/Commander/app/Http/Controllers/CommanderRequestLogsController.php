@@ -38,14 +38,14 @@ class CommanderRequestLogsController extends CoreBaseApiController
             ->leftJoin('commander_packages as p', 'p.id', '=', 'l.package_id')
             ->leftJoin('commander_clients as c', 'c.id', '=', 'p.client_id')
             ->when(isset($data['package']), fn ($q) => $q->where('p.name', $data['package']))
-            ->when(isset($data['since']), fn ($q) => $q->where('l.occurred_at', '>=', $data['since']))
+            ->when(isset($data['since']), fn ($q) => $q->where('l.created_at', '>=', $data['since']))
             ->when(isset($data['method']), fn ($q) => $q->where('l.method', strtoupper($data['method'])))
             ->when(isset($data['status_class']), function ($q) use ($data) {
                 $base = ((int) $data['status_class']) * 100;
 
                 return $q->where('l.status', '>=', $base)->where('l.status', '<', $base + 100);
             })
-            ->orderByDesc('l.occurred_at')
+            ->orderByDesc('l.created_at')
             ->limit($data['limit'] ?? 100)
             // El subdominio ES el del cliente (clients.slug); el slug del package va aparte.
             ->get(['l.*', 'p.name as package', 'p.slug as slug', 'c.slug as subdomain'])

@@ -37,7 +37,6 @@ class CorePackageStateService
                     'reason' => $row?->reason,
                     'message' => $row?->message,
                     'grace_until' => $row?->grace_until?->toIso8601String(),
-                    'changed_by' => $row?->changed_by,
                     'changed_at' => $row?->changed_at?->toIso8601String(),
                 ];
             }
@@ -48,7 +47,6 @@ class CorePackageStateService
             reason: $raw['reason'],
             message: $raw['message'],
             graceUntil: $raw['grace_until'] !== null ? CarbonImmutable::parse($raw['grace_until']) : null,
-            changedBy: $raw['changed_by'],
             changedAt: $raw['changed_at'] !== null ? CarbonImmutable::parse($raw['changed_at']) : null,
         );
     }
@@ -58,7 +56,6 @@ class CorePackageStateService
         ?string $reason = null,
         ?string $message = null,
         ?CarbonInterface $graceUntil = null,
-        string $changedBy = 'cli',
         ?int $packageId = null,
     ): CorePackageStateData {
         $packageId ??= $this->active->id();
@@ -73,7 +70,6 @@ class CorePackageStateService
             'reason' => $reason,
             'message' => $message,
             'grace_until' => $status === CorePackageStatusEnum::Grace ? $graceUntil : null,
-            'changed_by' => $changedBy,
             'changed_at' => CarbonImmutable::now(),
         ]);
 

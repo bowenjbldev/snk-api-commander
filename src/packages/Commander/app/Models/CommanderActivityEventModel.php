@@ -18,7 +18,6 @@ class CommanderActivityEventModel extends Model
             'id' => 'integer',
             'package_id' => 'integer',
             'invoice_id' => 'integer',
-            'at' => 'datetime',
         ];
     }
 }

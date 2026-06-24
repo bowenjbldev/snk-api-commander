@@ -63,7 +63,7 @@ class CommanderApiTest extends CommanderTestCase
             'slug' => 'tracking-api', 'database' => 'kestrel_tracking_api',
             'client_id' => $client->id, 'status' => 'grace',
             'reason' => 'payment_overdue', 'message' => null,
-            'grace_until' => now()->addHours(48), 'changed_by' => 'operator', 'changed_at' => now(),
+            'grace_until' => now()->addHours(48), 'changed_at' => now(),
             'provisioned_at' => now(),
         ]);
 
@@ -135,7 +135,7 @@ class CommanderApiTest extends CommanderTestCase
             'current_value' => 0, 'limit_value' => 100, 'on_exceed' => 'suspend', 'unit' => 'count',
         ]);
         CommanderRequestLogModel::create([
-            'package_id' => $package->id, 'occurred_at' => now(), 'method' => 'GET',
+            'package_id' => $package->id, 'created_at' => now(), 'method' => 'GET',
             'route' => '/api/v1/x', 'path' => 'api/v1/x', 'status' => 200,
             'duration_ms' => 1, 'request_bytes' => 0, 'response_bytes' => 1, 'memory_kb' => 1,
         ]);

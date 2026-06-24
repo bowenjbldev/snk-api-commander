@@ -12,7 +12,6 @@ final readonly class CorePackageStateData
         public ?string $reason,
         public ?string $message,
         public ?CarbonImmutable $graceUntil,
-        public ?string $changedBy,
         public ?CarbonImmutable $changedAt = null,
     ) {
     }

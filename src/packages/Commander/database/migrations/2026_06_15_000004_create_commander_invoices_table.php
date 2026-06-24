@@ -9,14 +9,14 @@ return new class extends Migration {
     {
         Schema::create('commander_invoices', function (Blueprint $table) {
             $table->id();
-            $table->string('number', 64)->unique(); // INV-2026-0140 (handle de negocio legible)
             $table->foreignId('client_id')->constrained('commander_clients')->restrictOnDelete();
             $table->foreignId('package_id')->constrained('commander_packages')->cascadeOnDelete();
+            $table->string('number', 64)->unique(); // INV-2026-0140 (handle de negocio legible)
             $table->decimal('amount', 10, 2)->default(0);
-            $table->timestamp('issued_at')->nullable();
-            $table->timestamp('due_at')->nullable();
             $table->string('status', 16)->default('pending'); // paid|pending|overdue
             $table->string('enforcement', 16)->nullable();      // grace|suspended|null
+            $table->timestamp('issued_at')->nullable();
+            $table->timestamp('due_at')->nullable();
             $table->timestamps();
 
             $table->index('status');

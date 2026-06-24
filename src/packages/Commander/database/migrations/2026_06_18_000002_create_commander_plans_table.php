@@ -12,6 +12,7 @@ return new class extends Migration {
             $table->string('slug', 64)->unique(); // handle legible (antes era la PK: shop-pro…)
             $table->string('package'); // the src/packages business package this plan provisions (Shop, Blog…)
             $table->string('name'); // plan label (Basic, Pro, Enterprise…)
+            $table->string('status', 16)->default('active'); // active|inactive
             $table->text('description')->nullable();
             $table->decimal('price_monthly', 10, 2)->default(0);
 
@@ -21,7 +22,6 @@ return new class extends Migration {
             $table->unsignedBigInteger('q_disk_storage_mb')->nullable();
             $table->unsignedBigInteger('q_users_total')->nullable();
 
-            $table->string('status', 16)->default('active'); // active|inactive
             $table->timestamps();
 
             $table->index('package');

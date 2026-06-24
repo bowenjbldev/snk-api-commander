@@ -143,7 +143,6 @@ class CommanderPackagesController extends CoreBaseApiController
             $data['reason'],
             $data['message'] ?? null,
             null,
-            'operator',
             $packageRow->id,
         );
 
@@ -179,7 +178,6 @@ class CommanderPackagesController extends CoreBaseApiController
             $data['reason'],
             $data['message'] ?? null,
             $graceUntil,
-            'operator',
             $packageRow->id,
         );
 
@@ -204,7 +202,6 @@ class CommanderPackagesController extends CoreBaseApiController
             null,
             null,
             null,
-            'operator',
             $packageRow->id,
         );
 
@@ -334,13 +331,13 @@ class CommanderPackagesController extends CoreBaseApiController
 
         $rows = CommanderRequestLogModel::query()
             ->where('package_id', $packageRow->id)
-            ->when(isset($data['since']), fn ($q) => $q->where('occurred_at', '>=', $data['since']))
+            ->when(isset($data['since']), fn ($q) => $q->where('created_at', '>=', $data['since']))
             ->when(isset($data['status_class']), function ($q) use ($data) {
                 $base = ((int) $data['status_class']) * 100;
 
                 return $q->where('status', '>=', $base)->where('status', '<', $base + 100);
             })
-            ->orderByDesc('occurred_at')
+            ->orderByDesc('created_at')
             ->limit($data['limit'] ?? 100)
             ->get()
             ->map(fn ($row) => array_merge($row->toArray(), [
@@ -393,7 +390,6 @@ class CommanderPackagesController extends CoreBaseApiController
                 'reason' => null,
                 'message' => null,
                 'grace_until' => null,
-                'changed_by' => 'operator',
                 'changed_at' => CarbonImmutable::now(),
                 'requests_24h' => 0,
                 'quota_health' => 0,
@@ -427,12 +423,10 @@ class CommanderPackagesController extends CoreBaseApiController
     private function recordActivity(string $kind, CommanderPackageModel $packageRow, ?string $reason, ?string $message): void
     {
         CommanderActivityEventModel::create([
-            'at' => CarbonImmutable::now(),
             'kind' => $kind,
             'package_id' => $packageRow->id,
             'invoice_id' => null,
             'reason' => $reason,
-            'by' => 'operator',
             'message' => $message,
         ]);
     }

@@ -63,9 +63,13 @@ class CoreMeteringMiddleware
 
             $route = $request->route()?->uri();
 
+            $now = now('UTC');
+
             CommanderRequestLogModel::query()->insert([
                 'package_id' => $packageId,
-                'occurred_at' => now('UTC'),
+                // Insert por query builder: Eloquent no estampa, se setean a mano.
+                'created_at' => $now,
+                'updated_at' => $now,
                 'method' => $request->method(),
                 // route column is string(191); truncate so a long URI can't raise "Data too long".
                 'route' => $route !== null ? Str::limit($route, 191, '') : null,

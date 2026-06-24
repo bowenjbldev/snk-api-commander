@@ -15,9 +15,8 @@ class CommanderSettingModel extends Model
     protected function casts(): array
     {
         return [
-            'default_grace_hours' => 'integer',
-            'notify_on_suspend' => 'boolean',
-            'notify_on_overdue' => 'boolean',
+            // Bolsa de preferencias schemaless; el controller valida cada clave y la expone plana.
+            'settings' => 'array',
         ];
     }
 }

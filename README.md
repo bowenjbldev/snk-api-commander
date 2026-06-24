@@ -116,7 +116,7 @@ Las rutas de cada paquete de cliente se montan en su **subdominio concreto**: `R
 
 ### `commander_packages`: la instancia viva 1:1 (sin tabla de deployments)
 
-**Una sola tabla**, en la BD `commander`, con **una fila por par (cliente, paquete) provisionado**: la instancia viva. Lleva `client_id` (FK clients) + `slug` (del path) + `name` (StudlyCase del paquete) + **`database`** (su BD propia `{cliente}_{slug}`) + `subscription_id` (puntero) + **estado runtime** (`active|grace|suspended` + reason/message/grace_until/changed_by/changed_at) + KPIs (requests_24h, quota_health, last_seen) + `provisioned_at`. **`UNIQUE(client_id, slug)`** (un cliente, un "shop"); **no hay columna `subdomain`** —el subdominio ES `clients.slug`, se llega por la relacion. `provisioned_at != null` marca la instancia viva; el resolutor la busca por `(client_id via host, slug)`. El de-provision es **soft**: anula lo operativo (incluida `slug`/`database`/`client_id`/`provisioned_at`) y conserva la fila + el historial de billing. El metering/billing/cuotas usan `package_id` (FK a `commander_packages`).
+**Una sola tabla**, en la BD `commander`, con **una fila por par (cliente, paquete) provisionado**: la instancia viva. Lleva `client_id` (FK clients) + `slug` (del path) + `name` (StudlyCase del paquete) + **`database`** (su BD propia `{cliente}_{slug}`) + `subscription_id` (puntero) + **estado runtime** (`active|grace|suspended` + reason/message/grace_until/changed_at) + KPIs (requests_24h, quota_health, last_seen) + `provisioned_at`. **`UNIQUE(client_id, slug)`** (un cliente, un "shop"); **no hay columna `subdomain`** —el subdominio ES `clients.slug`, se llega por la relacion. `provisioned_at != null` marca la instancia viva; el resolutor la busca por `(client_id via host, slug)`. El de-provision es **soft**: anula lo operativo (incluida `slug`/`database`/`client_id`/`provisioned_at`) y conserva la fila + el historial de billing. El metering/billing/cuotas usan `package_id` (FK a `commander_packages`).
 
 ### Identidad por paquete
 
@@ -292,7 +292,7 @@ bash scripts/simulate.sh volume [filas_por_package]   # default 100000; p. ej. v
 
 - Inserta los `commander_request_logs` con **un solo `INSERT ... SELECT FROM seq_1_to_N`** por package
   (motor **SEQUENCE** de MariaDB): set-based, sin loops ni HTTP → órdenes de magnitud más rápido.
-- `occurred_at` repartido uniforme en 48h (rellena los ~48 buckets horarios); escala por package
+- `created_at` repartido uniforme en 48h (rellena los ~48 buckets horarios); escala por package
   (1.0 / 0.6 / 0.3) y mezcla de status realista (~95% 2xx · 4% 4xx · 1% 5xx).
 - **Resetea** `commander_usage_rollups` y recomputa todos los buckets (`commander:usage:rollup` es
   incremental desde el último bucket; sin el reset solo agregaría las horas recientes).

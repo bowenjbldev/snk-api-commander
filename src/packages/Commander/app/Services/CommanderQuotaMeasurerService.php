@@ -125,7 +125,6 @@ class CommanderQuotaMeasurerService
                     $reason,
                     $message,
                     CarbonImmutable::now()->addHours((int) config('core.quotas.grace_hours', 72)),
-                    'quota',
                 );
                 $this->recordActivity($metric->package_id, 'grace', $reason, $message);
                 return;
@@ -141,7 +140,6 @@ class CommanderQuotaMeasurerService
                     $reason,
                     $message,
                     null,
-                    'quota',
                 );
                 $this->recordActivity($metric->package_id, 'suspend', $reason, $message);
             }
@@ -157,24 +155,23 @@ class CommanderQuotaMeasurerService
 
         // Auto-heal: solo si la suspension/grace la causo ESTA metrica
         if ($state->status !== CorePackageStatusEnum::Active && $state->reason === $reason) {
-            $this->stateService->set(CorePackageStatusEnum::Active, null, null, null, 'quota');
+            $this->stateService->set(CorePackageStatusEnum::Active, null, null, null);
             $this->recordActivity($metric->package_id, 'resume', null, null);
         }
     }
 
     /**
      * Registra el cambio de estado AUTOMATICO en el feed de actividad (commander_activity_events),
-     * igual que las acciones manuales del operador, pero con by='quota'.
+     * igual que las acciones manuales del operador. El origen (cuota vs operador) se distingue por
+     * el `reason` (quota_exceeded:<key>), no por una columna de actor.
      */
     private function recordActivity(int $packageId, string $kind, ?string $reason, ?string $message): void
     {
         CommanderActivityEventModel::create([
-            'at' => CarbonImmutable::now(),
             'kind' => $kind,
             'package_id' => $packageId,
             'invoice_id' => null,
             'reason' => $reason,
-            'by' => 'quota',
             'message' => $message,
         ]);
     }
@@ -226,7 +223,7 @@ class CommanderQuotaMeasurerService
     {
         // Nota: con sample_rate < 1 esto infra-cuenta; escalar 1/sample_rate si se usa sampling.
         return (int) CommanderRequestLogModel::query()
-            ->where('occurred_at', '>=', CarbonImmutable::now('UTC')->startOfDay())
+            ->where('created_at', '>=', CarbonImmutable::now('UTC')->startOfDay())
             ->when($packageId !== null, fn ($q) => $q->where('package_id', $packageId))
             ->count();
     }

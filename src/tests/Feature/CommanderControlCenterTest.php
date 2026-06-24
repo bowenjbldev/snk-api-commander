@@ -44,7 +44,7 @@ class CommanderControlCenterTest extends CommanderTestCase
         return CommanderPackageModel::create([
             'name' => 'Shop', 'label' => 'Shop', 'listing_status' => 'active',
             'slug' => 'shop', 'database' => 'c_shop', 'status' => 'active',
-            'client_id' => $client->id, 'changed_by' => 'operator', 'changed_at' => now(),
+            'client_id' => $client->id, 'changed_at' => now(),
             'provisioned_at' => now(),
         ]);
     }
@@ -106,7 +106,7 @@ class CommanderControlCenterTest extends CommanderTestCase
         ]);
         for ($i = 0; $i < 8; $i++) {
             CommanderRequestLogModel::create([
-                'package_id' => $pid, 'occurred_at' => now(), 'method' => 'GET',
+                'package_id' => $pid, 'created_at' => now(), 'method' => 'GET',
                 'route' => '/api/v1/x', 'path' => 'api/v1/x', 'status' => 200,
                 'duration_ms' => 1, 'request_bytes' => 0, 'response_bytes' => 1, 'memory_kb' => 1,
             ]);
@@ -117,8 +117,8 @@ class CommanderControlCenterTest extends CommanderTestCase
         // El medidor lo movio a grace…
         $this->assertSame('grace', CommanderPackageModel::find($pid)->getRawOriginal('status'));
 
-        // …y dejo rastro en el feed de actividad con by='quota' (antes no se registraba).
-        $event = CommanderActivityEventModel::where('package_id', $pid)->where('by', 'quota')->first();
+        // …y dejo rastro en el feed de actividad (el origen cuota se reconoce por el reason).
+        $event = CommanderActivityEventModel::where('package_id', $pid)->where('kind', 'grace')->first();
         $this->assertNotNull($event);
         $this->assertSame('grace', $event->kind);
         $this->assertSame('quota_exceeded:requests_day', $event->reason);
@@ -130,7 +130,7 @@ class CommanderControlCenterTest extends CommanderTestCase
         $pkg = $this->package();
 
         CommanderRequestLogModel::create([
-            'package_id' => $pkg->id, 'occurred_at' => now(), 'method' => 'GET',
+            'package_id' => $pkg->id, 'created_at' => now(), 'method' => 'GET',
             'route' => '/api/v1/products', 'path' => 'api/v1/products', 'status' => 200,
             'duration_ms' => 7, 'user_id' => null, 'token_id' => 'tok_x', 'ip' => '127.0.0.1',
             'request_bytes' => 0, 'response_bytes' => 12, 'memory_kb' => 2,

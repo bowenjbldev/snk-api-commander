@@ -56,7 +56,7 @@ class CommanderUsageRollupService
 
         do {
             $affected = CommanderRequestLogModel::query()
-                ->where('occurred_at', '<', $cutoff)
+                ->where('created_at', '<', $cutoff)
                 ->limit(self::PRUNE_BATCH)
                 ->delete();
             $deleted += $affected;
@@ -74,7 +74,7 @@ class CommanderUsageRollupService
             return $this->truncate(CarbonImmutable::parse($last, 'UTC'), $period);
         }
 
-        $first = CommanderRequestLogModel::query()->min('occurred_at');
+        $first = CommanderRequestLogModel::query()->min('created_at');
 
         return $first !== null
             ? $this->truncate(CarbonImmutable::parse($first, 'UTC'), $period)
@@ -89,8 +89,8 @@ class CommanderUsageRollupService
         $groups = [];
 
         CommanderRequestLogModel::query()
-            ->where('occurred_at', '>=', $bucket)
-            ->where('occurred_at', '<', $bucketEnd)
+            ->where('created_at', '>=', $bucket)
+            ->where('created_at', '<', $bucketEnd)
             ->orderBy('id')
             ->chunkById(self::CHUNK, function ($rows) use (&$groups): void {
                 foreach ($rows as $row) {

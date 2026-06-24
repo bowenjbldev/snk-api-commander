@@ -44,7 +44,6 @@ class CommanderStatusCommand extends Command
                 $this->option('reason') ?: ($status === CorePackageStatusEnum::Active ? null : 'manual'),
                 $this->option('message') ?: null,
                 $graceUntil,
-                'cli',
             );
 
             $this->info("Estado actualizado a [{$status->value}].");
@@ -58,7 +57,6 @@ class CommanderStatusCommand extends Command
             ['reason', $state->reason ?? '-'],
             ['message', $state->message ?? '-'],
             ['grace_until', $state->graceUntil?->toIso8601String() ?? '-'],
-            ['changed_by', $state->changedBy ?? '-'],
         ]);
 
         $quotas = CommanderQuotaModel::query()->orderBy('metric_key')->get();

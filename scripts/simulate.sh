@@ -337,7 +337,7 @@ stage_report() {
   hr; echo "REPORTE — estado del Commander"; hr
   echo "Packages (cliente x package; estado runtime + cuota req/dia):"
   dbq commander -e "SELECT c.slug AS client, p.slug AS package, p.database AS db, p.status,
-      COALESCE(p.reason,'-') reason, p.changed_by, p.requests_24h, p.quota_health
+      COALESCE(p.reason,'-') reason, p.requests_24h, p.quota_health
     FROM commander_packages p
     JOIN commander_clients c ON c.id = p.client_id
     WHERE p.provisioned_at IS NOT NULL

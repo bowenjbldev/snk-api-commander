@@ -16,10 +16,10 @@ return new class extends Migration {
             $table->string('metric_key', 64); // requests_day|disk_db_mb|disk_storage_mb|users_total
             $table->unsignedBigInteger('current_value')->default(0);
             $table->unsignedBigInteger('limit_value')->nullable(); // null = unlimited
+            $table->string('unit', 16)->default('count'); // count|mb
             $table->string('on_exceed', 16)->default('none'); // none|warn|suspend
             $table->timestamp('exceeded_at')->nullable(); // cuando supero el limite por primera vez (lo gestiona el motor)
             $table->timestamp('measured_at')->nullable(); // ultima medicion del motor
-            $table->string('unit', 16)->default('count'); // count|mb
             $table->timestamps();
 
             // Una fila por (package, metrica).

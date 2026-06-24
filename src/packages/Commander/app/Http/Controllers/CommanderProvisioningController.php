@@ -134,7 +134,6 @@ class CommanderProvisioningController extends CoreBaseApiController
                 'reason' => null,
                 'message' => null,
                 'grace_until' => null,
-                'changed_by' => 'operator',
                 'changed_at' => $now,
                 'requests_24h' => 0,
                 'quota_health' => 0,
