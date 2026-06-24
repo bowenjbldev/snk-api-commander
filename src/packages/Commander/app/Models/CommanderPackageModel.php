@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Packages\Core\Enums\CorePackageStatusEnum;
 
 /**
@@ -66,5 +67,23 @@ class CommanderPackageModel extends Model
     public function quotas(): HasMany
     {
         return $this->hasMany(CommanderQuotaModel::class, 'package_id');
+    }
+
+    /** Origen git (1:1) para los insights: de dónde se sincroniza + cursor. */
+    public function repo(): HasOne
+    {
+        return $this->hasOne(CommanderPackageRepoModel::class, 'package_id');
+    }
+
+    /** Commits crudos sincronizados (fuente de los insights). */
+    public function commits(): HasMany
+    {
+        return $this->hasMany(CommanderPackageCommitModel::class, 'package_id');
+    }
+
+    /** Rollup diario de actividad git (heatmap + code frequency). */
+    public function activityDaily(): HasMany
+    {
+        return $this->hasMany(CommanderPackageActivityDailyModel::class, 'package_id');
     }
 }

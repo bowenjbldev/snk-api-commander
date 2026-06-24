@@ -4,14 +4,28 @@ namespace Packages\Commander\Providers;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\ServiceProvider;
+use Packages\Commander\Console\Commands\CommanderGitSyncCommand;
 use Packages\Commander\Console\Commands\CommanderPackagesSyncCommand;
 use Packages\Commander\Console\Commands\CommanderRefreshCommand;
 use Packages\Commander\Console\Commands\CommanderQuotaMeasureCommand;
 use Packages\Commander\Console\Commands\CommanderStatusCommand;
 use Packages\Commander\Console\Commands\CommanderUsageRollupCommand;
+use Packages\Commander\Contracts\CommanderPackageGitSource;
+use Packages\Commander\Git\CommanderLocalGitSource;
 
 class CommanderServiceProvider extends ServiceProvider
 {
+    public function register(): void
+    {
+        // Origen del historial git: LocalGit (lee el .git montado :ro). Swappable por
+        // CommanderBitbucketApiSource cuando el host no tenga .git.
+        $this->app->bind(CommanderPackageGitSource::class, fn () => new CommanderLocalGitSource(
+            (string) config('commander.git.git_dir', '/var/www/.git'),
+            (string) config('commander.git.work_tree', '/var/www'),
+            (string) config('commander.git.binary', 'git'),
+        ));
+    }
+
     public function boot(): void
     {
         if ($this->app->runningInConsole()) {
@@ -21,6 +35,7 @@ class CommanderServiceProvider extends ServiceProvider
                 CommanderUsageRollupCommand::class,
                 CommanderQuotaMeasureCommand::class,
                 CommanderPackagesSyncCommand::class,
+                CommanderGitSyncCommand::class,
             ]);
 
             // KPIs del dashboard + snapshots de uso frescos (cron corre schedule:run).
@@ -29,6 +44,7 @@ class CommanderServiceProvider extends ServiceProvider
                 $schedule->command('commander:refresh')->everyTenMinutes()->withoutOverlapping();
                 $schedule->command('commander:usage:rollup --prune')->hourly()->withoutOverlapping();
                 $schedule->command('commander:quota:measure')->everySixHours()->withoutOverlapping();
+                $schedule->command('commander:git:sync')->hourly()->withoutOverlapping();
             });
         }
     }

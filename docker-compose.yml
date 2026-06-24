@@ -12,6 +12,9 @@ services:
     working_dir: /var/www/src
     volumes:
       - ./src:/var/www/src
+      # Historial git (solo lectura) para los insights por package: commander:git:sync lee
+      # `git log --git-dir=/var/www/.git` acotado al path del package. No necesita work-tree.
+      - ./.git:/var/www/.git:ro
       - /var/www/src/bootstrap/cache
     depends_on:
       db:
