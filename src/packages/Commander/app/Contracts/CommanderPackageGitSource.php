@@ -7,8 +7,9 @@ use Packages\Commander\Support\CommanderGitCommitData;
 
 /**
  * Origen del historial git de un package para los insights. Implementaciones intercambiables
- * (CommanderLocalGitSource = `git log` del .git montado; CommanderBitbucketApiSource = API remota,
- * futuro) que escriben siempre las MISMAS tablas via CommanderGitSyncService.
+ * (CommanderLocalGitSource = `git log` del .git montado; CommanderRemoteGitSource = API del proveedor
+ * git, futuro) que escriben siempre las MISMAS tablas via CommanderGitSyncService. El proveedor
+ * concreto solo se nombra en la columna `provider`; el resto es agnostico.
  */
 interface CommanderPackageGitSource
 {

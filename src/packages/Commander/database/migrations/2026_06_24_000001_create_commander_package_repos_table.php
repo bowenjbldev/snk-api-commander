@@ -8,8 +8,9 @@ use Illuminate\Support\Facades\Schema;
  * Origen git de cada package (1:1) + cursor de sync incremental. Alimenta la feature FUTURA de
  * Git Insights (historial de commits, code frequency, heatmap por package). `path_prefix` mantiene
  * el esquema agnostico a la estrategia de repo: monorepo (subcarpeta `src/packages/<Client>/<Package>`)
- * o repo dedicado (`null`). El sync (LocalGit `git log` o Bitbucket API) lo lee y puebla
- * commander_package_commits; aqui no se construye nada mas todavia.
+ * o repo dedicado (`null`). El sync (CommanderLocalGitSource `git log`, o CommanderRemoteGitSource
+ * = API del proveedor git, futuro) lo lee y puebla commander_package_commits. El proveedor concreto
+ * se nombra SOLO en la columna `provider`; el resto del codigo es agnostico.
  */
 return new class extends Migration {
     public function up(): void

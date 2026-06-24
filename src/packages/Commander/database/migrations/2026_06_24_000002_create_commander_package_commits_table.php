@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Log RAW de commits por package: la fuente de verdad de los insights. Lo poblara `commander:git:sync`
  * leyendo el git del package (path-scoped en monorepo via `git log --numstat -- <path_prefix>`, o la
- * API de Bitbucket). additions/deletions/files_changed van ACOTADOS al path del package. El rollup
+ * API remota del proveedor git). additions/deletions/files_changed van ACOTADOS al path del package. El rollup
  * diario (commander_package_activity_daily) lo agrega para el heatmap. Mismo patron raw->rollup que
  * commander_request_logs -> commander_usage_rollups.
  */

@@ -161,10 +161,11 @@ class CommanderGitSyncService
      */
     private function ensureRepo(CommanderPackageModel $package): CommanderPackageRepoModel
     {
+        // `provider` no se setea aqui: lo aporta el default de la columna (el unico sitio que nombra
+        // el proveedor). El servicio es agnostico.
         return CommanderPackageRepoModel::firstOrCreate(
             ['package_id' => $package->id],
             [
-                'provider' => 'bitbucket',
                 'path_prefix' => 'src/packages/'.Str::studly((string) $package->client?->slug).'/'.$package->name,
                 'default_branch' => 'main',
             ],

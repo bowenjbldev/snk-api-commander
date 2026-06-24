@@ -17,8 +17,8 @@ class CommanderServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // Origen del historial git: LocalGit (lee el .git montado :ro). Swappable por
-        // CommanderBitbucketApiSource cuando el host no tenga .git.
+        // Origen del historial git: CommanderLocalGitSource (lee el .git montado :ro). Swappable por
+        // CommanderRemoteGitSource (API del proveedor git) cuando el host no tenga .git.
         $this->app->bind(CommanderPackageGitSource::class, fn () => new CommanderLocalGitSource(
             (string) config('commander.git.git_dir', '/var/www/.git'),
             (string) config('commander.git.work_tree', '/var/www'),
