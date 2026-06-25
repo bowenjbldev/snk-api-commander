@@ -37,7 +37,7 @@ export default defineConfig({
         // Split heavy vendors into cacheable chunks instead of one ~1MB file.
         manualChunks(id) {
           if (!id.includes('node_modules')) return
-          if (id.includes('@carbon/charts')) return 'charts'
+          if (id.includes('echarts') || id.includes('zrender')) return 'charts'
           if (id.includes('@carbon')) return 'carbon'
           if (/[\\/]node_modules[\\/](react|react-dom|react-router|scheduler)[\\/]/.test(id)) return 'react'
         },

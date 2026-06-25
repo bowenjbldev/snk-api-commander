@@ -2,16 +2,16 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Loading, OverflowMenu, OverflowMenuItem, Table, TableHead, TableRow, TableHeader, TableBody, TableCell, TableContainer } from '@carbon/react'
 import { Activity, CheckmarkOutline, Time, PauseOutline, Warning, Money } from '@carbon/icons-react'
-import { StackedBarChart, StackedAreaChart } from '@carbon/charts-react'
 import { useStore, useProvisionedPackages } from '../store/store'
 import { useAppTheme } from '../providers/ThemeProvider'
 import { useTick } from '../providers/TickProvider'
 import { KpiCluster, KpiTile } from '../components/KpiCluster'
 import { Card } from '../components/Card'
 import { ChartCard, ChartLegend } from '../components/ChartCard'
+import { EChart } from '../components/EChart'
 import { RelativeTime } from '../components/RelativeTime'
 import { EmptyState } from '../components/EmptyState'
-import { stackedBarOptions, areaOptions, weeklyBarOptions, legendItems } from '../lib/chartOptions'
+import { timeSeriesOption, legendItems } from '../lib/echartsOptions'
 import { snapshotsToPlatformSeries, dailyToCodeFrequency } from '../lib/chartData'
 import { platformUsage, platformCodeFrequency } from '../lib/api'
 import { TIME_RANGES, rangeOf, type RangeKey } from '../lib/timeRanges'
@@ -149,8 +149,10 @@ export function Dashboard() {
   // so the deltas read null (we never fabricate an arrow).
   const kpis = useMemo(() => deriveUsageKpis(reqUsage.snapshots), [reqUsage.snapshots])
 
-  const reqSeries = useMemo(() => snapshotsToPlatformSeries(reqUsage.snapshots, packageLabels, rangeOf(reqRange).bucket), [reqUsage.snapshots, packageLabels, reqRange])
-  const errSeries = useMemo(() => snapshotsToPlatformSeries(errUsage.snapshots, packageLabels, rangeOf(errRange).bucket), [errUsage.snapshots, packageLabels, errRange])
+  // Charts render on ECharts (canvas) so we serve RAW data — bucket = fetch period (daily for year =
+  // 365 pts, no weekly collapse). Canvas handles the density that choked Carbon's SVG.
+  const reqSeries = useMemo(() => snapshotsToPlatformSeries(reqUsage.snapshots, packageLabels, rangeOf(reqRange).period), [reqUsage.snapshots, packageLabels, reqRange])
+  const errSeries = useMemo(() => snapshotsToPlatformSeries(errUsage.snapshots, packageLabels, rangeOf(errRange).period), [errUsage.snapshots, packageLabels, errRange])
   const groups = reqSeries.requests.groups
   const reqData = reqSeries.requests.data
   const errData = errSeries.errorRate
@@ -159,11 +161,12 @@ export function Dashboard() {
   const reqReady = !reqUsage.loading && !reqUsage.error && reqData.length > 0
   const errReady = !errUsage.loading && !errUsage.error && errData.length > 0
 
-  // hideX: dashboard charts drop the time x-axis for a unified, compact look (the card subtitle
-  // carries the window) — keeps the legend tight to the chart instead of a big axis gap.
-  const reqOpts = useMemo(() => stackedBarOptions(theme, groups, '100%', true), [theme, groups])
-  const errOpts = useMemo(() => areaOptions(theme, { '4xx': '#d2a106', '5xx': '#fa4d56' }, '150px', true), [theme])
-  const freqOpts = useMemo(() => weeklyBarOptions(theme, { additions: '#42be65', deletions: '#fa4d56' }, '150px', true), [theme])
+  // ECharts options (canvas). Dashboard charts hide the x-axis for a compact look — the card subtitle
+  // carries the window. Requests: stacked bars (top-4 packages + other). Error rate: stacked % area by
+  // status class. Code frequency: diverging add/del bars per week.
+  const reqEOption = useMemo(() => timeSeriesOption(reqData, { theme, type: 'bar', stack: true, groups }), [reqData, groups, theme])
+  const errEOption = useMemo(() => timeSeriesOption(errData, { theme, type: 'line', area: true, stack: true, scale: { '4xx': '#d2a106', '5xx': '#fa4d56' }, yPercent: true }), [errData, theme])
+  const freqEOption = useMemo(() => timeSeriesOption(freqData, { theme, type: 'bar', stack: true, scale: { additions: '#42be65', deletions: '#fa4d56' } }), [freqData, theme])
 
   // Kebab menu: the 5 time ranges + a link to the full Usage page. The applied range is shown by the
   // card subtitle (no per-item checkmark — OverflowMenuItem has no native selected state).
@@ -219,7 +222,7 @@ export function Dashboard() {
           fill
         >
           {reqReady ? (
-            <StackedBarChart data={reqData} options={reqOpts} />
+            <EChart option={reqEOption} height="100%" />
           ) : (
             <ChartPlaceholder loading={reqUsage.loading} error={reqUsage.error} height={400} />
           )}
@@ -232,7 +235,7 @@ export function Dashboard() {
             action={rangeMenu(setErrRange)}
           >
             {errReady ? (
-              <StackedAreaChart data={errData} options={errOpts} />
+              <EChart option={errEOption} height={150} />
             ) : (
               <ChartPlaceholder loading={errUsage.loading} error={errUsage.error} height={150} />
             )}
@@ -244,7 +247,7 @@ export function Dashboard() {
             action={rangeMenu(setFreqRange)}
           >
             {freqData.length > 0 ? (
-              <StackedBarChart data={freqData} options={freqOpts} />
+              <EChart option={freqEOption} height={150} />
             ) : (
               <EmptyState title={freq.error ? 'Insights unavailable' : freq.loading ? 'Loading…' : 'No commit history'} />
             )}

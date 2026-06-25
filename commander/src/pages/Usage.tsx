@@ -10,16 +10,16 @@ import {
   TableHeader,
   TableRow,
 } from '@carbon/react'
-import { StackedBarChart, AreaChart } from '@carbon/charts-react'
 import { useStore, useProvisionedPackages } from '../store/store'
 import { useAppTheme } from '../providers/ThemeProvider'
 import { PageHeader } from '../components/PageHeader'
 import { ChartCard, ChartLegend } from '../components/ChartCard'
+import { EChart } from '../components/EChart'
 import { KpiCluster, KpiTile } from '../components/KpiCluster'
 import { PackageStatusTag } from '../components/tags/StatusTag'
 import { QuotaBar } from '../components/QuotaBar'
 import { EmptyState } from '../components/EmptyState'
-import { stackedBarOptions, areaOptions, legendItems } from '../lib/chartOptions'
+import { timeSeriesOption, legendItems } from '../lib/echartsOptions'
 import { snapshotsToPlatformSeries, type PlatformSeries } from '../lib/chartData'
 import { platformUsage } from '../lib/api'
 import { formatCompact, formatInt, formatPercent } from '../lib/format'
@@ -92,11 +92,11 @@ export function Usage() {
   }, [packageLabels])
 
   const groups = useMemo(() => platform.series?.requests.groups ?? [], [platform.series])
-  const reqData = platform.series?.requests.data ?? []
-  const errData = platform.series?.errorRate ?? []
+  const reqData = useMemo(() => platform.series?.requests.data ?? [], [platform.series])
+  const errData = useMemo(() => platform.series?.errorRate ?? [], [platform.series])
   const hasChart = !platform.loading && !platform.error && reqData.length > 0
-  const reqOpts = useMemo(() => stackedBarOptions(theme, groups, '300px'), [theme, groups])
-  const errOpts = useMemo(() => areaOptions(theme, { 'error %': '#fa4d56' }, '300px'), [theme])
+  const reqEOption = useMemo(() => timeSeriesOption(reqData, { theme, type: 'bar', stack: true, groups, showX: true }), [reqData, groups, theme])
+  const errEOption = useMemo(() => timeSeriesOption(errData, { theme, type: 'line', area: true, stack: true, scale: { '4xx': '#d2a106', '5xx': '#fa4d56' }, yPercent: true, showX: true }), [errData, theme])
 
   const top = useMemo(
     () => [...packages].sort((a, b) => b.requests_24h - a.requests_24h).slice(0, 8),
@@ -133,7 +133,7 @@ export function Usage() {
           right={<ChartLegend items={legendItems(groups)} />}
         >
           {hasChart ? (
-            <StackedBarChart data={reqData} options={reqOpts} />
+            <EChart option={reqEOption} height={300} />
           ) : (
             <UsageChartPlaceholder loading={platform.loading} error={platform.error} />
           )}
@@ -141,10 +141,10 @@ export function Usage() {
         <ChartCard
           title="Error rate"
           subtitle="%"
-          right={<ChartLegend items={[{ label: 'error %', color: '#fa4d56' }]} />}
+          right={<ChartLegend items={[{ label: '4xx', color: '#d2a106' }, { label: '5xx', color: '#fa4d56' }]} />}
         >
           {hasChart ? (
-            <AreaChart data={errData} options={errOpts} />
+            <EChart option={errEOption} height={300} />
           ) : (
             <UsageChartPlaceholder loading={platform.loading} error={platform.error} />
           )}

@@ -13,16 +13,16 @@ import {
   TableHeader,
   TableRow,
 } from '@carbon/react'
-import { AreaChart, LineChart } from '@carbon/charts-react'
 import { Calendar, Download } from '@carbon/icons-react'
 import type { Package, PackageContext } from '../../store/types'
 import { useAppTheme } from '../../providers/ThemeProvider'
 import { useToast } from '../../providers/ToastProvider'
 import { ChartCard, ChartLegend } from '../../components/ChartCard'
+import { EChart } from '../../components/EChart'
 import { EmptyState } from '../../components/EmptyState'
 import { MethodTag } from '../../components/tags/MethodTag'
 import { KpiCluster, KpiTile } from '../../components/KpiCluster'
-import { areaOptions, lineOptions } from '../../lib/chartOptions'
+import { timeSeriesOption } from '../../lib/echartsOptions'
 import { rollupsToUsageSeries, type UsageSeries } from '../../lib/chartData'
 import { packagesApi } from '../../lib/api'
 import { formatBytes, formatCompact, formatInt, formatPercent } from '../../lib/format'
@@ -92,10 +92,10 @@ function UsageView({ pkg }: { pkg: Package }) {
   const kpis = series?.kpis
   const endpoints = series?.topEndpoints ?? []
 
-  const reqOpts = useMemo(() => areaOptions(theme, { requests: '#6929c4' }, '240px'), [theme])
-  const errOpts = useMemo(() => lineOptions(theme, { '4xx': '#d2a106', '5xx': '#fa4d56' }, '240px'), [theme])
-  const latOpts = useMemo(() => lineOptions(theme, { avg: '#1192e8', p95: '#9f1853' }, '240px'), [theme])
-  const txOpts = useMemo(() => areaOptions(theme, { in: '#005d5d', out: '#6929c4' }, '240px'), [theme])
+  const reqEOption = useMemo(() => timeSeriesOption(series?.requests ?? [], { theme, type: 'line', area: true, scale: { requests: '#6929c4' }, showX: true }), [series, theme])
+  const errEOption = useMemo(() => timeSeriesOption(series?.errorRate ?? [], { theme, type: 'line', scale: { '4xx': '#d2a106', '5xx': '#fa4d56' }, yPercent: true, showX: true }), [series, theme])
+  const latEOption = useMemo(() => timeSeriesOption(series?.latency ?? [], { theme, type: 'line', scale: { avg: '#1192e8', p95: '#9f1853' }, showX: true }), [series, theme])
+  const txEOption = useMemo(() => timeSeriesOption(series?.transfer ?? [], { theme, type: 'line', area: true, stack: true, scale: { in: '#005d5d', out: '#6929c4' }, showX: true }), [series, theme])
 
   const exportEndpoints = () => {
     const filename = `${pkg.slug ?? pkg.name}-endpoints.csv`
@@ -173,28 +173,28 @@ function UsageView({ pkg }: { pkg: Package }) {
           {/* Charts 2×2 */}
           <div className="scns-grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
             <ChartCard title="Requests" subtitle={`per ${period}`}>
-              <AreaChart data={series!.requests} options={reqOpts} />
+              <EChart option={reqEOption} height={240} />
             </ChartCard>
             <ChartCard
               title="Error rate"
               subtitle="%"
               right={<ChartLegend items={[{ label: '4xx', color: '#d2a106' }, { label: '5xx', color: '#fa4d56' }]} />}
             >
-              <LineChart data={series!.errorRate} options={errOpts} />
+              <EChart option={errEOption} height={240} />
             </ChartCard>
             <ChartCard
               title="Latency"
               subtitle="ms"
               right={<ChartLegend items={[{ label: 'avg', color: '#1192e8' }, { label: 'p95', color: '#9f1853' }]} />}
             >
-              <LineChart data={series!.latency} options={latOpts} />
+              <EChart option={latEOption} height={240} />
             </ChartCard>
             <ChartCard
               title="Transfer"
               subtitle="MB"
               right={<ChartLegend items={[{ label: 'in', color: '#005d5d' }, { label: 'out', color: '#6929c4' }]} />}
             >
-              <AreaChart data={series!.transfer} options={txOpts} />
+              <EChart option={txEOption} height={240} />
             </ChartCard>
           </div>
 

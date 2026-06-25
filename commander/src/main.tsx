@@ -1,6 +1,5 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import '@carbon/charts-react/styles.css'
 import './styles/index.scss' // Carbon (heavy; rarely edited)
 // @carbon/ibm-products styles for CreateSidePanel — released components only, Carbon NOT re-imported
 // (index.scss already loaded it). After the Carbon base, before our token overrides.

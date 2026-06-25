@@ -13,14 +13,14 @@ import {
   TableRow,
   Tag,
 } from '@carbon/react'
-import { HeatmapChart, StackedBarChart } from '@carbon/charts-react'
 import type { Package, PackageContext, PackageInsights } from '../../store/types'
 import { useAppTheme } from '../../providers/ThemeProvider'
 import { ChartCard, ChartLegend } from '../../components/ChartCard'
+import { EChart } from '../../components/EChart'
 import { EmptyState } from '../../components/EmptyState'
 import { KpiCluster, KpiTile } from '../../components/KpiCluster'
 import { CopyableCode } from '../../components/CopyableCode'
-import { heatmapOptions, weeklyBarOptions } from '../../lib/chartOptions'
+import { timeSeriesOption, heatmapOption } from '../../lib/echartsOptions'
 import { dailyToCodeFrequency, dailyToHeatmap } from '../../lib/chartData'
 import { packagesApi } from '../../lib/api'
 import { formatCompact, formatInt } from '../../lib/format'
@@ -84,9 +84,9 @@ function InsightsView({ pkg }: { pkg: Package }) {
   const hasHistory = (summary?.total_commits ?? 0) > 0
 
   const heatData = useMemo(() => dailyToHeatmap(daily, days), [daily, days])
-  const heatOpts = useMemo(() => heatmapOptions(theme, '220px'), [theme])
+  const heatEOption = useMemo(() => heatmapOption(heatData, theme), [heatData, theme])
   const freqData = useMemo(() => dailyToCodeFrequency(daily), [daily])
-  const freqOpts = useMemo(() => weeklyBarOptions(theme, { additions: '#42be65', deletions: '#fa4d56' }, '260px'), [theme])
+  const freqEOption = useMemo(() => timeSeriesOption(freqData, { theme, type: 'bar', stack: true, scale: { additions: '#42be65', deletions: '#fa4d56' }, showX: true }), [freqData, theme])
 
   const dash = (v: string | number | undefined | null) => (hasHistory && v != null ? String(v) : '—')
 
@@ -142,7 +142,7 @@ function InsightsView({ pkg }: { pkg: Package }) {
       ) : (
         <>
           <ChartCard title="Contribution activity" subtitle={`commits per day · last ${RANGES[rangeIdx].label}`}>
-            <HeatmapChart data={heatData} options={heatOpts} />
+            <EChart option={heatEOption} height={220} />
           </ChartCard>
 
           <ChartCard
@@ -150,7 +150,7 @@ function InsightsView({ pkg }: { pkg: Package }) {
             subtitle="lines changed per week"
             right={<ChartLegend items={[{ label: 'additions', color: '#42be65' }, { label: 'deletions', color: '#fa4d56' }]} />}
           >
-            <StackedBarChart data={freqData} options={freqOpts} />
+            <EChart option={freqEOption} height={260} />
           </ChartCard>
 
           {/* Recent commits */}
