@@ -12,10 +12,15 @@ export function baseDomain(): string {
   return host || 'snake.test'
 }
 
+// El host del package provisionado deriva del CLIENTE (client.slug es el subdominio), no del package.
+// Requiere que la relación `client` esté cargada (la API la incluye siempre en las respuestas).
 export function packageFqdn(pkg: Package): string {
-  return `${pkg.subdomain}.${baseDomain()}`
+  const sub = pkg.client?.slug ?? 'unknown'
+  return `${sub}.${baseDomain()}`
 }
 
+// URL base de la instancia: host (client.slug) + segmento de path (package.slug).
 export function packageBaseUrl(pkg: Package): string {
-  return `https://${packageFqdn(pkg)}/api/v1`
+  const path = pkg.slug ?? ''
+  return `https://${packageFqdn(pkg)}/api/v1${path ? `/${path}` : ''}`
 }

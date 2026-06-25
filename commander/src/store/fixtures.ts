@@ -189,25 +189,24 @@ export function buildFixtures(nowMs: number): Dataset {
     'Your subscription payment is overdue. Service continues during a short grace period; settle the balance to avoid suspension.'
 
   // Each row → one unified package (commander_packages): catalogo + operativo. Todos provisionados.
+  const clientById = new Map(clients.map((c) => [c.id, c]))
   const packages: Package[] = rows.map((r, idx) => {
     const [handle, client, status, req, health, seenMs, created] = r
     let reason: Package['reason'] = null
     let message: string | null = null
     let grace_until: string | null = null
-    let changed_by: Package['changed_by'] = 'cli'
-    let changed_at = created
+    let changed_at: string | null = created
     if (status === 'suspended') {
       reason = handle === 'quill-cms' ? 'abuse' : 'payment_overdue'
       message = handle === 'quill-cms' ? 'This package has been suspended pending account review.' : SUSPEND_MSG
-      changed_by = handle === 'quill-cms' ? 'operator' : 'auto-suspend'
       changed_at = ago(STATE_CHANGED[handle] ?? H)
     } else if (status === 'grace') {
       reason = handle === 'tetra-telemetry' ? 'manual' : 'payment_overdue'
       message = GRACE_MSG
-      changed_by = 'operator'
       changed_at = ago(STATE_CHANGED[handle] ?? H)
       grace_until = ahead(GRACE_REMAINING[handle] ?? 72 * H)
     }
+    const clientId = clientIdBySlug.get(client)!
     return {
       id: idx + 1, // bigint PK
       name: studly(handle), // StudlyCase package name (1:1)
@@ -219,26 +218,27 @@ export function buildFixtures(nowMs: number): Dataset {
       plan_count: 0, // asignado tras construir los planes
       // ── operativo (provisionado) ──
       provisioned_at: created,
-      subdomain: handle, // handle bare (NO el FQDN; el front lo deriva con baseDomain())
+      slug: handle, // slug del PATH (segmento /api/v1/<slug>); el host deriva de client.slug
       database: handle.replace(/-/g, '_'),
-      client_id: clientIdBySlug.get(client)!,
+      client_id: clientId,
       subscription_id: null, // bigint FK, asignado tras construir las subscriptions
       status,
       reason,
       message,
       grace_until,
-      changed_by,
       changed_at,
       requests_24h: req,
       quota_health: health,
       last_seen: ago(seenMs),
       created_at: created,
-      updated_at: changed_at,
+      updated_at: changed_at ?? created,
+      // Relación cliente cargada (la API la incluye siempre; el host = client.slug).
+      client: clientById.get(clientId) ?? null,
     }
   })
 
-  // handle (subdomain) → numeric package id (FKs son bigint)
-  const pkgIdBySubdomain = new Map(packages.map((p) => [p.subdomain!, p.id]))
+  // slug (path) → numeric package id (FKs son bigint)
+  const pkgIdBySlug = new Map(packages.map((p) => [p.slug!, p.id]))
 
   // ── Subscriptions (one per billable package) ─────────────────────────────────
   const subSpec: Array<[string, string, string, number, boolean]> = [
@@ -255,7 +255,7 @@ export function buildFixtures(nowMs: number): Dataset {
     ['tetra-telemetry', 'Telemetry Standard', 'paid', 260, false],
   ]
   const subscriptions: Subscription[] = subSpec.map(([sub, plan, billing, price, auto], idx) => {
-    const p = packages.find((x) => x.subdomain === sub)!
+    const p = packages.find((x) => x.slug === sub)!
     return {
       id: idx + 1, // bigint PK
       client_id: p.client_id!,
@@ -272,7 +272,7 @@ export function buildFixtures(nowMs: number): Dataset {
 
   // Un término PASADO (historial) para kestrel-track: estuvo en un plan más barato y cambió.
   // El cerrado (ended_at no nulo) NO cuenta para el MRR y aparece en "Plan history".
-  const kestrelId = pkgIdBySubdomain.get('kestrel-track')!
+  const kestrelId = pkgIdBySlug.get('kestrel-track')!
   subscriptions.push({
     id: subscriptions.length + 1,
     client_id: clientIdBySlug.get('kestrel')!,
@@ -310,7 +310,7 @@ export function buildFixtures(nowMs: number): Dataset {
     id: idx + 1, // bigint PK
     number, // handle legible 'INV-...' (antes era la PK)
     client_id: clientIdBySlug.get(client)!,
-    package_id: pkgIdBySubdomain.get(sub)!,
+    package_id: pkgIdBySlug.get(sub)!,
     amount,
     issued_at: ago(issuedD * D),
     due_at: ago(dueD * D),
@@ -327,7 +327,7 @@ export function buildFixtures(nowMs: number): Dataset {
   for (const p of packages) {
     const h = p.quota_health
     const serving = p.requests_24h > 0
-    if (p.subdomain === 'kestrel-track') {
+    if (p.slug === 'kestrel-track') {
       quotas.push(
         q(p.id, 'requests_day', 201330, 500000, 'suspend', null, 'count'),
         q(p.id, 'disk_db_mb', 1204, 4096, 'suspend', null, 'mb'),
@@ -336,7 +336,7 @@ export function buildFixtures(nowMs: number): Dataset {
       )
       continue
     }
-    if (p.subdomain === 'helios-meter') {
+    if (p.slug === 'helios-meter') {
       quotas.push(
         q(p.id, 'requests_day', 1240332, 1000000, 'warn', ago(3 * D), 'count'),
         q(p.id, 'disk_db_mb', 7420, 10240, 'suspend', null, 'mb'),
@@ -356,7 +356,7 @@ export function buildFixtures(nowMs: number): Dataset {
     const stRatio = serving ? clamp(h * 0.8, 0.04, 0.98) : h
     quotas.push(q(p.id, 'disk_storage_mb', Math.round(stRatio * stLimit), stLimit, 'none', null, 'mb'))
     // users_total: unlimited for most
-    const usersLimited = ['bluepeak', 'northwind-api', 'tetra-fleet'].includes(p.subdomain!)
+    const usersLimited = ['bluepeak', 'northwind-api', 'tetra-fleet'].includes(p.slug!)
     quotas.push(
       q(
         p.id,
@@ -375,31 +375,63 @@ export function buildFixtures(nowMs: number): Dataset {
   })
 
   // ── Request logs (recent sample; live tail prepends more) ─────────────────────
+  // El cliente (host) de cada log se deriva del package vía package_id; lo enriquecemos aquí.
+  const clientSlugByPkgId = new Map(
+    packages.map((p) => [p.id, clientById.get(p.client_id!)?.slug ?? null]),
+  )
+  const logFor = (
+    slug: string,
+    method: LogEntry['method'],
+    route: string,
+    status: number,
+    duration_ms: number,
+    user_id: string | null,
+    token_id: string,
+    ip: string,
+    request_bytes: number,
+    response_bytes: number,
+    created_at: string,
+  ): LogEntry =>
+    log(
+      pkgIdBySlug.get(slug)!,
+      slug,
+      clientSlugByPkgId.get(pkgIdBySlug.get(slug)!) ?? undefined,
+      method,
+      route,
+      status,
+      duration_ms,
+      user_id,
+      token_id,
+      ip,
+      request_bytes,
+      response_bytes,
+      created_at,
+    )
   const logs: LogEntry[] = [
-    log('kestrel-track', 'GET', '/v1/track/SHP-88412', 200, 124, 'usr_8841', 'tok_live_2a18', '84.12.9.51', 412, 1224, ago(1 * S)),
-    log('helios-meter', 'POST', '/v1/telemetry/batch', 429, 8, 'usr_502', 'tok_live_9c44', '52.28.114.9', 18842, 312, ago(3 * S)),
-    log('bluepeak', 'GET', '/v1/metrics/query?window=1h', 200, 388, 'usr_2210', 'tok_live_77b1', '18.196.4.2', 980, 10044, ago(5 * S)),
-    log('acme-shop-staging', 'POST', '/v1/orders', 201, 242, 'usr_1108', 'tok_live_3d90', '91.0.4.22', 2410, 612, ago(6 * S)),
-    log('tetra-fleet', 'GET', '/v1/fleet/status', 200, 96, 'usr_3306', 'tok_live_ff21', '212.8.9.1', 310, 3140, ago(8 * S)),
-    log('kestrel-track', 'POST', '/v1/routes/optimize', 500, 1840, 'usr_2188', 'tok_live_0a7c', '84.12.9.77', 6220, 488, ago(11 * S)),
-    log('mori-assets', 'GET', '/v1/assets/a8f3.png', 304, 12, 'usr_410', 'tok_live_b210', '34.96.1.4', 0, 312, ago(14 * S)),
-    log('northwind-api', 'POST', '/v1/auth/token', 401, 88, null, 'tok_live_c0de', '203.0.113.5', 612, 188, ago(17 * S)),
-    log('northwind-api', 'GET', '/v1/ledger/entries?from=2026-06-01', 200, 154, 'usr_5521', 'tok_live_aa01', '203.0.113.9', 480, 14600, ago(21 * S)),
-    log('helios-meter', 'POST', '/v1/telemetry/batch', 429, 7, 'usr_502', 'tok_live_9c44', '52.28.114.9', 18112, 312, ago(24 * S)),
-    log('kestrel-track', 'GET', '/v1/track/SHP-88409', 200, 132, 'usr_8841', 'tok_live_2a18', '84.12.9.51', 412, 1208, ago(27 * S)),
-    log('bluepeak', 'GET', '/v1/metrics/query?window=24h', 200, 401, 'usr_2231', 'tok_live_77b1', '18.196.4.9', 1020, 10240, ago(31 * S)),
-    log('tetra-fleet', 'POST', '/v1/fleet/telemetry', 200, 73, 'usr_3310', 'tok_live_ff21', '212.8.9.4', 4400, 220, ago(38 * S)),
-    log('bluepeak-eu', 'GET', '/v1/metrics/query?window=1h', 200, 366, 'usr_9001', 'tok_live_e2f0', '3.120.0.7', 940, 9210, ago(44 * S)),
+    logFor('kestrel-track', 'GET', '/v1/track/SHP-88412', 200, 124, 'usr_8841', 'tok_live_2a18', '84.12.9.51', 412, 1224, ago(1 * S)),
+    logFor('helios-meter', 'POST', '/v1/telemetry/batch', 429, 8, 'usr_502', 'tok_live_9c44', '52.28.114.9', 18842, 312, ago(3 * S)),
+    logFor('bluepeak', 'GET', '/v1/metrics/query?window=1h', 200, 388, 'usr_2210', 'tok_live_77b1', '18.196.4.2', 980, 10044, ago(5 * S)),
+    logFor('acme-shop-staging', 'POST', '/v1/orders', 201, 242, 'usr_1108', 'tok_live_3d90', '91.0.4.22', 2410, 612, ago(6 * S)),
+    logFor('tetra-fleet', 'GET', '/v1/fleet/status', 200, 96, 'usr_3306', 'tok_live_ff21', '212.8.9.1', 310, 3140, ago(8 * S)),
+    logFor('kestrel-track', 'POST', '/v1/routes/optimize', 500, 1840, 'usr_2188', 'tok_live_0a7c', '84.12.9.77', 6220, 488, ago(11 * S)),
+    logFor('mori-assets', 'GET', '/v1/assets/a8f3.png', 304, 12, 'usr_410', 'tok_live_b210', '34.96.1.4', 0, 312, ago(14 * S)),
+    logFor('northwind-api', 'POST', '/v1/auth/token', 401, 88, null, 'tok_live_c0de', '203.0.113.5', 612, 188, ago(17 * S)),
+    logFor('northwind-api', 'GET', '/v1/ledger/entries?from=2026-06-01', 200, 154, 'usr_5521', 'tok_live_aa01', '203.0.113.9', 480, 14600, ago(21 * S)),
+    logFor('helios-meter', 'POST', '/v1/telemetry/batch', 429, 7, 'usr_502', 'tok_live_9c44', '52.28.114.9', 18112, 312, ago(24 * S)),
+    logFor('kestrel-track', 'GET', '/v1/track/SHP-88409', 200, 132, 'usr_8841', 'tok_live_2a18', '84.12.9.51', 412, 1208, ago(27 * S)),
+    logFor('bluepeak', 'GET', '/v1/metrics/query?window=24h', 200, 401, 'usr_2231', 'tok_live_77b1', '18.196.4.9', 1020, 10240, ago(31 * S)),
+    logFor('tetra-fleet', 'POST', '/v1/fleet/telemetry', 200, 73, 'usr_3310', 'tok_live_ff21', '212.8.9.4', 4400, 220, ago(38 * S)),
+    logFor('bluepeak-eu', 'GET', '/v1/metrics/query?window=1h', 200, 366, 'usr_9001', 'tok_live_e2f0', '3.120.0.7', 940, 9210, ago(44 * S)),
   ]
 
   // ── Activity feed ────────────────────────────────────────────────────────────
   const activity: ActivityEvent[] = [
-    { id: 1, at: ago(3 * H), kind: 'suspend', package_id: pkgIdBySubdomain.get('acme-shop'), invoice_id: invoiceIdByNumber.get('INV-2026-0139'), reason: 'payment_overdue', by: 'auto-suspend' },
-    { id: 2, at: ago(14 * H), kind: 'grace', package_id: pkgIdBySubdomain.get('kestrel-track'), reason: 'payment_overdue', by: 'operator' },
-    { id: 3, at: ago(1 * D), kind: 'paid', package_id: pkgIdBySubdomain.get('mori-assets'), invoice_id: invoiceIdByNumber.get('INV-2026-0141'), message: 'Mori Design Co · $120.00' },
-    { id: 4, at: ago(26 * H), kind: 'grace', package_id: pkgIdBySubdomain.get('tetra-telemetry'), reason: 'manual', by: 'operator' },
-    { id: 5, at: ago(2 * D), kind: 'suspend', package_id: pkgIdBySubdomain.get('quill-cms'), reason: 'abuse', by: 'operator' },
-    { id: 6, at: ago(3 * D), kind: 'quota', package_id: pkgIdBySubdomain.get('helios-meter'), message: 'exceeded requests_day · policy warn' },
+    { id: 1, created_at: ago(3 * H), kind: 'suspend', package_id: pkgIdBySlug.get('acme-shop'), invoice_id: invoiceIdByNumber.get('INV-2026-0139'), reason: 'payment_overdue' },
+    { id: 2, created_at: ago(14 * H), kind: 'grace', package_id: pkgIdBySlug.get('kestrel-track'), reason: 'payment_overdue' },
+    { id: 3, created_at: ago(1 * D), kind: 'paid', package_id: pkgIdBySlug.get('mori-assets'), invoice_id: invoiceIdByNumber.get('INV-2026-0141'), message: 'Mori Design Co · $120.00' },
+    { id: 4, created_at: ago(26 * H), kind: 'grace', package_id: pkgIdBySlug.get('tetra-telemetry'), reason: 'manual' },
+    { id: 5, created_at: ago(2 * D), kind: 'suspend', package_id: pkgIdBySlug.get('quill-cms'), reason: 'abuse' },
+    { id: 6, created_at: ago(3 * D), kind: 'quota', package_id: pkgIdBySlug.get('helios-meter'), message: 'exceeded requests_day · policy warn' },
   ]
 
   const settings: OperatorSettings = {
@@ -463,7 +495,9 @@ function q(
 }
 
 function log(
-  subdomain: string,
+  package_id: number,
+  slug: string,
+  subdomain: string | undefined,
   method: LogEntry['method'],
   route: string,
   status: number,
@@ -473,13 +507,15 @@ function log(
   ip: string,
   request_bytes: number,
   response_bytes: number,
-  occurred_at: string,
+  created_at: string,
 ): LogEntry {
   return {
-    id: `log_${occurred_at}_${route}`,
-    occurred_at,
-    package: studly(subdomain),
-    subdomain,
+    id: `log_${created_at}_${route}`,
+    package_id,
+    created_at,
+    package: studly(slug), // enriched: package.name
+    slug, // enriched: package.slug (path)
+    subdomain, // enriched: client.slug (host)
     method,
     route,
     status,
@@ -508,8 +544,8 @@ const KESTREL_ENDPOINTS: TopEndpoint[] = [
 ]
 
 export function topEndpointsFor(p: Package): TopEndpoint[] {
-  if (p.subdomain === 'kestrel-track') return KESTREL_ENDPOINTS
-  const noun = (p.subdomain ?? p.name).replace(/-api$/, '').replace(/-/g, '/')
+  if (p.slug === 'kestrel-track') return KESTREL_ENDPOINTS
+  const noun = (p.slug ?? p.name).replace(/-api$/, '').replace(/-/g, '/')
   const base = Math.max(p.requests_24h, 200)
   const specs: Array<[string, TopEndpoint['method'], number, number, number]> = [
     [`/v1/${noun}`, 'GET', 0.42, 0.006, 220],

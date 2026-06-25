@@ -104,7 +104,7 @@ export function OverviewTab() {
         hideCloseButton
         title={`Suspended${reasonText ? ` — ${reasonText}` : ''}`}
         subtitle={
-          `${packageRow.message ? `${packageRow.message} ` : 'Users are currently blocked. '}Changed by ${packageRow.changed_by}.`
+          packageRow.message ? packageRow.message : 'Users are currently blocked.'
         }
         style={{ maxWidth: '100%', margin: '0 0 24px' }}
       />

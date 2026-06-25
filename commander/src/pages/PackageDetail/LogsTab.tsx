@@ -113,7 +113,7 @@ function LogsView({ pkg }: { pkg: Package }) {
             <TableBody>
               {logs.map((l) => (
                 <TableRow key={l.id}>
-                  <TableCell style={{ color: 'var(--cds-text-helper)' }}>{logTime(l.occurred_at)}</TableCell>
+                  <TableCell style={{ color: 'var(--cds-text-helper)' }}>{logTime(l.created_at)}</TableCell>
                   <TableCell>
                     <MethodTag method={l.method} />
                   </TableCell>

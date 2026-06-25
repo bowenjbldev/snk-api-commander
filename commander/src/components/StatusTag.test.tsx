@@ -6,10 +6,12 @@ import type { Package } from '../store/types'
 function pkg(status: 'active' | 'grace' | 'suspended', grace_until: string | null = null): Package {
   const now = new Date().toISOString()
   return {
-    id: 1, name: 'Shop', subdomain: 'shop', database: 'shop',
+    id: 1, name: 'Shop',
+    label: 'Shop', description: null, listing_status: 'active',
+    provisioned_at: now, slug: 'shop', database: 'shop',
     client_id: 1, subscription_id: 1,
     status, reason: null, message: null, grace_until,
-    changed_by: 'cli', changed_at: now,
+    changed_at: now,
     requests_24h: 0, quota_health: 0, last_seen: now,
     created_at: now, updated_at: now,
   }

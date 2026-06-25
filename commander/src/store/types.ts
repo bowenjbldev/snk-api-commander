@@ -8,8 +8,6 @@ export type PaymentTerms = 'prepaid' | 'net_15' | 'net_30' | 'net_60'
 
 export type StateReason = 'manual' | 'payment_overdue' | 'abuse' | string
 
-export type ChangedBy = 'operator' | 'cli' | 'quota' | 'cms' | 'auto-suspend'
-
 export type ClientStatus = 'active' | 'inactive'
 
 export interface Client {
@@ -51,7 +49,7 @@ export interface Plan {
 
 // Tabla unica commander_packages: una fila por package de negocio (en disco). Mezcla CATALOGO
 // (label/description/listing_status, siempre presente, sincronizado desde disco) con lo OPERATIVO de
-// la instancia viva 1:1 (subdomain/database/cliente/estado runtime/KPIs), que es null hasta provisionar.
+// la instancia viva 1:1 (slug/database/cliente/estado runtime/KPIs), que es null hasta provisionar.
 // `provisioned_at != null` marca la instancia viva. El de-provision (soft) anula lo operativo y conserva
 // el catalogo + el historial de billing. La API la enriquece con on_disk + plan_count + relaciones.
 export interface Package {
@@ -65,7 +63,7 @@ export interface Package {
   plan_count?: number
   // ── Operativo (instancia viva) — null hasta provisionar ──
   provisioned_at: string | null // ISO; null == solo catalogo (no provisionado)
-  subdomain: string | null // bare subdomain (shop), NO el FQDN
+  slug: string | null // snake/kebab slug del PATH (segmento /api/v1/<slug>), parte de UNIQUE(client_id, slug)
   database: string | null // BD propia del package
   client_id: number | null
   subscription_id: number | null
@@ -73,8 +71,7 @@ export interface Package {
   reason: StateReason | null
   message: string | null
   grace_until: string | null // ISO, or null
-  changed_by: ChangedBy
-  changed_at: string // ISO
+  changed_at: string | null // ISO; timestamp de la última transición del state machine
   requests_24h: number
   quota_health: number // 0..>1 worst-metric ratio
   last_seen: string | null // ISO
@@ -139,13 +136,16 @@ export interface Subscription {
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
-// One row of commander_request_logs (written by CoreMeteringMiddleware), tagged with package/subdomain
-// by the API. Shape matches the real table columns.
+// One row of commander_request_logs (written by CoreMeteringMiddleware). The API enriches each row by
+// JOINing commander_packages (package name + path slug) and commander_clients (client slug = host).
+// `package`/`slug`/`subdomain` are enrichment fields from that join, not stored columns.
 export interface LogEntry {
   id: string
-  occurred_at: string // ISO
-  package: string
-  subdomain: string
+  package_id: number
+  created_at: string // ISO
+  package?: string // enriched: package.name (StudlyCase)
+  slug?: string // enriched: package.slug (path segment)
+  subdomain?: string // enriched: client.slug (host)
   method: HttpMethod
   route: string
   path?: string
@@ -163,12 +163,11 @@ export type ActivityKind = 'suspend' | 'grace' | 'resume' | 'paid' | 'quota' | '
 
 export interface ActivityEvent {
   id: number
-  at: string // ISO
+  created_at: string // ISO
   kind: ActivityKind
   package_id?: number
   invoice_id?: number
-  reason?: StateReason | null
-  by?: ChangedBy
+  reason?: StateReason | null // origen del evento se infiere de aquí (no hay actor guardado)
   message?: string
 }
 

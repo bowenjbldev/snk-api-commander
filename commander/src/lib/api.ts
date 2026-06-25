@@ -104,8 +104,9 @@ export function platformUsage(
 }
 
 // Platform-wide request logs (all packages). The API joins commander_request_logs to
-// commander_packages (by package_id) to tag each row's package name + subdomain. `package` is an
-// OPTIONAL filter (the StudlyCase package name) — omit it for the cross-fleet view.
+// commander_packages (by package_id) and commander_clients to enrich each row with the package name,
+// path slug, and client slug (host/subdomain). `package` is an OPTIONAL filter (the StudlyCase
+// package name) — omit it for the cross-fleet view.
 export function platformLogs(
   params: { package?: string; limit?: number; since?: string; status_class?: 2 | 3 | 4 | 5; method?: string } = {},
 ): Promise<{ data: LogEntry[] }> {

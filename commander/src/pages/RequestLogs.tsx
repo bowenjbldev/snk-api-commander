@@ -75,7 +75,7 @@ export function RequestLogs() {
       key: 'time',
       header: 'Time',
       width: 140,
-      render: (l) => <span className="scns-mono" style={{ color: 'var(--cds-text-helper)', fontSize: 12 }}>{logTime(l.occurred_at)}</span>,
+      render: (l) => <span className="scns-mono" style={{ color: 'var(--cds-text-helper)', fontSize: 12 }}>{logTime(l.created_at)}</span>,
     },
     // The origin column only earns its width in the cross-fleet view; hide it when filtered.
     ...(selectedId

@@ -56,7 +56,7 @@ export function ProvisionModal({ open, packageName, plans, planId, lockClientId,
   const [newName, setNewName] = useState('')
   const [newEmail, setNewEmail] = useState('')
   const [newBillingEmail, setNewBillingEmail] = useState('')
-  const [subdomain, setSubdomain] = useState('')
+  const [pkgSlug, setPkgSlug] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [busy, setBusy] = useState(false)
 
@@ -68,7 +68,7 @@ export function ProvisionModal({ open, packageName, plans, planId, lockClientId,
       setNewName('')
       setNewEmail('')
       setNewBillingEmail('')
-      setSubdomain('')
+      setPkgSlug('')
       setSubmitted(false)
       setBusy(false)
     }
@@ -89,13 +89,13 @@ export function ProvisionModal({ open, packageName, plans, planId, lockClientId,
     if (!valid || !selectedPlan) return
     setBusy(true)
     try {
-      const sub = slug(subdomain) || undefined
+      const pathSlug = slug(pkgSlug) || undefined
       const input =
         clientMode === 'existing'
-          ? { plan_id: selectedPlan.id, client_id: clientId || undefined, subdomain: sub }
+          ? { plan_id: selectedPlan.id, client_id: clientId || undefined, slug: pathSlug }
           : {
               plan_id: selectedPlan.id,
-              subdomain: sub,
+              slug: pathSlug,
               client: {
                 slug: slug(newName),
                 name: newName.trim(),
@@ -192,12 +192,12 @@ export function ProvisionModal({ open, packageName, plans, planId, lockClientId,
           )}
 
           <TextInput
-            id="prov-subdomain"
-            labelText="Subdomain (optional)"
-            placeholder="auto from client"
-            value={subdomain}
-            onChange={(e) => setSubdomain(e.target.value)}
-            helperText="Leave blank to let the backend derive it from the client."
+            id="prov-slug"
+            labelText="Package slug (optional)"
+            placeholder="auto from package name"
+            value={pkgSlug}
+            onChange={(e) => setPkgSlug(e.target.value)}
+            helperText="Path segment of the API (/api/v1/<slug>). The host comes from the client. Leave blank to let the backend derive it."
           />
         </div>
     </Modal>

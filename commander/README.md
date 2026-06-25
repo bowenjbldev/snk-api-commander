@@ -10,13 +10,14 @@ API** (`src/packages/Commander`). In production it is served at `commander.<BASE
 
 > Design system reference (rules, pages, flows): [`../design/README.md`](../design/README.md).
 
-> ⚠️ **Modelo backend actual (2026-06-24): cliente-primero, paquetes anidados.** El backend pasó a
+> **Modelo backend actual (2026-06-24): cliente-primero, paquetes anidados.** El backend usa
 > **subdominio = cliente**, **slug del paquete en el path** (`{cliente}.dom/api/v1/{slug}`), código
 > per-cliente anidado `packages/<Cliente>/<Paquete>`, y `commander_packages` como **instancia viva 1:1
 > por `(client_id, slug)`** (sin `commander_deployments`, sin columna `subdomain`). Ver
-> [`../README.md`](../README.md). **Esta SPA aún refleja el modelo anterior (subdominio = paquete) y
-> está pendiente de alinear** — su trabajo en curso quedó en `git stash`. Tómese como referencia de
-> UI/flujo, no como contrato de datos vigente.
+> [`../README.md`](../README.md). **La SPA está alineada a este modelo** (2026-06-25): `Package.slug` en
+> vez de `subdomain`; el host/subdominio se deriva de `client.slug` (relación); `ActivityEvent.created_at`
+> y origen de evento desde `reason` (sin actor `by`/`changed_by`); `LogEntry.created_at`. Pendiente solo
+> el **tab Insights** (tablas `commander_package_repos`/`_commits`/`_activity_daily`, sin UI todavía).
 
 ## Run
 
@@ -142,11 +143,11 @@ and cached KPIs — once provisioned (`provisioned_at != null`). There is no sep
 | `commander_package_commits` | Raw per-package commits with path-scoped line counts — source of truth for git insights. | FK to package (`CASCADE`), unique `package_id + sha`. |
 | `commander_package_activity_daily` | Daily git-activity rollup (ContributionCalendar heatmap + code frequency). | FK to package (`CASCADE`), unique `package_id + day`. |
 
-## TODO — migrations reference & SPA realignment (next session)
+## Migrations reference
 
-> ⚠️ The schema below is current as of the **2026-06-24 table cleanup + git-insights feature**. **The
-> React SPA (`src/store/types.ts`, store, components) has fallen out of sync** with it — see "SPA drift
-> to reconcile" at the end. Address the realignment (and the new Insights tab) in a dedicated session.
+> The schema below is current as of the **2026-06-24 table cleanup + git-insights feature**. The React
+> SPA (`src/store/types.ts`, store, components) was **realigned to it on 2026-06-25** — see "SPA
+> realignment (done)" at the end. The only remaining gap is the **Insights tab** (no UI yet).
 
 ### Every commander migration with its columns
 
@@ -169,20 +170,25 @@ FK = foreign key, idx = index, uniq = unique. Listed in run order.
 | `commander_package_commits` | `id` · `package_id`(FK) · `sha` · `committed_at`(idx) · `author_name` · `author_email` · `message` · `additions` · `deletions` · `files_changed` · ts — uniq(`package_id,sha`) |
 | `commander_package_activity_daily` | `id` · `package_id`(FK) · `day` · `commit_count` · `additions` · `deletions` · `files_changed` · ts — uniq(`package_id,day`) |
 
-### SPA drift to reconcile
+### SPA realignment (done — 2026-06-25)
 
-- **Removed columns the SPA still references**: `commander_packages.changed_by` + the `ChangedBy`
-  type, and `commander_activity_events.by` (`ev.by` in Dashboard). The actor is no longer stored —
-  event origin is read from `reason` (`quota_exceeded:*` vs the manual reasons).
-- **Renamed timestamps**: `commander_request_logs.occurred_at` → `created_at`, and
-  `commander_activity_events.at` → `created_at`. The SPA still uses the old field names.
-- **`commander_settings`** is now a single `settings` JSON blob server-side; the flat API contract is
-  preserved (low risk), but confirm the SPA reads still line up.
-- **New tables with no UI yet**: `commander_package_repos` / `commander_package_commits` /
-  `commander_package_activity_daily` → build the **Insights tab** (ContributionCalendar heatmap +
-  code frequency) fed by `commander:git:sync`.
-- The SPA also still carries assumptions from the **older `subdomain = package` model** predating the
-  per-client nested refactor. Reconcile everything in a focused session.
+The SPA was realigned to the client-first / nested-packages model. Verified: `tsc -b` clean, 33 tests
+green. What changed:
+
+- **Removed stale columns**: dropped `commander_packages.changed_by` + the `ChangedBy` type, and
+  `commander_activity_events.by` (`ev.by` in Dashboard). The actor is no longer stored — event origin
+  is read from `reason` (`quota_exceeded:*` vs the manual reasons).
+- **`Package.subdomain` → `slug`**: the live identity is the path `slug`; the host/subdomain is
+  **derived from the `client` relation** (`client.slug` + `BASE_DOMAIN`), not a column. `lib/package.ts`
+  builds the FQDN. Matches the real API (`GET /packages` ships `slug` + `name` + nested `client`).
+- **Renamed timestamps**: `commander_request_logs.occurred_at` → `created_at`,
+  `commander_activity_events.at` → `created_at`. The SPA uses the new names; `LogEntry.subdomain`
+  survives only as the JOIN-enriched `client.slug` (host) the `/logs` endpoint returns.
+- **`commander_settings`** is a single `settings` JSON blob server-side; the flat API contract is
+  preserved and the SPA reads line up.
+- **Still pending — Insights tab**: `commander_package_repos` / `commander_package_commits` /
+  `commander_package_activity_daily` have **no UI yet** → build the **Insights tab**
+  (ContributionCalendar heatmap + code frequency) fed by `commander:git:sync`. Tracked as future work.
 
 ## Auth
 

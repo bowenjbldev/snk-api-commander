@@ -307,7 +307,7 @@ export function Dashboard() {
                     <span className="scns-list-tag" style={{ background: t.bg, color: t.fg }}>{m.label}</span>
                     <span className="scns-mono scns-list-entity">{m.entity}</span>
                     <span className="scns-list-detail">{m.detail}</span>
-                    <RelativeTime iso={ev.at} />
+                    <RelativeTime iso={ev.created_at} />
                   </button>
                 )
               })
@@ -343,8 +343,17 @@ interface ActivityMeta {
   to: string
 }
 
+// Infers the origin of a state transition from its `reason` (no actor is stored anymore). Automated
+// reasons (`quota_exceeded:*`, `payment_overdue`) read as system-driven; everything else as operator.
+function reasonToActor(reason: ActivityEvent['reason']): string {
+  if (!reason) return 'operator'
+  if (reason === 'payment_overdue' || reason.startsWith('quota_exceeded')) return 'auto'
+  return 'operator'
+}
+
 // Maps an activity event to the same row shape Attention uses (label · entity · detail · value),
-// so both lists read identically. The label pill carries the category; tone mirrors severity.
+// so both lists read identically. The label pill carries the category; tone mirrors severity. The
+// transition origin is derived from `reason` (cliente-primero model: no `by` actor is stored).
 function activityMeta(
   ev: ActivityEvent,
   packageLabel: (id: number | undefined) => string,
@@ -354,17 +363,17 @@ function activityMeta(
   const pkgTo = ev.package_id != null ? `/packages/${ev.package_id}` : '/packages'
   switch (ev.kind) {
     case 'suspend':
-      return { tone: 'red', label: 'Suspended', entity: pkg, detail: `${ev.reason ?? 'manual'} · by ${ev.by}`, to: pkgTo }
+      return { tone: 'red', label: 'Suspended', entity: pkg, detail: `${ev.reason ?? 'manual'} · ${reasonToActor(ev.reason)}`, to: pkgTo }
     case 'grace':
-      return { tone: 'amber', label: 'Grace', entity: pkg, detail: `${ev.reason ?? 'payment overdue'} · by ${ev.by}`, to: pkgTo }
+      return { tone: 'amber', label: 'Grace', entity: pkg, detail: `${ev.reason ?? 'payment overdue'} · ${reasonToActor(ev.reason)}`, to: pkgTo }
     case 'resume':
-      return { tone: 'green', label: 'Resumed', entity: pkg, detail: `by ${ev.by}`, to: pkgTo }
+      return { tone: 'green', label: 'Resumed', entity: pkg, detail: ev.message ?? 'service restored', to: pkgTo }
     case 'paid':
       return { tone: 'green', label: 'Paid', entity: invoiceLabel(ev.invoice_id), detail: ev.message ?? 'settled', to: '/invoices' }
     case 'quota':
       return { tone: 'amber', label: 'Quota', entity: pkg, detail: ev.message ?? 'limit exceeded', to: pkgTo }
     case 'change_plan':
-      return { tone: 'blue', label: 'Plan', entity: pkg, detail: `${ev.reason ? `to ${ev.reason.replace(/^plan:/, '')}` : 'updated'} · by ${ev.by}`, to: pkgTo }
+      return { tone: 'blue', label: 'Plan', entity: pkg, detail: ev.reason ? `to ${ev.reason.replace(/^plan:/, '')}` : 'updated', to: pkgTo }
   }
 }
 

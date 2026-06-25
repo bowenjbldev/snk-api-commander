@@ -98,7 +98,7 @@ function UsageView({ pkg }: { pkg: Package }) {
   const txOpts = useMemo(() => areaOptions(theme, { in: '#005d5d', out: '#6929c4' }, '240px'), [theme])
 
   const exportEndpoints = () => {
-    const filename = `${pkg.subdomain}-endpoints.csv`
+    const filename = `${pkg.slug ?? pkg.name}-endpoints.csv`
     exportCsv(filename, [
       ['route', 'method', 'requests', 'error_rate', 'p95_ms'],
       ...endpoints.map((e) => [e.route, e.method, e.requests, e.error_rate, e.p95_ms]),

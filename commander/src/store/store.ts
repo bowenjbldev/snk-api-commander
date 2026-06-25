@@ -21,7 +21,8 @@ export interface ProvisionInput {
   client_id?: number // cliente existente (bigint id)
   // … o un cliente nuevo: la BD asigna el id, se manda el slug legible.
   client?: Partial<Omit<Client, 'id' | 'slug'>> & { slug: string; name: string; email: string }
-  subdomain?: string
+  // Slug del path del package (segmento /api/v1/<slug>). Opcional: el backend lo deriva si se omite.
+  slug?: string
 }
 
 /** Payload for creating an invoice from the panel (POST /invoices). */
@@ -37,13 +38,11 @@ export interface InvoiceInput {
 export interface SuspendInput {
   reason: string
   message?: string
-  by?: StateOpts['by']
 }
 export interface GraceInput {
   grace_until: string
   reason: string
   message?: string
-  by?: StateOpts['by']
 }
 
 interface StoreActions {
@@ -55,7 +54,7 @@ interface StoreActions {
   // ── package state machine (in-process: writes the package's commander_packages row), por `name` ──
   suspend: (name: string, input: SuspendInput) => void
   grace: (name: string, input: GraceInput) => void
-  resume: (name: string, by?: StateOpts['by']) => void
+  resume: (name: string) => void
   // Change the package's plan: closes the current subscription term and opens a new one (1:N history).
   changePlan: (name: string, planId: number) => void
 
@@ -273,11 +272,10 @@ export const useStore = create<StoreState>((set, get) => {
       applyLocalState(name, 'suspended', {
         reason: input.reason,
         message: input.message,
-        by: input.by ?? 'operator',
       })
       set((s) => ({
         activity: [
-          activity('suspend', { package_id: pkgId(name), reason: input.reason, by: input.by ?? 'operator' }),
+          activity('suspend', { package_id: pkgId(name), reason: input.reason }),
           ...s.activity,
         ],
       }))
@@ -292,11 +290,10 @@ export const useStore = create<StoreState>((set, get) => {
         reason: input.reason,
         message: input.message,
         grace_until: input.grace_until,
-        by: input.by ?? 'operator',
       })
       set((s) => ({
         activity: [
-          activity('grace', { package_id: pkgId(name), reason: input.reason, by: input.by ?? 'operator' }),
+          activity('grace', { package_id: pkgId(name), reason: input.reason }),
           ...s.activity,
         ],
       }))
@@ -310,9 +307,9 @@ export const useStore = create<StoreState>((set, get) => {
       )
     },
 
-    resume: (name, by = 'operator') => {
-      applyLocalState(name, 'active', { by })
-      set((s) => ({ activity: [activity('resume', { package_id: pkgId(name), by }), ...s.activity] }))
+    resume: (name) => {
+      applyLocalState(name, 'active', {})
+      set((s) => ({ activity: [activity('resume', { package_id: pkgId(name) }), ...s.activity] }))
       persist(packagesApi.resume(name), reconcilePackage(name))
     },
 
@@ -342,7 +339,7 @@ export const useStore = create<StoreState>((set, get) => {
         ],
         packages: s.packages.map((p) => (p.name === name ? { ...p, subscription_id: tempId } : p)),
         activity: [
-          activity('change_plan', { package_id: pkg.id, reason: `plan:${plan.name}`, by: 'operator' }),
+          activity('change_plan', { package_id: pkg.id, reason: `plan:${plan.name}` }),
           ...s.activity,
         ],
       }))
@@ -396,7 +393,6 @@ export const useStore = create<StoreState>((set, get) => {
               activity('paid', {
                 invoice_id: invoiceId,
                 package_id: inv.package_id,
-                by: 'operator',
               }),
               ...s.activity,
             ]
@@ -480,7 +476,7 @@ export const useStore = create<StoreState>((set, get) => {
             ? {
                 ...p,
                 provisioned_at: null,
-                subdomain: null,
+                slug: null,
                 database: null,
                 client_id: null,
                 subscription_id: null,

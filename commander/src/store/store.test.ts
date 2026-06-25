@@ -36,10 +36,10 @@ beforeEach(() => {
 })
 
 describe('store mutations', () => {
-  // El modelo es 1:1; el package provisionado se resuelve por su subdominio legible. Las acciones de
+  // El modelo es 1:1; el package provisionado se resuelve por su slug de path legible. Las acciones de
   // estado se direccionan por `name`.
   const pkgBySub = (slug: string): Package =>
-    s().packages.find((p) => p.subdomain === slug)!
+    s().packages.find((p) => p.slug === slug)!
 
   it('suspend → resume writes activity and flips status', () => {
     const pkg = pkgBySub('bluepeak')
