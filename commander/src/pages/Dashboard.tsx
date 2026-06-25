@@ -74,7 +74,7 @@ function useUsageSnapshots(range: RangeKey) {
         })
     }
     load()
-    const t = setInterval(load, 30_000)
+    const t = setInterval(load, r.refreshMs)
     return () => {
       cancelled = true
       clearInterval(t)
@@ -112,7 +112,7 @@ function UpdatedClock() {
   const now = useTick()
   return (
     <div className="scns-mono scns-helper" style={{ fontSize: 11 }}>
-      updated {new Date(now).toISOString().slice(11, 19)} UTC · auto-refresh 30s
+      updated {new Date(now).toISOString().slice(11, 19)} UTC
     </div>
   )
 }
@@ -149,8 +149,8 @@ export function Dashboard() {
   // so the deltas read null (we never fabricate an arrow).
   const kpis = useMemo(() => deriveUsageKpis(reqUsage.snapshots), [reqUsage.snapshots])
 
-  const reqSeries = useMemo(() => snapshotsToPlatformSeries(reqUsage.snapshots, packageLabels), [reqUsage.snapshots, packageLabels])
-  const errSeries = useMemo(() => snapshotsToPlatformSeries(errUsage.snapshots, packageLabels), [errUsage.snapshots, packageLabels])
+  const reqSeries = useMemo(() => snapshotsToPlatformSeries(reqUsage.snapshots, packageLabels, rangeOf(reqRange).bucket), [reqUsage.snapshots, packageLabels, reqRange])
+  const errSeries = useMemo(() => snapshotsToPlatformSeries(errUsage.snapshots, packageLabels, rangeOf(errRange).bucket), [errUsage.snapshots, packageLabels, errRange])
   const groups = reqSeries.requests.groups
   const reqData = reqSeries.requests.data
   const errData = errSeries.errorRate

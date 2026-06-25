@@ -1,5 +1,6 @@
 // Deterministic chart-data generators (seeded PRNG → stable shapes across renders).
 import type { GitDailyActivity, HttpMethod, Invoice, Package, Subscription, TopEndpoint, UsageRollup, UsageSnapshot } from '../store/types'
+import type { Bucket } from './timeRanges'
 
 export interface Point {
   group: string
@@ -269,7 +270,7 @@ export interface PlatformSeries {
   errorRate: Point[] // groups '4xx' | '5xx' (each as % of bucket requests)
 }
 
-export function snapshotsToPlatformSeries(snapshots: UsageSnapshot[], packageLabels: ReadonlyMap<number, string> = new Map()): PlatformSeries {
+export function snapshotsToPlatformSeries(snapshots: UsageSnapshot[], packageLabels: ReadonlyMap<number, string> = new Map(), bucket: Bucket = 'hour'): PlatformSeries {
   // Pick the top-4 packages by total requests; everything else folds into 'other'.
   // Keyed by numeric package_id internally; chart labels use operator-facing package names.
   const totals = new Map<number, number>()
@@ -279,15 +280,18 @@ export function snapshotsToPlatformSeries(snapshots: UsageSnapshot[], packageLab
   const labelFor = (id: number) => packageLabels.get(id) ?? `package ${id}`
   const groups = [...top.map(labelFor), 'other']
 
-  const buckets = new Map<string, { perPkg: Map<number, number>; other: number; total: number; c4: number; c5: number }>()
+  const buckets = new Map<number, { perPkg: Map<number, number>; other: number; total: number; c4: number; c5: number }>()
   for (const s of snapshots) {
     // The API serialises these aggregate columns as strings; coerce so the stacked sums
     // are numeric (string `+=` would concatenate and blow the chart's y-axis to nonsense).
     const requests = Number(s.request_count)
-    let b = buckets.get(s.period_start)
+    // Floor each row's timestamp to its bucket so a long window collapses to few marks (a year of
+    // daily rows → ~52 weekly buckets). For hour/day the floor is a no-op on aligned rollup rows.
+    const key = bucketStart(Date.parse(s.period_start), bucket)
+    let b = buckets.get(key)
     if (!b) {
       b = { perPkg: new Map(), other: 0, total: 0, c4: 0, c5: 0 }
-      buckets.set(s.period_start, b)
+      buckets.set(key, b)
     }
     b.total += requests
     b.c4 += Number(s.count_4xx)
@@ -298,7 +302,8 @@ export function snapshotsToPlatformSeries(snapshots: UsageSnapshot[], packageLab
 
   const data: Point[] = []
   const errorRate: Point[] = []
-  for (const key of [...buckets.keys()].sort()) {
+  // Numeric sort — keys are epoch-ms buckets now, so a default (lexicographic) sort mis-orders them.
+  for (const key of [...buckets.keys()].sort((x, y) => x - y)) {
     const b = buckets.get(key)!
     const date = new Date(key)
     for (const id of top) data.push({ group: labelFor(id), date, value: b.perPkg.get(id) ?? 0 })
@@ -325,6 +330,26 @@ function utcMidnight(ms: number): number {
 function weekdayIndex(ms: number): number {
   return (new Date(ms).getUTCDay() + 6) % 7
 }
+
+// Floor a UTC timestamp to the start of its bucket. Used to down-sample a fetched window to a small
+// mark count: hour/day are identity on already-aligned rollup rows; week snaps back to Monday; month
+// to the 1st. Keeps every dashboard chart at ≤ ~50 marks regardless of the selected range.
+export function bucketStart(ms: number, bucket: Bucket): number {
+  const d = new Date(ms)
+  switch (bucket) {
+    case 'hour':
+      return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours())
+    case 'day':
+      return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+    case 'week': {
+      const mid = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+      return mid - weekdayIndex(mid) * DAY_MS
+    }
+    case 'month':
+      return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)
+  }
+}
+
 function isoDay(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10)
 }
@@ -367,7 +392,7 @@ export function dailyToCodeFrequency(daily: GitDailyActivity[]): Point[] {
   for (const r of daily) {
     const ms = Date.parse(`${r.day}T00:00:00Z`)
     if (Number.isNaN(ms)) continue
-    const monday = utcMidnight(ms) - weekdayIndex(ms) * DAY_MS
+    const monday = bucketStart(ms, 'week')
     adds.set(monday, (adds.get(monday) ?? 0) + r.additions)
     dels.set(monday, (dels.get(monday) ?? 0) + r.deletions)
   }

@@ -55,7 +55,7 @@ export function stackedBarOptions(theme: ThemeName, groups: string[], height = '
     toolbar: { enabled: false },
     animations: false,
     legend: { enabled: false },
-    // Thicker bars: fixed 12px width (band ≈14.5px over 48 hourly bars).
+    // Thicker bars: fixed 12px width (band ≈14.5px over 48 hourly bars; ~52 weekly bars at year).
     bars: { width: 12, maxWidth: 1000 },
     axes: { left: { mapsTo: 'value', stacked: true, title: '' }, bottom: { ...timeBottom(), ...(hideX ? { visible: false } : {}) } },
     color: { scale },

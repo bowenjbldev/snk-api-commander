@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { rollupsToUsageSeries, snapshotsToPlatformSeries } from './chartData'
+import { bucketStart, rollupsToUsageSeries, snapshotsToPlatformSeries } from './chartData'
 import type { UsageRollup, UsageSnapshot } from '../store/types'
+
+const DAY = 86_400_000
 
 const MB = 1024 * 1024
 const A = '2026-06-15T10:00:00Z'
@@ -109,5 +111,52 @@ describe('snapshotsToPlatformSeries', () => {
     expect(s.requests.data).toEqual([])
     expect(s.requests.groups).toEqual(['other'])
     expect(s.errorRate).toEqual([])
+  })
+
+  it('buckets daily snapshots by month (year filter) — sums per month, error rate stays a ratio', () => {
+    const snapshots: UsageSnapshot[] = [
+      // June: total 200, 4xx 10, 5xx 5
+      snap(1, '2026-06-01T00:00:00Z', 100, 10, 0),
+      snap(1, '2026-06-15T10:00:00Z', 100, 0, 5),
+      // July: total 400, 4xx 30, 5xx 0
+      snap(1, '2026-07-05T08:00:00Z', 300, 30, 0),
+      snap(1, '2026-07-20T23:00:00Z', 100, 0, 0),
+    ]
+    const s = snapshotsToPlatformSeries(snapshots, new Map([[1, 'Shop']]), 'month')
+
+    // Exactly two buckets, landing on the 1st of each month (UTC), in chronological order.
+    const dates = s.requests.data.filter((p) => p.group === 'Shop').map((p) => +p.date)
+    expect(dates).toEqual([+new Date('2026-06-01T00:00:00Z'), +new Date('2026-07-01T00:00:00Z')])
+    // Requests summed across each month's days.
+    const shop = (iso: string) => s.requests.data.find((p) => p.group === 'Shop' && +p.date === +new Date(iso))?.value
+    expect(shop('2026-06-01T00:00:00Z')).toBe(200)
+    expect(shop('2026-07-01T00:00:00Z')).toBe(400)
+    // Error rate = request-weighted ratio over the whole month, not an average of daily ratios.
+    const err = (iso: string, g: string) => s.errorRate.find((p) => p.group === g && +p.date === +new Date(iso))?.value
+    expect(err('2026-06-01T00:00:00Z', '4xx')).toBeCloseTo((10 / 200) * 100, 5)
+    expect(err('2026-06-01T00:00:00Z', '5xx')).toBeCloseTo((5 / 200) * 100, 5)
+    expect(err('2026-07-01T00:00:00Z', '4xx')).toBeCloseTo((30 / 400) * 100, 5)
+  })
+})
+
+describe('bucketStart', () => {
+  it('hour/day floor to the start of the UTC hour/day', () => {
+    expect(bucketStart(Date.parse('2026-06-15T10:37:42Z'), 'hour')).toBe(+new Date('2026-06-15T10:00:00Z'))
+    expect(bucketStart(Date.parse('2026-06-15T10:37:42Z'), 'day')).toBe(+new Date('2026-06-15T00:00:00Z'))
+  })
+
+  it('week snaps back to Monday 00:00 UTC; every day of the week shares one bucket', () => {
+    const mon = bucketStart(Date.parse('2026-06-15T12:00:00Z'), 'week')
+    expect(new Date(mon).getUTCDay()).toBe(1) // Monday
+    expect(new Date(mon).getUTCHours()).toBe(0)
+    // Mon..Sun (incl. the Sunday edge) all floor to the same Monday; the next Monday is its own bucket.
+    for (let i = 0; i < 7; i++) expect(bucketStart(mon + i * DAY + 3_600_000, 'week')).toBe(mon)
+    expect(bucketStart(mon + 7 * DAY, 'week')).toBe(mon + 7 * DAY)
+  })
+
+  it('month floors to the 1st 00:00 UTC, including the month-end edge', () => {
+    expect(bucketStart(Date.parse('2026-06-17T15:00:00Z'), 'month')).toBe(+new Date('2026-06-01T00:00:00Z'))
+    expect(bucketStart(Date.parse('2026-06-30T23:59:59Z'), 'month')).toBe(+new Date('2026-06-01T00:00:00Z'))
+    expect(bucketStart(Date.parse('2026-07-01T00:00:00Z'), 'month')).toBe(+new Date('2026-07-01T00:00:00Z'))
   })
 })
