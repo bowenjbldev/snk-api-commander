@@ -25,6 +25,9 @@ const PlansTab = lazy(() => import('./pages/PackageDetail/PlansTab').then((m) =>
 const UsageTab = lazy(() => import('./pages/PackageDetail/UsageTab').then((m) => ({ default: m.UsageTab })))
 const QuotasTab = lazy(() => import('./pages/PackageDetail/QuotasTab').then((m) => ({ default: m.QuotasTab })))
 const LogsTab = lazy(() => import('./pages/PackageDetail/LogsTab').then((m) => ({ default: m.LogsTab })))
+const InsightsTab = lazy(() =>
+  import('./pages/PackageDetail/InsightsTab').then((m) => ({ default: m.InsightsTab })),
+)
 const SettingsTab = lazy(() =>
   import('./pages/PackageDetail/SettingsTab').then((m) => ({ default: m.SettingsTab })),
 )
@@ -48,6 +51,7 @@ export const router = createBrowserRouter([
           { path: 'quotas', element: <QuotasTab /> },
           { path: 'usage', element: <UsageTab /> },
           { path: 'logs', element: <LogsTab /> },
+          { path: 'insights', element: <InsightsTab /> },
           { path: 'settings', element: <SettingsTab /> },
         ],
       },

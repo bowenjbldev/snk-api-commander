@@ -220,3 +220,55 @@ export interface PackageContext {
   packageRow: Package | undefined
   plans: Plan[]
 }
+
+// ── Git insights (commander_package_repos / _commits / _activity_daily) ──────────
+// Powers the Insights tab: contribution heatmap + code-frequency + recent commits. Fed by the
+// `commander:git:sync` command; served by GET /packages/{name}/insights as one envelope.
+export interface GitRepoInfo {
+  provider: string
+  workspace: string | null
+  repo_slug: string | null
+  path_prefix: string | null // monorepo path scope, e.g. src/packages/Acme/Shop
+  default_branch: string | null
+  last_synced_at: string | null // ISO; null == never synced
+  last_synced_sha: string | null
+}
+
+// One row of commander_package_activity_daily (daily git-activity rollup).
+export interface GitDailyActivity {
+  day: string // YYYY-MM-DD (UTC)
+  commit_count: number
+  additions: number
+  deletions: number
+  files_changed: number
+}
+
+// One row of commander_package_commits (path-scoped line counts).
+export interface GitCommit {
+  sha: string
+  committed_at: string | null // ISO
+  author_name: string | null
+  author_email: string | null
+  message: string | null
+  additions: number
+  deletions: number
+  files_changed: number
+}
+
+// All-time aggregate (over the whole history, not the calendar window).
+export interface GitInsightsSummary {
+  total_commits: number
+  total_additions: number
+  total_deletions: number
+  total_authors: number
+  active_days: number // days with ≥1 commit inside the requested window
+  first_commit_at: string | null // ISO
+  last_commit_at: string | null // ISO
+}
+
+export interface PackageInsights {
+  repo: GitRepoInfo | null
+  summary: GitInsightsSummary
+  daily: GitDailyActivity[] // bounded to the requested window
+  recent_commits: GitCommit[]
+}

@@ -141,6 +141,42 @@ export function lollipopOptions(theme: ThemeName, scale: Record<string, string>,
   }
 }
 
+// Contribution heatmap (Insights tab): week (x) × weekday (y) grid, cell colour = commit count.
+// Both axes are categorical (`labels`); the colour gradient is theme-driven (Carbon default).
+export function heatmapOptions(theme: ThemeName, height = '240px'): Opt {
+  return {
+    theme,
+    height,
+    toolbar: { enabled: false },
+    animations: false,
+    axes: {
+      bottom: { title: '', mapsTo: 'week', scaleType: 'labels' },
+      left: { title: '', mapsTo: 'day', scaleType: 'labels' },
+    },
+    heatmap: { colorLegend: { title: 'commits' } },
+    grid: { x: { enabled: false }, y: { enabled: false } },
+  }
+}
+
+// Weekly stacked bars over a real time axis (Insights code frequency). Deletions arrive negative so
+// they sit below zero. Unlike stackedBarOptions, the x-axis is a generic time scale (not the 48h pin).
+export function weeklyBarOptions(theme: ThemeName, scale: Record<string, string>, height = '260px'): Opt {
+  return {
+    theme,
+    height,
+    toolbar: { enabled: false },
+    animations: false,
+    legend: { enabled: false },
+    bars: { width: 10, maxWidth: 1000 },
+    axes: {
+      left: { mapsTo: 'value', stacked: true, title: '' },
+      bottom: { mapsTo: 'date', scaleType: 'time' },
+    },
+    color: { scale },
+    grid: { x: { enabled: false } },
+  }
+}
+
 export function areaOptions(theme: ThemeName, scale: Record<string, string>, height = '260px'): Opt {
   return {
     theme,

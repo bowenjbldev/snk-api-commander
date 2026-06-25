@@ -16,8 +16,8 @@ API** (`src/packages/Commander`). In production it is served at `commander.<BASE
 > por `(client_id, slug)`** (sin `commander_deployments`, sin columna `subdomain`). Ver
 > [`../README.md`](../README.md). **La SPA está alineada a este modelo** (2026-06-25): `Package.slug` en
 > vez de `subdomain`; el host/subdominio se deriva de `client.slug` (relación); `ActivityEvent.created_at`
-> y origen de evento desde `reason` (sin actor `by`/`changed_by`); `LogEntry.created_at`. Pendiente solo
-> el **tab Insights** (tablas `commander_package_repos`/`_commits`/`_activity_daily`, sin UI todavía).
+> y origen de evento desde `reason` (sin actor `by`/`changed_by`); `LogEntry.created_at`. El **tab Insights**
+> (heatmap de contribuciones + code frequency, tablas `commander_package_*`) ya está implementado.
 
 ## Run
 
@@ -147,7 +147,8 @@ and cached KPIs — once provisioned (`provisioned_at != null`). There is no sep
 
 > The schema below is current as of the **2026-06-24 table cleanup + git-insights feature**. The React
 > SPA (`src/store/types.ts`, store, components) was **realigned to it on 2026-06-25** — see "SPA
-> realignment (done)" at the end. The only remaining gap is the **Insights tab** (no UI yet).
+> realignment (done)" at the end. The **Insights tab** that consumes the `commander_package_*` tables
+> is now built too.
 
 ### Every commander migration with its columns
 
@@ -186,9 +187,11 @@ green. What changed:
   survives only as the JOIN-enriched `client.slug` (host) the `/logs` endpoint returns.
 - **`commander_settings`** is a single `settings` JSON blob server-side; the flat API contract is
   preserved and the SPA reads line up.
-- **Still pending — Insights tab**: `commander_package_repos` / `commander_package_commits` /
-  `commander_package_activity_daily` have **no UI yet** → build the **Insights tab**
-  (ContributionCalendar heatmap + code frequency) fed by `commander:git:sync`. Tracked as future work.
+- **Insights tab (built — 2026-06-25)**: `commander_package_repos` / `commander_package_commits` /
+  `commander_package_activity_daily` are surfaced by `GET /packages/{name}/insights` and rendered in
+  `PackageDetail/InsightsTab` — a contribution heatmap (`@carbon/charts` HeatmapChart, week×weekday),
+  a weekly code-frequency chart (additions/deletions) and a recent-commits table, fed by
+  `commander:git:sync`. Range toggle 3/6/12 months; all-time summary KPIs.
 
 ## Auth
 
@@ -211,7 +214,7 @@ src/
 │                   StatusTag/AmberTag/MethodTag, GraceCountdown, QuotaBar, KpiCluster,
 │                   CopyableCode, CommandPalette, ChartCard, modals/
 ├── pages/          Dashboard · Clients · Packages (hub + detail tabs: Overview/Plans/
-│                   Quotas/Usage/Logs/Settings) · Invoices · Usage · RequestLogs ·
+│                   Quotas/Usage/Logs/Insights/Settings) · Invoices · Usage · RequestLogs ·
 │                   Settings · Login (Packages absorbs Deployments+Catalog+Quotas+Subscriptions)
 ├── lib/            time · format · chart data + options
 ├── styles/         index.scss (Carbon config + import) · tokens.scss (custom tokens + utilities)

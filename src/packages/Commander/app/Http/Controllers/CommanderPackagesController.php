@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Packages\Commander\Models\CommanderActivityEventModel;
+use Packages\Commander\Models\CommanderPackageActivityDailyModel;
+use Packages\Commander\Models\CommanderPackageCommitModel;
 use Packages\Commander\Models\CommanderPackageModel;
 use Packages\Commander\Models\CommanderPlanModel;
 use Packages\Commander\Models\CommanderQuotaModel;
@@ -347,6 +349,96 @@ class CommanderPackagesController extends CoreBaseApiController
             ->all();
 
         return response()->json(['data' => $rows]);
+    }
+
+    /**
+     * Git insights del package: estado del repo (cursor de sync), resumen agregado de TODO el
+     * historial, rollup diario de actividad (heatmap + code frequency) acotado a la ventana, y los
+     * commits recientes. Alimentado por `commander:git:sync` (tablas commander_package_*).
+     */
+    public function insights(Request $request, $package = null): JsonResponse
+    {
+        if ($response = $this->requirePermission($this->showPermission)) {
+            return $response;
+        }
+
+        if (($packageRow = $this->findPackageRow($package)) === null) {
+            return response()->json(['error' => 'Package not provisioned'], 404);
+        }
+
+        $data = $request->validate([
+            'days' => 'nullable|integer|min:1|max:730',
+        ]);
+
+        $days = $data['days'] ?? 182; // ~26 semanas: calendario de contribuciones legible
+        $since = CarbonImmutable::now()->subDays($days - 1)->startOfDay();
+
+        $repo = $packageRow->repo;
+
+        $daily = CommanderPackageActivityDailyModel::query()
+            ->where('package_id', $packageRow->id)
+            ->where('day', '>=', $since->toDateString())
+            ->orderBy('day')
+            ->get(['day', 'commit_count', 'additions', 'deletions', 'files_changed']);
+
+        $recent = CommanderPackageCommitModel::query()
+            ->where('package_id', $packageRow->id)
+            ->orderByDesc('committed_at')
+            ->limit(15)
+            ->get(['sha', 'committed_at', 'author_name', 'author_email', 'message', 'additions', 'deletions', 'files_changed']);
+
+        // Resumen sobre TODO el historial (no solo la ventana del calendario).
+        $agg = CommanderPackageCommitModel::query()
+            ->where('package_id', $packageRow->id)
+            ->selectRaw('COUNT(*) as total_commits')
+            ->selectRaw('COALESCE(SUM(additions), 0) as total_additions')
+            ->selectRaw('COALESCE(SUM(deletions), 0) as total_deletions')
+            ->selectRaw('COUNT(DISTINCT author_email) as total_authors')
+            ->selectRaw('MIN(committed_at) as first_commit_at')
+            ->selectRaw('MAX(committed_at) as last_commit_at')
+            ->first();
+
+        $iso = fn ($v) => $v ? CarbonImmutable::parse($v)->toJSON() : null;
+
+        return response()->json([
+            'data' => [
+                'repo' => $repo ? [
+                    'provider' => $repo->provider,
+                    'workspace' => $repo->workspace,
+                    'repo_slug' => $repo->repo_slug,
+                    'path_prefix' => $repo->path_prefix,
+                    'default_branch' => $repo->default_branch,
+                    'last_synced_at' => $repo->last_synced_at?->toJSON(),
+                    'last_synced_sha' => $repo->last_synced_sha,
+                ] : null,
+                'summary' => [
+                    'total_commits' => (int) ($agg->total_commits ?? 0),
+                    'total_additions' => (int) ($agg->total_additions ?? 0),
+                    'total_deletions' => (int) ($agg->total_deletions ?? 0),
+                    'total_authors' => (int) ($agg->total_authors ?? 0),
+                    'active_days' => $daily->where('commit_count', '>', 0)->count(),
+                    'first_commit_at' => $iso($agg->first_commit_at ?? null),
+                    'last_commit_at' => $iso($agg->last_commit_at ?? null),
+                ],
+                'daily' => $daily->map(fn ($d) => [
+                    'day' => $d->day->toDateString(),
+                    'commit_count' => (int) $d->commit_count,
+                    'additions' => (int) $d->additions,
+                    'deletions' => (int) $d->deletions,
+                    'files_changed' => (int) $d->files_changed,
+                ])->all(),
+                'recent_commits' => $recent->map(fn ($c) => [
+                    'sha' => $c->sha,
+                    'committed_at' => $c->committed_at?->toJSON(),
+                    'author_name' => $c->author_name,
+                    'author_email' => $c->author_email,
+                    'message' => $c->message,
+                    'additions' => (int) $c->additions,
+                    'deletions' => (int) $c->deletions,
+                    'files_changed' => (int) $c->files_changed,
+                ])->all(),
+            ],
+        ]);
     }
 
     /**

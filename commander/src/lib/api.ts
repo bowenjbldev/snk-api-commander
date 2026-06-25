@@ -2,7 +2,7 @@
 // path that Vite proxies to the backend (see vite.config.ts) — no CORS, no cert prompt.
 // For a production build, set VITE_API_BASE to the deploy's origin (e.g. https://commander.host/api/v1).
 
-import type { LogEntry, OperatorSettings, Package, UsageRollup, UsageSnapshot } from '../store/types'
+import type { LogEntry, OperatorSettings, Package, PackageInsights, UsageRollup, UsageSnapshot } from '../store/types'
 
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? '/api/v1'
 const TOKEN_KEY = 'commander_token'
@@ -164,6 +164,15 @@ export const packagesApi = {
     if (params.status_class) qs.set('status_class', String(params.status_class))
     const q = qs.toString()
     return api<{ data: LogEntry[] }>(`/packages/${name}/logs${q ? `?${q}` : ''}`)
+  },
+
+  // A package's git insights (commander_package_* tables, synced by `commander:git:sync`):
+  // repo/sync status + all-time summary + daily activity (heatmap/code-frequency) + recent commits.
+  insights: (name: string, params: { days?: number } = {}): Promise<{ data: PackageInsights }> => {
+    const qs = new URLSearchParams()
+    if (params.days) qs.set('days', String(params.days))
+    const q = qs.toString()
+    return api<{ data: PackageInsights }>(`/packages/${name}/insights${q ? `?${q}` : ''}`)
   },
 }
 

@@ -51,6 +51,7 @@ Route::middleware(['api'])->group(function () {
         Route::post('packages/{package}/change-plan', [CommanderPackagesController::class, 'changePlan']);
         Route::get('packages/{package}/usage', [CommanderPackagesController::class, 'usage']);
         Route::get('packages/{package}/logs', [CommanderPackagesController::class, 'logs']);
+        Route::get('packages/{package}/insights', [CommanderPackagesController::class, 'insights']);
         Route::get('packages/{package}', [CommanderPackagesController::class, 'show']);
         Route::patch('packages/{package}', [CommanderPackagesController::class, 'update']);
         Route::delete('packages/{package}', [CommanderPackagesController::class, 'destroy']);

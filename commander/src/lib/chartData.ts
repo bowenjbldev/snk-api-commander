@@ -1,5 +1,5 @@
 // Deterministic chart-data generators (seeded PRNG → stable shapes across renders).
-import type { HttpMethod, Invoice, Package, Subscription, TopEndpoint, UsageRollup, UsageSnapshot } from '../store/types'
+import type { GitDailyActivity, HttpMethod, Invoice, Package, Subscription, TopEndpoint, UsageRollup, UsageSnapshot } from '../store/types'
 
 export interface Point {
   group: string
@@ -307,4 +307,73 @@ export function snapshotsToPlatformSeries(snapshots: UsageSnapshot[], packageLab
   }
 
   return { requests: { data, groups }, errorRate }
+}
+
+// ── Git insights (Insights tab) — from GET /packages/{name}/insights ─────────────
+
+const DAY_MS = 86_400_000
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+function utcMidnight(ms: number): number {
+  const d = new Date(ms)
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+}
+// Monday index (Mon=0 … Sun=6) for a UTC timestamp.
+function weekdayIndex(ms: number): number {
+  return (new Date(ms).getUTCDay() + 6) % 7
+}
+function isoDay(ms: number): string {
+  return new Date(ms).toISOString().slice(0, 10)
+}
+
+export interface HeatPoint {
+  week: string // column label (Monday of that week, "5 Jan")
+  day: string // row label (Mon…Sun)
+  value: number
+}
+
+// GitHub-style contribution calendar: a full week×weekday grid over the last `rangeDays`. Emitted
+// week-by-week (ascending) with weekdays Mon→Sun so Carbon's `labels` axes keep chronological order.
+// Cells outside the window (leading/trailing padding) and days with no commits are 0.
+export function dailyToHeatmap(daily: GitDailyActivity[], rangeDays: number, nowMs: number = Date.now()): HeatPoint[] {
+  const counts = new Map<string, number>()
+  for (const r of daily) counts.set(r.day, r.commit_count)
+
+  const today = utcMidnight(nowMs)
+  const from = today - (rangeDays - 1) * DAY_MS
+  const firstMonday = from - weekdayIndex(from) * DAY_MS
+
+  const points: HeatPoint[] = []
+  for (let week = firstMonday; week <= today; week += 7 * DAY_MS) {
+    const wd = new Date(week)
+    const label = `${wd.getUTCDate()} ${SHORT_MONTHS[wd.getUTCMonth()]}`
+    for (let i = 0; i < 7; i++) {
+      const dayMs = week + i * DAY_MS
+      const inRange = dayMs >= from && dayMs <= today
+      points.push({ week: label, day: WEEKDAYS[i], value: inRange ? (counts.get(isoDay(dayMs)) ?? 0) : 0 })
+    }
+  }
+  return points
+}
+
+// Code frequency: weekly additions (positive) and deletions (negative, so they render below the
+// zero axis like GitHub's chart). Buckets daily rows by their ISO week (Monday).
+export function dailyToCodeFrequency(daily: GitDailyActivity[]): Point[] {
+  const adds = new Map<number, number>()
+  const dels = new Map<number, number>()
+  for (const r of daily) {
+    const ms = Date.parse(`${r.day}T00:00:00Z`)
+    if (Number.isNaN(ms)) continue
+    const monday = utcMidnight(ms) - weekdayIndex(ms) * DAY_MS
+    adds.set(monday, (adds.get(monday) ?? 0) + r.additions)
+    dels.set(monday, (dels.get(monday) ?? 0) + r.deletions)
+  }
+  const out: Point[] = []
+  for (const monday of [...adds.keys()].sort((a, b) => a - b)) {
+    const date = new Date(monday)
+    out.push({ group: 'additions', date, value: adds.get(monday) ?? 0 })
+    out.push({ group: 'deletions', date, value: -(dels.get(monday) ?? 0) })
+  }
+  return out
 }

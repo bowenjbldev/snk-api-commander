@@ -18,6 +18,7 @@ const TABS = [
   { label: 'Quotas', to: 'quotas' },
   { label: 'Usage', to: 'usage' },
   { label: 'Logs', to: 'logs' },
+  { label: 'Insights', to: 'insights' },
   { label: 'Settings', to: 'settings' },
 ]
 
