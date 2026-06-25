@@ -133,7 +133,11 @@ class CommanderLocalGitSource implements CommanderPackageGitSource
     {
         return new CommanderGitCommitData(
             sha: (string) $c['sha'],
-            committedAt: CarbonImmutable::parse((string) $c['committed_at']),
+            // `%aI` trae el offset del autor (p.ej. +02:00); normalizamos a UTC para que el instante se
+            // guarde correcto (upsert serializa el wall-clock SIN offset) y el bucket diario sea UTC,
+            // igual que lo interpreta la SPA. Sin esto, un commit a las 17:16+02:00 se guarda "17:16" y
+            // al leerse como UTC queda 2h en el futuro.
+            committedAt: CarbonImmutable::parse((string) $c['committed_at'])->utc(),
             authorName: $c['author_name'] !== '' ? (string) $c['author_name'] : null,
             authorEmail: $c['author_email'] !== '' ? (string) $c['author_email'] : null,
             message: (string) $c['message'],
