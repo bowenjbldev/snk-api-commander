@@ -17,7 +17,9 @@
       "Bash(rm -rf design/* design/.thumbnail)",
       "PowerShell(Remove-Item *)",
       "Bash(wsl.exe -d Ubuntu -- bash -lc 'cd ~/DEV/PROJECTS/snake-laravel-api/commander && for n in Events UserMultiple Box Money WarningAlt Warning CheckmarkOutline Application CubeView; do grep -q \"\\\\\"$n\\\\\"\" node_modules/@carbon/icons-react/lib/generated/bucketABCDE.js 2>/dev/null || grep -rql \"export.*\\\\b$n\\\\b\" node_modules/@carbon/icons-react/es/ 2>/dev/null && echo \"FOUND $n\" || echo \"missing $n\"; done')",
-      "Bash(wsl.exe *)"
+      "Bash(wsl.exe *)",
+      "Bash(npx tsc *)",
+      "Bash(echo \"=== tsc EXIT: $? ===\")"
     ]
   }
 }

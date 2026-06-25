@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Loading, OverflowMenu, OverflowMenuItem } from '@carbon/react'
 import { Activity, CheckmarkOutline, Time, PauseOutline, Warning, Money } from '@carbon/icons-react'
@@ -9,7 +9,6 @@ import { useTick } from '../providers/TickProvider'
 import { KpiCluster, KpiTile } from '../components/KpiCluster'
 import { Card } from '../components/Card'
 import { ChartCard, ChartLegend } from '../components/ChartCard'
-import { GraceCountdown } from '../components/GraceCountdown'
 import { RelativeTime } from '../components/RelativeTime'
 import { EmptyState } from '../components/EmptyState'
 import { stackedBarOptions, areaOptions, barOptions, legendItems } from '../lib/chartOptions'
@@ -20,7 +19,8 @@ import {
   type PlatformSeries,
 } from '../lib/chartData'
 import { platformUsage } from '../lib/api'
-import { formatCompact, formatCurrencyShort, formatCurrency, formatPercent } from '../lib/format'
+import { toneTint, type Tone } from '../lib/attention'
+import { formatCompact, formatCurrencyShort, formatPercent } from '../lib/format'
 import type { ActivityEvent, UsageSnapshot } from '../store/types'
 
 // Real platform KPIs derived from the usage-snapshot cache. Error rate is the aggregate
@@ -74,7 +74,6 @@ export function Dashboard() {
   const navigate = useNavigate()
   const packages = useProvisionedPackages()
   const invoices = useStore((s) => s.invoices)
-  const quotas = useStore((s) => s.quotas)
   const activity = useStore((s) => s.activity)
   const dash = useStore((s) => s.dashboard)
 
@@ -145,40 +144,6 @@ export function Dashboard() {
   const pkgColors = useMemo(() => packageColorMap(packages), [packages])
   const reqByPkg = useMemo(() => requestsByPackageData(packages), [packages])
   const reqByPkgOpts = useMemo(() => barOptions(theme, pkgColors, '150px', true), [theme, pkgColors])
-
-  const attention = useMemo(() => {
-    const items: { tone: Tone; label: string; entity: string; desc: ReactNode; metric: ReactNode; to: string }[] = []
-    for (const q of quotas) {
-      if (q.limit_value != null && q.current_value / q.limit_value > 1) {
-        const pkg = packages.find((p) => p.id === q.package_id)
-        items.push({
-          tone: 'red', label: 'Quota over', entity: packageLabel(q.package_id),
-          desc: <>{q.metric_key} over limit</>, metric: formatPercent(q.current_value / q.limit_value),
-          to: pkg ? `/packages/${pkg.id}/quotas` : '/packages',
-        })
-      }
-    }
-    for (const p of packages) {
-      if (p.status === 'grace' && p.grace_until) {
-        items.push({
-          tone: 'amber', label: 'Grace ends', entity: p.name,
-          desc: <>{p.reason ?? 'payment overdue'}</>, metric: <GraceCountdown until={p.grace_until} mode="short" />,
-          to: `/packages/${p.id}`,
-        })
-      }
-    }
-    for (const i of invoices) {
-      if (i.status === 'overdue') {
-        items.push({
-          tone: 'red', label: 'Overdue', entity: i.number,
-          desc: <>linked {packageLabel(i.package_id)} {i.enforcement === 'suspended' ? 'suspended' : 'in grace'}</>,
-          metric: formatCurrency(i.amount),
-          to: '/invoices',
-        })
-      }
-    }
-    return items
-  }, [quotas, packages, invoices, packageLabel])
 
   return (
     <div className="scns-page">
@@ -261,34 +226,8 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* Triage: attention required + recent activity, side by side */}
-      <div className="scns-grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginTop: 40 }}>
-        {/* Attention required */}
-        <Card title="Needs attention" subtitle="quotas, grace & billing" bodyPadding={0}>
-          {attention.length === 0 ? (
-              <EmptyState title="No issues detected" />
-            ) : (
-              attention.map((a, idx) => {
-                const t = toneTint(a.tone)
-                return (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => navigate(a.to)}
-                    className="scns-list-row"
-                    style={{ borderTop: idx ? '1px solid var(--cds-border-subtle)' : 'none' }}
-                  >
-                    <span className="scns-list-tag" style={{ background: t.bg, color: t.fg }}>{a.label}</span>
-                    <span className="scns-mono scns-list-entity">{a.entity}</span>
-                    <span className="scns-list-detail">{a.desc}</span>
-                    <span className="scns-list-value">{a.metric}</span>
-                  </button>
-                )
-              })
-            )}
-        </Card>
-
-        {/* Recent activity */}
+      {/* Recent activity (triage moved to the header notifications bell) */}
+      <div style={{ marginTop: 40 }}>
         <Card title="Recent activity" subtitle="last 3 days" bodyPadding={0}>
           {activity.length === 0 ? (
               <EmptyState title="No recent activity" />
@@ -316,23 +255,6 @@ export function Dashboard() {
       </div>
     </div>
   )
-}
-
-// Shared status tone for the dense list rows (Attention + Activity). The tint tokens carry both
-// themes, so the pill stays legible in g100 and g10.
-type Tone = 'red' | 'amber' | 'green' | 'blue'
-
-function toneTint(tone: Tone): { bg: string; fg: string } {
-  switch (tone) {
-    case 'red':
-      return { bg: 'var(--scns-tag-red-bg)', fg: 'var(--scns-tag-red-text)' }
-    case 'amber':
-      return { bg: 'var(--scns-amber-bg)', fg: 'var(--scns-amber-text)' }
-    case 'green':
-      return { bg: 'var(--scns-method-green-bg)', fg: 'var(--scns-method-green-text)' }
-    case 'blue':
-      return { bg: 'var(--scns-method-blue-bg)', fg: 'var(--scns-method-blue-text)' }
-  }
 }
 
 interface ActivityMeta {

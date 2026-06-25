@@ -1,14 +1,17 @@
 import { type ReactNode } from 'react'
-import { Button } from '@carbon/react'
-import { Drawer } from './Drawer'
+import { CreateSidePanel } from '@carbon/ibm-products'
 
-// Right-side slide-over for entity creation (Carbon "create" flow): keeps the list visible behind,
-// gives the multi-field form room to breathe, less blocking than a centered modal. Built on the
-// existing Drawer (no new dependency). Modals stay reserved for confirmations / state changes.
+// Right-side create flow — the canonical Carbon "Side panel" pattern (CreateSidePanel from
+// @carbon/ibm-products). It uses the `slideIn` variant: NO overlay, it pushes the page content
+// (`selectorPageContent`) aside so the list stays visible and operable behind it — exactly the
+// create-flows rule for medium-complexity forms where the user needs page context. The panel docks
+// below the 48px header by default (inset-block-start: 3rem) and is a content-area surface, so it
+// follows the active theme. Modals stay reserved for confirmations / state changes.
 export function CreatePanel({
   open,
   title,
-  label,
+  subtitle,
+  formTitle = 'Details',
   submitLabel = 'Create',
   submitDisabled,
   onSubmit,
@@ -17,8 +20,10 @@ export function CreatePanel({
 }: {
   open: boolean
   title: string
-  /** Small overline label above the title (e.g. the entity collection). */
-  label?: string
+  /** Optional descriptive line under the title. */
+  subtitle?: ReactNode
+  /** Heading above the form body (Carbon requires one for create flows). */
+  formTitle?: ReactNode
   submitLabel?: string
   submitDisabled?: boolean
   onSubmit: () => void
@@ -26,28 +31,21 @@ export function CreatePanel({
   children: ReactNode
 }) {
   return (
-    <Drawer
+    <CreateSidePanel
+      className="scns-create-flow"
       open={open}
-      ariaLabel={title}
-      onClose={onClose}
-      header={
-        <div>
-          {label && <div className="scns-helper" style={{ fontSize: 12 }}>{label}</div>}
-          <h2 style={{ fontSize: 24, fontWeight: 400, margin: label ? '2px 0 0' : 0 }}>{title}</h2>
-        </div>
-      }
-      footer={
-        <>
-          <Button kind="secondary" style={{ flex: 1, maxWidth: 'none' }} onClick={onClose}>
-            Cancel
-          </Button>
-          <Button kind="primary" style={{ flex: 1, maxWidth: 'none' }} onClick={onSubmit} disabled={submitDisabled}>
-            {submitLabel}
-          </Button>
-        </>
-      }
+      title={title}
+      subtitle={subtitle}
+      formTitle={formTitle}
+      primaryButtonText={submitLabel}
+      secondaryButtonText="Cancel"
+      disableSubmit={submitDisabled}
+      onRequestSubmit={onSubmit}
+      onRequestClose={onClose}
+      selectorPageContent="#main-content"
+      selectorPrimaryFocus=".scns-create-flow input:not([disabled]), .scns-create-flow textarea:not([disabled])"
     >
       {children}
-    </Drawer>
+    </CreateSidePanel>
   )
 }

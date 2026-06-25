@@ -276,38 +276,6 @@ body {
   background: var(--scns-error);
 }
 
-// Compact stat strip at the top of a drawer (Packages · MRR · Requests) — a
-// quieter sibling of the KPI cluster for the detail panel.
-.scns-drawer-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1px;
-  background: var(--scns-card-border);
-  border: 1px solid var(--scns-card-border);
-  margin-bottom: 24px;
-}
-.scns-drawer-stat {
-  background: var(--cds-layer);
-  padding: 12px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-.scns-drawer-stat-label {
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.32px;
-  text-transform: uppercase;
-  color: var(--cds-text-secondary);
-}
-.scns-drawer-stat-value {
-  font-size: 20px;
-  font-weight: 400;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
 // ── Quota bar ────────────────────────────────────────────────────────────────
 .scns-qbar {
   position: relative;
@@ -470,8 +438,7 @@ body {
 // Form inputs sit on a card / side panel (--cds-layer); Carbon's default field colour equals the
 // layer, so they blend in. Use --scns-field (theme-aware): dark → field-02 (lighter/elevated, the
 // Carbon-canonical field on layer-01); light → grey background (field-02 would be white-on-white).
-.scns-client-form,
-.scns-drawer {
+.scns-client-form {
   .cds--text-input,
   .cds--text-area,
   .cds--select-input {
@@ -563,30 +530,7 @@ body {
   color: var(--cds-text-helper);
 }
 
-// ── Drawer (424px) + detail panel (340px) ────────────────────────────────────
-.scns-overlay {
-  position: fixed;
-  top: 48px; // start below the persistent app header (same as the drawer panel) so it isn't dimmed
-  right: 0;
-  bottom: 0;
-  left: 0;
-  background: var(--scns-overlay);
-  z-index: 8500;
-}
-.scns-drawer {
-  position: fixed;
-  top: 48px;
-  right: 0;
-  bottom: 0;
-  width: 424px;
-  background: var(--cds-layer);
-  border-left: 1px solid var(--cds-border-subtle);
-  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.24);
-  z-index: 8600;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden; // the body scrolls; keep the panel from gaining an x-scroll when a tooltip opens
-}
+// ── Detail panel (340px, inline) ─────────────────────────────────────────────
 .scns-panel {
   width: 340px;
   flex: none;
@@ -641,15 +585,6 @@ body {
   border: 1px solid var(--cds-border-strong);
 }
 
-// Drawer header bar.
-.scns-drawer__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 16px;
-  border-bottom: 1px solid var(--cds-border-subtle);
-}
 .scns-section-label {
   font-size: 12px;
   letter-spacing: 0.32px;
@@ -810,9 +745,279 @@ body {
   }
 }
 
-// Header keeps a 1px bottom border in both themes (it is always dark).
+// ── Header (always-dark g100 masthead) ───────────────────────────────────────
+// Everything below reads from Carbon tokens resolved against the nested g100 zone
+// in AppHeader — no hard-coded hex. Keeps a 1px bottom border in both themes.
 .scns-header {
-  border-bottom: 1px solid #393939;
+  border-bottom: 1px solid var(--cds-border-subtle);
+}
+
+// Wordmark (Carbon HeaderName, restyled to our brand treatment: bold "SnakeCloud"
+// + lighter "Commander" at 14px — Carbon's default is the inverse, a lighter prefix
+// + bold name at 16px).
+.scns-header__name.cds--header__name {
+  padding: 0 24px 0 16px;
+  font-size: 14px;
+  font-weight: 400;
+}
+.scns-header__name--pinned.cds--header__name {
+  inline-size: 16rem;
+  box-sizing: border-box;
+}
+.scns-header__brand {
+  font-weight: 600;
+  color: var(--cds-text-primary);
+}
+.scns-header__suffix {
+  margin-inline-start: 6px;
+  color: var(--cds-text-secondary);
+}
+
+// Vertical hairline separators inside the masthead.
+.scns-header__sep {
+  inline-size: 1px;
+  block-size: 24px;
+  flex: none;
+  align-self: center;
+  background: var(--cds-border-subtle);
+}
+
+// Right cluster: env chip + connection indicator (plain visible status text, no tooltips).
+.scns-header__cluster {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-inline: 16px 8px;
+}
+.scns-header__env {
+  padding: 3px 8px;
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  border: 1px solid;
+}
+.scns-header__env--prod {
+  color: var(--cds-text-primary);
+  border-color: var(--cds-border-strong);
+}
+.scns-header__env--nonprod {
+  color: var(--cds-support-warning);
+  border-color: var(--cds-support-warning);
+}
+
+// Operator avatar (initial). Carbon ships no avatar primitive — a tokenised round chip rendered
+// inside the account HeaderGlobalAction (so it centres in the 48px ghost button; no own margins).
+.scns-header__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 28px;
+  block-size: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--cds-border-strong);
+  background: var(--cds-layer-accent);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cds-text-primary);
+}
+
+// Connection indicator (design §7): dot + label, colour by state.
+.scns-conn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--cds-text-secondary);
+}
+.scns-conn__dot {
+  inline-size: 8px;
+  block-size: 8px;
+  flex: none;
+  border-radius: 50%;
+}
+.scns-conn--connected .scns-conn__dot {
+  background: var(--cds-support-success);
+}
+.scns-conn--connecting .scns-conn__dot {
+  background: var(--cds-support-warning);
+  animation: scns-conn-pulse 1.4s ease-in-out infinite;
+}
+.scns-conn--offline .scns-conn__dot {
+  background: var(--cds-support-error);
+}
+@keyframes scns-conn-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+// Notifications dropdown (Carbon notification-pattern "notification panel"): a bell-anchored
+// dropdown (position: fixed, pinned in JS), NOT a side panel. The <Theme> wrapper sets the app
+// theme zone, so it reads as a content surface (light in g10, dark in g100).
+.scns-notif {
+  position: fixed;
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  inline-size: 22.5rem;
+  max-block-size: min(70vh, 32rem);
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  color: var(--cds-text-primary);
+}
+
+// Bell unread count badge.
+.scns-notif__badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-inline-size: 14px;
+  block-size: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: var(--cds-support-error);
+  color: var(--cds-text-on-color);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 14px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.scns-notif__head {
+  display: flex;
+  flex: none;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--cds-border-subtle);
+}
+.scns-notif__head-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+.scns-notif__head-count {
+  font-size: 12px;
+  color: var(--cds-text-helper);
+}
+
+.scns-notif__body {
+  flex: 1;
+  overflow-y: auto;
+}
+.scns-notif__empty {
+  padding: 28px 16px;
+  font-size: 13px;
+  text-align: center;
+  color: var(--cds-text-helper);
+}
+
+// Source group band (gray header + count) — Carbon groups notifications by source. Sticky so the
+// label stays visible while its items scroll.
+.scns-notif__group {
+  position: sticky;
+  top: 0;
+  padding: 6px 16px;
+  background: var(--cds-layer-accent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--cds-text-secondary);
+}
+.scns-notif__group-count {
+  font-weight: 400;
+  color: var(--cds-text-helper);
+}
+
+// Stacked item card: kicker + bold title + description, status icon + metric aside, coloured left
+// accent by severity.
+.scns-notif__item {
+  display: flex;
+  inline-size: 100%;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 12px 16px;
+  border: none;
+  border-left: 3px solid transparent;
+  background: var(--cds-layer);
+  text-align: left;
+  cursor: pointer;
+}
+.scns-notif__item:hover {
+  background: var(--cds-layer-hover);
+}
+.scns-notif__item--red {
+  border-left-color: var(--cds-support-error);
+}
+.scns-notif__item--amber {
+  border-left-color: var(--cds-support-warning);
+}
+.scns-notif__item-body {
+  display: flex;
+  min-inline-size: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+.scns-notif__kicker {
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--cds-text-helper);
+}
+.scns-notif__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cds-text-primary);
+}
+.scns-notif__desc {
+  font-size: 12px;
+  color: var(--cds-text-secondary);
+}
+.scns-notif__aside {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.scns-notif__status--red {
+  fill: var(--cds-support-error);
+}
+.scns-notif__status--amber {
+  fill: var(--cds-support-warning);
+}
+.scns-notif__metric {
+  font-size: 12px;
+  color: var(--cds-text-secondary);
+}
+
+// Footer: manage notification preferences (Carbon best practice).
+.scns-notif__foot {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border: none;
+  border-top: 1px solid var(--cds-border-subtle);
+  background: var(--cds-layer);
+  color: var(--cds-text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.scns-notif__foot:hover {
+  background: var(--cds-layer-hover);
+}
+.scns-notif__foot svg {
+  fill: currentColor;
 }
 
 // The side nav sits BELOW the 48px header (it is not a child of the header) and

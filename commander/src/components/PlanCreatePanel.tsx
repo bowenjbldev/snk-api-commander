@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NumberInput, TextArea, TextInput, Toggle } from '@carbon/react'
 import { useStore } from '../store/store'
 import { useToast } from '../providers/ToastProvider'
@@ -16,8 +16,9 @@ function numOrNull(v: string): number | null {
   return Number.isFinite(n) && n >= 0 ? Math.round(n) : null
 }
 
-// Create-plan side panel (replaces the PlanFormModal create flow). Single-column form in the
-// right-side Drawer; same field set + validation as the old modal. Editing still uses PlanFormModal.
+// Create-plan flow in the canonical Carbon Side panel (CreateSidePanel via CreatePanel): a
+// single-column form that slides in from the right. Same field set + validation as the old modal.
+// Editing still uses PlanFormModal.
 export function PlanCreatePanel({
   open,
   packageName,
@@ -39,6 +40,13 @@ export function PlanCreatePanel({
   const [qUsers, setQUsers] = useState('')
   const [active, setActive] = useState(true)
   const [submitted, setSubmitted] = useState(false)
+
+  // Stays mounted to slide out, so reset the form once closed (fresh form on reopen).
+  useEffect(() => {
+    if (open) return
+    setName(''); setDescription(''); setPrice('0'); setQReq(''); setQDb('')
+    setQStorage(''); setQUsers(''); setActive(true); setSubmitted(false)
+  }, [open])
 
   const nameError = !name.trim() ? 'Required' : ''
   const valid = !nameError
@@ -63,7 +71,7 @@ export function PlanCreatePanel({
   }
 
   return (
-    <CreatePanel open={open} title="New plan" submitLabel="Create plan" onSubmit={submit} onClose={onClose}>
+    <CreatePanel open={open} title="New plan" subtitle={`Pricing & quota defaults for ${packageName}`} formTitle="Plan details" submitLabel="Create plan" onSubmit={submit} onClose={onClose}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <TextInput
           id="pc-package"

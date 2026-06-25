@@ -181,9 +181,8 @@ export function PlansTab() {
         tableBlock
       )}
 
-      {createOpen && (
-        <PlanCreatePanel open packageName={pkg.name} onClose={() => setCreateOpen(false)} />
-      )}
+      {/* Always mounted so CreateSidePanel restores the page content width on slide-out close. */}
+      <PlanCreatePanel open={createOpen} packageName={pkg.name} onClose={() => setCreateOpen(false)} />
       {editPlan && (
         <PlanFormModal open mode="edit" plan={editPlan} packageName={pkg.name} onClose={() => setEditPlan(null)} />
       )}

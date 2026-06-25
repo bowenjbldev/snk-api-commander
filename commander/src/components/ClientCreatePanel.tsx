@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Select, SelectItem, TextInput, TextArea, Toggle } from '@carbon/react'
 import { useStore } from '../store/store'
 import { useToast } from '../providers/ToastProvider'
@@ -7,8 +7,9 @@ import type { PaymentTerms } from '../store/types'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-// Create-client side panel (replaces the old ClientFormModal create flow). Single-column form in a
-// right-side Drawer. Same field set + validation as before; submits via addClient.
+// Create-client flow in the canonical Carbon Side panel (CreateSidePanel via CreatePanel): a
+// single-column form that slides in from the right while the client list stays visible behind it.
+// Same field set + validation as before; submits via addClient.
 export function ClientCreatePanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const addClient = useStore((s) => s.addClient)
   const toast = useToast()
@@ -28,6 +29,15 @@ export function ClientCreatePanel({ open, onClose }: { open: boolean; onClose: (
   const [country, setCountry] = useState('')
   const [terms, setTerms] = useState<PaymentTerms | ''>('')
   const [submitted, setSubmitted] = useState(false)
+
+  // The panel stays mounted (so it can slide out), so reset the form once it has closed — a fresh
+  // form each time it reopens, matching the old remount-on-open behaviour.
+  useEffect(() => {
+    if (open) return
+    setName(''); setCompany(''); setEmail(''); setPhone(''); setNotes(''); setActive(true)
+    setBillingEmail(''); setTaxId(''); setAddress1(''); setAddress2(''); setCity('')
+    setPostal(''); setCountry(''); setTerms(''); setSubmitted(false)
+  }, [open])
 
   const nameError = !name.trim() ? 'Required' : ''
   const emailError = !email.trim() ? 'Required' : !EMAIL_RE.test(email) ? 'Enter a valid email' : ''
@@ -59,7 +69,7 @@ export function ClientCreatePanel({ open, onClose }: { open: boolean; onClose: (
   }
 
   return (
-    <CreatePanel open={open} title="Create client" submitLabel="Create client" onSubmit={submit} onClose={onClose}>
+    <CreatePanel open={open} title="Create client" subtitle="A customer account on the platform" formTitle="Client details" submitLabel="Create client" onSubmit={submit} onClose={onClose}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <TextInput id="cc-name" labelText="Name" value={name} onChange={(e) => setName(e.target.value)} invalid={submitted && !!nameError} invalidText={nameError} />
         <TextInput id="cc-company" labelText="Company" value={company} onChange={(e) => setCompany(e.target.value)} />

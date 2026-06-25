@@ -421,9 +421,9 @@ export function Clients() {
         }
       />
 
-      {createOpen && (
-        <ClientCreatePanel open onClose={() => setCreateOpen(false)} />
-      )}
+      {/* Always mounted so CreateSidePanel can play its slide-out animation and restore the page
+          content width on close (unmounting mid-close leaves #main-content pushed aside). */}
+      <ClientCreatePanel open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>
   )
 }
