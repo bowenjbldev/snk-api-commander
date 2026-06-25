@@ -2,7 +2,7 @@
 // path that Vite proxies to the backend (see vite.config.ts) — no CORS, no cert prompt.
 // For a production build, set VITE_API_BASE to the deploy's origin (e.g. https://commander.host/api/v1).
 
-import type { LogEntry, OperatorSettings, Package, PackageInsights, UsageRollup, UsageSnapshot } from '../store/types'
+import type { GitDailyActivity, LogEntry, OperatorSettings, Package, PackageInsights, RecentCommit, UsageRollup, UsageSnapshot } from '../store/types'
 
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? '/api/v1'
 const TOKEN_KEY = 'commander_token'
@@ -118,6 +118,24 @@ export function platformLogs(
   if (params.method) qs.set('method', params.method)
   const q = qs.toString()
   return api<{ data: LogEntry[] }>(`/logs${q ? `?${q}` : ''}`)
+}
+
+// Platform-wide recent git commits (all packages, newest first) for the Dashboard "Recent commits"
+// card. Each commit is enriched with its package name/label by the API.
+export function platformCommits(params: { limit?: number } = {}): Promise<{ data: RecentCommit[] }> {
+  const qs = new URLSearchParams()
+  if (params.limit) qs.set('limit', String(params.limit))
+  const q = qs.toString()
+  return api<{ data: RecentCommit[] }>(`/commits${q ? `?${q}` : ''}`)
+}
+
+// Platform-wide git code frequency: daily additions/deletions summed across all packages over a
+// window (in days, default ~12 weeks). Same GitDailyActivity shape as a package's insights().daily.
+export function platformCodeFrequency(params: { days?: number } = {}): Promise<{ data: GitDailyActivity[] }> {
+  const qs = new URLSearchParams()
+  if (params.days) qs.set('days', String(params.days))
+  const q = qs.toString()
+  return api<{ data: GitDailyActivity[] }>(`/code-frequency${q ? `?${q}` : ''}`)
 }
 
 // Registro de packages de negocio (tipos): el hub package-céntrico. list() sincroniza desde disco y

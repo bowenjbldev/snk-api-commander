@@ -43,6 +43,12 @@ Route::middleware(['api'])->group(function () {
         // Platform-wide request logs (all packages), with optional deployment/method/status filters.
         Route::get('logs', [CommanderRequestLogsController::class, 'index']);
 
+        // Platform-wide recent git commits (all packages) for the Dashboard "Recent commits" card.
+        Route::get('commits', [CommanderPackagesController::class, 'commits']);
+
+        // Platform-wide git code frequency (daily additions/deletions across all packages).
+        Route::get('code-frequency', [CommanderPackagesController::class, 'codeFrequency']);
+
         // Package registry + package provisionado 1:1. index sincroniza desde disco + enriquece con planes.
         Route::get('packages', [CommanderPackagesController::class, 'index']);
         Route::post('packages/{package}/suspend', [CommanderPackagesController::class, 'suspend']);

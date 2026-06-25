@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { Loading, OverflowMenu, OverflowMenuItem } from '@carbon/react'
+import { Loading, OverflowMenu, OverflowMenuItem, Table, TableHead, TableRow, TableHeader, TableBody, TableCell, TableContainer } from '@carbon/react'
 import { Activity, CheckmarkOutline, Time, PauseOutline, Warning, Money } from '@carbon/icons-react'
-import { StackedBarChart, AreaChart, SimpleBarChart } from '@carbon/charts-react'
+import { StackedBarChart, StackedAreaChart } from '@carbon/charts-react'
 import { useStore, useProvisionedPackages } from '../store/store'
 import { useAppTheme } from '../providers/ThemeProvider'
 import { useTick } from '../providers/TickProvider'
@@ -11,17 +11,12 @@ import { Card } from '../components/Card'
 import { ChartCard, ChartLegend } from '../components/ChartCard'
 import { RelativeTime } from '../components/RelativeTime'
 import { EmptyState } from '../components/EmptyState'
-import { stackedBarOptions, areaOptions, barOptions, legendItems } from '../lib/chartOptions'
-import {
-  snapshotsToPlatformSeries,
-  requestsByPackageData,
-  packageColorMap,
-  type PlatformSeries,
-} from '../lib/chartData'
-import { platformUsage } from '../lib/api'
-import { toneTint, type Tone } from '../lib/attention'
-import { formatCompact, formatCurrencyShort, formatPercent } from '../lib/format'
-import type { ActivityEvent, UsageSnapshot } from '../store/types'
+import { stackedBarOptions, areaOptions, weeklyBarOptions, legendItems } from '../lib/chartOptions'
+import { snapshotsToPlatformSeries, dailyToCodeFrequency } from '../lib/chartData'
+import { platformUsage, platformCodeFrequency } from '../lib/api'
+import { TIME_RANGES, rangeOf, type RangeKey } from '../lib/timeRanges'
+import { formatCompact, formatCurrencyShort, formatInt, formatPercent } from '../lib/format'
+import type { GitDailyActivity, UsageSnapshot } from '../store/types'
 
 // Real platform KPIs derived from the usage-snapshot cache. Error rate is the aggregate
 // errors/requests over the most recent 24h; the deltas compare that window against the prior
@@ -58,6 +53,59 @@ function deriveUsageKpis(snapshots: UsageSnapshot[]): UsageKpis {
   return { errorRate, requestsDelta, errorRateDelta }
 }
 
+// Per-card usage fetch (its own time range). Polls every 30s; keeps the last good data on a refresh
+// error so the chart doesn't blank out.
+function useUsageSnapshots(range: RangeKey) {
+  const [state, setState] = useState<{ loading: boolean; snapshots: UsageSnapshot[]; error: string | null }>({
+    loading: true,
+    snapshots: [],
+    error: null,
+  })
+  useEffect(() => {
+    let cancelled = false
+    const r = rangeOf(range)
+    const load = () => {
+      platformUsage({ period: r.period, hours: r.days * 24 })
+        .then((res) => {
+          if (!cancelled) setState({ loading: false, snapshots: res.data ?? [], error: null })
+        })
+        .catch((e: unknown) => {
+          if (!cancelled) setState((s) => ({ ...s, loading: false, error: e instanceof Error ? e.message : 'Failed to load usage' }))
+        })
+    }
+    load()
+    const t = setInterval(load, 30_000)
+    return () => {
+      cancelled = true
+      clearInterval(t)
+    }
+  }, [range])
+  return state
+}
+
+// Per-card code-frequency fetch (its own time range, in days).
+function useCodeFreq(range: RangeKey) {
+  const [state, setState] = useState<{ loading: boolean; daily: GitDailyActivity[]; error: string | null }>({
+    loading: true,
+    daily: [],
+    error: null,
+  })
+  useEffect(() => {
+    let cancelled = false
+    platformCodeFrequency({ days: rangeOf(range).days })
+      .then((res) => {
+        if (!cancelled) setState({ loading: false, daily: res.data ?? [], error: null })
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setState((s) => ({ ...s, loading: false, error: e instanceof Error ? e.message : 'Failed to load commits' }))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [range])
+  return state
+}
+
 // Isolated so the 1s tick re-renders only this line — not the whole dashboard
 // (which would force every Carbon chart to re-layout each second).
 function UpdatedClock() {
@@ -73,8 +121,7 @@ export function Dashboard() {
   const { theme } = useAppTheme()
   const navigate = useNavigate()
   const packages = useProvisionedPackages()
-  const invoices = useStore((s) => s.invoices)
-  const activity = useStore((s) => s.activity)
+  const commits = useStore((s) => s.commits)
   const dash = useStore((s) => s.dashboard)
 
   const counts = useMemo(() => {
@@ -87,70 +134,54 @@ export function Dashboard() {
     return { active, grace, suspended }
   }, [packages])
 
-  // Real platform usage from the Commander snapshot cache (seeded + refreshed by package sync).
-  const [platform, setPlatform] = useState<{
-    loading: boolean
-    series: PlatformSeries | null
-    kpis: UsageKpis
-    error: string | null
-  }>({
-    loading: true,
-    series: null,
-    kpis: { errorRate: 0, requestsDelta: null, errorRateDelta: null },
-    error: null,
-  })
   const packageLabels = useMemo(() => new Map(packages.map((p) => [p.id, p.name])), [packages])
-  const invoiceLabels = useMemo(() => new Map(invoices.map((i) => [i.id, i.number])), [invoices])
-  const packageLabel = useCallback(
-    (id: number | undefined) => (id == null ? 'Unknown package' : packageLabels.get(id) ?? `package ${id}`),
-    [packageLabels],
-  )
-  const invoiceLabel = useCallback(
-    (id: number | undefined) => (id == null ? 'Unknown invoice' : invoiceLabels.get(id) ?? `invoice ${id}`),
-    [invoiceLabels],
-  )
 
-  useEffect(() => {
-    let cancelled = false
-    const load = () => {
-      platformUsage({ period: 'hour', hours: 48 })
-        .then((res) => {
-          const snapshots = res.data ?? []
-          if (!cancelled) {
-            setPlatform({ loading: false, series: snapshotsToPlatformSeries(snapshots, packageLabels), kpis: deriveUsageKpis(snapshots), error: null })
-          }
-        })
-        .catch((e: unknown) => {
-          // Keep the last good series on a refresh error so the chart doesn't blank out.
-          if (!cancelled) setPlatform((p) => ({ ...p, loading: false, error: e instanceof Error ? e.message : 'Failed to load usage' }))
-        })
-    }
-    load()
-    const timer = setInterval(load, 30_000) // honours the "auto-refresh 30s" label
-    return () => {
-      cancelled = true
-      clearInterval(timer)
-    }
-  }, [packageLabels])
+  // Per-card time-range filters (each set from its own chart kebab). Each card fetches independently.
+  const [reqRange, setReqRange] = useState<RangeKey>('48h')
+  const [errRange, setErrRange] = useState<RangeKey>('48h')
+  const [freqRange, setFreqRange] = useState<RangeKey>('year')
 
-  const groups = useMemo(() => platform.series?.requests.groups ?? [], [platform.series])
-  const reqData = platform.series?.requests.data ?? []
-  const errData = platform.series?.errorRate ?? []
-  const hasChart = !platform.loading && !platform.error && reqData.length > 0
-  // Principal chart (left): requests per hour timeseries.
-  const reqOpts = useMemo(() => stackedBarOptions(theme, groups, '360px'), [theme, groups])
-  // Two charts beside the principal (right column, stacked).
-  const errOpts = useMemo(() => areaOptions(theme, { 'error %': '#fa4d56' }, '150px'), [theme])
-  const pkgColors = useMemo(() => packageColorMap(packages), [packages])
-  const reqByPkg = useMemo(() => requestsByPackageData(packages), [packages])
-  const reqByPkgOpts = useMemo(() => barOptions(theme, pkgColors, '150px', true), [theme, pkgColors])
+  const reqUsage = useUsageSnapshots(reqRange)
+  const errUsage = useUsageSnapshots(errRange)
+  const freq = useCodeFreq(freqRange)
+
+  // KPIs (last 24h vs prior 24h) follow the Requests card's window — at 24h there's no prior window,
+  // so the deltas read null (we never fabricate an arrow).
+  const kpis = useMemo(() => deriveUsageKpis(reqUsage.snapshots), [reqUsage.snapshots])
+
+  const reqSeries = useMemo(() => snapshotsToPlatformSeries(reqUsage.snapshots, packageLabels), [reqUsage.snapshots, packageLabels])
+  const errSeries = useMemo(() => snapshotsToPlatformSeries(errUsage.snapshots, packageLabels), [errUsage.snapshots, packageLabels])
+  const groups = reqSeries.requests.groups
+  const reqData = reqSeries.requests.data
+  const errData = errSeries.errorRate
+  const freqData = useMemo(() => dailyToCodeFrequency(freq.daily), [freq.daily])
+
+  const reqReady = !reqUsage.loading && !reqUsage.error && reqData.length > 0
+  const errReady = !errUsage.loading && !errUsage.error && errData.length > 0
+
+  // hideX: dashboard charts drop the time x-axis for a unified, compact look (the card subtitle
+  // carries the window) — keeps the legend tight to the chart instead of a big axis gap.
+  const reqOpts = useMemo(() => stackedBarOptions(theme, groups, '100%', true), [theme, groups])
+  const errOpts = useMemo(() => areaOptions(theme, { '4xx': '#d2a106', '5xx': '#fa4d56' }, '150px', true), [theme])
+  const freqOpts = useMemo(() => weeklyBarOptions(theme, { additions: '#42be65', deletions: '#fa4d56' }, '150px', true), [theme])
+
+  // Kebab menu: the 5 time ranges + a link to the full Usage page. The applied range is shown by the
+  // card subtitle (no per-item checkmark — OverflowMenuItem has no native selected state).
+  const rangeMenu = (onChange: (k: RangeKey) => void) => (
+    <OverflowMenu size="sm" flipped aria-label="Chart options">
+      {TIME_RANGES.map((r) => (
+        <OverflowMenuItem key={r.key} itemText={r.menu} onClick={() => onChange(r.key)} />
+      ))}
+      <OverflowMenuItem hasDivider itemText="Open in Usage" onClick={() => navigate('/usage')} />
+    </OverflowMenu>
+  )
 
   return (
     <div className="scns-page">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 400, margin: 0 }}>Dashboard</h1>
-          <div className="scns-helper" style={{ fontSize: 13, marginTop: 6 }}>
+          <div className="scns-helper" style={{ marginTop: 6 }}>
             Platform overview across {packages.length} packages
           </div>
         </div>
@@ -165,138 +196,111 @@ export function Dashboard() {
         <KpiTile
           label="Requests (24h)"
           value={formatCompact(dash.requests_24h)}
-          helper={<RatioTrend ratio={platform.kpis.requestsDelta} suffix="vs prior 24h" />}
+          helper={<RatioTrend ratio={kpis.requestsDelta} suffix="vs prior 24h" />}
           icon={<Activity size={20} />}
         />
         <KpiTile
           label="Error rate (24h)"
-          value={formatPercent(platform.kpis.errorRate, 1)}
-          helper={<PointsTrend points={platform.kpis.errorRateDelta} suffix="vs prior 24h" invert />}
+          value={formatPercent(kpis.errorRate, 1)}
+          helper={<PointsTrend points={kpis.errorRateDelta} suffix="vs prior 24h" invert />}
           icon={<Warning size={20} />}
         />
         <KpiTile label="MRR" value={formatCurrencyShort(dash.mrr)} icon={<Money size={20} />} />
       </KpiCluster>
 
-      {/* Charts: principal on the left, error rate + requests-24h beside it */}
+      {/* Charts: principal on the left, error rate + code frequency beside it. Each card's kebab
+          carries its own time-range filter; the subtitle echoes the applied range. */}
       <div className="scns-charts-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, marginTop: 40 }}>
         <ChartCard
-          title="Requests per hour"
-          subtitle="last 48h, stacked by package"
+          title="Requests"
+          subtitle={`stacked by package · ${rangeOf(reqRange).subtitle}`}
           right={<ChartLegend items={legendItems(groups)} />}
-          action={
-            <OverflowMenu size="sm" flipped aria-label="Chart actions">
-              <OverflowMenuItem itemText="Open in Usage" onClick={() => navigate('/usage')} />
-            </OverflowMenu>
-          }
+          action={rangeMenu(setReqRange)}
+          fill
         >
-          {hasChart ? (
+          {reqReady ? (
             <StackedBarChart data={reqData} options={reqOpts} />
           ) : (
-            <ChartPlaceholder loading={platform.loading} error={platform.error} height={360} />
+            <ChartPlaceholder loading={reqUsage.loading} error={reqUsage.error} height={400} />
           )}
         </ChartCard>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           <ChartCard
-            title="Requests · 24h"
-            subtitle="by package"
-            action={
-              <OverflowMenu size="sm" flipped aria-label="Chart actions">
-                <OverflowMenuItem itemText="Open in Usage" onClick={() => navigate('/usage')} />
-              </OverflowMenu>
-            }
+            title="Error rate"
+            subtitle={`4xx · 5xx, % of requests · ${rangeOf(errRange).subtitle}`}
+            right={<ChartLegend items={[{ label: '4xx', color: '#d2a106' }, { label: '5xx', color: '#fa4d56' }]} />}
+            action={rangeMenu(setErrRange)}
           >
-            <SimpleBarChart data={reqByPkg} options={reqByPkgOpts} />
+            {errReady ? (
+              <StackedAreaChart data={errData} options={errOpts} />
+            ) : (
+              <ChartPlaceholder loading={errUsage.loading} error={errUsage.error} height={150} />
+            )}
           </ChartCard>
           <ChartCard
-            title="Error rate"
-            subtitle="%"
-            right={<ChartLegend items={[{ label: 'error %', color: '#fa4d56' }]} />}
-            action={
-              <OverflowMenu size="sm" flipped aria-label="Chart actions">
-                <OverflowMenuItem itemText="Open in Usage" onClick={() => navigate('/usage')} />
-              </OverflowMenu>
-            }
+            title="Code frequency"
+            subtitle={`lines / week · ${rangeOf(freqRange).subtitle}`}
+            right={<ChartLegend items={[{ label: 'additions', color: '#42be65' }, { label: 'deletions', color: '#fa4d56' }]} />}
+            action={rangeMenu(setFreqRange)}
           >
-            {hasChart ? (
-              <AreaChart data={errData} options={errOpts} />
+            {freqData.length > 0 ? (
+              <StackedBarChart data={freqData} options={freqOpts} />
             ) : (
-              <ChartPlaceholder loading={platform.loading} error={platform.error} height={150} />
+              <EmptyState title={freq.error ? 'Insights unavailable' : freq.loading ? 'Loading…' : 'No commit history'} />
             )}
           </ChartCard>
         </div>
       </div>
 
-      {/* Recent activity (triage moved to the header notifications bell) */}
+      {/* Recent commits across the fleet (replaces the old activity feed — triage now lives in the bell).
+          Carbon DataTable, same shape as the package Insights tab + a Package column. */}
       <div style={{ marginTop: 40 }}>
-        <Card title="Recent activity" subtitle="last 3 days" bodyPadding={0}>
-          {activity.length === 0 ? (
-              <EmptyState title="No recent activity" />
-            ) : (
-              activity.map((ev, idx) => {
-                const m = activityMeta(ev, packageLabel, invoiceLabel)
-                const t = toneTint(m.tone)
-                return (
-                  <button
-                    key={ev.id}
-                    type="button"
-                    onClick={() => navigate(m.to)}
-                    className="scns-list-row"
-                    style={{ borderTop: idx ? '1px solid var(--cds-border-subtle)' : 'none' }}
-                  >
-                    <span className="scns-list-tag" style={{ background: t.bg, color: t.fg }}>{m.label}</span>
-                    <span className="scns-mono scns-list-entity">{m.entity}</span>
-                    <span className="scns-list-detail">{m.detail}</span>
-                    <RelativeTime iso={ev.created_at} />
-                  </button>
-                )
-              })
-            )}
+        <Card title="Recent commits" subtitle="latest across packages" bodyPadding={0}>
+          {commits.length === 0 ? (
+            <EmptyState title="No commits yet" />
+          ) : (
+            <TableContainer>
+              <Table size="sm">
+                <TableHead>
+                  <TableRow>
+                    <TableHeader>Package</TableHeader>
+                    <TableHeader>SHA</TableHeader>
+                    <TableHeader>Message</TableHeader>
+                    <TableHeader>Author</TableHeader>
+                    <TableHeader>When</TableHeader>
+                    <TableHeader style={{ textAlign: 'right' }}>+/−</TableHeader>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {commits.map((c) => (
+                    <TableRow key={`${c.package_id}-${c.sha}`}>
+                      <TableCell>
+                        <button
+                          type="button"
+                          className="scns-linkbtn"
+                          onClick={() => navigate(c.package_id ? `/packages/${c.package_id}` : '/packages')}
+                        >
+                          {c.package ?? '—'}
+                        </button>
+                      </TableCell>
+                      <TableCell className="scns-mono">{c.sha.slice(0, 8)}</TableCell>
+                      <TableCell>{(c.message ?? '').split('\n')[0] || '—'}</TableCell>
+                      <TableCell>{c.author_name ?? '—'}</TableCell>
+                      <TableCell>{c.committed_at ? <RelativeTime iso={c.committed_at} /> : '—'}</TableCell>
+                      <TableCell style={{ textAlign: 'right' }} className="scns-num">
+                        <span style={{ color: '#42be65' }}>+{formatInt(c.additions)}</span>{' '}
+                        <span style={{ color: '#fa4d56' }}>−{formatInt(c.deletions)}</span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
         </Card>
       </div>
     </div>
   )
-}
-
-interface ActivityMeta {
-  tone: Tone
-  label: string
-  entity: string
-  detail: string
-  to: string
-}
-
-// Infers the origin of a state transition from its `reason` (no actor is stored anymore). Automated
-// reasons (`quota_exceeded:*`, `payment_overdue`) read as system-driven; everything else as operator.
-function reasonToActor(reason: ActivityEvent['reason']): string {
-  if (!reason) return 'operator'
-  if (reason === 'payment_overdue' || reason.startsWith('quota_exceeded')) return 'auto'
-  return 'operator'
-}
-
-// Maps an activity event to the same row shape Attention uses (label · entity · detail · value),
-// so both lists read identically. The label pill carries the category; tone mirrors severity. The
-// transition origin is derived from `reason` (cliente-primero model: no `by` actor is stored).
-function activityMeta(
-  ev: ActivityEvent,
-  packageLabel: (id: number | undefined) => string,
-  invoiceLabel: (id: number | undefined) => string,
-): ActivityMeta {
-  const pkg = packageLabel(ev.package_id)
-  const pkgTo = ev.package_id != null ? `/packages/${ev.package_id}` : '/packages'
-  switch (ev.kind) {
-    case 'suspend':
-      return { tone: 'red', label: 'Suspended', entity: pkg, detail: `${ev.reason ?? 'manual'} · ${reasonToActor(ev.reason)}`, to: pkgTo }
-    case 'grace':
-      return { tone: 'amber', label: 'Grace', entity: pkg, detail: `${ev.reason ?? 'payment overdue'} · ${reasonToActor(ev.reason)}`, to: pkgTo }
-    case 'resume':
-      return { tone: 'green', label: 'Resumed', entity: pkg, detail: ev.message ?? 'service restored', to: pkgTo }
-    case 'paid':
-      return { tone: 'green', label: 'Paid', entity: invoiceLabel(ev.invoice_id), detail: ev.message ?? 'settled', to: '/invoices' }
-    case 'quota':
-      return { tone: 'amber', label: 'Quota', entity: pkg, detail: ev.message ?? 'limit exceeded', to: pkgTo }
-    case 'change_plan':
-      return { tone: 'blue', label: 'Plan', entity: pkg, detail: ev.reason ? `to ${ev.reason.replace(/^plan:/, '')}` : 'updated', to: pkgTo }
-  }
 }
 
 function ChartPlaceholder({ loading, error, height }: { loading: boolean; error: string | null; height: number }) {

@@ -276,10 +276,11 @@ Script end-to-end para poblar el Commander en local (corre contra el stack Docke
 
 ```bash
 bash scripts/simulate.sh                  # flujo completo: limpia BD → scaffold → provisiona →
-                                          # invoices → trafico (HTTP) → pipeline → reporte
+                                          # invoices → trafico (HTTP) → pipeline → densidad 1 año → reporte
 bash scripts/simulate.sh traffic <cliente> <slug> [n] # SOLO trafico HTTP contra un (cliente, paquete)
 bash scripts/simulate.sh invoices         # SOLO genera invoices (paid/pending/overdue)
 bash scripts/simulate.sh pipeline         # SOLO rollup + quota:measure + refresh de KPIs
+bash scripts/simulate.sh year [dias]      # SOLO densidad de un año (charts + Insights), default 365
 bash scripts/simulate.sh report           # SOLO el reporte de estado
 ```
 
@@ -298,6 +299,23 @@ bash scripts/simulate.sh volume [filas_por_package]   # default 100000; p. ej. v
   incremental desde el último bucket; sin el reset solo agregaría las horas recientes).
 - El `INSERT` es rapidísimo incluso con cientos de miles; el cuello de botella a alto volumen es el
   rollup en PHP (recorre los buckets). Cada `volume` **acumula** sobre lo existente.
+
+**Densidad de un año** — para llenar **todos los rangos del filtro** del dashboard (24h/48h/semana/
+mes/año), el **error rate 4xx/5xx**, el **code frequency** y los **commits/Insights** con datos
+repartidos a lo largo de un año, **100% por DB** (sin HTTP ni loops → instantáneo):
+
+```bash
+bash scripts/simulate.sh year [dias]   # default 365
+```
+
+- Siembra directo las tablas **agregadas** (no procesa logs crudos con el rollup PHP, que con un año
+  sería lentísimo): `commander_usage_rollups` con buckets **diarios (N días) + horarios (48h)**, una
+  fila por `status_class` (2xx/4xx/5xx) → Requests, Error rate (4xx/5xx) y el tab Usage en **todos**
+  los rangos; `commander_request_logs` (~6k en 48h, para Request Logs); y los `commander_package_*`
+  (commits + actividad diaria + repo) → **Recent commits**, **Code frequency** y el tab **Insights**
+  (heatmap). Cada uno con un solo `INSERT … SELECT FROM seq_1_to_N` (motor SEQUENCE).
+- Pone `requests_24h`/`last_seen` por SQL y **reinicia** esas tablas por package antes de sembrar
+  (idempotente). El flujo completo (`all`) lo corre al final, así un `simulate.sh` deja el panel denso.
 
 Overrides por entorno: `ADMIN_EMAIL` / `ADMIN_PASSWORD` (operador), `SCENARIO=shop|blog|generic`
 (en `traffic`), `DOCKER_COMPOSE` (runner). La spec de packages se edita en el array `PACKAGES[]`.

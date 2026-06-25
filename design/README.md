@@ -12,8 +12,8 @@
 > ⚠️ **Modelo backend actual (2026-06-24):** cliente-primero, paquetes anidados per-cliente
 > (`packages/<Cliente>/<Paquete>`), subdominio = cliente + slug del paquete en el path, y
 > `commander_packages` como instancia viva 1:1 por `(client_id, slug)` (sin `commander_deployments`).
-> Ver [`../README.md`](../README.md). Las páginas/flujos aquí descritos siguen el modelo anterior y
-> están **pendientes de alinear** con la nueva navegación cliente→paquetes.
+> Ver [`../README.md`](../README.md). Las páginas/flujos aquí descritos ya están **alineados** a este
+> modelo (la SPA se realineó el 2026-06-25; ver [`../commander/README.md`](../commander/README.md)).
 
 ---
 
@@ -114,7 +114,7 @@ Header (ambos temas): bg `#161616`, borde `#393939`, texto `#f4f4f4`.
 
 - Fuentes: **IBM Plex Sans** (UI: 400/500/600), **IBM Plex Mono** (400/500/600).
 - Escala (productive): 10–12px labels/captions mono, 13px cuerpo de tabla, 14px UI/body,
-  14px títulos de card (600, `.scns-card__title`), 18px títulos de drawer (600), 20px títulos de modal (400),
+  14px títulos de card (600, `.scns-card__title`), 18px títulos de side panel (600), 20px títulos de modal (400),
   24px títulos de página (400), 28px valores KPI (400), 36px countdown (mono).
 - Espaciado Carbon base 8px (4/8/12/16/24/32). Padding de columna de contenido 24–32px.
 - Alturas de fila: tabla 48px (logs 34px, quotas 52px dentro del detalle de package), toolbar 48px, batch bar 40px,
@@ -132,7 +132,7 @@ Header (ambos temas): bg `#161616`, borde `#393939`, texto `#f4f4f4`.
   va como una celda más (media anchura), no flotando con hueco a la derecha.
 - **Inputs sobre card/panel → token theme-aware `--scns-field`.** Carbon iguala el campo
   (`--cds-field`) al `--cds-layer` de la card, así que se funden. Usa `--scns-field` (clase scoped
-  `.scns-client-form` / `.scns-drawer`): en **oscuro** → `field-02` (más **claro**/elevado, el campo
+  `.scns-client-form` / `.scns-create-flow`): en **oscuro** → `field-02` (más **claro**/elevado, el campo
   canónico de Carbon sobre layer-01); en **claro** → `--cds-background` (gris; el `field-02` claro
   sería blanco-sobre-blanco). Así los inputs leen como campos distintos en ambos temas siguiendo la
   capa de Carbon.
@@ -172,7 +172,7 @@ Header (ambos temas): bg `#161616`, borde `#393939`, texto `#f4f4f4`.
 | Filtros de toolbar | `Dropdown` / `MultiSelect` inline |
 | Status pills | `Tag` (`green`/`red`) + `AmberTag` custom para grace/pending |
 | Modales danger / follow-up | `Modal` (danger), `ComposedModal` (3 botones) |
-| Quick view de cliente | `Drawer` custom (424px) — Carbon no tiene drawer |
+| Side panel (create flows) | `CreateSidePanel` (`@carbon/ibm-products`, variante `slideIn`, sin overlay) |
 | Barras de cuota | `QuotaBar` (barra 4–6px) / `ProgressBar` |
 | Listas clave/valor | `StructuredList` |
 | base_url / secret | `CodeSnippet` inline + copiar (`CopyableCode`), eye-toggle para revelar |
@@ -182,20 +182,21 @@ Header (ambos temas): bg `#161616`, borde `#393939`, texto `#f4f4f4`.
 | Skeletons | `DataTableSkeleton`, `SkeletonText` |
 | Edición inline de cuota | `InlineEdit` custom: valor con subrayado dashed → `TextInput` con ✓ / ✕ |
 
-Componentes reutilizables propios (`commander/src/components/`): `DataTableShell`, `Drawer`,
-`InlineEdit`, `StatusTag`, `AmberTag`, `MethodTag`, `GraceCountdown`, `QuotaBar`, `KpiCluster`,
-`CopyableCode`, `ChartCard`, `EmptyState`, `StateCard`, `PageHeader`, `RelativeTime`,
+Componentes reutilizables propios (`commander/src/components/`): `DataTableShell`, `Card`,
+`ChartCard`, `CreatePanel`, `ClientCreatePanel`, `PlanCreatePanel`, `InlineEdit`, `StatusTag`,
+`AmberTag` / `MethodTag` (en `components/tags/`), `GraceCountdown`, `QuotaBar`, `KpiCluster`,
+`CopyableCode`, `EmptyState`, `PageHeader`, `RelativeTime`, `Sparkline`, `StatusMixBar`,
 `FullScreenLoading`, `CommandPalette`.
 
 Modales (`components/modals/`, reservados para **confirmaciones / cambios de estado**):
 `TypedConfirmModal`, `StateChangeModal`, `ProvisionModal`, `OverdueEnforcementModal`,
 `InvoiceFormModal`, `PlanFormModal`.
 
-**Create flows → side panel, no modal.** La creación de entidades usa un **slide-over** derecho
-(`CreatePanel`, sobre el `Drawer`) en vez de un modal centrado: mantiene la lista visible detrás, da
-aire al form multi-campo y es menos bloqueante (guía Carbon de *create flows*). Primero migrado:
-**`ClientCreatePanel`** (sustituye al antiguo `ClientFormModal`). Pendiente migrar
-invoice/plan/provisioning al mismo patrón.
+**Create flows → side panel, no modal.** La creación de entidades usa el **side panel canónico de
+Carbon** (`CreateSidePanel` de `@carbon/ibm-products`, envuelto en `CreatePanel`) en vez de un modal
+centrado: mantiene la lista visible y operable detrás, da aire al form multi-campo y es menos
+bloqueante (guía Carbon de *create flows*). Migrados: **`ClientCreatePanel`** y **`PlanCreatePanel`**.
+Invoice y provisioning siguen en modal (`InvoiceFormModal` / `ProvisionModal`).
 
 **Acción primaria de tabla → siempre a la DERECHA.** El botón de crear (Create/New) de una colección
 nunca va a la izquierda intercalado entre filtros y search:
@@ -209,36 +210,39 @@ nunca va a la izquierda intercalado entre filtros y search:
 - Botón `kind="primary" size="lg"` (48px, encaja con la altura del toolbar). Carbon-canónico: la
   acción primaria es el elemento terminal del toolbar (flujo *filtra → busca → actúa*).
 
-Convenciones del **Drawer / side panel** (`components/Drawer.tsx`, `CreatePanel`):
-- **Ancho 424px**, fijo a la derecha, portaled a `<body>` (la zona de tema vive ahí), con focus-trap;
-  **Esc** y click en overlay cierran.
-- **Arranca bajo el header** (`top: 48px`): el **overlay también** empieza en 48px, así el header
-  persistente de la app **no queda tapado/atenuado**.
-- **Scroll solo en el body**: el panel es `overflow: hidden` y el body `overflow: hidden auto` →
-  evita un scroll-x espurio cuando se abre un tooltip. El tooltip del botón **Close** abre hacia
-  dentro (`align="left"`) para no desbordar por la derecha.
-- **Header con un solo título** (el del evento, p. ej. "Create client"), con el **mismo estilo que el
-  título de página** (`<h2>` 24px / 400 — no bold). Sin overline redundante.
-- **Footer**: `Cancel` (secondary) + acción primaria, cada uno `flex: 1`.
-- **Form a 1 columna**; **inputs con fondo `--scns-field`** (theme-aware: oscuro → field-02 elevado,
-  claro → gris; misma convención que los inputs sobre card, ver §3 Formularios; la regla cubre `.scns-drawer`).
+Convenciones del **side panel** (`components/CreatePanel.tsx` → `CreateSidePanel`):
+- Variante **`slideIn`**: **sin overlay**; empuja el contenido de la página
+  (`selectorPageContent="#main-content"`) a un lado, así la lista sigue visible y operable detrás.
+- **Arranca bajo el header** (`inset-block-start: 3rem`, por defecto del componente).
+- Es una superficie de **plano de contenido** → **sigue el tema activo** (no el g100 del header).
+- **Header**: título del evento (p. ej. "Create client") + subtítulo opcional + `formTitle` (Carbon
+  lo exige en create flows). **Footer**: acción primaria + `Cancel`.
+- **Form a 1 columna**; inputs con fondo `--scns-field` (theme-aware, misma convención que los
+  inputs sobre card, ver §3 Formularios; clase scoped `.scns-create-flow`).
 
 ---
 
 ## 7. Shell global (UI)
 
-- **Header** (Carbon `Header`, 48px, siempre g100):
-  - Wordmark `SnakeCloud` (Plex Sans 600) + `CMS`/`Commander` (400, `#c6c6c6`), 14px.
-  - Búsqueda global → **Command Palette** (`⌘K`) sobre packages/clients/invoices.
-  - Cluster derecho: chip de entorno `PROD` (Plex Mono 10px), estado de conexión (dot verde
-    + "Connected"), toggle de tema, divisor 1px, avatar (inicial del operador).
-- **SideNav** (Carbon `SideNav`, fija, 256px, tematizada): los **7 ítems** en orden de diseño
-  (ver §8). Activo: borde izquierdo 4px IBM Blue 60, fondo de capa, peso 600. Footer con la
-  versión `SnakeCloud Commander v1.14.2` (Plex Mono).
-- **Breadcrumbs** (Carbon `Breadcrumb`) bajo el header, solo en páginas de detalle:
-  `Packages / shop`.
-- **Tick global**: un único reloj de 1s (`TickProvider`); solo `GraceCountdown` y `RelativeTime`
-  se suscriben, así las tablas no re-renderizan cada segundo.
+El shell se construye con los componentes canónicos de **Carbon UI Shell** y se describe por
+**reglas**, no por una lista fija de elementos (la composición concreta evoluciona):
+
+- **Header** — masthead `Header` de 48px, **siempre oscuro (g100) en ambos temas** (patrón IBM
+  Cloud, vía `<Theme>` anidado), separado del contenido por su borde inferior. El wordmark
+  (`HeaderName`) enlaza al inicio. Las acciones viven en `HeaderGlobalBar` como **icon buttons**
+  (`HeaderGlobalAction`) con su **tooltip embebido** —nunca tooltips *standalone* sobre el chrome,
+  ni tooltip sobre información ya visible—. La búsqueda global abre la **Command Palette** (`⌘K`).
+- **SideNav** — `SideNav` canónica de Carbon: persistente en pantallas anchas, colapsable (overlay)
+  en estrechas; el ítem activo usa el estado *selected* propio de Carbon + `aria-current="page"`.
+  Las secciones del operador y su orden viven en §8.
+- **Breadcrumbs** (`Breadcrumb`) bajo el header, solo en páginas de detalle.
+- **Tick global**: un único reloj de 1s (`TickProvider`) al que solo se suscriben los countdowns y
+  los tiempos relativos, para no re-renderizar las tablas cada segundo.
+
+> **Regla rectora del shell:** ante cualquier duda de estilo gana el **canon de Carbon** (componente
+> + tokens) sobre una solución custom. Por capas: el **header** (shell/masthead) va oscuro en ambos
+> temas; el resto —nav lateral, paneles y contenido— sigue el **tema activo**. Los bordes de las
+> superficies custom usan un único token global de borde.
 
 ---
 
@@ -256,26 +260,31 @@ Pantalla de acceso del operador. Email + password → token Sanctum (Bearer) gua
 `localStorage`. Errores de credenciales en `InlineNotification`.
 
 ### Dashboard
-- Title row + subline de fecha; a la derecha `updated … · auto-refresh` (mono, helper).
+- Title row + subline; a la derecha `updated … · auto-refresh 30s` (mono, helper, vía `TickProvider`).
 - **Fila de KPIs** (`KpiCluster`, 6 tiles en grid de gap 1px — el gap muestra el borde): cada tile
   lleva **label en MAYÚSCULA tracked** (estilo label-01), **valor 32px** con cifras tabulares y un
   **icono Carbon** arriba-derecha (Active `CheckmarkOutline` verde, In grace `Time` ámbar, Suspended
-  `PauseOutline`, Requests `Activity`, Error rate `Warning`, MRR `Money`). Valores con color semántico
-  (In grace ámbar, Suspended rojo). Deltas periodo-anterior (▲/▼ verde/rojo) **solo si hay ventana
-  previa de 24h** — nunca se fabrica una flecha. Requests/error-rate/MRR se computan de datos en vivo.
-- **Charts** (grid 2fr/1fr): a la izquierda el principal **"Requests per hour"** (stacked bar por
-  package, 48h, leyenda a la izquierda); a la derecha, apilados, **"Requests · 24h by package"**
-  (barra horizontal, color por package consistente con el stacked) + **"Error rate"** (área roja).
-  Las dos columnas se igualan en altura. (Counts del feed `/usage/platform` llegan como string →
-  se coercionan a `Number` para no romper el eje.)
-- **Fila de triage** (grid 2 columnas): **"Needs attention"** (subtítulo `quotas, grace & billing`)
-  + **"Recent activity"** (`last 3 days`), ambas con **filas densas idénticas** (`scns-list-row`):
-  `[label pill de estado] · entidad (mono link) · detalle (rellena) · valor (mono, helper)`. En
-  attention el label es la severidad (Quota over/Grace ends/Overdue) y el valor la métrica (294% /
-  2d 14h / $19.99); en activity el label es el tipo de evento (Suspended/Grace/Resumed/Paid/Quota/
-  Plan) y el valor el timestamp relativo. Toda la fila es un botón clicable con hover.
+  `PauseOutline`, Requests (24h) `Activity`, Error rate (24h) `Warning`, MRR `Money`). Valores con
+  color semántico (grace ámbar, suspended rojo). Deltas vs 24h previas (▲/▼ verde/rojo) **solo si hay
+  ventana previa** — nunca se fabrica una flecha. Las KPIs de tráfico siguen la ventana de la card de
+  Requests (en 24h no hay ventana previa → sin delta).
+- **Charts** (grid 2fr/1fr) — cada chart card lleva su **filtro de tiempo en el kebab** (24h · 48h ·
+  semana · mes · año, el activo marcado ✓, + "Open in Usage"); cada card hace su **fetch independiente**
+  y el **subtitle refleja el rango** aplicado. Las **legends van centradas debajo** del chart y el
+  **eje X va oculto** (la ventana la da el subtitle, no el eje).
+  - Izquierda (principal): **"Requests"** — stacked bar por package; el chart **llena la altura del
+    card** (flex, `ChartCard fill`) para alinear con la columna derecha sin hueco bajo la legend.
+  - Derecha (apilados): **"Error rate"** — stacked area **4xx/5xx** (ámbar `#d2a106` / rojo `#fa4d56`),
+    % de requests por clase; **"Code frequency"** — barras semanales additions (verde) / deletions (rojo).
+  - Fuentes (platform-wide, en vivo): `GET /usage/platform` (`period`+`hours` derivados del rango;
+    incluye `count_4xx`/`count_5xx`) para Requests + Error rate; `GET /code-frequency` (`days`) para
+    Code frequency. Los counts llegan como string → se coercionan a `Number`.
+- **Recent commits** (full-width, bajo los charts): tabla Carbon (mismo shape que el tab Insights del
+  package + columna **Package**): Package (link) · SHA · Message · Author · When (relativo) · +/−
+  (verde/rojo). Fuente `GET /commits` (commits recientes de toda la flota). La antigua fila de triage
+  **"Needs attention"** se movió al **bell del header** (`NotificationsBell`) y ya no vive aquí.
 
-### Clients (lista + drawer)
+### Clients (lista + detalle)
 - **KPI cluster** (5 tiles, mismo patrón que Dashboard): Clients (total + active/inactive) ·
   Active (verde) · Packages provisionados · MRR (términos vigentes) · At risk (clientes con factura
   overdue, rojo). Todo derivado del store cargado — sin endpoints ni tablas nuevas.
@@ -290,7 +299,7 @@ Pantalla de acceso del operador. Email + password → token Sanctum (Bearer) gua
   - **Quota health** — peor `quota_health` entre sus packages como barra verde/ámbar/roja (reusa
     `QuotaBar`).
   - **Last seen** — `max(last_seen)` entre sus packages, relativo (`RelativeTime`), "never" si nunca.
-  - (Email y Created viven en el drawer; el search sigue cubriendo email.)
+  - (Email y Created viven en el detalle; el search sigue cubriendo email.)
 - Toolbar: search (name + company + email) + filtros inline (patrón QuotasTab) **Status · Billing
   (At risk/Current) · Health (Any suspended/Any grace/All healthy)**, y **Country** solo si hay >1
   país distinto. Botón ghost **Clear filters** (icono Close) cuando algún filtro está activo.
@@ -397,7 +406,7 @@ Perfil del operador + preferencias de plataforma (singleton, server-persistido):
 - **Tipos = tablas reales.** `commander/src/store/types.ts` espeja `commander_*`
   (`commander_packages`, `commander_quotas`, `commander_usage_rollups`,
   `commander_request_logs`, …). Cada package es **una fila `Package` única** (tabla única
-  `commander_packages`): catálogo (label/description/listing_status) + operativo (subdomain/estado/
+  `commander_packages`): catálogo (label/description/listing_status) + operativo (slug/estado/
   KPIs/`client_id`). Está provisionado cuando **`provisioned_at != null`** — sin objeto anidado ni
   colección `deployments` separada, y sin tabla de registro aparte.
 - **Mutaciones optimistas + reconcile.** Cada acción aplica el cambio local al instante y dispara
@@ -431,10 +440,10 @@ Las acciones suspend/grace/resume escriben in-process la fila `commander_package
   facturas — **todos reutilizan los mismos modales**.
 
 ### Provisioning (client-first, un paso, in-process)
-`ProvisionModal` → `POST /provisioning` con `plan_id` + cliente (nuevo o existente) +
-subdominio opcional. El servidor crea cliente + suscripción + **instancia viva** (crea la BD,
-migra, siembra y activa el package) atómicamente; al éxito el panel hace `loadData()`. Sin paso
-de host.
+`ProvisionModal` → `POST /provisioning` con `plan_id` + cliente (nuevo o existente). El `slug` del
+cliente **ES su host** (no hay parámetro de subdominio aparte). El servidor crea cliente +
+suscripción + **instancia viva** (crea la BD, migra, siembra y activa el package) atómicamente; al
+éxito el panel hace `loadData()`. Sin paso de host.
 
 ### Facturación y enforcement
 - **Mark as paid**: si el package estaba `suspended` por `payment_overdue`, el follow-up de
@@ -473,8 +482,10 @@ Rutas reales (`src/packages/Commander/routes/api.php`, todas bajo `auth:sanctum`
 | Subscriptions / Invoices | `apiResource` |
 | Quotas | `apiResource quotas` (index/show/update) |
 | Activity | `apiResource activity` (index/show) |
-| Usage plataforma | `GET usage/platform` |
+| Usage plataforma | `GET usage/platform` (`period`+`hours`; incluye `count_4xx`/`count_5xx`) |
 | Logs plataforma | `GET logs` (filtros package/method/status) |
+| Commits plataforma | `GET commits` (`limit`) — Dashboard "Recent commits" |
+| Code frequency plataforma | `GET code-frequency` (`days`) — Dashboard "Code frequency" |
 | Packages (registro) | `GET packages` · `GET\|PATCH\|DELETE packages/{name}` |
 | Settings (singleton) | `GET settings` · `PUT settings` |
 

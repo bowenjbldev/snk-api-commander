@@ -68,11 +68,13 @@ describe('rollupsToUsageSeries', () => {
 })
 
 describe('snapshotsToPlatformSeries', () => {
-  const snap = (package_id: number, period_start: string, request_count: number, error_count = 0): UsageSnapshot => ({
+  const snap = (package_id: number, period_start: string, request_count: number, c4 = 0, c5 = 0): UsageSnapshot => ({
     package_id,
     period_start,
     request_count,
-    error_count,
+    error_count: c4 + c5,
+    count_4xx: c4,
+    count_5xx: c5,
   })
 
   it('stacks the top-4 packages + other and computes per-hour error %', () => {
@@ -96,8 +98,10 @@ describe('snapshotsToPlatformSeries', () => {
     const atA = s.requests.data.filter((p) => +p.date === +new Date(A))
     expect(atA.find((p) => p.group === 'Shop')?.value).toBe(100)
     expect(atA.find((p) => p.group === 'other')?.value).toBe(20) // Archive
-    // error rate at A = 10 errors / 300 total × 100.
-    expect(s.errorRate.find((p) => +p.date === +new Date(A))?.value).toBeCloseTo((10 / 300) * 100, 5)
+    // error rate at A: 10 4xx / 300 total × 100, and no 5xx.
+    const errA = s.errorRate.filter((p) => +p.date === +new Date(A))
+    expect(errA.find((p) => p.group === '4xx')?.value).toBeCloseTo((10 / 300) * 100, 5)
+    expect(errA.find((p) => p.group === '5xx')?.value).toBeCloseTo(0, 5)
   })
 
   it('returns empty data for no snapshots', () => {

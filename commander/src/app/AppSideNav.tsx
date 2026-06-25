@@ -46,7 +46,7 @@ export function AppSideNav({ isWide, expanded, onNavigate, onClose }: Props) {
       <div
         className="scns-mono"
         style={{
-          borderTop: '1px solid var(--cds-border-subtle)',
+          borderTop: '1px solid var(--scns-border)',
           padding: '12px 16px',
           fontSize: 11,
           color: 'var(--cds-text-helper)',

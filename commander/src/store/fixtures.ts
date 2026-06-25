@@ -18,6 +18,7 @@ import type {
   Package,
   Plan,
   QuotaMetric,
+  RecentCommit,
   Subscription,
   TopEndpoint,
 } from './types'
@@ -36,6 +37,7 @@ export interface Dataset {
   plans: Plan[]
   logs: LogEntry[]
   activity: ActivityEvent[]
+  commits: RecentCommit[]
   settings: OperatorSettings
   dashboard: {
     requests_24h: number
@@ -461,6 +463,7 @@ export function buildFixtures(nowMs: number): Dataset {
     plans,
     logs,
     activity,
+    commits: [],
     settings,
     dashboard: {
       requests_24h: packages.reduce((s, p) => s + p.requests_24h, 0),

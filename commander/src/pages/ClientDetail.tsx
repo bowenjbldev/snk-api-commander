@@ -92,7 +92,7 @@ export function ClientDetail() {
               <ClientStatusTag status={client.status} />
             </div>
           </div>
-          <div className="scns-helper" style={{ fontSize: 13, marginTop: 6 }}>
+          <div className="scns-helper" style={{ marginTop: 6 }}>
             Customer account
             {client.company && client.company !== client.name ? <> · {client.company}</> : null}
             {' · since '}{formatMonthYear(client.created_at)}

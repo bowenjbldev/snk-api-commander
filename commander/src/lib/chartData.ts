@@ -266,7 +266,7 @@ export function rollupsToUsageSeries(rollups: UsageRollup[]): UsageSeries {
 
 export interface PlatformSeries {
   requests: { data: Point[]; groups: string[] } // stacked: top-4 packages + 'other'
-  errorRate: Point[] // group 'error %'
+  errorRate: Point[] // groups '4xx' | '5xx' (each as % of bucket requests)
 }
 
 export function snapshotsToPlatformSeries(snapshots: UsageSnapshot[], packageLabels: ReadonlyMap<number, string> = new Map()): PlatformSeries {
@@ -279,19 +279,19 @@ export function snapshotsToPlatformSeries(snapshots: UsageSnapshot[], packageLab
   const labelFor = (id: number) => packageLabels.get(id) ?? `package ${id}`
   const groups = [...top.map(labelFor), 'other']
 
-  const buckets = new Map<string, { perPkg: Map<number, number>; other: number; total: number; errors: number }>()
+  const buckets = new Map<string, { perPkg: Map<number, number>; other: number; total: number; c4: number; c5: number }>()
   for (const s of snapshots) {
     // The API serialises these aggregate columns as strings; coerce so the stacked sums
     // are numeric (string `+=` would concatenate and blow the chart's y-axis to nonsense).
     const requests = Number(s.request_count)
-    const errors = Number(s.error_count)
     let b = buckets.get(s.period_start)
     if (!b) {
-      b = { perPkg: new Map(), other: 0, total: 0, errors: 0 }
+      b = { perPkg: new Map(), other: 0, total: 0, c4: 0, c5: 0 }
       buckets.set(s.period_start, b)
     }
     b.total += requests
-    b.errors += errors
+    b.c4 += Number(s.count_4xx)
+    b.c5 += Number(s.count_5xx)
     if (topSet.has(s.package_id)) b.perPkg.set(s.package_id, (b.perPkg.get(s.package_id) ?? 0) + requests)
     else b.other += requests
   }
@@ -303,7 +303,9 @@ export function snapshotsToPlatformSeries(snapshots: UsageSnapshot[], packageLab
     const date = new Date(key)
     for (const id of top) data.push({ group: labelFor(id), date, value: b.perPkg.get(id) ?? 0 })
     data.push({ group: 'other', date, value: b.other })
-    errorRate.push({ group: 'error %', date, value: b.total > 0 ? (b.errors / b.total) * 100 : 0 })
+    // Error rate split by status class (the chart legend shows the codes, not a single "error %").
+    errorRate.push({ group: '4xx', date, value: b.total > 0 ? (b.c4 / b.total) * 100 : 0 })
+    errorRate.push({ group: '5xx', date, value: b.total > 0 ? (b.c5 / b.total) * 100 : 0 })
   }
 
   return { requests: { data, groups }, errorRate }

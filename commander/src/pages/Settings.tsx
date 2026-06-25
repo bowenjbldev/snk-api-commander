@@ -48,7 +48,7 @@ export function Settings() {
               </div>
             </div>
 
-            <hr style={{ border: 'none', borderTop: '1px solid var(--scns-card-border)', margin: 0 }} />
+            <hr style={{ border: 'none', borderTop: '1px solid var(--scns-border)', margin: 0 }} />
 
             {/* Defaults */}
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 1fr) 2fr', gap: 24 }}>
@@ -70,7 +70,7 @@ export function Settings() {
               </div>
             </div>
 
-            <hr style={{ border: 'none', borderTop: '1px solid var(--scns-card-border)', margin: 0 }} />
+            <hr style={{ border: 'none', borderTop: '1px solid var(--scns-border)', margin: 0 }} />
 
             {/* Toggles */}
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 1fr) 2fr', gap: 24 }}>
@@ -117,7 +117,7 @@ export function Settings() {
           </div>
 
           {/* Form Footer */}
-          <div style={{ padding: '16px 24px', background: 'var(--cds-layer-accent)', borderTop: '1px solid var(--scns-card-border)', display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ padding: '16px 24px', background: 'var(--cds-layer-accent)', borderTop: '1px solid var(--scns-border)', display: 'flex', justifyContent: 'flex-end' }}>
             <Button disabled={!hasChanges} onClick={savePreferences}>
               Save preferences
             </Button>

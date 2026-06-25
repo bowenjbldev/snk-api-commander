@@ -44,7 +44,7 @@ export function legendItems(groups: string[]): { label: string; color: string }[
   return groups.map((g, i) => ({ label: g, color: g === 'other' ? OTHER_COLOR : PALETTE[i % PALETTE.length] }))
 }
 
-export function stackedBarOptions(theme: ThemeName, groups: string[], height = '320px'): Opt {
+export function stackedBarOptions(theme: ThemeName, groups: string[], height = '320px', hideX = false): Opt {
   const scale: Record<string, string> = {}
   groups.forEach((g, i) => {
     scale[g] = g === 'other' ? OTHER_COLOR : PALETTE[i % PALETTE.length]
@@ -57,7 +57,7 @@ export function stackedBarOptions(theme: ThemeName, groups: string[], height = '
     legend: { enabled: false },
     // Thicker bars: fixed 12px width (band ≈14.5px over 48 hourly bars).
     bars: { width: 12, maxWidth: 1000 },
-    axes: { left: { mapsTo: 'value', stacked: true, title: '' }, bottom: timeBottom() },
+    axes: { left: { mapsTo: 'value', stacked: true, title: '' }, bottom: { ...timeBottom(), ...(hideX ? { visible: false } : {}) } },
     color: { scale },
     grid: { x: { enabled: false } },
   }
@@ -160,7 +160,7 @@ export function heatmapOptions(theme: ThemeName, height = '240px'): Opt {
 
 // Weekly stacked bars over a real time axis (Insights code frequency). Deletions arrive negative so
 // they sit below zero. Unlike stackedBarOptions, the x-axis is a generic time scale (not the 48h pin).
-export function weeklyBarOptions(theme: ThemeName, scale: Record<string, string>, height = '260px'): Opt {
+export function weeklyBarOptions(theme: ThemeName, scale: Record<string, string>, height = '260px', hideX = false): Opt {
   return {
     theme,
     height,
@@ -170,14 +170,14 @@ export function weeklyBarOptions(theme: ThemeName, scale: Record<string, string>
     bars: { width: 10, maxWidth: 1000 },
     axes: {
       left: { mapsTo: 'value', stacked: true, title: '' },
-      bottom: { mapsTo: 'date', scaleType: 'time' },
+      bottom: { mapsTo: 'date', scaleType: 'time', ...(hideX ? { visible: false } : {}) },
     },
     color: { scale },
     grid: { x: { enabled: false } },
   }
 }
 
-export function areaOptions(theme: ThemeName, scale: Record<string, string>, height = '260px'): Opt {
+export function areaOptions(theme: ThemeName, scale: Record<string, string>, height = '260px', hideX = false): Opt {
   return {
     theme,
     height,
@@ -186,7 +186,7 @@ export function areaOptions(theme: ThemeName, scale: Record<string, string>, hei
     points: { enabled: false },
     legend: { enabled: false },
     curve: 'curveMonotoneX',
-    axes: { left: { mapsTo: 'value', title: '' }, bottom: timeBottom() },
+    axes: { left: { mapsTo: 'value', title: '' }, bottom: { ...timeBottom(), ...(hideX ? { visible: false } : {}) } },
     color: { scale },
     grid: { x: { enabled: false } },
   }

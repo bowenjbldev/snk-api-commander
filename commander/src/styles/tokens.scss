@@ -23,7 +23,9 @@
   --scns-success: #42be65;
   --scns-warning: #f1c21b;
   --scns-error: #fa4d56;
-  --scns-card-border: var(--cds-border-subtle);
+  // Global border token: ONE agnostic edge colour for every custom surface (cards, KPI tiles, side
+  // nav, dividers). Change it here to retint all borders at once.
+  --scns-border: var(--cds-border-subtle);
   // Form field on a card/panel: Carbon's layering wants the elevated field-02 (lighter) on layer-01.
   --scns-field: var(--cds-field-02);
 }
@@ -45,7 +47,7 @@
   --scns-success: #24a148;
   --scns-warning: #f1c21b;
   --scns-error: #da1e28;
-  --scns-card-border: #e0e0e0;
+  --scns-border: #e0e0e0;
   // On white cards Carbon's field-02 is #ffffff (would blend); keep the grey background for contrast.
   --scns-field: var(--cds-background);
 }
@@ -148,7 +150,7 @@ body {
   letter-spacing: 0.3px;
 }
 
-.scns-helper { color: var(--cds-text-helper); }
+.scns-helper { font-size: 14px; color: var(--cds-text-helper); }
 .scns-secondary { color: var(--cds-text-secondary); }
 
 // Semantic value colors (KPI values, deltas).
@@ -156,12 +158,10 @@ body {
 .scns-val-red { color: var(--scns-error); }
 .scns-val-green { color: var(--scns-success); }
 
-// Page scaffolding: a centered content container (Bootstrap-style margin auto),
-// capped so wide monitors don't stretch content edge-to-edge. Full width until the cap.
+// Page scaffolding: full-width content (no max-width cap / centering). The cap left big empty
+// margins on ultrawide monitors and threw off side panels anchored to the viewport edge.
 .scns-page {
   width: 100%;
-  max-width: 1312px;
-  margin: 0 auto;
   padding: 24px 32px 48px;
 }
 
@@ -214,8 +214,8 @@ body {
 .scns-kpi-cluster {
   display: grid;
   gap: 1px;
-  background: var(--scns-card-border);
-  border: 1px solid var(--scns-card-border);
+  background: var(--scns-border);
+  border: 1px solid var(--scns-border);
 }
 .scns-kpi-tile {
   background: var(--cds-layer);
@@ -306,7 +306,7 @@ body {
 // ── Bordered card / list ───────────────────────────────────────────────────────
 .scns-card {
   background: var(--cds-layer);
-  border: 1px solid var(--scns-card-border);
+  border: 1px solid var(--scns-border);
 }
 
 // Titled card: a header band (same surface as the body) divided by a hairline, then the body.
@@ -321,7 +321,7 @@ body {
   gap: 12px;
   min-height: 40px;
   padding: 4px 8px 4px 16px;
-  border-bottom: 1px solid var(--cds-border-subtle);
+  border-bottom: 1px solid var(--scns-border);
 }
 .scns-card__heading {
   display: flex;
@@ -330,11 +330,11 @@ body {
   min-width: 0;
 }
 .scns-card__title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
 }
 .scns-card__sub {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--cds-text-helper);
 }
 .scns-card__body {
@@ -346,7 +346,13 @@ body {
   align-items: center;
   gap: 12px;
   padding: 14px 24px;
-  border-top: 1px solid var(--cds-border-subtle);
+  border-top: 1px solid var(--scns-border);
+}
+
+// Carbon reserves 2px above the table (`padding-block-start: $spacing-01`, "for focus styles"); our
+// tables sit inside padded cards/pages, so drop it and let the header sit flush at the top.
+.cds--data-table-container {
+  padding-block-start: 0;
 }
 
 // Floating save action (Material-style FAB, IBM aesthetic: square, IBM Blue, sober elevation).
@@ -408,7 +414,7 @@ body {
 }
 .scns-minitable td {
   padding: 8px;
-  border-top: 1px solid var(--cds-border-subtle);
+  border-top: 1px solid var(--scns-border);
   vertical-align: middle;
 }
 .scns-minitable th:first-child,
@@ -458,7 +464,7 @@ body {
   margin: 0 -8px;
   background: none;
   border: none;
-  border-top: 1px solid var(--cds-border-subtle);
+  border-top: 1px solid var(--scns-border);
   text-align: left;
   cursor: pointer;
   transition: background 0.12s ease;
@@ -535,7 +541,7 @@ body {
   width: 340px;
   flex: none;
   background: var(--cds-layer);
-  border: 1px solid var(--cds-border-subtle);
+  border: 1px solid var(--scns-border);
   align-self: flex-start;
 }
 
@@ -606,7 +612,7 @@ body {
   gap: 16px;
   min-height: 40px;
   padding: 8px 0;
-  border-top: 1px solid var(--cds-border-subtle);
+  border-top: 1px solid var(--scns-border);
 }
 .scns-kvlist__row:first-child {
   border-top: none;
@@ -673,7 +679,7 @@ body {
   width: 560px;
   max-width: 92vw;
   background: var(--cds-layer);
-  border: 1px solid var(--cds-border-subtle);
+  border: 1px solid var(--scns-border);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 .scns-cmdk__input {
@@ -682,7 +688,7 @@ body {
   padding: 0 16px;
   background: var(--cds-field);
   border: none;
-  border-bottom: 1px solid var(--cds-border-subtle);
+  border-bottom: 1px solid var(--scns-border);
   color: var(--cds-text-primary);
   font: inherit;
   outline: none;
@@ -749,7 +755,7 @@ body {
 // Everything below reads from Carbon tokens resolved against the nested g100 zone
 // in AppHeader — no hard-coded hex. Keeps a 1px bottom border in both themes.
 .scns-header {
-  border-bottom: 1px solid var(--cds-border-subtle);
+  border-bottom: 1px solid var(--scns-border);
 }
 
 // Wordmark (Carbon HeaderName, restyled to our brand treatment: bold "SnakeCloud"
@@ -779,7 +785,7 @@ body {
   block-size: 24px;
   flex: none;
   align-self: center;
-  background: var(--cds-border-subtle);
+  background: var(--scns-border);
 }
 
 // Right cluster: env chip + connection indicator (plain visible status text, no tooltips).
@@ -866,7 +872,7 @@ body {
   inline-size: 22.5rem;
   max-block-size: min(70vh, 32rem);
   background: var(--cds-layer);
-  border: 1px solid var(--cds-border-subtle);
+  border: 1px solid var(--scns-border);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
   color: var(--cds-text-primary);
 }
@@ -895,7 +901,7 @@ body {
   align-items: baseline;
   justify-content: space-between;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--cds-border-subtle);
+  border-bottom: 1px solid var(--scns-border);
 }
 .scns-notif__head-title {
   font-size: 14px;
@@ -1006,7 +1012,7 @@ body {
   justify-content: space-between;
   padding: 12px 16px;
   border: none;
-  border-top: 1px solid var(--cds-border-subtle);
+  border-top: 1px solid var(--scns-border);
   background: var(--cds-layer);
   color: var(--cds-text-primary);
   font-size: 14px;
@@ -1020,12 +1026,16 @@ body {
   fill: currentColor;
 }
 
-// The side nav sits BELOW the 48px header (it is not a child of the header) and
-// uses the layer surface (#262626 dark / #ffffff light) to stand out from the bg.
+// SideNav as a raised layer surface (#262626 dark / #ffffff light) so it stands out from the
+// content background instead of blending — deliberate deviation from Carbon's flat $background, by
+// preference — with a 1px right border using the global --scns-border token (same edge as cards and
+// KPI tiles). The nav is NOT a child of the header (isChildOfHeader={false}), so Carbon positions it
+// at top:0 — we offset it below the 48px header.
 .scns-sidenav.cds--side-nav {
   top: 48px;
   height: calc(100vh - 48px);
   background: var(--cds-layer);
+  border-right: 1px solid var(--scns-border);
 }
 
 // ── Auth / Login ─────────────────────────────────────────────────────────────
@@ -1042,7 +1052,7 @@ body {
   display: flex;
   min-height: 100vh;
   overflow: hidden;
-  border-right: 1px solid var(--cds-border-subtle);
+  border-right: 1px solid var(--scns-border);
   background: var(--cds-layer);
 }
 
@@ -1151,7 +1161,7 @@ body {
   align-items: center;
   gap: 1.5rem;
   padding: 1.25rem 1.25rem;
-  border-top: 1px solid var(--cds-border-subtle);
+  border-top: 1px solid var(--scns-border);
   color: var(--cds-text-secondary);
   background: var(--cds-background);
   font-size: 0.75rem;

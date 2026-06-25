@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { create } from 'zustand'
 import type { Dataset } from './fixtures'
 import { activity, applyPackageState, nextId, type StateOpts } from './transitions'
-import { api, packagesApi, settingsApi } from '../lib/api'
+import { api, packagesApi, platformCommits, settingsApi } from '../lib/api'
 import type {
   ActivityEvent,
   Client,
@@ -112,6 +112,7 @@ const initial: Dataset = {
   packages: [],
   logs: [],
   activity: [],
+  commits: [],
   settings: {
     default_grace_hours: 72,
     operator_name: '',
@@ -225,7 +226,7 @@ export const useStore = create<StoreState>((set, get) => {
 
     loadData: async () => {
       try {
-        const [clients, packages, subscriptions, invoices, quotas, plans, activityFeed, settingsRow] = await Promise.all([
+        const [clients, packages, subscriptions, invoices, quotas, plans, activityFeed, commitsRes, settingsRow] = await Promise.all([
           api<Client[]>('/clients'),
           packagesApi.list(),
           api<Subscription[]>('/subscriptions'),
@@ -233,6 +234,7 @@ export const useStore = create<StoreState>((set, get) => {
           api<QuotaMetric[]>('/quotas'),
           api<Plan[]>('/plans'),
           api<ActivityEvent[]>('/activity'),
+          platformCommits(),
           settingsApi.get(),
         ])
         const provisioned = provisionedPackages(packages)
@@ -244,6 +246,7 @@ export const useStore = create<StoreState>((set, get) => {
           quotas,
           plans,
           activity: activityFeed,
+          commits: commitsRes.data,
           // Operator profile + preferences are now server-persisted (commander_settings singleton).
           settings: {
             default_grace_hours: Number(settingsRow.default_grace_hours) || s.settings.default_grace_hours,

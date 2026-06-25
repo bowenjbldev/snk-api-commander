@@ -25,7 +25,7 @@ class CommanderUsageController extends CoreBaseApiController
 
         $data = $request->validate([
             'period' => 'nullable|in:hour,day',
-            'hours' => 'nullable|integer|min:1|max:720',
+            'hours' => 'nullable|integer|min:1|max:8784', // up to ~366 days (year range, daily period)
         ]);
 
         $period = $data['period'] ?? 'hour';
@@ -43,6 +43,8 @@ class CommanderUsageController extends CoreBaseApiController
                 'period_start',
                 DB::raw('SUM(request_count) as request_count'),
                 DB::raw('SUM(error_count) as error_count'),
+                DB::raw("SUM(CASE WHEN status_class = '4xx' THEN request_count ELSE 0 END) as count_4xx"),
+                DB::raw("SUM(CASE WHEN status_class = '5xx' THEN request_count ELSE 0 END) as count_5xx"),
             ]);
 
         return response()->json(['data' => $rows]);

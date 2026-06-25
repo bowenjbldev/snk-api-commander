@@ -14,7 +14,9 @@
 #   bash scripts/simulate.sh traffic <cli> <slug> [n]  # SOLO trafico HTTP a un deploy
 #   bash scripts/simulate.sh invoices            # SOLO generar invoices
 #   bash scripts/simulate.sh pipeline            # SOLO rollup + measure + refresh
-#   bash scripts/simulate.sh volume [filas]      # bulk-seed masivo (default 100000/package)
+#   bash scripts/simulate.sh volume [filas]      # bulk-seed masivo de request_logs en 48h (default 100000/pkg)
+#   bash scripts/simulate.sh year [dias]         # densidad de UN AÑO por DB: rollups (diario+horario),
+#                                                # commits y actividad git → charts del dashboard + Insights densos
 #   bash scripts/simulate.sh report              # SOLO el reporte de estado
 #
 # Overrides por entorno:
@@ -294,19 +296,22 @@ stage_seed_volume() {
     echo "    $cli/$name (id=$pid): bulk insert de $n filas…"
     if ! dbq commander <<SQL
 INSERT INTO commander_request_logs
-  (package_id, occurred_at, method, route, status, duration_ms, user_id, token_id, ip, request_bytes, response_bytes)
+  (package_id, created_at, updated_at, method, route, path, status, duration_ms, user_id, token_id, ip, request_bytes, response_bytes, memory_kb)
 SELECT
   $pid,
   NOW() - INTERVAL FLOOR(RAND() * 172800) SECOND,
+  NOW(),
   ELT(FLOOR(1 + RAND() * 4), 'GET', 'GET', 'GET', 'POST'),
   ELT(FLOOR(1 + RAND() * 5), '/products', '/orders', '/customers', '/users', '/auth/me'),
+  ELT(FLOOR(1 + RAND() * 5), '/api/v1/products', '/api/v1/orders', '/api/v1/customers', '/api/v1/users', '/api/v1/auth/me'),
   CASE WHEN RAND() < 0.04 THEN 404 WHEN RAND() < 0.012 THEN 500 ELSE 200 END,
   FLOOR(20 + RAND() * 480),
   FLOOR(1 + RAND() * 40),
   1,
   '127.0.0.1',
   FLOOR(RAND() * 2000),
-  FLOOR(RAND() * 9000)
+  FLOOR(RAND() * 9000),
+  FLOOR(2000 + RAND() * 8000)
 FROM seq_1_to_$n;
 SQL
     then
@@ -317,6 +322,113 @@ SQL
   dbq commander -e "DELETE FROM commander_usage_rollups;" >/dev/null 2>&1 || true
   artisan commander:usage:rollup --period=both >/dev/null || true
   stage_pipeline
+}
+
+# ------------------------------------------------------------------ año (densidad)
+# Siembra densidad de UN AÑO 100% por DB (cero HTTP/loops → rapidísimo), directo a las tablas
+# AGREGADAS (no procesa logs crudos con el rollup PHP, que con un año sería lentísimo):
+#   - commander_usage_rollups: buckets DIARIOS (DAYS días) + HORARIOS (48h), una fila por
+#     status_class (2xx/4xx/5xx) → alimenta Requests, Error rate (4xx/5xx) y el tab Usage en TODOS
+#     los rangos del filtro (24h/48h/semana/mes/año).
+#   - commander_request_logs: ~LOGS crudos repartidos en 48h (para la página Request Logs).
+#   - commander_package_commits + _activity_daily + _repos: commits y actividad diaria repartidos en
+#     el año → Recent commits, Code frequency y el tab Insights (heatmap + code freq).
+# Pone requests_24h/last_seen por SQL (sin artisan). Uso: simulate.sh year [dias] (default 365).
+stage_seed_year() {
+  local DAYS="${1:-365}" COMMITS=420 LOGS=6000
+  hr; echo "STAGE — seed AÑO (rollups diarios ${DAYS}d + horarios 48h · git: ${COMMITS} commits + ${DAYS}d actividad) — todo por DB"; hr
+  local factors=(1.0 0.65 0.35) idx=0 row cli cname name pid f sc
+  for row in "${PACKAGES[@]}"; do
+    read -r cli cname name _ _ _ <<<"$row"
+    pid="$(awk '{print $1}' <<<"$(pkg_ids "$cli" "$(slug_of "$name")")")"
+    [ -n "$pid" ] || { echo "    $cli/$name: sin package provisionado, salto"; continue; }
+    f="${factors[$((idx % 3))]}"; idx=$((idx + 1)); sc="$(studly_of "$cli")"
+    echo "    $cli/$name (id=$pid, x$f): usage + git…"
+    dbq commander <<SQL || echo "    ERROR seeding $cli/$name"
+DELETE FROM commander_usage_rollups WHERE package_id=$pid;
+DELETE FROM commander_package_commits WHERE package_id=$pid;
+DELETE FROM commander_package_activity_daily WHERE package_id=$pid;
+
+INSERT INTO commander_usage_rollups
+  (package_id, period, period_start, route, method, status_class, request_count, error_count,
+   avg_duration_ms, p95_duration_ms, total_request_bytes, total_response_bytes, unique_users, created_at, updated_at)
+SELECT package_id, period, period_start, route, method, status_class,
+  rc, CASE WHEN status_class='2xx' THEN 0 ELSE rc END, avg_d, p95_d, treq, tresp, uu, NOW(), NOW()
+FROM (
+  SELECT $pid package_id, 'day' period,
+    TIMESTAMP(DATE_SUB(CURDATE(), INTERVAL (s.seq-1) DAY)) period_start,
+    '/api/v1' route, 'GET' method, sc.c status_class,
+    CASE sc.c WHEN '2xx' THEN FLOOR((1500+RAND()*3500)*$f)
+              WHEN '4xx' THEN FLOOR((10+RAND()*180)*$f)
+              ELSE FLOOR((RAND()*45)*$f) END rc,
+    FLOOR(40+RAND()*220) avg_d, FLOOR(150+RAND()*500) p95_d,
+    FLOOR(RAND()*8000) treq, FLOOR(RAND()*40000) tresp, FLOOR(1+RAND()*40) uu
+  FROM seq_1_to_$DAYS s
+  CROSS JOIN (SELECT '2xx' c UNION ALL SELECT '4xx' c UNION ALL SELECT '5xx' c) sc
+) d;
+
+INSERT INTO commander_usage_rollups
+  (package_id, period, period_start, route, method, status_class, request_count, error_count,
+   avg_duration_ms, p95_duration_ms, total_request_bytes, total_response_bytes, unique_users, created_at, updated_at)
+SELECT package_id, period, period_start, route, method, status_class,
+  rc, CASE WHEN status_class='2xx' THEN 0 ELSE rc END, avg_d, p95_d, treq, tresp, uu, NOW(), NOW()
+FROM (
+  SELECT $pid package_id, 'hour' period,
+    TIMESTAMP(DATE_FORMAT(NOW() - INTERVAL (s.seq-1) HOUR, '%Y-%m-%d %H:00:00')) period_start,
+    '/api/v1' route, 'GET' method, sc.c status_class,
+    CASE sc.c WHEN '2xx' THEN FLOOR((60+RAND()*180)*$f)
+              WHEN '4xx' THEN FLOOR((RAND()*12)*$f)
+              ELSE FLOOR((RAND()*4)*$f) END rc,
+    FLOOR(40+RAND()*220) avg_d, FLOOR(150+RAND()*500) p95_d,
+    FLOOR(RAND()*8000) treq, FLOOR(RAND()*40000) tresp, FLOOR(1+RAND()*40) uu
+  FROM seq_1_to_48 s
+  CROSS JOIN (SELECT '2xx' c UNION ALL SELECT '4xx' c UNION ALL SELECT '5xx' c) sc
+) d;
+
+INSERT INTO commander_request_logs
+  (package_id, created_at, updated_at, method, route, path, status, duration_ms, user_id, token_id, ip, request_bytes, response_bytes, memory_kb)
+SELECT $pid, NOW() - INTERVAL FLOOR(RAND()*172800) SECOND, NOW(),
+  ELT(FLOOR(1+RAND()*4),'GET','GET','GET','POST'),
+  ELT(FLOOR(1+RAND()*5),'/products','/orders','/customers','/users','/auth/me'),
+  ELT(FLOOR(1+RAND()*5),'/api/v1/products','/api/v1/orders','/api/v1/customers','/api/v1/users','/api/v1/auth/me'),
+  CASE WHEN RAND()<0.04 THEN 404 WHEN RAND()<0.012 THEN 500 ELSE 200 END,
+  FLOOR(20+RAND()*480), FLOOR(1+RAND()*40), 1, '127.0.0.1',
+  FLOOR(RAND()*2000), FLOOR(RAND()*9000), FLOOR(2000+RAND()*8000)
+FROM seq_1_to_$LOGS;
+
+INSERT INTO commander_package_commits
+  (package_id, sha, committed_at, author_name, author_email, message, additions, deletions, files_changed, created_at, updated_at)
+SELECT $pid,
+  SUBSTRING(MD5(CONCAT($pid,'-',s.seq,'-',RAND())),1,40),
+  NOW() - INTERVAL FLOOR(RAND()*$DAYS*86400) SECOND,
+  ELT(FLOOR(1+RAND()*4),'Jorge Bowen','Ada Lovelace','Grace Hopper','Linus T'),
+  ELT(FLOOR(1+RAND()*4),'jorge@snake.dev','ada@snake.dev','grace@snake.dev','linus@snake.dev'),
+  ELT(FLOOR(1+RAND()*6),'feat: nuevo endpoint','fix: guard de null','refactor: extrae servicio','docs: actualiza readme','test: cobertura','chore: bump deps'),
+  FLOOR(RAND()*420), FLOOR(RAND()*210), FLOOR(1+RAND()*12), NOW(), NOW()
+FROM seq_1_to_$COMMITS s;
+
+INSERT INTO commander_package_activity_daily
+  (package_id, day, commit_count, additions, deletions, files_changed, created_at, updated_at)
+SELECT package_id, day, cc, FLOOR(cc*(20+RAND()*200)), FLOOR(cc*(5+RAND()*80)),
+  CASE WHEN cc>0 THEN FLOOR(1+RAND()*cc*3) ELSE 0 END, NOW(), NOW()
+FROM (
+  SELECT $pid package_id, DATE_SUB(CURDATE(), INTERVAL (s.seq-1) DAY) day, FLOOR(RAND()*RAND()*9) cc
+  FROM seq_1_to_$DAYS s
+) d;
+
+INSERT INTO commander_package_repos
+  (package_id, provider, workspace, repo_slug, path_prefix, default_branch, last_synced_at, last_synced_sha, created_at, updated_at)
+VALUES ($pid, 'local', 'snake', 'snake-laravel-api', 'packages/$sc/$name', 'main', NOW(), SUBSTRING(MD5(RAND()),1,40), NOW(), NOW())
+ON DUPLICATE KEY UPDATE last_synced_at=VALUES(last_synced_at), last_synced_sha=VALUES(last_synced_sha);
+
+UPDATE commander_packages SET
+  requests_24h = (SELECT COALESCE(SUM(request_count),0) FROM commander_usage_rollups r
+                  WHERE r.package_id=$pid AND r.period='hour' AND r.period_start >= NOW() - INTERVAL 24 HOUR),
+  last_seen = NOW()
+WHERE id=$pid;
+SQL
+  done
+  echo "    listo (densidad de ${DAYS}d sembrada por DB)."
 }
 
 stage_pipeline() {
@@ -352,7 +464,9 @@ stage_report() {
     UNION ALL SELECT 'invoices',COUNT(*) FROM commander_invoices
     UNION ALL SELECT 'request_logs',COUNT(*) FROM commander_request_logs
     UNION ALL SELECT 'usage_rollups',COUNT(*) FROM commander_usage_rollups
-    UNION ALL SELECT 'activity_events',COUNT(*) FROM commander_activity_events;" 2>/dev/null || true
+    UNION ALL SELECT 'activity_events',COUNT(*) FROM commander_activity_events
+    UNION ALL SELECT 'package_commits',COUNT(*) FROM commander_package_commits
+    UNION ALL SELECT 'package_activity_daily',COUNT(*) FROM commander_package_activity_daily;" 2>/dev/null || true
   hr; echo "Hecho. Panel: https://$COMMANDER:$PORT  (admin: $EMAIL / $PASS)"
 }
 
@@ -363,7 +477,8 @@ case "${1:-all}" in
   change-plan) stage_change_plan; stage_report ;;
   pipeline) stage_pipeline; stage_report ;;
   volume)   stage_seed_volume "${2:-100000}"; stage_report ;;
+  year)     stage_seed_year "${2:-365}"; stage_report ;;
   report)   stage_report ;;
-  all)      stage_clean; stage_scaffold; stage_provision; stage_change_plan; stage_invoices; stage_traffic; stage_pipeline; stage_report ;;
-  *) echo "uso: simulate.sh [all|traffic <client> <slug> [n]|invoices|change-plan|pipeline|volume [filas]|report]"; exit 1 ;;
+  all)      stage_clean; stage_scaffold; stage_provision; stage_change_plan; stage_invoices; stage_traffic; stage_pipeline; stage_seed_year 365; stage_report ;;
+  *) echo "uso: simulate.sh [all|traffic <client> <slug> [n]|invoices|change-plan|pipeline|volume [filas]|year [dias]|report]"; exit 1 ;;
 esac

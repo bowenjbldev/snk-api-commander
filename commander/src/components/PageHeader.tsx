@@ -32,7 +32,7 @@ export function PageHeader({ title, subtitle, primaryAction, actions, titleClass
           {title}
         </h1>
         {subtitle != null && (
-          <div className="scns-helper" style={{ marginTop: 6, fontSize: 13 }}>
+          <div className="scns-helper" style={{ marginTop: 6 }}>
             {subtitle}
           </div>
         )}

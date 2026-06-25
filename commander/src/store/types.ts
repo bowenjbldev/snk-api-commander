@@ -203,6 +203,8 @@ export interface UsageSnapshot {
   period_start: string // ISO hour bucket
   request_count: number
   error_count: number
+  count_4xx: number // requests in the 4xx class (for the error-rate breakdown)
+  count_5xx: number // requests in the 5xx class
 }
 
 export interface OperatorSettings {
@@ -271,4 +273,12 @@ export interface PackageInsights {
   summary: GitInsightsSummary
   daily: GitDailyActivity[] // bounded to the requested window
   recent_commits: GitCommit[]
+}
+
+// A recent commit across the whole fleet (GET /commits) — a GitCommit enriched with its package
+// (name + catalog label) for the Dashboard "Recent commits" card.
+export interface RecentCommit extends GitCommit {
+  package_id: number
+  package: string | null // package name (business key, for the /packages link)
+  package_label: string | null
 }

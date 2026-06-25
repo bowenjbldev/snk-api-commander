@@ -3,7 +3,7 @@ import { Card } from './Card'
 
 export function ChartLegend({ items }: { items: { label: string; color: string }[] }) {
   return (
-    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
       {items.map((it) => (
         <span key={it.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <span style={{ width: 9, height: 9, background: it.color, flex: 'none' }} aria-hidden="true" />
@@ -21,19 +21,24 @@ export function ChartCard({
   subtitle,
   right,
   action,
+  fill,
   children,
 }: {
   title: string
   subtitle?: string
   right?: ReactNode
   action?: ReactNode
+  /** When true, the chart GROWS to fill the card height (pass the chart a height of '100%') so the
+      legend hugs the bottom with no empty gap — use on a card that the grid stretches to match a
+      taller sibling column. Otherwise the chart keeps its fixed pixel height and hugs its content. */
+  fill?: boolean
   children: ReactNode
 }) {
   return (
     <Card title={title} subtitle={subtitle} action={action} className="scns-chartcard" bodyPadding={16}>
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        {right && <div style={{ alignSelf: 'flex-start', marginBottom: 16 }}>{right}</div>}
-        <div style={{ flex: 1 }}>{children}</div>
+      <div style={{ display: 'flex', flexDirection: 'column', height: fill ? '100%' : undefined }}>
+        <div style={fill ? { flex: 1, minHeight: 0 } : undefined}>{children}</div>
+        {right && <div style={{ alignSelf: 'center', marginTop: 12 }}>{right}</div>}
       </div>
     </Card>
   )

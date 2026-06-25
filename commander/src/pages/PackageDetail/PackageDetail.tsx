@@ -92,7 +92,7 @@ export function PackageDetail() {
               {packageRow && <PackageStatusTag pkg={packageRow} />}
             </div>
           </div>
-          <div className="scns-helper" style={{ fontSize: 13, marginTop: 6 }}>
+          <div className="scns-helper" style={{ marginTop: 6 }}>
             Business package
             {pkg.label && pkg.label !== pkg.name ? <> · <span className="scns-mono">{pkg.name}</span></> : null}
             {' · '}{plans.length} {plans.length === 1 ? 'plan' : 'plans'} ·{' '}
@@ -111,7 +111,7 @@ export function PackageDetail() {
         style={{
           display: 'flex',
           gap: 24,
-          borderBottom: '1px solid var(--cds-border-subtle)',
+          borderBottom: '1px solid var(--scns-border)',
           margin: '16px 0 24px',
         }}
       >

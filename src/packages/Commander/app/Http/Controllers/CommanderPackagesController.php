@@ -356,6 +356,83 @@ class CommanderPackagesController extends CoreBaseApiController
      * historial, rollup diario de actividad (heatmap + code frequency) acotado a la ventana, y los
      * commits recientes. Alimentado por `commander:git:sync` (tablas commander_package_*).
      */
+    /**
+     * Platform-wide recent commits across ALL packages (newest first), each enriched with its
+     * package name/label. Powers the Dashboard "Recent commits" card. Cross-package aggregation, so
+     * it is NOT package-scoped (unlike insights()).
+     */
+    public function commits(Request $request): JsonResponse
+    {
+        if ($response = $this->requirePermission($this->indexPermission)) {
+            return $response;
+        }
+
+        $data = $request->validate([
+            'limit' => 'nullable|integer|min:1|max:100',
+        ]);
+
+        $commits = CommanderPackageCommitModel::query()
+            ->with('package:id,name,label')
+            ->orderByDesc('committed_at')
+            ->limit($data['limit'] ?? 15)
+            ->get(['id', 'package_id', 'sha', 'committed_at', 'author_name', 'author_email', 'message', 'additions', 'deletions', 'files_changed']);
+
+        return response()->json([
+            'data' => $commits->map(fn ($c) => [
+                'sha' => $c->sha,
+                'committed_at' => $c->committed_at?->toJSON(),
+                'author_name' => $c->author_name,
+                'author_email' => $c->author_email,
+                'message' => $c->message,
+                'additions' => (int) $c->additions,
+                'deletions' => (int) $c->deletions,
+                'files_changed' => (int) $c->files_changed,
+                'package_id' => $c->package_id,
+                'package' => $c->package?->name,
+                'package_label' => $c->package?->label,
+            ])->all(),
+        ]);
+    }
+
+    /**
+     * Platform-wide git code frequency: daily additions/deletions summed across ALL packages over a
+     * window (default 12 weeks). Same `GitDailyActivity` shape as insights().daily, so the SPA reuses
+     * dailyToCodeFrequency() to bucket it weekly. Powers the Dashboard "Code frequency" card.
+     */
+    public function codeFrequency(Request $request): JsonResponse
+    {
+        if ($response = $this->requirePermission($this->indexPermission)) {
+            return $response;
+        }
+
+        $data = $request->validate([
+            'days' => 'nullable|integer|min:1|max:730',
+        ]);
+
+        $since = CarbonImmutable::now()->subDays($data['days'] ?? 84)->startOfDay();
+
+        $daily = CommanderPackageActivityDailyModel::query()
+            ->where('day', '>=', $since->toDateString())
+            ->selectRaw('day')
+            ->selectRaw('SUM(commit_count) as commit_count')
+            ->selectRaw('SUM(additions) as additions')
+            ->selectRaw('SUM(deletions) as deletions')
+            ->selectRaw('SUM(files_changed) as files_changed')
+            ->groupBy('day')
+            ->orderBy('day')
+            ->get();
+
+        return response()->json([
+            'data' => $daily->map(fn ($d) => [
+                'day' => $d->day->toDateString(),
+                'commit_count' => (int) $d->commit_count,
+                'additions' => (int) $d->additions,
+                'deletions' => (int) $d->deletions,
+                'files_changed' => (int) $d->files_changed,
+            ])->all(),
+        ]);
+    }
+
     public function insights(Request $request, $package = null): JsonResponse
     {
         if ($response = $this->requirePermission($this->showPermission)) {
