@@ -234,7 +234,7 @@ export const useStore = create<StoreState>((set, get) => {
           api<QuotaMetric[]>('/quotas'),
           api<Plan[]>('/plans'),
           api<ActivityEvent[]>('/activity'),
-          platformCommits(),
+          platformCommits({ limit: 20 }), // Dashboard "Recent commits" shows up to 20
           settingsApi.get(),
         ])
         const provisioned = provisionedPackages(packages)

@@ -309,6 +309,113 @@ body {
   border: 1px solid var(--scns-border);
 }
 
+// Dashboard bottom row: recent commits (wider) beside recent invoices; both are `.scns-cardtable`
+// cards. Tops aligned so the taller table doesn't stretch the shorter. Collapses to one column when
+// half-width gets too tight for the columns.
+.scns-dash-tables {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 24px;
+  margin-top: 40px;
+  // align-items defaults to `stretch`: both columns take the row's full height (set by the tallest
+  // card) so the bottom edges line up — no short/ragged column.
+}
+@media (max-width: 1200px) {
+  .scns-dash-tables {
+    grid-template-columns: 1fr;
+  }
+}
+// Right column of the bottom row: invoices stacked over recent requests, same 24px gap as the grid.
+.scns-dash-tables__col {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+// Stacked cards keep their natural height; only the LAST one (recent requests) grows to fill the
+// column so the right column matches the (taller) commits card and the row's bottom edges align.
+// Invoices stays tight to its content (no trailing empty space).
+.scns-dash-tables__col > .scns-card {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+.scns-dash-tables__col > .scns-card:last-child {
+  flex: 1 1 0;
+}
+
+// Shared in-card table chrome (Dashboard full-width "Recent …" cards: commits + invoices). A header
+// band, 44px rows, hairline dividers and a 16px inset, so every table inside a card reads the same.
+// Column templates are set per-table via inline `grid-template-columns`; the commit graph layers its
+// SVG lane gutter on top of this same chrome.
+.scns-cardtable__head,
+.scns-cardtable__row {
+  display: grid;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+}
+.scns-cardtable__head {
+  height: 36px;
+  border-bottom: 1px solid var(--scns-border);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cds-text-secondary);
+}
+.scns-cardtable__row {
+  height: 40px; // Carbon `md` row; fixed (not min-) so every row is exactly the same height
+  border-bottom: 1px solid var(--scns-border);
+}
+.scns-cardtable__row:last-child {
+  border-bottom: none;
+}
+.scns-cardtable__row--link {
+  cursor: pointer;
+}
+.scns-cardtable__row--link:hover {
+  background: var(--cds-layer-hover);
+}
+.scns-cardtable__cell {
+  font-size: 12px;
+  color: var(--cds-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.scns-cardtable__num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+// Recent-commits graph specifics (GitHub-network style): the coloured lane gutter + commit
+// description; the row/header/cell chrome is the shared `.scns-cardtable__*` above.
+.scns-commitgraph__svg {
+  display: block;
+}
+.scns-commitgraph__desc {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.scns-commitgraph__msg {
+  font-size: 13px;
+  color: var(--cds-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.scns-commitgraph__pkgbtn {
+  display: inline-flex;
+  flex: none;
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+}
+.scns-commitgraph__pkgbtn:hover {
+  filter: brightness(1.08);
+}
+
 // Titled card: a header band (same surface as the body) divided by a hairline, then the body.
 .scns-card--sectioned {
   display: flex;

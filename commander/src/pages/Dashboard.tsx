@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { Loading, MenuButton, MenuItem, Table, TableHead, TableRow, TableHeader, TableBody, TableCell, TableContainer } from '@carbon/react'
+import { Loading, MenuButton, MenuItem } from '@carbon/react'
 import { Activity, CheckmarkOutline, Time, PauseOutline, Warning, Money } from '@carbon/icons-react'
 import { useStore, useProvisionedPackages } from '../store/store'
 import { useAppTheme } from '../providers/ThemeProvider'
@@ -8,14 +8,27 @@ import { KpiCluster, KpiTile } from '../components/KpiCluster'
 import { Card } from '../components/Card'
 import { ChartCard, ChartLegend } from '../components/ChartCard'
 import { EChart } from '../components/EChart'
-import { RelativeTime } from '../components/RelativeTime'
+import { CommitGraph } from '../components/CommitGraph'
 import { EmptyState } from '../components/EmptyState'
+import { MethodTag } from '../components/tags/MethodTag'
 import { timeSeriesOption, legendItems } from '../lib/echartsOptions'
-import { snapshotsToPlatformSeries, dailyToCodeFrequency } from '../lib/chartData'
-import { platformUsage, platformCodeFrequency } from '../lib/api'
+import { snapshotsToPlatformSeries, dailyToCodeFrequency, packageColorMap, packageTagTypeMap, OTHER_COLOR } from '../lib/chartData'
+import { platformUsage, platformCodeFrequency, platformLogs } from '../lib/api'
 import { TIME_RANGES, rangeOf, type RangeKey } from '../lib/timeRanges'
-import { formatCompact, formatCurrencyShort, formatInt, formatPercent } from '../lib/format'
-import type { GitDailyActivity, UsageSnapshot } from '../store/types'
+import { formatCompact, formatCurrency, formatCurrencyShort, formatInt, formatPercent } from '../lib/format'
+import { formatDayMonth } from '../lib/time'
+import { BillingTag } from '../components/tags/StatusTag'
+import type { GitDailyActivity, Invoice, LogEntry, UsageSnapshot } from '../store/types'
+
+const DAY_MS = 86_400_000
+// Grid template for the dashboard invoice ledger (Package omitted — commits names it): Number ·
+// Client · Amount · Due · Status. Sits at ~45% width beside the wider commits table.
+const INVOICE_COLS = '118px minmax(0, 1fr) 92px 128px 100px'
+const INVOICE_CAP = 5 // rows shown; empty slots pad to this so the card height is steady with fewer
+// Recent request logs card: Package (link) · Method · Route · Status · ms. Time is omitted (the rows
+// are newest-first, so order conveys recency) to keep the route readable in the narrow column.
+const LOG_COLS = '78px 56px minmax(0, 1fr) 48px 48px'
+const LOG_CAP = 12 // rows shown; empty slots pad to this so its height is steady
 
 // Real platform KPIs over the selected window (driven by the global range picker). Totals are summed
 // across the window; the deltas split the window in half (later vs earlier) for a within-window trend —
@@ -116,6 +129,8 @@ export function Dashboard() {
   const navigate = useNavigate()
   const packages = useProvisionedPackages()
   const commits = useStore((s) => s.commits)
+  const invoices = useStore((s) => s.invoices)
+  const clients = useStore((s) => s.clients)
   const dash = useStore((s) => s.dashboard)
 
   const counts = useMemo(() => {
@@ -129,6 +144,10 @@ export function Dashboard() {
   }, [packages])
 
   const packageLabels = useMemo(() => new Map(packages.map((p) => [p.id, p.name])), [packages])
+  // Stable package→colour map (shared with the charts) so a package's commit-graph lane matches its
+  // colour in the Requests chart.
+  const colorMap = useMemo(() => packageColorMap(packages), [packages])
+  const tagTypeMap = useMemo(() => packageTagTypeMap(packages), [packages])
 
   // Single global time range — the picker top-right of the title drives every chart and the KPIs.
   const [range, setRange] = useState<RangeKey>('48h')
@@ -233,53 +252,173 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* Recent commits across the fleet (replaces the old activity feed — triage now lives in the bell).
-          Carbon DataTable, same shape as the package Insights tab + a Package column. */}
-      <div style={{ marginTop: 40 }}>
+      {/* Bottom row: two matching in-card tables side by side — fleet's recent commits (what shipped)
+          on the left, recent invoices (money, overdue first) on the right. Collapses to one column
+          under 1200px, where half-width gets too tight for the columns. */}
+      <div className="scns-dash-tables">
         <Card title="Recent commits" subtitle="latest across packages" bodyPadding={0}>
           {commits.length === 0 ? (
             <EmptyState title="No commits yet" />
           ) : (
-            <TableContainer>
-              <Table size="sm">
-                <TableHead>
-                  <TableRow>
-                    <TableHeader>Package</TableHeader>
-                    <TableHeader>SHA</TableHeader>
-                    <TableHeader>Message</TableHeader>
-                    <TableHeader>Author</TableHeader>
-                    <TableHeader>When</TableHeader>
-                    <TableHeader style={{ textAlign: 'right' }}>+/−</TableHeader>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {commits.map((c) => (
-                    <TableRow key={`${c.package_id}-${c.sha}`}>
-                      <TableCell>
-                        <button
-                          type="button"
-                          className="scns-linkbtn"
-                          onClick={() => navigate(c.package_id ? `/packages/${c.package_id}` : '/packages')}
-                        >
-                          {c.package ?? '—'}
-                        </button>
-                      </TableCell>
-                      <TableCell className="scns-mono">{c.sha.slice(0, 8)}</TableCell>
-                      <TableCell>{(c.message ?? '').split('\n')[0] || '—'}</TableCell>
-                      <TableCell>{c.author_name ?? '—'}</TableCell>
-                      <TableCell>{c.committed_at ? <RelativeTime iso={c.committed_at} /> : '—'}</TableCell>
-                      <TableCell style={{ textAlign: 'right' }} className="scns-num">
-                        <span style={{ color: '#42be65' }}>+{formatInt(c.additions)}</span>{' '}
-                        <span style={{ color: '#fa4d56' }}>−{formatInt(c.deletions)}</span>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <CommitGraph
+              commits={commits.slice(0, 20)}
+              cap={20}
+              colorOf={(name) => (name ? colorMap[name] : undefined) ?? OTHER_COLOR}
+              tagTypeOf={(name) => (name ? tagTypeMap[name] : undefined) ?? 'cool-gray'}
+              onOpenPackage={(c) => navigate(c.package_id ? `/packages/${c.package_id}` : '/packages')}
+            />
           )}
         </Card>
+        {/* Right column: recent invoices (money, overdue first) stacked over recent request logs (the
+            live tail across the fleet). Same in-card table chrome throughout. */}
+        <div className="scns-dash-tables__col">
+          <Card title="Recent invoices" subtitle="overdue first" bodyPadding={0}>
+            <RecentInvoices
+              invoices={invoices}
+              clientName={(id) => clients.find((c) => c.id === id)?.name ?? '—'}
+              onOpen={() => navigate('/invoices')}
+            />
+          </Card>
+          <Card title="Recent requests" subtitle="latest across the fleet" bodyPadding={0}>
+            <RecentLogs onOpen={() => navigate('/logs')} />
+          </Card>
+        </div>
       </div>
+    </div>
+  )
+}
+
+// Fleet invoice ledger for the dashboard: overdue rows float to the top (oldest due = most late
+// first); the rest fall back to newest-issued. Capped to a glanceable window — the full list lives
+// on /invoices.
+function RecentInvoices({
+  invoices,
+  clientName,
+  onOpen,
+}: {
+  invoices: Invoice[]
+  clientName: (id: number) => string
+  onOpen: () => void
+}) {
+  const rows = useMemo(() => {
+    const rank = (i: Invoice) => (i.status === 'overdue' ? 0 : 1)
+    return [...invoices]
+      .sort((a, b) => {
+        const r = rank(a) - rank(b)
+        if (r !== 0) return r
+        // both overdue → most-late first (oldest due); otherwise newest issued first
+        if (a.status === 'overdue') return Date.parse(a.due_at) - Date.parse(b.due_at)
+        return Date.parse(b.issued_at) - Date.parse(a.issued_at)
+      })
+      .slice(0, INVOICE_CAP)
+  }, [invoices])
+
+  if (rows.length === 0) return <EmptyState title="No invoices yet" />
+
+  return (
+    <div className="scns-cardtable">
+      <div className="scns-cardtable__head" style={{ gridTemplateColumns: INVOICE_COLS }}>
+        <span>Number</span>
+        <span>Client</span>
+        <span className="scns-cardtable__num">Amount</span>
+        <span>Due</span>
+        <span>Status</span>
+      </div>
+      {rows.map((i) => {
+        const late = Math.floor((Date.now() - Date.parse(i.due_at)) / DAY_MS)
+        const isOverdue = i.status === 'overdue'
+        const isLatePending = i.status === 'pending' && late > 0
+        const dueColor = isOverdue ? 'var(--scns-error)' : isLatePending ? 'var(--scns-warn-text)' : undefined
+        return (
+          <div key={i.id} className="scns-cardtable__row scns-cardtable__row--link" style={{ gridTemplateColumns: INVOICE_COLS }} onClick={onOpen}>
+            <span className="scns-cardtable__cell scns-mono" style={{ color: 'var(--cds-link-primary)' }}>{i.number}</span>
+            <span className="scns-cardtable__cell" style={{ color: 'var(--cds-text-primary)' }}>{clientName(i.client_id)}</span>
+            <span className="scns-cardtable__cell scns-cardtable__num scns-num">{formatCurrency(i.amount)}</span>
+            <span className="scns-cardtable__cell scns-mono" style={{ color: dueColor }}>
+              {formatDayMonth(i.due_at)}
+              {isOverdue && ` · ${late}d`}
+              {isLatePending && ` · ${late}d late`}
+            </span>
+            <span className="scns-cardtable__cell"><BillingTag status={i.status} /></span>
+          </div>
+        )
+      })}
+      <CardTableFillers count={INVOICE_CAP - rows.length} />
+    </div>
+  )
+}
+
+// Empty row slots that pad an in-card table up to its cap, so a partially-filled card keeps a steady
+// height and visibly reads as N slots (with dividers) rather than blank space.
+function CardTableFillers({ count }: { count: number }) {
+  if (count <= 0) return null
+  return (
+    <>
+      {Array.from({ length: count }, (_, i) => (
+        <div key={`filler-${i}`} className="scns-cardtable__row scns-cardtable__row--empty" aria-hidden="true" />
+      ))}
+    </>
+  )
+}
+
+function logStatusColor(s: number): string {
+  if (s < 300) return 'var(--scns-success)'
+  if (s < 400) return 'var(--cds-text-helper)'
+  if (s < 500) return 'var(--scns-warn-text)'
+  return 'var(--scns-error)'
+}
+
+// Recent request logs: the live tail of commander_request_logs across the whole fleet (GET /logs, no
+// package filter), newest first. Its own fetch + 15s poll, keeping the last good data on a refresh
+// error so the card doesn't blank. Capped to a glance; the full explorer lives on /logs.
+function RecentLogs({ onOpen }: { onOpen: () => void }) {
+  const [state, setState] = useState<{ loading: boolean; logs: LogEntry[]; error: string | null }>({
+    loading: true,
+    logs: [],
+    error: null,
+  })
+  useEffect(() => {
+    let cancelled = false
+    const load = () => {
+      platformLogs({ limit: LOG_CAP })
+        .then((res) => {
+          if (!cancelled) setState({ loading: false, logs: res.data ?? [], error: null })
+        })
+        .catch((e: unknown) => {
+          if (!cancelled) setState((s) => ({ ...s, loading: false, error: e instanceof Error ? e.message : 'Failed to load logs' }))
+        })
+    }
+    load()
+    const t = setInterval(load, 15_000)
+    return () => {
+      cancelled = true
+      clearInterval(t)
+    }
+  }, [])
+
+  if (state.logs.length === 0) {
+    return <EmptyState title={state.error ? 'Logs unavailable' : state.loading ? 'Loading…' : 'No requests yet'} description={state.error ?? undefined} />
+  }
+
+  return (
+    <div className="scns-cardtable">
+      <div className="scns-cardtable__head" style={{ gridTemplateColumns: LOG_COLS }}>
+        <span>Package</span>
+        <span>Method</span>
+        <span>Route</span>
+        <span>Status</span>
+        <span className="scns-cardtable__num">ms</span>
+      </div>
+      {state.logs.map((l) => (
+        <div key={l.id} className="scns-cardtable__row scns-cardtable__row--link" style={{ gridTemplateColumns: LOG_COLS }} onClick={onOpen}>
+          <span className="scns-cardtable__cell scns-mono" style={{ color: 'var(--cds-link-primary)' }}>{l.package ?? '—'}</span>
+          <span className="scns-cardtable__cell"><MethodTag method={l.method} /></span>
+          <span className="scns-cardtable__cell scns-mono">{l.route}</span>
+          <span className="scns-cardtable__cell scns-mono" style={{ color: logStatusColor(l.status), fontWeight: 600 }}>{l.status}</span>
+          <span className="scns-cardtable__cell scns-cardtable__num scns-num">{formatInt(l.duration_ms)}</span>
+        </div>
+      ))}
+      <CardTableFillers count={LOG_CAP - state.logs.length} />
     </div>
   )
 }

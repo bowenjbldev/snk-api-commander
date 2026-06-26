@@ -1,5 +1,5 @@
 // Deterministic chart-data generators (seeded PRNG → stable shapes across renders).
-import type { GitDailyActivity, HttpMethod, Invoice, Package, Subscription, TopEndpoint, UsageRollup, UsageSnapshot } from '../store/types'
+import type { GitDailyActivity, HttpMethod, Package, TopEndpoint, UsageRollup, UsageSnapshot } from '../store/types'
 import type { Bucket } from './timeRanges'
 
 export interface Point {
@@ -13,59 +13,6 @@ export const OTHER_COLOR = '#8d8d8d'
 export const COLOR_4XX = '#d2a106'
 export const COLOR_5XX = '#fa4d56'
 
-// Semantic state colours for the breakdown donuts (color = status, per the design system).
-export const STATUS_COLORS = { active: '#42be65', warn: '#f1c21b', error: '#fa4d56' }
-
-// A simple {group,value} datum for donut / single-bar charts.
-export interface Datum {
-  group: string
-  value: number
-}
-
-// Dashboard breakdown: package status mix (donut).
-export function statusMixData(active: number, grace: number, suspended: number): Datum[] {
-  return [
-    { group: 'Active', value: active },
-    { group: 'Grace', value: grace },
-    { group: 'Suspended', value: suspended },
-  ]
-}
-
-// Dashboard breakdown: invoices by status (donut). Counts paid / pending / overdue.
-export function invoicesByStatusData(invoices: Invoice[]): Datum[] {
-  let paid = 0, pending = 0, overdue = 0
-  for (const i of invoices) {
-    if (i.status === 'paid') paid++
-    else if (i.status === 'pending') pending++
-    else overdue++
-  }
-  return [
-    { group: 'Paid', value: paid },
-    { group: 'Pending', value: pending },
-    { group: 'Overdue', value: overdue },
-  ]
-}
-
-// Dashboard breakdown: requests (24h) by package (horizontal bar), highest first.
-export function requestsByPackageData(packages: Package[]): Datum[] {
-  return packages
-    .map((p) => ({ group: p.name, value: Number(p.requests_24h) || 0 }))
-    .sort((a, b) => b.value - a.value)
-}
-
-// Dashboard breakdown: MRR by package (horizontal bar) — price_monthly of each package's CURRENT
-// subscription term (ended_at == null), mirroring how the MRR KPI is summed in the store.
-export function mrrByPackageData(packages: Package[], subscriptions: Subscription[]): Datum[] {
-  const current = new Map<number, number>()
-  for (const s of subscriptions) {
-    if (s.ended_at == null) current.set(s.package_id, Number(s.price_monthly) || 0)
-  }
-  return packages
-    .map((p) => ({ group: p.name, value: current.get(p.id) ?? 0 }))
-    .filter((d) => d.value > 0)
-    .sort((a, b) => b.value - a.value)
-}
-
 // Stable package→colour map (top packages by requests get the categorical palette, the rest fold to
 // grey) so a given package keeps the SAME colour across every chart on the dashboard.
 export function packageColorMap(packages: Package[]): Record<string, string> {
@@ -73,6 +20,19 @@ export function packageColorMap(packages: Package[]): Record<string, string> {
   const map: Record<string, string> = {}
   sorted.forEach((p, i) => {
     map[p.name] = i < PALETTE.length ? PALETTE[i] : OTHER_COLOR
+  })
+  return map
+}
+
+// Carbon Tag `type` per package — ranked identically to packageColorMap so a package's tag hue lines
+// up with its lane/chart colour. Top packages get the vivid types; the rest fall to cool-gray.
+export type PackageTagType = 'purple' | 'blue' | 'teal' | 'magenta' | 'red' | 'cool-gray'
+const TAG_TYPES: PackageTagType[] = ['purple', 'blue', 'teal', 'magenta', 'red']
+export function packageTagTypeMap(packages: Package[]): Record<string, PackageTagType> {
+  const sorted = [...packages].sort((a, b) => b.requests_24h - a.requests_24h)
+  const map: Record<string, PackageTagType> = {}
+  sorted.forEach((p, i) => {
+    map[p.name] = i < TAG_TYPES.length ? TAG_TYPES[i] : 'cool-gray'
   })
   return map
 }

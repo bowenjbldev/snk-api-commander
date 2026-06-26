@@ -220,6 +220,22 @@ Convenciones del **side panel** (`components/CreatePanel.tsx` → `CreateSidePan
 - **Form a 1 columna**; inputs con fondo `--scns-field` (theme-aware, misma convención que los
   inputs sobre card, ver §3 Formularios; clase scoped `.scns-create-flow`).
 
+**Tablas dentro de cards (`.scns-cardtable`).** Las cards "Recent …" del Dashboard (commits, invoices,
+requests) comparten un mismo chrome de tabla: **header band de 36px**, **filas de 40px (Carbon `md`) de
+altura FIJA** (no `min-height` — así toda fila mide igual en las tres tablas y en los slots vacíos), divisores
+hairline e inset de 16px. Las columnas se fijan por tabla vía `grid-template-columns` inline. El commit
+graph monta su gutter SVG sobre ese mismo chrome. Cuando una card no llena su tope de filas, se
+**rellena con slots vacíos** (`.scns-cardtable__row--empty`, helper `CardTableFillers`) hasta el cap, de
+modo que la altura es estable y se lee como N slots —no como espacio en blanco—.
+
+**Fila de cards → misma altura (stretch).** Cuando varias cards comparten una **fila** (grid/flex
+horizontal), se **estiran a la altura de la más alta** (`align-items: stretch`, default del grid). Si una
+columna **apila** varias cards, estas crecen (`flex: 1 1 0`) para repartirse y **llenar** el alto de la
+columna. Así los bordes inferiores de la fila quedan **alineados** —sin columnas cortas/raídas—. Las
+filas de tabla dentro de las cards mantienen su altura fija (44px); el sobrante queda como espacio al
+fondo del body, **no** como filas deformes. (Patrón vivo: el *bottom row* del Dashboard —`.scns-dash-tables`
++ `.scns-dash-tables__col`— con commits a la izquierda e invoices+requests apiladas a la derecha.)
+
 ---
 
 ## 7. Shell global (UI)
