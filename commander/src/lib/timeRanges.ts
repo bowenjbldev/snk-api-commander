@@ -2,7 +2,7 @@
 // `days` = lookback window; `period` = bucket granularity for the usage endpoint (hourly for the
 // short ranges, daily for week+ so a year doesn't return thousands of hourly points). `subtitle`
 // is what each chart card shows so the applied filter is always visible.
-export type RangeKey = '24h' | '48h' | 'week' | 'month' | 'year'
+export type RangeKey = '48h' | 'week' | 'month' | 'quarter' | 'year'
 
 // `Bucket` = time-bucket granularity for client-side aggregation (see `bucketStart` in chartData).
 // Charts now render on ECharts (canvas) and serve RAW data, so this is only used for the weekly
@@ -19,11 +19,11 @@ export interface TimeRange {
 }
 
 export const TIME_RANGES: TimeRange[] = [
-  { key: '24h', menu: '24 hours', subtitle: 'last 24h', days: 1, period: 'hour', refreshMs: 30_000 },
   { key: '48h', menu: '48 hours', subtitle: 'last 48h', days: 2, period: 'hour', refreshMs: 30_000 },
   { key: 'week', menu: 'Week', subtitle: 'last 7 days', days: 7, period: 'day', refreshMs: 300_000 },
   { key: 'month', menu: 'Month', subtitle: 'last 30 days', days: 30, period: 'day', refreshMs: 300_000 },
+  { key: 'quarter', menu: 'Quarter', subtitle: 'last 90 days', days: 90, period: 'day', refreshMs: 300_000 },
   { key: 'year', menu: 'Year', subtitle: 'last 12 months', days: 365, period: 'day', refreshMs: 300_000 },
 ]
 
-export const rangeOf = (k: RangeKey): TimeRange => TIME_RANGES.find((r) => r.key === k) ?? TIME_RANGES[1]
+export const rangeOf = (k: RangeKey): TimeRange => TIME_RANGES.find((r) => r.key === k) ?? TIME_RANGES[0]

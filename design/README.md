@@ -282,12 +282,17 @@ Pantalla de acceso del operador. Email + password → token Sanctum (Bearer) gua
   **icono Carbon** arriba-derecha (Active `CheckmarkOutline` verde, In grace `Time` ámbar, Suspended
   `PauseOutline`, Requests (24h) `Activity`, Error rate (24h) `Warning`, MRR `Money`). Valores con
   color semántico (grace ámbar, suspended rojo). Deltas vs 24h previas (▲/▼ verde/rojo) **solo si hay
-  ventana previa** — nunca se fabrica una flecha. Las KPIs de tráfico siguen la ventana de la card de
-  Requests (en 24h no hay ventana previa → sin delta).
-- **Charts** (grid 2fr/1fr) — cada chart card lleva su **filtro de tiempo en el kebab** (24h · 48h ·
-  semana · mes · año, el activo marcado ✓, + "Open in Usage"); cada card hace su **fetch independiente**
-  y el **subtitle refleja el rango** aplicado. Las **legends van centradas debajo** del chart y el
-  **eje X va oculto** (la ventana la da el subtitle, no el eje).
+  ventana previa** — nunca se fabrica una flecha. Las KPIs de magnitud con tendencia (Requests, Error
+  rate, **MRR**) siguen el **range picker global**; MRR = MRR actual vs el de hace `range.days`
+  (términos vigentes entonces), derivado de subscriptions sin endpoint.
+- **Range picker global** (acción primaria arriba-derecha, `MenuButton` "Metrics range · …": 48h ·
+  semana · mes · trimestre · año). Es **un único control** que maneja **los 3 charts + los KPIs con
+  delta** —de ahí el label genérico "Metrics", no "Chart"—; **no** abarca las tablas de abajo (que son
+  "latest", no metrics). Cada chart hace su **fetch independiente** sobre ese rango.
+- **Charts** (grid 2fr/1fr) — el **subtitle de cada card es una descripción corta estática** (p. ej.
+  "traffic stacked by package", "4xx · 5xx share of requests", "lines added / removed"); el rango
+  **no** se repite ahí (vive en el picker). Las **legends van centradas debajo** del chart y el **eje X
+  va oculto**.
   - Izquierda (principal): **"Requests"** — stacked bar por package; el chart **llena la altura del
     card** (flex, `ChartCard fill`) para alinear con la columna derecha sin hueco bajo la legend.
   - Derecha (apilados): **"Error rate"** — stacked area **4xx/5xx** (ámbar `#d2a106` / rojo `#fa4d56`),

@@ -71,8 +71,8 @@ function deriveUsageKpis(snapshots: UsageSnapshot[]): UsageKpis {
   return { requests: totalReq, errorRate, requestsDelta, errorRateDelta }
 }
 
-// Per-card usage fetch (its own time range). Polls every 30s; keeps the last good data on a refresh
-// error so the chart doesn't blank out.
+// Usage fetch for the selected range. Polls on the range's cadence (tight for live hourly windows,
+// relaxed for long ones); keeps the last good data on a refresh error so the chart doesn't blank out.
 function useUsageSnapshots(range: RangeKey) {
   const [state, setState] = useState<{ loading: boolean; snapshots: UsageSnapshot[]; error: string | null }>({
     loading: true,
@@ -101,7 +101,7 @@ function useUsageSnapshots(range: RangeKey) {
   return state
 }
 
-// Per-card code-frequency fetch (its own time range, in days).
+// Code-frequency fetch for the selected range (lookback in days).
 function useCodeFreq(range: RangeKey) {
   const [state, setState] = useState<{ loading: boolean; daily: GitDailyActivity[]; error: string | null }>({
     loading: true,
@@ -131,6 +131,7 @@ export function Dashboard() {
   const commits = useStore((s) => s.commits)
   const invoices = useStore((s) => s.invoices)
   const clients = useStore((s) => s.clients)
+  const subscriptions = useStore((s) => s.subscriptions)
   const dash = useStore((s) => s.dashboard)
 
   const counts = useMemo(() => {
@@ -157,6 +158,21 @@ export function Dashboard() {
   // KPIs follow the selected window (deltas compare its later vs earlier half; null when too short).
   const kpis = useMemo(() => deriveUsageKpis(usage.snapshots), [usage.snapshots])
 
+  // MRR trend over the selected window: current MRR (dash.mrr, current terms excl. overdue) vs MRR
+  // as-of the window's start (subscription terms active then: started ≤ cutoff and not yet ended).
+  // Follows the same range picker as the traffic KPIs. Null with no prior base so the tile never shows
+  // a fabricated arrow. Derived client-side — no endpoint.
+  const mrrDelta = useMemo(() => {
+    const cutoff = Date.now() - rangeOf(range).days * DAY_MS
+    let prior = 0
+    for (const s of subscriptions) {
+      const started = Date.parse(s.started_at)
+      const ended = s.ended_at ? Date.parse(s.ended_at) : null
+      if (started <= cutoff && (ended == null || ended > cutoff)) prior += Number(s.price_monthly) || 0
+    }
+    return prior > 0 ? (dash.mrr - prior) / prior : null
+  }, [subscriptions, dash.mrr, range])
+
   // Charts render on ECharts (canvas) so we serve RAW data — bucket = fetch period (daily for year =
   // 365 pts, no weekly collapse). Canvas handles the density that choked Carbon's SVG. One fetch feeds
   // both the Requests (stacked) and Error rate (% by status) charts.
@@ -168,11 +184,12 @@ export function Dashboard() {
 
   const usageReady = !usage.loading && !usage.error && reqData.length > 0
 
-  // ECharts options (canvas). Dashboard charts hide the x-axis for a compact look — the card subtitle
-  // carries the window. Requests: stacked bars (top-4 packages + other). Error rate: stacked % area by
-  // status class. Code frequency: diverging add/del bars per week.
+  // ECharts options (canvas). Dashboard charts hide the x-axis for a compact look. Requests: stacked
+  // bars (top-4 packages + other). Error rate: stacked % area by status class.
   const reqEOption = useMemo(() => timeSeriesOption(reqData, { theme, type: 'bar', stack: true, groups }), [reqData, groups, theme])
   const errEOption = useMemo(() => timeSeriesOption(errData, { theme, type: 'line', area: true, stack: true, scale: { '4xx': '#d2a106', '5xx': '#fa4d56' }, yPercent: true }), [errData, theme])
+  // Code frequency: diverging add/del bars per week. Bars (not line/area) so it renders at any density —
+  // weekly buckets over a short range collapse to 1-2 points, where a line would have nothing to draw.
   const freqEOption = useMemo(() => timeSeriesOption(freqData, { theme, type: 'bar', stack: true, scale: { additions: '#42be65', deletions: '#fa4d56' } }), [freqData, theme])
 
   return (
@@ -184,7 +201,7 @@ export function Dashboard() {
             Platform overview across {packages.length} packages
           </div>
         </div>
-        <MenuButton label={`Range · ${rangeOf(range).menu}`} kind="primary" size="md" menuAlignment="bottom-end">
+        <MenuButton label={`Metrics range · ${rangeOf(range).menu}`} kind="primary" size="md" menuAlignment="bottom-end">
           {TIME_RANGES.map((r) => (
             <MenuItem key={r.key} label={r.menu} onClick={() => setRange(r.key)} />
           ))}
@@ -208,15 +225,20 @@ export function Dashboard() {
           helper={<PointsTrend points={kpis.errorRateDelta} suffix="vs prior period" invert />}
           icon={<Warning size={20} />}
         />
-        <KpiTile label="MRR" value={formatCurrencyShort(dash.mrr)} icon={<Money size={20} />} />
+        <KpiTile
+          label="MRR"
+          value={formatCurrencyShort(dash.mrr)}
+          helper={<RatioTrend ratio={mrrDelta} suffix="vs prior period" />}
+          icon={<Money size={20} />}
+        />
       </KpiCluster>
 
       {/* Charts: principal on the left, error rate + code frequency beside it. All three follow the
-          global range picker; each card's subtitle echoes the applied window. */}
+          global Metrics range picker; subtitles are short static descriptions (the window is in the picker). */}
       <div className="scns-charts-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, marginTop: 40 }}>
         <ChartCard
           title="Requests"
-          subtitle={`stacked by package · ${rangeOf(range).subtitle}`}
+          subtitle="traffic stacked by package"
           right={<ChartLegend items={legendItems(groups)} />}
           fill
         >
@@ -229,7 +251,7 @@ export function Dashboard() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           <ChartCard
             title="Error rate"
-            subtitle={`4xx · 5xx, % of requests · ${rangeOf(range).subtitle}`}
+            subtitle="4xx · 5xx share of requests"
             right={<ChartLegend items={[{ label: '4xx', color: '#d2a106' }, { label: '5xx', color: '#fa4d56' }]} />}
           >
             {usageReady ? (
@@ -240,7 +262,7 @@ export function Dashboard() {
           </ChartCard>
           <ChartCard
             title="Code frequency"
-            subtitle={`lines / week · ${rangeOf(range).subtitle}`}
+            subtitle="lines added / removed"
             right={<ChartLegend items={[{ label: 'additions', color: '#42be65' }, { label: 'deletions', color: '#fa4d56' }]} />}
           >
             {freqData.length > 0 ? (
@@ -252,9 +274,9 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* Bottom row: two matching in-card tables side by side — fleet's recent commits (what shipped)
-          on the left, recent invoices (money, overdue first) on the right. Collapses to one column
-          under 1200px, where half-width gets too tight for the columns. */}
+      {/* Bottom row: matching in-card tables — fleet's recent commits (what shipped) on the left;
+          recent invoices (money, overdue first) over recent requests (live tail) on the right.
+          Collapses to one column under 1200px, where half-width gets too tight for the columns. */}
       <div className="scns-dash-tables">
         <Card title="Recent commits" subtitle="latest across packages" bodyPadding={0}>
           {commits.length === 0 ? (
@@ -437,7 +459,7 @@ function ChartPlaceholder({ loading, error, height }: { loading: boolean; error:
   )
 }
 
-// Period-over-period trend (last 24h vs prior 24h). Rendered only when a prior window exists;
+// Period-over-period trend (current window vs the prior one). Rendered only when a prior base exists;
 // nothing is shown otherwise so the operator never sees a fabricated arrow.
 function RatioTrend({ ratio, suffix }: { ratio: number | null; suffix: string }) {
   if (ratio == null) return null
