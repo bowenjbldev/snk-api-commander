@@ -59,7 +59,7 @@ export function PackageDetail() {
   // the whole live instance, so they live in the page header (not on the catalog card). Live only.
   const actionsMenu =
     packageRow && canControl ? (
-      <MenuButton label="Actions" kind="tertiary" size="md" menuAlignment="bottom-end">
+      <MenuButton label="Actions" kind="primary" size="md" menuAlignment="bottom-end">
         <MenuItem label="Change plan…" onClick={() => setChangePlanOpen(true)} />
         <MenuItemDivider />
         {packageRow.status !== 'active' && (

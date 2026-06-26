@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { Loading, OverflowMenu, OverflowMenuItem, Table, TableHead, TableRow, TableHeader, TableBody, TableCell, TableContainer } from '@carbon/react'
+import { Loading, MenuButton, MenuItem, Table, TableHead, TableRow, TableHeader, TableBody, TableCell, TableContainer } from '@carbon/react'
 import { Activity, CheckmarkOutline, Time, PauseOutline, Warning, Money } from '@carbon/icons-react'
 import { useStore, useProvisionedPackages } from '../store/store'
 import { useAppTheme } from '../providers/ThemeProvider'
-import { useTick } from '../providers/TickProvider'
 import { KpiCluster, KpiTile } from '../components/KpiCluster'
 import { Card } from '../components/Card'
 import { ChartCard, ChartLegend } from '../components/ChartCard'
@@ -18,39 +17,45 @@ import { TIME_RANGES, rangeOf, type RangeKey } from '../lib/timeRanges'
 import { formatCompact, formatCurrencyShort, formatInt, formatPercent } from '../lib/format'
 import type { GitDailyActivity, UsageSnapshot } from '../store/types'
 
-// Real platform KPIs derived from the usage-snapshot cache. Error rate is the aggregate
-// errors/requests over the most recent 24h; the deltas compare that window against the prior
-// 24h of the same 48h series (the only period-over-period signal the snapshot feed gives us).
+// Real platform KPIs over the selected window (driven by the global range picker). Totals are summed
+// across the window; the deltas split the window in half (later vs earlier) for a within-window trend —
+// for the 48h range that's exactly "last 24h vs prior 24h". Deltas are null when there's no earlier half.
 interface UsageKpis {
-  errorRate: number // 0..1 over the last 24h
-  requestsDelta: number | null // ratio vs prior 24h, or null when there's no prior window
-  errorRateDelta: number | null // pp change vs prior 24h, or null when there's no prior window
+  requests: number // total requests over the window
+  errorRate: number // 0..1 over the window
+  requestsDelta: number | null // later half vs earlier half, or null when there's no earlier half
+  errorRateDelta: number | null // pp change, later half vs earlier half
 }
 
 function deriveUsageKpis(snapshots: UsageSnapshot[]): UsageKpis {
-  if (snapshots.length === 0) return { errorRate: 0, requestsDelta: null, errorRateDelta: null }
-  const now = Date.now()
-  const dayMs = 24 * 3_600_000
+  if (snapshots.length === 0) return { requests: 0, errorRate: 0, requestsDelta: null, errorRateDelta: null }
+  let min = Infinity, max = -Infinity
+  for (const s of snapshots) {
+    const t = new Date(s.period_start).getTime()
+    if (t < min) min = t
+    if (t > max) max = t
+  }
+  const mid = (min + max) / 2 // split the window into earlier/later halves
   let curReq = 0, curErr = 0, prevReq = 0, prevErr = 0
   for (const s of snapshots) {
     // request_count/error_count arrive as strings from the API — coerce so the running
     // totals are numeric rather than concatenated.
     const requests = Number(s.request_count)
     const errors = Number(s.error_count)
-    const ageMs = now - new Date(s.period_start).getTime()
-    if (ageMs < dayMs) {
+    if (new Date(s.period_start).getTime() >= mid) {
       curReq += requests
       curErr += errors
-    } else if (ageMs < 2 * dayMs) {
+    } else {
       prevReq += requests
       prevErr += errors
     }
   }
-  const errorRate = curReq > 0 ? curErr / curReq : 0
+  const totalReq = curReq + prevReq
+  const errorRate = totalReq > 0 ? (curErr + prevErr) / totalReq : 0
   const hasPrior = prevReq > 0
   const requestsDelta = hasPrior ? (curReq - prevReq) / prevReq : null
-  const errorRateDelta = hasPrior ? errorRate - prevErr / prevReq : null
-  return { errorRate, requestsDelta, errorRateDelta }
+  const errorRateDelta = hasPrior ? (curReq > 0 ? curErr / curReq : 0) - prevErr / prevReq : null
+  return { requests: totalReq, errorRate, requestsDelta, errorRateDelta }
 }
 
 // Per-card usage fetch (its own time range). Polls every 30s; keeps the last good data on a refresh
@@ -106,17 +111,6 @@ function useCodeFreq(range: RangeKey) {
   return state
 }
 
-// Isolated so the 1s tick re-renders only this line — not the whole dashboard
-// (which would force every Carbon chart to re-layout each second).
-function UpdatedClock() {
-  const now = useTick()
-  return (
-    <div className="scns-mono scns-helper" style={{ fontSize: 11 }}>
-      updated {new Date(now).toISOString().slice(11, 19)} UTC
-    </div>
-  )
-}
-
 export function Dashboard() {
   const { theme } = useAppTheme()
   const navigate = useNavigate()
@@ -136,30 +130,24 @@ export function Dashboard() {
 
   const packageLabels = useMemo(() => new Map(packages.map((p) => [p.id, p.name])), [packages])
 
-  // Per-card time-range filters (each set from its own chart kebab). Each card fetches independently.
-  const [reqRange, setReqRange] = useState<RangeKey>('48h')
-  const [errRange, setErrRange] = useState<RangeKey>('48h')
-  const [freqRange, setFreqRange] = useState<RangeKey>('year')
+  // Single global time range — the picker top-right of the title drives every chart and the KPIs.
+  const [range, setRange] = useState<RangeKey>('48h')
+  const usage = useUsageSnapshots(range)
+  const freq = useCodeFreq(range)
 
-  const reqUsage = useUsageSnapshots(reqRange)
-  const errUsage = useUsageSnapshots(errRange)
-  const freq = useCodeFreq(freqRange)
-
-  // KPIs (last 24h vs prior 24h) follow the Requests card's window — at 24h there's no prior window,
-  // so the deltas read null (we never fabricate an arrow).
-  const kpis = useMemo(() => deriveUsageKpis(reqUsage.snapshots), [reqUsage.snapshots])
+  // KPIs follow the selected window (deltas compare its later vs earlier half; null when too short).
+  const kpis = useMemo(() => deriveUsageKpis(usage.snapshots), [usage.snapshots])
 
   // Charts render on ECharts (canvas) so we serve RAW data — bucket = fetch period (daily for year =
-  // 365 pts, no weekly collapse). Canvas handles the density that choked Carbon's SVG.
-  const reqSeries = useMemo(() => snapshotsToPlatformSeries(reqUsage.snapshots, packageLabels, rangeOf(reqRange).period), [reqUsage.snapshots, packageLabels, reqRange])
-  const errSeries = useMemo(() => snapshotsToPlatformSeries(errUsage.snapshots, packageLabels, rangeOf(errRange).period), [errUsage.snapshots, packageLabels, errRange])
-  const groups = reqSeries.requests.groups
-  const reqData = reqSeries.requests.data
-  const errData = errSeries.errorRate
+  // 365 pts, no weekly collapse). Canvas handles the density that choked Carbon's SVG. One fetch feeds
+  // both the Requests (stacked) and Error rate (% by status) charts.
+  const series = useMemo(() => snapshotsToPlatformSeries(usage.snapshots, packageLabels, rangeOf(range).period), [usage.snapshots, packageLabels, range])
+  const groups = series.requests.groups
+  const reqData = series.requests.data
+  const errData = series.errorRate
   const freqData = useMemo(() => dailyToCodeFrequency(freq.daily), [freq.daily])
 
-  const reqReady = !reqUsage.loading && !reqUsage.error && reqData.length > 0
-  const errReady = !errUsage.loading && !errUsage.error && errData.length > 0
+  const usageReady = !usage.loading && !usage.error && reqData.length > 0
 
   // ECharts options (canvas). Dashboard charts hide the x-axis for a compact look — the card subtitle
   // carries the window. Requests: stacked bars (top-4 packages + other). Error rate: stacked % area by
@@ -167,17 +155,6 @@ export function Dashboard() {
   const reqEOption = useMemo(() => timeSeriesOption(reqData, { theme, type: 'bar', stack: true, groups }), [reqData, groups, theme])
   const errEOption = useMemo(() => timeSeriesOption(errData, { theme, type: 'line', area: true, stack: true, scale: { '4xx': '#d2a106', '5xx': '#fa4d56' }, yPercent: true }), [errData, theme])
   const freqEOption = useMemo(() => timeSeriesOption(freqData, { theme, type: 'bar', stack: true, scale: { additions: '#42be65', deletions: '#fa4d56' } }), [freqData, theme])
-
-  // Kebab menu: the 5 time ranges + a link to the full Usage page. The applied range is shown by the
-  // card subtitle (no per-item checkmark — OverflowMenuItem has no native selected state).
-  const rangeMenu = (onChange: (k: RangeKey) => void) => (
-    <OverflowMenu size="sm" flipped aria-label="Chart options">
-      {TIME_RANGES.map((r) => (
-        <OverflowMenuItem key={r.key} itemText={r.menu} onClick={() => onChange(r.key)} />
-      ))}
-      <OverflowMenuItem hasDivider itemText="Open in Usage" onClick={() => navigate('/usage')} />
-    </OverflowMenu>
-  )
 
   return (
     <div className="scns-page">
@@ -188,7 +165,11 @@ export function Dashboard() {
             Platform overview across {packages.length} packages
           </div>
         </div>
-        <UpdatedClock />
+        <MenuButton label={`Range · ${rangeOf(range).menu}`} kind="primary" size="md" menuAlignment="bottom-end">
+          {TIME_RANGES.map((r) => (
+            <MenuItem key={r.key} label={r.menu} onClick={() => setRange(r.key)} />
+          ))}
+        </MenuButton>
       </div>
 
       {/* KPI row */}
@@ -197,54 +178,51 @@ export function Dashboard() {
         <KpiTile label="In grace" value={counts.grace} valueClass="scns-val-amber" helper="awaiting payment" icon={<Time size={20} />} iconClass="scns-val-amber" />
         <KpiTile label="Suspended" value={counts.suspended} valueClass="scns-val-red" helper="serving HTTP 402" icon={<PauseOutline size={20} />} iconClass={counts.suspended > 0 ? 'scns-val-red' : undefined} />
         <KpiTile
-          label="Requests (24h)"
-          value={formatCompact(dash.requests_24h)}
-          helper={<RatioTrend ratio={kpis.requestsDelta} suffix="vs prior 24h" />}
+          label="Requests"
+          value={formatCompact(kpis.requests)}
+          helper={<RatioTrend ratio={kpis.requestsDelta} suffix="vs prior period" />}
           icon={<Activity size={20} />}
         />
         <KpiTile
-          label="Error rate (24h)"
+          label="Error rate"
           value={formatPercent(kpis.errorRate, 1)}
-          helper={<PointsTrend points={kpis.errorRateDelta} suffix="vs prior 24h" invert />}
+          helper={<PointsTrend points={kpis.errorRateDelta} suffix="vs prior period" invert />}
           icon={<Warning size={20} />}
         />
         <KpiTile label="MRR" value={formatCurrencyShort(dash.mrr)} icon={<Money size={20} />} />
       </KpiCluster>
 
-      {/* Charts: principal on the left, error rate + code frequency beside it. Each card's kebab
-          carries its own time-range filter; the subtitle echoes the applied range. */}
+      {/* Charts: principal on the left, error rate + code frequency beside it. All three follow the
+          global range picker; each card's subtitle echoes the applied window. */}
       <div className="scns-charts-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, marginTop: 40 }}>
         <ChartCard
           title="Requests"
-          subtitle={`stacked by package · ${rangeOf(reqRange).subtitle}`}
+          subtitle={`stacked by package · ${rangeOf(range).subtitle}`}
           right={<ChartLegend items={legendItems(groups)} />}
-          action={rangeMenu(setReqRange)}
           fill
         >
-          {reqReady ? (
+          {usageReady ? (
             <EChart option={reqEOption} height="100%" />
           ) : (
-            <ChartPlaceholder loading={reqUsage.loading} error={reqUsage.error} height={400} />
+            <ChartPlaceholder loading={usage.loading} error={usage.error} height={400} />
           )}
         </ChartCard>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           <ChartCard
             title="Error rate"
-            subtitle={`4xx · 5xx, % of requests · ${rangeOf(errRange).subtitle}`}
+            subtitle={`4xx · 5xx, % of requests · ${rangeOf(range).subtitle}`}
             right={<ChartLegend items={[{ label: '4xx', color: '#d2a106' }, { label: '5xx', color: '#fa4d56' }]} />}
-            action={rangeMenu(setErrRange)}
           >
-            {errReady ? (
+            {usageReady ? (
               <EChart option={errEOption} height={150} />
             ) : (
-              <ChartPlaceholder loading={errUsage.loading} error={errUsage.error} height={150} />
+              <ChartPlaceholder loading={usage.loading} error={usage.error} height={150} />
             )}
           </ChartCard>
           <ChartCard
             title="Code frequency"
-            subtitle={`lines / week · ${rangeOf(freqRange).subtitle}`}
+            subtitle={`lines / week · ${rangeOf(range).subtitle}`}
             right={<ChartLegend items={[{ label: 'additions', color: '#42be65' }, { label: 'deletions', color: '#fa4d56' }]} />}
-            action={rangeMenu(setFreqRange)}
           >
             {freqData.length > 0 ? (
               <EChart option={freqEOption} height={150} />

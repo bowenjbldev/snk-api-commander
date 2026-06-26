@@ -100,7 +100,7 @@ export function ClientDetail() {
         </div>
         {(canProvision || canCreateInvoice || canEdit) && (
           <div style={{ flex: 'none' }}>
-            <MenuButton label="Actions" kind="tertiary" size="md" menuAlignment="bottom-end">
+            <MenuButton label="Actions" kind="primary" size="md" menuAlignment="bottom-end">
               {canProvision && (
                 <MenuItem label="New package for this client" onClick={() => setProvisionOpen(true)} />
               )}
