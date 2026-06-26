@@ -22,6 +22,7 @@ export function ChartCard({
   right,
   action,
   fill,
+  footer,
   children,
 }: {
   title: string
@@ -32,10 +33,12 @@ export function ChartCard({
       legend hugs the bottom with no empty gap — use on a card that the grid stretches to match a
       taller sibling column. Otherwise the chart keeps its fixed pixel height and hugs its content. */
   fill?: boolean
+  /** Optional compact summary band under the chart (a stat the chart's shape doesn't quantify). */
+  footer?: ReactNode
   children: ReactNode
 }) {
   return (
-    <Card title={title} subtitle={subtitle} action={action} className="scns-chartcard" bodyPadding={16}>
+    <Card title={title} subtitle={subtitle} action={action} footer={footer} className="scns-chartcard" bodyPadding={16}>
       <div style={{ display: 'flex', flexDirection: 'column', height: fill ? '100%' : undefined }}>
         <div style={fill ? { flex: 1, minHeight: 0 } : undefined}>{children}</div>
         {right && <div style={{ alignSelf: 'center', marginTop: 12 }}>{right}</div>}

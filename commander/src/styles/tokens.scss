@@ -373,6 +373,25 @@ body {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+// Footer band for the in-card tables — mirrors the header band (hairline divider, 16px inset) but with
+// smaller text: a row count on the left, a "View all" link on the right.
+.scns-cardtable__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 34px;
+  padding: 0 16px;
+  border-top: 1px solid var(--scns-border);
+  font-size: 11px;
+  color: var(--cds-text-secondary);
+}
+// Chart cards reuse Card's footer band but compact (like the table foot): a one-line summary stat.
+.scns-chartcard .scns-card__footer {
+  min-height: 34px;
+  padding: 0 16px;
+  font-size: 11px;
+  color: var(--cds-text-secondary);
+}
 
 // Recent-commits graph specifics (GitHub-network style): the coloured lane gutter + commit
 // description; the row/header/cell chrome is the shared `.scns-cardtable__*` above.

@@ -227,6 +227,15 @@ de 16px. Las columnas se fijan por tabla vía `grid-template-columns` inline. El
 gutter SVG sobre ese mismo chrome. Cada tabla **cortada a un tope** (`slice`) — el listado completo vive
 en su página (`/logs`, `/invoices`); una card con menos filas simplemente es **más baja** (sin relleno).
 
+**Footer band (resumen).** Cada card lleva un **footer** (`.scns-cardtable__foot` / `.scns-chartcard .scns-card__footer`,
+banda de 34px, texto 11px secondary, divisor arriba) que cierra la card y da un dato — nunca un "latest N"
+pelado ni el conteo de registros de un chart (sería ruido); siempre algo que la tabla/forma no canta y los
+KPIs no repiten:
+- **tablas** → commits `latest N · M packages`; requests `latest N · over {span}` (cuánto cubre el tail =
+  intensidad); invoices `N of M invoices` (señala truncado + total).
+- **charts** → requests `peak {N} · {pkg} leads`; error rate `{N} 4xx · {N} 5xx` (absolutos tras el %);
+  code frequency `+{adds} / −{dels} · net ±{N}`. Todo derivado de lo ya fetcheado, sin endpoint.
+
 **Fila de cards → altura automática.** Las cards del *bottom row* del Dashboard (`.scns-dash-tables`,
 grid `minmax(0,…)` + `.scns-dash-tables__col`) **crecen a su propio contenido** (`align-items: start`,
 sin stretch): commits a la izquierda; requests sobre invoices a la derecha. Cada columna termina donde

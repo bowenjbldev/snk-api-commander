@@ -16,7 +16,7 @@ import { snapshotsToPlatformSeries, dailyToCodeFrequency, packageColorMap, packa
 import { platformUsage, platformCodeFrequency, platformLogs } from '../lib/api'
 import { TIME_RANGES, rangeOf, type RangeKey } from '../lib/timeRanges'
 import { formatCompact, formatCurrency, formatCurrencyShort, formatInt, formatPercent } from '../lib/format'
-import { formatDayMonth } from '../lib/time'
+import { formatDayMonth, formatCountdownShort } from '../lib/time'
 import { BillingTag } from '../components/tags/StatusTag'
 import type { GitDailyActivity, Invoice, LogEntry, UsageSnapshot } from '../store/types'
 
@@ -149,6 +149,8 @@ export function Dashboard() {
   // colour in the Requests chart.
   const colorMap = useMemo(() => packageColorMap(packages), [packages])
   const tagTypeMap = useMemo(() => packageTagTypeMap(packages), [packages])
+  // Distinct packages among the shown commits — the "across N packages" breadth in the footer.
+  const commitPackages = useMemo(() => new Set(commits.slice(0, 20).map((c) => c.package_id ?? c.package)).size, [commits])
 
   // Single global time range — the picker top-right of the title drives every chart and the KPIs.
   const [range, setRange] = useState<RangeKey>('48h')
@@ -191,6 +193,33 @@ export function Dashboard() {
   // Code frequency: diverging add/del bars per week. Bars (not line/area) so it renders at any density —
   // weekly buckets over a short range collapse to 1-2 points, where a line would have nothing to draw.
   const freqEOption = useMemo(() => timeSeriesOption(freqData, { theme, type: 'bar', stack: true, scale: { additions: '#42be65', deletions: '#fa4d56' } }), [freqData, theme])
+
+  // Chart-footer summary stats — a number the chart's shape doesn't quantify and the KPI row doesn't
+  // already show. All derived from data already fetched (no endpoints).
+  const reqFoot = useMemo(() => {
+    if (reqData.length === 0) return null
+    const byDate = new Map<number, number>()
+    for (const p of reqData) byDate.set(+p.date, (byDate.get(+p.date) ?? 0) + p.value)
+    const peak = byDate.size ? Math.max(...byDate.values()) : 0
+    const top = groups[0] && groups[0] !== 'other' ? groups[0] : null
+    return { peak, top }
+  }, [reqData, groups])
+  const errFoot = useMemo(() => {
+    let c4 = 0, c5 = 0
+    for (const s of usage.snapshots) {
+      c4 += Number(s.count_4xx)
+      c5 += Number(s.count_5xx)
+    }
+    return { c4, c5 }
+  }, [usage.snapshots])
+  const freqFoot = useMemo(() => {
+    let adds = 0, dels = 0
+    for (const d of freq.daily) {
+      adds += d.additions
+      dels += d.deletions
+    }
+    return { adds, dels, net: adds - dels }
+  }, [freq.daily])
 
   return (
     <div className="scns-page">
@@ -240,6 +269,14 @@ export function Dashboard() {
           title="Requests"
           subtitle="traffic stacked by package"
           right={<ChartLegend items={legendItems(groups)} />}
+          footer={
+            usageReady && reqFoot ? (
+              <span>
+                peak <span className="scns-num">{formatCompact(reqFoot.peak)}</span>
+                {reqFoot.top ? <> · <span className="scns-mono">{reqFoot.top}</span> leads</> : null}
+              </span>
+            ) : undefined
+          }
           fill
         >
           {usageReady ? (
@@ -253,6 +290,15 @@ export function Dashboard() {
             title="Error rate"
             subtitle="4xx · 5xx share of requests"
             right={<ChartLegend items={[{ label: '4xx', color: '#d2a106' }, { label: '5xx', color: '#fa4d56' }]} />}
+            footer={
+              usageReady ? (
+                <span>
+                  <span className="scns-num" style={{ color: '#d2a106' }}>{formatInt(errFoot.c4)}</span> 4xx
+                  {' · '}
+                  <span className="scns-num" style={{ color: '#fa4d56' }}>{formatInt(errFoot.c5)}</span> 5xx
+                </span>
+              ) : undefined
+            }
           >
             {usageReady ? (
               <EChart option={errEOption} height={150} />
@@ -264,6 +310,17 @@ export function Dashboard() {
             title="Code frequency"
             subtitle="lines added / removed"
             right={<ChartLegend items={[{ label: 'additions', color: '#42be65' }, { label: 'deletions', color: '#fa4d56' }]} />}
+            footer={
+              freqData.length > 0 ? (
+                <span>
+                  <span className="scns-num" style={{ color: '#42be65' }}>+{formatInt(freqFoot.adds)}</span>
+                  {' / '}
+                  <span className="scns-num" style={{ color: '#fa4d56' }}>−{formatInt(freqFoot.dels)}</span>
+                  {' · net '}
+                  <span className="scns-num">{freqFoot.net >= 0 ? '+' : '−'}{formatInt(Math.abs(freqFoot.net))}</span>
+                </span>
+              ) : undefined
+            }
           >
             {freqData.length > 0 ? (
               <EChart option={freqEOption} height={150} />
@@ -282,12 +339,15 @@ export function Dashboard() {
           {commits.length === 0 ? (
             <EmptyState title="No commits yet" />
           ) : (
-            <CommitGraph
-              commits={commits.slice(0, 20)}
-              colorOf={(name) => (name ? colorMap[name] : undefined) ?? OTHER_COLOR}
-              tagTypeOf={(name) => (name ? tagTypeMap[name] : undefined) ?? 'cool-gray'}
-              onOpenPackage={(c) => navigate(c.package_id ? `/packages/${c.package_id}` : '/packages')}
-            />
+            <>
+              <CommitGraph
+                commits={commits.slice(0, 20)}
+                colorOf={(name) => (name ? colorMap[name] : undefined) ?? OTHER_COLOR}
+                tagTypeOf={(name) => (name ? tagTypeMap[name] : undefined) ?? 'cool-gray'}
+                onOpenPackage={(c) => navigate(c.package_id ? `/packages/${c.package_id}` : '/packages')}
+              />
+              <CardTableFooter label={`latest ${Math.min(commits.length, 20)} · ${commitPackages} ${commitPackages === 1 ? 'package' : 'packages'}`} />
+            </>
           )}
         </Card>
         {/* Right column: recent request logs (the live tail across the fleet) stacked over recent
@@ -337,6 +397,7 @@ function RecentInvoices({
   if (rows.length === 0) return <EmptyState title="No invoices yet" />
 
   return (
+    <>
     <div className="scns-cardtable">
       <div className="scns-cardtable__head" style={{ gridTemplateColumns: INVOICE_COLS }}>
         <span>Number</span>
@@ -365,7 +426,23 @@ function RecentInvoices({
         )
       })}
     </div>
+    <CardTableFooter label={`${rows.length} of ${invoices.length} invoices`} />
+    </>
   )
+}
+
+// Small footer band for the in-card tables: a row/record count (the full list lives on its page).
+function CardTableFooter({ label }: { label: string }) {
+  return (
+    <div className="scns-cardtable__foot">
+      <span>{label}</span>
+    </div>
+  )
+}
+
+// Compact duration for the requests footer span (sub-minute → seconds, else h/m via the shared helper).
+function fmtSpan(ms: number): string {
+  return ms < 60_000 ? `${Math.round(ms / 1000)}s` : formatCountdownShort(ms)
 }
 
 function logStatusColor(s: number): string {
@@ -407,7 +484,14 @@ function RecentLogs({ onOpen }: { onOpen: () => void }) {
     return <EmptyState title={state.error ? 'Logs unavailable' : state.loading ? 'Loading…' : 'No requests yet'} description={state.error ?? undefined} />
   }
 
+  // Time the shown tail covers (newest first), i.e. how fast these requests arrived — traffic intensity.
+  const logSpanMs =
+    state.logs.length > 1
+      ? Date.parse(state.logs[0].created_at) - Date.parse(state.logs[state.logs.length - 1].created_at)
+      : 0
+
   return (
+    <>
     <div className="scns-cardtable">
       <div className="scns-cardtable__head" style={{ gridTemplateColumns: LOG_COLS }}>
         <span>Package</span>
@@ -426,6 +510,8 @@ function RecentLogs({ onOpen }: { onOpen: () => void }) {
         </div>
       ))}
     </div>
+    <CardTableFooter label={`latest ${state.logs.length}${logSpanMs > 0 ? ` · over ${fmtSpan(logSpanMs)}` : ''}`} />
+    </>
   )
 }
 
