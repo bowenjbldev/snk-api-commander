@@ -342,6 +342,14 @@ body {
 .scns-dash-tables__col > .scns-card:last-child {
   flex: 1 1 0;
 }
+// Collapsed to one column (≤1200px): the column has no fixed height to distribute, so the last-child
+// `flex: 1 1 0` stretch would collapse the card to 0. Drop the stretch → natural (content) height.
+// Placed AFTER the base rule so it wins at equal specificity (media queries don't add specificity).
+@media (max-width: 1200px) {
+  .scns-dash-tables__col > .scns-card:last-child {
+    flex: 0 0 auto;
+  }
+}
 
 // Shared in-card table chrome (Dashboard full-width "Recent …" cards: commits + invoices). A header
 // band, 44px rows, hairline dividers and a 16px inset, so every table inside a card reads the same.
@@ -973,7 +981,9 @@ body {
 // theme zone, so it reads as a content surface (light in g10, dark in g100).
 .scns-notif {
   position: fixed;
-  z-index: 9000;
+  // Above the create side panel (`.c4p--side-panel`, z 9000) so the header's dropdown is never
+  // covered by it; still below the cmdk palette (9100) and the skip link (9200).
+  z-index: 9050;
   display: flex;
   flex-direction: column;
   inline-size: 22.5rem;

@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router'
 import { HeaderGlobalAction, Theme } from '@carbon/react'
 import { Notification, Settings, ErrorFilled, WarningAltFilled } from '@carbon/icons-react'
@@ -46,7 +47,10 @@ export function NotificationsBell() {
   useEffect(() => {
     if (!open) return
     const onDown = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
+      const t = e.target as HTMLElement
+      // The dropdown is portaled to <body> (outside wrapRef), so also treat clicks inside it as "in".
+      if (wrapRef.current?.contains(t) || t.closest?.('.scns-notif')) return
+      setOpen(false)
     }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false)
@@ -95,7 +99,7 @@ export function NotificationsBell() {
         </span>
       </HeaderGlobalAction>
 
-      {open && (
+      {open && createPortal(
         <Theme
           theme={theme}
           className="scns-notif"
@@ -147,7 +151,8 @@ export function NotificationsBell() {
             <span>Notification settings</span>
             <Settings size={16} />
           </button>
-        </Theme>
+        </Theme>,
+        document.body,
       )}
     </div>
   )

@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { CreateSidePanel } from '@carbon/ibm-products'
 
 // Right-side create flow — the canonical Carbon "Side panel" pattern (CreateSidePanel from
@@ -30,6 +30,21 @@ export function CreatePanel({
   onClose: () => void
   children: ReactNode
 }) {
+  // The slideIn panel pushes #main-content aside via inline marginInline*/inlineSize. If the host page
+  // unmounts (navigation) while the panel is open, the panel's own close cleanup never runs and the
+  // content stays pushed. Reset those inline styles on unmount as a safety net.
+  useEffect(
+    () => () => {
+      const el = document.querySelector<HTMLElement>('#main-content')
+      if (el) {
+        el.style.marginInlineStart = ''
+        el.style.marginInlineEnd = ''
+        el.style.inlineSize = ''
+      }
+    },
+    [],
+  )
+
   return (
     <CreateSidePanel
       className="scns-create-flow"

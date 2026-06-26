@@ -13,7 +13,6 @@ import { RelativeTime } from '../components/RelativeTime'
 import { useFirstLoad } from '../hooks/useFirstLoad'
 import { ClientCreatePanel } from '../components/ClientCreatePanel'
 import { platformUsage } from '../lib/api'
-import { formatMonthYear, formatAbsoluteUTC } from '../lib/time'
 import { formatCurrencyShort, formatCompact } from '../lib/format'
 import type { Client, UsageSnapshot } from '../store/types'
 
@@ -58,36 +57,22 @@ export function Clients() {
   const [countryFilter, setCountryFilter] = useState('all')
   const [createOpen, setCreateOpen] = useState(false)
 
-  // Per-client rollups — all derived from data already in the store (no new endpoints/tables).
-  // Package status mix (active/grace/suspended counts) per client — feeds the Health filter.
-  const statusMixByClient = useMemo(() => {
-    const m = new Map<number, StatusMix>()
+  // Per-client package rollups — all derived from data already in the store (no new endpoints/tables),
+  // built in ONE pass over packages: status mix (feeds the Health filter), worst quota_health (QuotaBar),
+  // latest last_seen (liveness) and summed 24h requests (Traffic).
+  const byClient = useMemo(() => {
+    const m = new Map<number, { statusMix: StatusMix; quotaHealth: number; lastSeen: string | null; req: number }>()
     for (const p of packages) {
       if (p.client_id == null) continue
-      const cur = m.get(p.client_id) ?? { active: 0, grace: 0, suspended: 0 }
-      cur[p.status] += 1
-      m.set(p.client_id, cur)
-    }
-    return m
-  }, [packages])
-
-  // Worst quota_health (0..>1 ratio) across a client's packages — surfaced as a QuotaBar.
-  const quotaHealthByClient = useMemo(() => {
-    const m = new Map<number, number>()
-    for (const p of packages) {
-      if (p.client_id == null) continue
-      m.set(p.client_id, Math.max(m.get(p.client_id) ?? 0, Number(p.quota_health || 0)))
-    }
-    return m
-  }, [packages])
-
-  // Most recent last_seen across a client's packages (ISO compares lexically) — liveness signal.
-  const lastSeenByClient = useMemo(() => {
-    const m = new Map<number, string>()
-    for (const p of packages) {
-      if (p.client_id == null || p.last_seen == null) continue
-      const cur = m.get(p.client_id)
-      if (cur == null || p.last_seen > cur) m.set(p.client_id, p.last_seen)
+      let e = m.get(p.client_id)
+      if (!e) {
+        e = { statusMix: { active: 0, grace: 0, suspended: 0 }, quotaHealth: 0, lastSeen: null, req: 0 }
+        m.set(p.client_id, e)
+      }
+      e.statusMix[p.status] += 1
+      e.quotaHealth = Math.max(e.quotaHealth, Number(p.quota_health || 0))
+      if (p.last_seen != null && (e.lastSeen == null || p.last_seen > e.lastSeen)) e.lastSeen = p.last_seen
+      e.req += Number(p.requests_24h || 0)
     }
     return m
   }, [packages])
@@ -123,16 +108,6 @@ export function Clients() {
     }
   }, [packages])
 
-  // Live 24h traffic per client = sum of their provisioned packages' requests_24h.
-  const reqByClient = useMemo(() => {
-    const m = new Map<number, number>()
-    for (const p of packages) {
-      if (p.client_id == null) continue
-      m.set(p.client_id, (m.get(p.client_id) ?? 0) + Number(p.requests_24h || 0))
-    }
-    return m
-  }, [packages])
-
   // MRR per client = current subscription terms (ended_at == null), excluding overdue —
   // same rule the Dashboard MRR uses (store.ts loadData).
   const mrrByClient = useMemo(() => {
@@ -164,7 +139,7 @@ export function Clients() {
 
   const matchesHealth = (c: Client): boolean => {
     if (healthFilter === 'all') return true
-    const mix = statusMixByClient.get(c.id)
+    const mix = byClient.get(c.id)?.statusMix
     if (!mix) return false
     if (healthFilter === 'suspended') return mix.suspended > 0
     if (healthFilter === 'grace') return mix.grace > 0
@@ -182,7 +157,7 @@ export function Clients() {
         return true
       }),
     // matchesHealth closes over healthFilter + statusMixByClient; list them so it re-runs.
-    [clients, statusFilter, billingFilter, countryFilter, showCountryFilter, healthFilter, overdueClients, statusMixByClient], // eslint-disable-line react-hooks/exhaustive-deps
+    [clients, statusFilter, billingFilter, countryFilter, showCountryFilter, healthFilter, overdueClients, byClient], // eslint-disable-line react-hooks/exhaustive-deps
   )
 
   const anyFilter =
@@ -195,7 +170,7 @@ export function Clients() {
     setCountryFilter('all')
   }
 
-  const active = clients.filter((c) => c.status === 'active').length
+  const active = useMemo(() => clients.filter((c) => c.status === 'active').length, [clients])
   const totalMrr = useMemo(() => [...mrrByClient.values()].reduce((a, v) => a + v, 0), [mrrByClient])
 
   const columns: ShellColumn<Client>[] = [
@@ -243,12 +218,12 @@ export function Clients() {
       key: 'traffic',
       header: 'Traffic · 24h',
       sortable: true,
-      sortValue: (c) => reqByClient.get(c.id) ?? 0,
+      sortValue: (c) => byClient.get(c.id)?.req ?? 0,
       width: 160,
       render: (c) => (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
           <span className="scns-num" style={{ fontSize: 12 }}>
-            {formatCompact(reqByClient.get(c.id) ?? 0)}
+            {formatCompact(byClient.get(c.id)?.req ?? 0)}
           </span>
           <Sparkline data={spark.get(c.id) ?? []} />
         </div>
@@ -258,10 +233,10 @@ export function Clients() {
       key: 'health',
       header: 'Quota health',
       sortable: true,
-      sortValue: (c) => quotaHealthByClient.get(c.id) ?? -1,
+      sortValue: (c) => byClient.get(c.id)?.quotaHealth ?? -1,
       width: 150,
       render: (c) => {
-        const h = quotaHealthByClient.get(c.id)
+        const h = byClient.get(c.id)?.quotaHealth
         return h == null ? (
           <span className="scns-num scns-helper" style={{ fontSize: 12 }}>—</span>
         ) : (
@@ -273,35 +248,16 @@ export function Clients() {
       key: 'last_seen',
       header: 'Last seen',
       sortable: true,
-      sortValue: (c) => lastSeenByClient.get(c.id) ?? '',
+      sortValue: (c) => byClient.get(c.id)?.lastSeen ?? '',
       width: 130,
       render: (c) => {
-        const ls = lastSeenByClient.get(c.id)
+        const ls = byClient.get(c.id)?.lastSeen
         return ls ? (
           <RelativeTime iso={ls} />
         ) : (
           <span className="scns-reltime">never</span>
         )
       },
-    },
-    {
-      key: 'email',
-      header: 'Email',
-      sortable: true,
-      sortValue: (c) => c.email,
-      render: (c) => <span className="scns-mono" style={{ fontSize: 12 }}>{c.email}</span>,
-    },
-    {
-      key: 'created',
-      header: 'Created',
-      sortable: true,
-      sortValue: (c) => c.created_at,
-      width: 110,
-      render: (c) => (
-        <span className="scns-reltime" title={formatAbsoluteUTC(c.created_at)}>
-          {formatMonthYear(c.created_at)}
-        </span>
-      ),
     },
   ]
 

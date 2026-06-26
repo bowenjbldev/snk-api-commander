@@ -32,5 +32,7 @@ export function EChart({ option, height = '100%' }: { option: any; height?: numb
     chartRef.current?.setOption(option, true)
   }, [option])
 
-  return <div ref={elRef} style={{ width: '100%', height, minHeight: typeof height === 'number' ? undefined : 240 }} />
+  // minWidth: 0 lets the host shrink below the canvas's intrinsic pixel width in flex/grid parents,
+  // so the ResizeObserver fires on shrink (without it the canvas pins the column wide).
+  return <div ref={elRef} style={{ width: '100%', minWidth: 0, height, minHeight: typeof height === 'number' ? undefined : 240 }} />
 }

@@ -313,8 +313,7 @@ Pantalla de acceso del operador. Email + password → token Sanctum (Bearer) gua
   re-layout). Columnas, ordenadas por relevancia:
   - **Client** — una sola línea: **tag de estado** del cliente (active/inactive) a la izquierda +
     nombre link en negrita. (El riesgo de impago se ve vía el KPI "At risk" y el filtro Billing.)
-  - **Email** — contacto del cliente (mono).
-  - **MRR** — mono, `$x` del término vigente excl. overdue, "—" si 0.
+  - **MRR** — tag `cool-gray` `$x/mo` del término vigente excl. overdue, "—" si 0.
   - **Traffic · 24h** — `requests_24h` (suma de sus packages) + **sparkline** de la tendencia 48h
     (`Sparkline`, SVG; serie agregada de `GET /usage/platform` por `package_id → client_id`).
   - **Quota health** — peor `quota_health` entre sus packages como barra verde/ámbar/roja (reusa

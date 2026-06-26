@@ -201,7 +201,7 @@ export function Dashboard() {
             Platform overview across {packages.length} packages
           </div>
         </div>
-        <MenuButton label={`Metrics range · ${rangeOf(range).menu}`} kind="primary" size="md" menuAlignment="bottom-end">
+        <MenuButton label={`Metrics range · ${rangeOf(range).menu}`} kind="primary" size="lg" menuAlignment="bottom-end">
           {TIME_RANGES.map((r) => (
             <MenuItem key={r.key} label={r.menu} onClick={() => setRange(r.key)} />
           ))}
@@ -235,7 +235,7 @@ export function Dashboard() {
 
       {/* Charts: principal on the left, error rate + code frequency beside it. All three follow the
           global Metrics range picker; subtitles are short static descriptions (the window is in the picker). */}
-      <div className="scns-charts-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, marginTop: 40 }}>
+      <div className="scns-charts-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 24, marginTop: 40 }}>
         <ChartCard
           title="Requests"
           subtitle="traffic stacked by package"
