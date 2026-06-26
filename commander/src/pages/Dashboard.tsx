@@ -24,11 +24,11 @@ const DAY_MS = 86_400_000
 // Grid template for the dashboard invoice ledger (Package omitted — commits names it): Number ·
 // Client · Amount · Due · Status. Sits at ~45% width beside the wider commits table.
 const INVOICE_COLS = '118px minmax(0, 1fr) 92px 128px 100px'
-const INVOICE_CAP = 5 // rows shown; empty slots pad to this so the card height is steady with fewer
+const INVOICE_CAP = 5 // max rows shown (the full list lives on /invoices)
 // Recent request logs card: Package (link) · Method · Route · Status · ms. Time is omitted (the rows
 // are newest-first, so order conveys recency) to keep the route readable in the narrow column.
 const LOG_COLS = '78px 56px minmax(0, 1fr) 48px 48px'
-const LOG_CAP = 12 // rows shown; empty slots pad to this so its height is steady
+const LOG_CAP = 12 // max rows fetched/shown (the full explorer lives on /logs)
 
 // Real platform KPIs over the selected window (driven by the global range picker). Totals are summed
 // across the window; the deltas split the window in half (later vs earlier) for a within-window trend —
@@ -275,7 +275,7 @@ export function Dashboard() {
       </div>
 
       {/* Bottom row: matching in-card tables — fleet's recent commits (what shipped) on the left;
-          recent invoices (money, overdue first) over recent requests (live tail) on the right.
+          recent requests (live tail) over recent invoices (money, overdue first) on the right.
           Collapses to one column under 1200px, where half-width gets too tight for the columns. */}
       <div className="scns-dash-tables">
         <Card title="Recent commits" subtitle="latest across packages" bodyPadding={0}>
@@ -284,25 +284,24 @@ export function Dashboard() {
           ) : (
             <CommitGraph
               commits={commits.slice(0, 20)}
-              cap={20}
               colorOf={(name) => (name ? colorMap[name] : undefined) ?? OTHER_COLOR}
               tagTypeOf={(name) => (name ? tagTypeMap[name] : undefined) ?? 'cool-gray'}
               onOpenPackage={(c) => navigate(c.package_id ? `/packages/${c.package_id}` : '/packages')}
             />
           )}
         </Card>
-        {/* Right column: recent invoices (money, overdue first) stacked over recent request logs (the
-            live tail across the fleet). Same in-card table chrome throughout. */}
+        {/* Right column: recent request logs (the live tail across the fleet) stacked over recent
+            invoices (money, overdue first). Same in-card table chrome throughout. */}
         <div className="scns-dash-tables__col">
+          <Card title="Recent requests" subtitle="latest across the fleet" bodyPadding={0}>
+            <RecentLogs onOpen={() => navigate('/logs')} />
+          </Card>
           <Card title="Recent invoices" subtitle="overdue first" bodyPadding={0}>
             <RecentInvoices
               invoices={invoices}
               clientName={(id) => clients.find((c) => c.id === id)?.name ?? '—'}
               onOpen={() => navigate('/invoices')}
             />
-          </Card>
-          <Card title="Recent requests" subtitle="latest across the fleet" bodyPadding={0}>
-            <RecentLogs onOpen={() => navigate('/logs')} />
           </Card>
         </div>
       </div>
@@ -365,21 +364,7 @@ function RecentInvoices({
           </div>
         )
       })}
-      <CardTableFillers count={INVOICE_CAP - rows.length} />
     </div>
-  )
-}
-
-// Empty row slots that pad an in-card table up to its cap, so a partially-filled card keeps a steady
-// height and visibly reads as N slots (with dividers) rather than blank space.
-function CardTableFillers({ count }: { count: number }) {
-  if (count <= 0) return null
-  return (
-    <>
-      {Array.from({ length: count }, (_, i) => (
-        <div key={`filler-${i}`} className="scns-cardtable__row scns-cardtable__row--empty" aria-hidden="true" />
-      ))}
-    </>
   )
 }
 
@@ -440,7 +425,6 @@ function RecentLogs({ onOpen }: { onOpen: () => void }) {
           <span className="scns-cardtable__cell scns-cardtable__num scns-num">{formatInt(l.duration_ms)}</span>
         </div>
       ))}
-      <CardTableFillers count={LOG_CAP - state.logs.length} />
     </div>
   )
 }

@@ -21,11 +21,9 @@ interface Props {
   /** Carbon Tag type for a package name (matches the lane hue). */
   tagTypeOf: (pkg: string | null | undefined) => PackageTagType
   onOpenPackage: (c: RecentCommit) => void
-  /** Pad with empty row slots up to this many rows so the card height is steady (like Recent invoices). */
-  cap?: number
 }
 
-export function CommitGraph({ commits, colorOf, tagTypeOf, onOpenPackage, cap }: Props) {
+export function CommitGraph({ commits, colorOf, tagTypeOf, onOpenPackage }: Props) {
   const keyOf = (c: RecentCommit) => c.package ?? `pkg-${c.package_id ?? '?'}`
   const laneColor = (k: string) => colorOf(k.startsWith('pkg-') ? null : k)
 
@@ -114,10 +112,6 @@ export function CommitGraph({ commits, colorOf, tagTypeOf, onOpenPackage, cap }:
           </div>
         )
       })}
-      {cap != null &&
-        Array.from({ length: Math.max(0, cap - commits.length) }, (_, i) => (
-          <div key={`filler-${i}`} className="scns-cardtable__row scns-cardtable__row--empty" aria-hidden="true" />
-        ))}
     </div>
   )
 }
