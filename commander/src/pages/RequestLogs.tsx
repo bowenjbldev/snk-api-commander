@@ -12,20 +12,12 @@ import { MethodTag } from '../components/tags/MethodTag'
 import { useFirstLoad } from '../hooks/useFirstLoad'
 import { platformLogs } from '../lib/api'
 import { formatInt } from '../lib/format'
+import { logTime } from '../lib/time'
+import { statusColor } from '../lib/statusColor'
 import type { LogEntry } from '../store/types'
 
 // Sentinel for the "no package filter" Dropdown option (cross-fleet view).
 const ALL_PACKAGES = 'All packages'
-
-function logTime(iso: string): string {
-  return `${new Date(iso).toISOString().slice(11, 23)} UTC`
-}
-function statusColor(s: number): string {
-  if (s < 300) return 'var(--scns-success)'
-  if (s < 400) return 'var(--cds-text-helper)'
-  if (s < 500) return 'var(--scns-warn-text)'
-  return 'var(--scns-error)'
-}
 
 interface LogsLoad {
   loading: boolean

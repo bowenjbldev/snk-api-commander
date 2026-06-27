@@ -17,16 +17,8 @@ import { EmptyState } from '../../components/EmptyState'
 import { MethodTag } from '../../components/tags/MethodTag'
 import { packagesApi } from '../../lib/api'
 import { formatInt } from '../../lib/format'
-
-function logTime(iso: string): string {
-  return `${new Date(iso).toISOString().slice(11, 23)} UTC`
-}
-function statusColor(s: number): string {
-  if (s < 300) return 'var(--scns-success)'
-  if (s < 400) return 'var(--cds-text-helper)'
-  if (s < 500) return 'var(--scns-warn-text)'
-  return 'var(--scns-error)'
-}
+import { logTime } from '../../lib/time'
+import { statusColor } from '../../lib/statusColor'
 
 interface LogsLoad {
   loading: boolean

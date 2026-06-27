@@ -21,13 +21,4 @@ class CommanderPackageRegistryService
 
         return array_values(array_unique(array_map('basename', $dirs)));
     }
-
-    /**
-     * No-op en el modelo instancia: las filas de commander_packages las crea el provisioning
-     * (con client_id + slug). No hay catalogo name-only que sincronizar. Devuelve 0.
-     */
-    public function syncFromDisk(): int
-    {
-        return 0;
-    }
 }

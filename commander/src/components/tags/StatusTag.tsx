@@ -1,7 +1,12 @@
+import type { ReactNode } from 'react'
 import { Tag } from '@carbon/react'
 import type { BillingStatus, ClientStatus, Package } from '../../store/types'
-import { AmberTag } from './AmberTag'
 import { GraceCountdown } from '../GraceCountdown'
+
+// Carbon ships no warm-amber tag; this matches the design tokens + pill shape.
+function AmberTag({ children, small }: { children: ReactNode; small?: boolean }) {
+  return <span className={`scns-tag scns-tag--amber${small ? ' scns-tag--sm' : ''}`}>{children}</span>
+}
 
 // Package lifecycle: active → green "Operational", grace → amber w/ live
 // countdown, suspended → red "Suspended". Lee el estado del package provisionado (commander_packages).

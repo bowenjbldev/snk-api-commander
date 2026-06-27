@@ -1,6 +1,7 @@
 // Chart-data transforms: shape API rollups/snapshots/git-activity into ECharts series.
 import type { GitDailyActivity, HttpMethod, Package, TopEndpoint, UsageRollup, UsageSnapshot } from '../store/types'
 import type { Bucket } from './timeRanges'
+import { DAY_MS } from './time'
 
 export interface Point {
   group: string
@@ -191,7 +192,6 @@ export function snapshotsToPlatformSeries(snapshots: UsageSnapshot[], packageLab
 
 // ── Git insights (Insights tab) — from GET /packages/{name}/insights ─────────────
 
-const DAY_MS = 86_400_000
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 

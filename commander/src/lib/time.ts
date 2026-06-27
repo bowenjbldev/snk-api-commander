@@ -6,8 +6,16 @@ const MIN = 60_000
 const HOUR = 60 * MIN
 const DAY = 24 * HOUR
 
+/** One day in ms (86_400_000) — shared by chart bucketing and date-window math. */
+export const DAY_MS = DAY
+
 export function msUntil(iso: string, nowMs: number): number {
   return new Date(iso).getTime() - nowMs
+}
+
+/** "14:02:10.123 UTC" — request-log timestamps (millisecond precision). */
+export function logTime(iso: string): string {
+  return `${new Date(iso).toISOString().slice(11, 23)} UTC`
 }
 
 /** "3h ago", "2m ago", "just now", or "in 5h" for the future. */

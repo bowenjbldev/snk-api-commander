@@ -18,11 +18,11 @@ import { snapshotsToPlatformSeries, dailyToCodeFrequency, packageColorMap, packa
 import { platformUsage, platformCodeFrequency, platformLogs } from '../lib/api'
 import { TIME_RANGES, rangeOf, type RangeKey } from '../lib/timeRanges'
 import { formatCompact, formatCurrency, formatCurrencyShort, formatInt, formatPercent } from '../lib/format'
-import { formatDayMonth, formatCountdownShort } from '../lib/time'
+import { formatDayMonth, formatCountdownShort, DAY_MS } from '../lib/time'
+import { statusColor } from '../lib/statusColor'
 import { BillingTag } from '../components/tags/StatusTag'
 import type { GitDailyActivity, Invoice, LogEntry, UsageSnapshot } from '../store/types'
 
-const DAY_MS = 86_400_000
 // Grid template for the dashboard invoice ledger (Package omitted — commits names it): Number ·
 // Client · Amount · Due · Status. Sits at ~45% width beside the wider commits table.
 const INVOICE_COLS = '118px minmax(0, 1fr) 92px 128px 100px'
@@ -439,13 +439,6 @@ function fmtSpan(ms: number): string {
   return ms < 60_000 ? `${Math.round(ms / 1000)}s` : formatCountdownShort(ms)
 }
 
-function logStatusColor(s: number): string {
-  if (s < 300) return 'var(--scns-success)'
-  if (s < 400) return 'var(--cds-text-helper)'
-  if (s < 500) return 'var(--scns-warn-text)'
-  return 'var(--scns-error)'
-}
-
 // Recent request logs: the live tail of commander_request_logs across the whole fleet (GET /logs, no
 // package filter), newest first. Its own fetch + 15s poll, keeping the last good data on a refresh
 // error so the card doesn't blank. Capped to a glance; the full explorer lives on /logs.
@@ -499,7 +492,7 @@ function RecentLogs({ onOpen }: { onOpen: () => void }) {
           <span className="scns-cardtable__cell scns-mono" style={{ color: 'var(--cds-link-primary)' }}>{l.package ?? '—'}</span>
           <span className="scns-cardtable__cell"><MethodTag method={l.method} /></span>
           <span className="scns-cardtable__cell scns-mono">{l.route}</span>
-          <span className="scns-cardtable__cell scns-mono" style={{ color: logStatusColor(l.status), fontWeight: 600 }}>{l.status}</span>
+          <span className="scns-cardtable__cell scns-mono" style={{ color: statusColor(l.status), fontWeight: 600 }}>{l.status}</span>
           <span className="scns-cardtable__cell scns-cardtable__num scns-num">{formatInt(l.duration_ms)}</span>
         </div>
       ))}

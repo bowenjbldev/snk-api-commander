@@ -5,7 +5,6 @@ namespace Packages\Commander\Providers;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\ServiceProvider;
 use Packages\Commander\Console\Commands\CommanderGitSyncCommand;
-use Packages\Commander\Console\Commands\CommanderPackagesSyncCommand;
 use Packages\Commander\Console\Commands\CommanderRefreshCommand;
 use Packages\Commander\Console\Commands\CommanderQuotaMeasureCommand;
 use Packages\Commander\Console\Commands\CommanderStatusCommand;
@@ -34,7 +33,6 @@ class CommanderServiceProvider extends ServiceProvider
                 CommanderStatusCommand::class,
                 CommanderUsageRollupCommand::class,
                 CommanderQuotaMeasureCommand::class,
-                CommanderPackagesSyncCommand::class,
                 CommanderGitSyncCommand::class,
             ]);
 

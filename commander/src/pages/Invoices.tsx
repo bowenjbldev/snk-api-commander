@@ -12,7 +12,7 @@ import { BillingTag } from '../components/tags/StatusTag'
 import { InvoiceFormModal } from '../components/modals/InvoiceFormModal'
 import { TypedConfirmModal } from '../components/modals/TypedConfirmModal'
 import { formatCurrency } from '../lib/format'
-import { formatDayMonth } from '../lib/time'
+import { formatDayMonth, DAY_MS } from '../lib/time'
 import type { Invoice } from '../store/types'
 
 const STATUS_ITEMS = [
@@ -21,8 +21,6 @@ const STATUS_ITEMS = [
   { id: 'pending', label: 'Status: Pending' },
   { id: 'overdue', label: 'Status: Overdue' },
 ]
-
-const DAY = 86_400_000
 
 export function Invoices() {
   const invoices = useStore((s) => s.invoices)
@@ -67,7 +65,7 @@ export function Invoices() {
     }
   }, [invoices])
 
-  const daysLate = (due: string) => Math.floor((Date.now() - new Date(due).getTime()) / DAY)
+  const daysLate = (due: string) => Math.floor((Date.now() - new Date(due).getTime()) / DAY_MS)
 
   const columns: ShellColumn<Invoice>[] = [
     {

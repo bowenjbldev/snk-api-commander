@@ -62,7 +62,6 @@ class CommanderPackagesController extends CoreBaseApiController
             return $response;
         }
 
-        $this->registry->syncFromDisk();
         $onDisk = $this->registry->availableOnDisk();
         $planCounts = CommanderPlanModel::query()
             ->selectRaw('package, COUNT(*) as c')->groupBy('package')->pluck('c', 'package');
@@ -85,8 +84,6 @@ class CommanderPackagesController extends CoreBaseApiController
             return $response;
         }
 
-        $this->registry->syncFromDisk();
-
         $record = CommanderPackageModel::query()
             ->with(['client', 'subscription', 'quotas'])
             ->where('name', $package)
@@ -102,11 +99,6 @@ class CommanderPackagesController extends CoreBaseApiController
             'on_disk' => in_array($record->name, $this->registry->availableOnDisk(), true),
             'plan_count' => $planCount,
         ]));
-    }
-
-    public function update(Request $request, $package = null): JsonResponse
-    {
-        return parent::update($request, $package);
     }
 
     /**
