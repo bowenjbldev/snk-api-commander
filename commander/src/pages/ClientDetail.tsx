@@ -221,6 +221,7 @@ function PackagesPanel({
   return (
     <Card
       title="Packages"
+      subtitle="provisioned for this client"
       bodyPadding={0}
       action={
         <OverflowMenu size="sm" flipped aria-label="Packages actions">
@@ -268,6 +269,7 @@ function InvoicesPanel({
   return (
     <Card
       title="Invoices"
+      subtitle="billing history"
       bodyPadding={0}
       action={
         <OverflowMenu size="sm" flipped aria-label="Invoices actions">
@@ -391,14 +393,14 @@ function ClientEditForm({ client, canEdit }: { client: Client; canEdit: boolean 
 
   return (
     <>
-    <Card title="Details" bodyClassName="scns-client-form" bodyPadding={24}>
+    <Card title="Details" subtitle="contact & billing" bodyClassName="scns-client-form" bodyPadding={24}>
       <p className="scns-section-label">Contact</p>
       <div className="scns-form-grid">
         <TextInput id="cd-name" labelText="Name" value={name} disabled={ro} onChange={(e) => setName(e.target.value)} invalid={submitted && !!nameError} invalidText={nameError} />
         <TextInput id="cd-company" labelText="Company" value={company} disabled={ro} onChange={(e) => setCompany(e.target.value)} />
         <TextInput id="cd-email" labelText="Email" value={email} disabled={ro} onChange={(e) => setEmail(e.target.value)} invalid={submitted && !!emailError} invalidText={emailError} />
         <TextInput id="cd-phone" labelText="Phone (optional)" value={phone} disabled={ro} onChange={(e) => setPhone(e.target.value)} />
-        <TextArea id="cd-notes" labelText="Notes (optional)" rows={2} value={notes} disabled={ro} onChange={(e) => setNotes(e.target.value)} />
+        <TextArea id="cd-notes" labelText="Notes (optional)" rows={4} value={notes} disabled={ro} onChange={(e) => setNotes(e.target.value)} />
       </div>
 
       <p className="scns-section-label" style={{ marginTop: 32 }}>Billing</p>
