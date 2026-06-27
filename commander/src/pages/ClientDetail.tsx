@@ -59,6 +59,21 @@ export function ClientDetail() {
     [subscriptions, clientId],
   )
   const requests24h = useMemo(() => packages.reduce((a, p) => a + Number(p.requests_24h || 0), 0), [packages])
+  // MoM deltas where a prior value is honestly derivable for this client (provisioned_at / active
+  // subscription terms). Null with no prior base → tile falls back to its descriptive helper.
+  const deltas = useMemo(() => {
+    const cutoff = Date.now() - 30 * 86_400_000
+    const ratio = (now: number, prior: number) => (prior > 0 ? (now - prior) / prior : null)
+    const pkgsPrior = packages.filter((p) => p.provisioned_at != null && Date.parse(p.provisioned_at) <= cutoff).length
+    let mrrPrior = 0
+    for (const s of subscriptions) {
+      if (s.client_id !== clientId) continue
+      const started = Date.parse(s.started_at)
+      const ended = s.ended_at ? Date.parse(s.ended_at) : null
+      if (started <= cutoff && (ended == null || ended > cutoff)) mrrPrior += Number(s.price_monthly) || 0
+    }
+    return { packages: ratio(packages.length, pkgsPrior), mrr: ratio(mrr, mrrPrior) }
+  }, [packages, subscriptions, clientId, mrr])
   const worstHealth = useMemo(
     () => (packages.length ? Math.max(...packages.map((p) => Number(p.quota_health || 0))) : null),
     [packages],
@@ -100,7 +115,7 @@ export function ClientDetail() {
         </div>
         {(canProvision || canCreateInvoice || canEdit) && (
           <div style={{ flex: 'none' }}>
-            <MenuButton label="Actions" kind="primary" size="md" menuAlignment="bottom-end">
+            <MenuButton label="Actions" kind="primary" size="lg" menuAlignment="bottom-end">
               {canProvision && (
                 <MenuItem label="New package for this client" onClick={() => setProvisionOpen(true)} />
               )}
@@ -131,8 +146,8 @@ export function ClientDetail() {
 
       <div style={{ margin: '24px 0' }}>
         <KpiCluster columns={4}>
-          <KpiTile label="Packages" value={packages.length} helper="provisioned" icon={<Box size={20} />} />
-          <KpiTile label="MRR" value={mrr > 0 ? formatCurrencyShort(mrr) : '—'} helper="current terms" icon={<Money size={20} />} />
+          <KpiTile label="Packages" value={packages.length} helper={deltas.packages != null ? <Delta ratio={deltas.packages} /> : 'provisioned'} icon={<Box size={20} />} />
+          <KpiTile label="MRR" value={mrr > 0 ? formatCurrencyShort(mrr) : '—'} helper={deltas.mrr != null ? <Delta ratio={deltas.mrr} /> : 'current terms'} icon={<Money size={20} />} />
           <KpiTile label="Requests · 24h" value={formatCompact(requests24h)} helper="across packages" icon={<Activity size={20} />} />
           <KpiTile
             label="Quota health"
@@ -416,5 +431,15 @@ function ClientEditForm({ client, canEdit }: { client: Client; canEdit: boolean 
       </div>
     )}
     </>
+  )
+}
+
+// Month-over-month delta for a KPI tile helper: green up / red down, only when a prior base exists.
+function Delta({ ratio }: { ratio: number }) {
+  const up = ratio >= 0
+  return (
+    <span className={up ? 'scns-val-green' : 'scns-val-red'}>
+      {up ? '▲' : '▼'} {formatPercent(Math.abs(ratio))} · 30d
+    </span>
   )
 }

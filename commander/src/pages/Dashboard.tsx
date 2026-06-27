@@ -273,6 +273,7 @@ export function Dashboard() {
             usageReady && reqFoot ? (
               <span>
                 peak <span className="scns-num">{formatCompact(reqFoot.peak)}</span>
+                {rangeOf(range).period === 'hour' ? '/h' : '/d'}
                 {reqFoot.top ? <> · <span className="scns-mono">{reqFoot.top}</span> leads</> : null}
               </span>
             ) : undefined

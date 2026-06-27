@@ -13,7 +13,7 @@ import { RelativeTime } from '../components/RelativeTime'
 import { useFirstLoad } from '../hooks/useFirstLoad'
 import { ClientCreatePanel } from '../components/ClientCreatePanel'
 import { platformUsage } from '../lib/api'
-import { formatCurrencyShort, formatCompact } from '../lib/format'
+import { formatCurrencyShort, formatCompact, formatPercent } from '../lib/format'
 import type { Client, UsageSnapshot } from '../store/types'
 
 type StatusMix = { active: number; grace: number; suspended: number }
@@ -173,6 +173,27 @@ export function Clients() {
   const active = useMemo(() => clients.filter((c) => c.status === 'active').length, [clients])
   const totalMrr = useMemo(() => [...mrrByClient.values()].reduce((a, v) => a + v, 0), [mrrByClient])
 
+  // Month-over-month growth for the metrics where a prior value is honestly derivable (created_at /
+  // provisioned_at / active subscription terms). Null with no prior base → tile falls back to its
+  // descriptive helper and never shows a fabricated arrow. Active + At-risk have no history → no delta.
+  const deltas = useMemo(() => {
+    const cutoff = Date.now() - 30 * 86_400_000
+    const ratio = (now: number, prior: number) => (prior > 0 ? (now - prior) / prior : null)
+    const clientsPrior = clients.filter((c) => Date.parse(c.created_at) <= cutoff).length
+    const pkgsPrior = packages.filter((p) => p.provisioned_at != null && Date.parse(p.provisioned_at) <= cutoff).length
+    let mrrPrior = 0
+    for (const s of subscriptions) {
+      const started = Date.parse(s.started_at)
+      const ended = s.ended_at ? Date.parse(s.ended_at) : null
+      if (started <= cutoff && (ended == null || ended > cutoff)) mrrPrior += Number(s.price_monthly) || 0
+    }
+    return {
+      clients: ratio(clients.length, clientsPrior),
+      packages: ratio(packages.length, pkgsPrior),
+      mrr: ratio(totalMrr, mrrPrior),
+    }
+  }, [clients, packages, subscriptions, totalMrr])
+
   const columns: ShellColumn<Client>[] = [
     {
       key: 'name',
@@ -278,7 +299,7 @@ export function Clients() {
         <KpiTile
           label="Clients"
           value={clients.length}
-          helper={`${active} active · ${clients.length - active} inactive`}
+          helper={deltas.clients != null ? <Delta ratio={deltas.clients} /> : `${active} active · ${clients.length - active} inactive`}
           icon={<UserMultiple size={20} />}
         />
         <KpiTile
@@ -291,10 +312,10 @@ export function Clients() {
         <KpiTile
           label="Packages"
           value={packages.length}
-          helper="provisioned"
+          helper={deltas.packages != null ? <Delta ratio={deltas.packages} /> : 'provisioned'}
           icon={<Box size={20} />}
         />
-        <KpiTile label="MRR" value={formatCurrencyShort(totalMrr)} helper="current terms" icon={<Money size={20} />} />
+        <KpiTile label="MRR" value={formatCurrencyShort(totalMrr)} helper={deltas.mrr != null ? <Delta ratio={deltas.mrr} /> : 'current terms'} icon={<Money size={20} />} />
         <KpiTile
           label="At risk"
           value={overdueClients.size}
@@ -381,5 +402,16 @@ export function Clients() {
           content width on close (unmounting mid-close leaves #main-content pushed aside). */}
       <ClientCreatePanel open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>
+  )
+}
+
+// Month-over-month delta for a KPI tile helper: green up / red down, shown only when a prior base
+// exists (the caller passes null otherwise). Up always reads positive here (growth metrics).
+function Delta({ ratio }: { ratio: number }) {
+  const up = ratio >= 0
+  return (
+    <span className={up ? 'scns-val-green' : 'scns-val-red'}>
+      {up ? '▲' : '▼'} {formatPercent(Math.abs(ratio))} · 30d
+    </span>
   )
 }
