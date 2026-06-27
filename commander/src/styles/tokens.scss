@@ -373,12 +373,11 @@ body {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-// Compact footer band shared by every card foot: table row-count, chart summary stat, and the
-// detail field-count. Single source of truth for inset/size/colour — see `.scns-card__footer` below
-// for the field-count variant that joins this group.
+// Compact footer band shared by the in-body table foot and the card footer (chart stat / field
+// count). Single source of truth for inset/size/colour. The card footer holds simple text — no
+// inner wrapper class needed.
 .scns-cardtable__foot,
-.scns-chartcard .scns-card__footer,
-.scns-card__footer:has(> .scns-foot-count) {
+.scns-card__footer {
   min-height: 34px;
   padding: 0 16px;
   font-size: 12px;
@@ -445,10 +444,17 @@ body {
 .scns-card__title {
   font-size: 16px;
   font-weight: 600;
+  flex: none;
 }
 .scns-card__sub {
   font-size: 14px;
   color: var(--cds-text-helper);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4;
+  padding-bottom: 2px;
 }
 .scns-card__body {
   flex: 1;
@@ -458,7 +464,6 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 24px;
   border-top: 1px solid var(--scns-border);
 }
 
@@ -513,7 +518,7 @@ body {
 // gets a hairline separator and collapses below the form on narrow viewports.
 .scns-client-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 3fr);
   gap: 32px;
   align-items: start;
 }

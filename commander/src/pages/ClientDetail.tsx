@@ -13,7 +13,6 @@ import { CardTableFooter } from '../components/CardTableFooter'
 import { EmptyState } from '../components/EmptyState'
 import { RelativeTime } from '../components/RelativeTime'
 import { ClientStatusTag, PackageStatusTag, BillingTag } from '../components/tags/StatusTag'
-import { ProvisionModal } from '../components/modals/ProvisionModal'
 import { InvoiceFormModal } from '../components/modals/InvoiceFormModal'
 import { formatMonthYear, formatRelative } from '../lib/time'
 import { formatCurrency, formatCurrencyShort, formatCompact, formatPercent } from '../lib/format'
@@ -36,11 +35,9 @@ export function ClientDetail() {
   const addInvoice = useStore((s) => s.addInvoice)
   const can = useCan()
   const canEdit = can('update clients')
-  const canProvision = can('provision packages')
   const canCreateInvoice = can('create invoices')
   const toast = useToast()
   const navigate = useNavigate()
-  const [provisionOpen, setProvisionOpen] = useState(false)
   const [invoiceOpen, setInvoiceOpen] = useState(false)
 
   const clientId = client?.id
@@ -119,14 +116,11 @@ export function ClientDetail() {
             {' · since '}{formatMonthYear(client.created_at)}
           </div>
         </div>
-        {(canProvision || canCreateInvoice || canEdit) && (
+        {(canCreateInvoice || canEdit) && (
           <div style={{ flex: 'none' }}>
             <MenuButton label="Actions" kind="primary" size="lg" menuAlignment="bottom-end">
-              {canProvision && (
-                <MenuItem label="New package for this client" onClick={() => setProvisionOpen(true)} />
-              )}
               {canCreateInvoice && <MenuItem label="New invoice" onClick={() => setInvoiceOpen(true)} />}
-              {(canProvision || canCreateInvoice) && canEdit && <MenuItemDivider />}
+              {canCreateInvoice && canEdit && <MenuItemDivider />}
               {canEdit && (
                 <MenuItem
                   label="Delete client…"
@@ -183,26 +177,17 @@ export function ClientDetail() {
         </aside>
       </div>
 
-      {provisionOpen && (
-        <ProvisionModal
-          open
-          lockClientId={client.id}
-          onClose={() => setProvisionOpen(false)}
-          onProvisioned={() => setProvisionOpen(false)}
-        />
-      )}
-      {invoiceOpen && (
-        <InvoiceFormModal
-          open
-          mode="create"
-          clientId={client.id}
-          onClose={() => setInvoiceOpen(false)}
-          onSubmit={(value) => {
-            const num = addInvoice(value as Parameters<typeof addInvoice>[0])
-            toast.success('Invoice created', num)
-          }}
-        />
-      )}
+      <InvoiceFormModal
+        open={invoiceOpen}
+        asPanel
+        mode="create"
+        clientId={client.id}
+        onClose={() => setInvoiceOpen(false)}
+        onSubmit={(value) => {
+          const num = addInvoice(value as Parameters<typeof addInvoice>[0])
+          toast.success('Invoice created', num)
+        }}
+      />
     </div>
   )
 }
@@ -403,7 +388,7 @@ function ClientEditForm({ client, canEdit }: { client: Client; canEdit: boolean 
       subtitle="contact & billing"
       bodyClassName="scns-client-form"
       bodyPadding={24}
-      footer={<span className="scns-foot-count">{filledFields} of {totalFields} fields completed</span>}
+      footer={`${filledFields} of ${totalFields} fields completed`}
     >
       <p className="scns-section-label">Contact</p>
       <div className="scns-form-grid">

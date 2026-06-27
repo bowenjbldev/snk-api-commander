@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Modal, Dropdown, NumberInput, DatePicker, DatePickerInput } from '@carbon/react'
 import { useStore, useProvisionedPackages } from '../../store/store'
+import { CreatePanel } from '../CreatePanel'
 import type { Invoice } from '../../store/types'
 
 type CreateInput = { client_id: number; package_id: number; amount: number; issued_at: string; due_at: string }
@@ -8,6 +9,8 @@ type EditPatch = { amount: number; issued_at: string; due_at: string }
 
 interface Props {
   open: boolean
+  /** Render in the slide-in side panel instead of a modal (used from the client page). */
+  asPanel?: boolean
   mode: 'create' | 'edit'
   invoice?: Invoice
   /** Pre-select + lock the client (e.g. "New invoice for this client" from the client page). */
@@ -23,7 +26,7 @@ function toIso(d: Date | undefined): string {
   return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString()
 }
 
-export function InvoiceFormModal({ open, mode, invoice, clientId: lockClientId, onSubmit, onClose }: Props) {
+export function InvoiceFormModal({ open, asPanel, mode, invoice, clientId: lockClientId, onSubmit, onClose }: Props) {
   const clients = useStore((s) => s.clients)
   const packages = useProvisionedPackages()
 
@@ -51,7 +54,8 @@ export function InvoiceFormModal({ open, mode, invoice, clientId: lockClientId, 
     [packages, clientId],
   )
 
-  if (!open) return null
+  // In panel mode stay mounted so the side panel can slide in/out; the modal only renders when open.
+  if (!open && !asPanel) return null
 
   const selectedClient = clients.find((c) => c.id === clientId) ?? null
   const selectedPackage = clientPackages.find((p) => p.id === packageId) ?? null
@@ -81,17 +85,7 @@ export function InvoiceFormModal({ open, mode, invoice, clientId: lockClientId, 
     onClose()
   }
 
-  return (
-    <Modal
-      open
-      modalHeading={mode === 'edit' ? 'Edit invoice' : 'Create invoice'}
-      modalLabel={mode === 'edit' ? invoice?.number : 'Invoices'}
-      primaryButtonText={mode === 'edit' ? 'Save changes' : 'Create invoice'}
-      secondaryButtonText="Cancel"
-      primaryButtonDisabled={submitted && !valid}
-      onRequestClose={onClose}
-      onRequestSubmit={submit}
-    >
+  const body = (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <Dropdown
           id="inv-client"
@@ -159,6 +153,37 @@ export function InvoiceFormModal({ open, mode, invoice, clientId: lockClientId, 
           />
         </DatePicker>
       </div>
+  )
+
+  if (asPanel) {
+    return (
+      <CreatePanel
+        open={open}
+        title={mode === 'edit' ? 'Edit invoice' : 'Create invoice'}
+        subtitle={mode === 'edit' ? invoice?.number : 'A billing record for this client'}
+        formTitle="Invoice details"
+        submitLabel={mode === 'edit' ? 'Save changes' : 'Create invoice'}
+        submitDisabled={submitted && !valid}
+        onSubmit={submit}
+        onClose={onClose}
+      >
+        {body}
+      </CreatePanel>
+    )
+  }
+
+  return (
+    <Modal
+      open
+      modalHeading={mode === 'edit' ? 'Edit invoice' : 'Create invoice'}
+      modalLabel={mode === 'edit' ? invoice?.number : 'Invoices'}
+      primaryButtonText={mode === 'edit' ? 'Save changes' : 'Create invoice'}
+      secondaryButtonText="Cancel"
+      primaryButtonDisabled={submitted && !valid}
+      onRequestClose={onClose}
+      onRequestSubmit={submit}
+    >
+      {body}
     </Modal>
   )
 }
