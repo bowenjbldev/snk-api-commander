@@ -391,9 +391,20 @@ function ClientEditForm({ client, canEdit }: { client: Client; canEdit: boolean 
 
   const ro = !canEdit
 
+  // Footer completion count: every editable field on the record, and how many carry a value.
+  const fieldValues = [name, company, email, phone, notes, billingEmail, taxId, address1, address2, city, postal, country, terms]
+  const totalFields = fieldValues.length
+  const filledFields = fieldValues.filter((v) => v.trim() !== '').length
+
   return (
     <>
-    <Card title="Details" subtitle="contact & billing" bodyClassName="scns-client-form" bodyPadding={24}>
+    <Card
+      title="Details"
+      subtitle="contact & billing"
+      bodyClassName="scns-client-form"
+      bodyPadding={24}
+      footer={<span className="scns-foot-count">{filledFields} of {totalFields} fields completed</span>}
+    >
       <p className="scns-section-label">Contact</p>
       <div className="scns-form-grid">
         <TextInput id="cd-name" labelText="Name" value={name} disabled={ro} onChange={(e) => setName(e.target.value)} invalid={submitted && !!nameError} invalidText={nameError} />
