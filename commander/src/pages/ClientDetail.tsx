@@ -9,6 +9,7 @@ import { useToast } from '../providers/ToastProvider'
 import { KpiCluster, KpiTile } from '../components/KpiCluster'
 import { Card } from '../components/Card'
 import { Delta } from '../components/Delta'
+import { CardTableFooter } from '../components/CardTableFooter'
 import { EmptyState } from '../components/EmptyState'
 import { RelativeTime } from '../components/RelativeTime'
 import { ClientStatusTag, PackageStatusTag, BillingTag } from '../components/tags/StatusTag'
@@ -19,6 +20,10 @@ import { formatCurrency, formatCurrencyShort, formatCompact, formatPercent } fro
 import type { Client, Invoice, Package, Subscription, PaymentTerms } from '../store/types'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+// Rail in-card table column templates (narrow ~360px column): same `.scns-cardtable` chrome as the
+// dashboard cards.
+const PKG_COLS = 'minmax(0, 1.2fr) minmax(0, 0.8fr) 52px 84px' // Package · Plan · MRR · Status
+const INV_COLS = 'minmax(0, 1fr) minmax(0, 0.9fr) 60px 80px' // Invoice · Due · Amount · Status
 
 // Dedicated client record page (/clients/:id): header + KPIs, then a live view+edit form on the
 // left and a compact Packages/Invoices rail on the right. Replaces the old drawer + edit modal.
@@ -216,7 +221,7 @@ function PackagesPanel({
   return (
     <Card
       title="Packages"
-      bodyPadding="8px 16px 12px"
+      bodyPadding={0}
       action={
         <OverflowMenu size="sm" flipped aria-label="Packages actions">
           <OverflowMenuItem itemText="View all packages" onClick={onViewAll} />
@@ -224,31 +229,30 @@ function PackagesPanel({
       }
     >
       {packages.length === 0 ? (
-        <div className="scns-helper" style={{ fontSize: 13, padding: '4px 0' }}>No packages for this client.</div>
+        <div className="scns-helper" style={{ fontSize: 13, padding: '12px 16px' }}>No packages for this client.</div>
       ) : (
-        <table className="scns-minitable">
-          <thead>
-            <tr>
-              <th>Package</th>
-              <th>Plan</th>
-              <th className="scns-minitable__num">MRR</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
+        <>
+          <div className="scns-cardtable">
+            <div className="scns-cardtable__head" style={{ gridTemplateColumns: PKG_COLS }}>
+              <span>Package</span>
+              <span>Plan</span>
+              <span className="scns-cardtable__num">MRR</span>
+              <span>Status</span>
+            </div>
             {packages.map((p) => {
               const sub = subByPackage.get(p.id)
               return (
-                <tr key={p.id} className="scns-minitable__row" onClick={() => onOpen(p.id)}>
-                  <td><span className="scns-mono scns-link">{p.name}</span></td>
-                  <td>{sub?.plan ?? '—'}</td>
-                  <td className="scns-minitable__num">{sub ? formatCurrency(sub.price_monthly) : '—'}</td>
-                  <td><PackageStatusTag pkg={p} /></td>
-                </tr>
+                <div key={p.id} className="scns-cardtable__row scns-cardtable__row--link" style={{ gridTemplateColumns: PKG_COLS }} onClick={() => onOpen(p.id)}>
+                  <span className="scns-cardtable__cell scns-mono" style={{ color: 'var(--cds-link-primary)' }}>{p.name}</span>
+                  <span className="scns-cardtable__cell">{sub?.plan ?? '—'}</span>
+                  <span className="scns-cardtable__cell scns-cardtable__num scns-num">{sub ? formatCurrency(sub.price_monthly) : '—'}</span>
+                  <span className="scns-cardtable__cell"><PackageStatusTag pkg={p} /></span>
+                </div>
               )
             })}
-          </tbody>
-        </table>
+          </div>
+          <CardTableFooter label={`${packages.length} ${packages.length === 1 ? 'package' : 'packages'}`} />
+        </>
       )}
     </Card>
   )
@@ -264,7 +268,7 @@ function InvoicesPanel({
   return (
     <Card
       title="Invoices"
-      bodyPadding="8px 16px 12px"
+      bodyPadding={0}
       action={
         <OverflowMenu size="sm" flipped aria-label="Invoices actions">
           <OverflowMenuItem itemText="View all invoices" onClick={onViewAll} />
@@ -272,28 +276,27 @@ function InvoicesPanel({
       }
     >
       {invoices.length === 0 ? (
-        <div className="scns-helper" style={{ fontSize: 13, padding: '4px 0' }}>No invoices for this client.</div>
+        <div className="scns-helper" style={{ fontSize: 13, padding: '12px 16px' }}>No invoices for this client.</div>
       ) : (
-        <table className="scns-minitable">
-          <thead>
-            <tr>
-              <th>Invoice</th>
-              <th>Due</th>
-              <th className="scns-minitable__num">Amount</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
+        <>
+          <div className="scns-cardtable">
+            <div className="scns-cardtable__head" style={{ gridTemplateColumns: INV_COLS }}>
+              <span>Invoice</span>
+              <span>Due</span>
+              <span className="scns-cardtable__num">Amount</span>
+              <span>Status</span>
+            </div>
             {invoices.map((inv) => (
-              <tr key={inv.id}>
-                <td className="scns-mono">{inv.number}</td>
-                <td><RelativeTime iso={inv.due_at} /></td>
-                <td className="scns-minitable__num">{formatCurrency(inv.amount)}</td>
-                <td><BillingTag status={inv.status} /></td>
-              </tr>
+              <div key={inv.id} className="scns-cardtable__row" style={{ gridTemplateColumns: INV_COLS }}>
+                <span className="scns-cardtable__cell scns-mono">{inv.number}</span>
+                <span className="scns-cardtable__cell"><RelativeTime iso={inv.due_at} /></span>
+                <span className="scns-cardtable__cell scns-cardtable__num scns-num">{formatCurrency(inv.amount)}</span>
+                <span className="scns-cardtable__cell"><BillingTag status={inv.status} /></span>
+              </div>
             ))}
-          </tbody>
-        </table>
+          </div>
+          <CardTableFooter label={`${invoices.length} ${invoices.length === 1 ? 'invoice' : 'invoices'}`} />
+        </>
       )}
     </Card>
   )

@@ -508,9 +508,8 @@ body {
   align-items: start;
 }
 
-// Compact aligned table inside a card body (client rail: packages / invoices). Faint uppercase
-// column header, hairline row dividers, numeric columns tabular + right-aligned. First/last cells
-// align flush to the card's body inset.
+// Compact aligned table inside a card body (still used by the package-detail Plans tab). Faint
+// uppercase column header, hairline row dividers, numeric columns tabular + right-aligned.
 .scns-minitable {
   width: 100%;
   border-collapse: collapse;
@@ -543,6 +542,8 @@ body {
 }
 .scns-minitable__row { cursor: pointer; }
 .scns-minitable__row:hover { background: var(--cds-layer-hover, var(--cds-layer-accent)); }
+
+// Client detail rail (packages / invoices) — stacked cards, same gap as the form column.
 .scns-client-rail {
   display: flex;
   flex-direction: column;

@@ -11,6 +11,7 @@ import { EChart } from '../components/EChart'
 import { CommitGraph } from '../components/CommitGraph'
 import { EmptyState } from '../components/EmptyState'
 import { Delta } from '../components/Delta'
+import { CardTableFooter } from '../components/CardTableFooter'
 import { MethodTag } from '../components/tags/MethodTag'
 import { timeSeriesOption, legendItems } from '../lib/echartsOptions'
 import { snapshotsToPlatformSeries, dailyToCodeFrequency, packageColorMap, packageTagTypeMap, OTHER_COLOR } from '../lib/chartData'
@@ -430,15 +431,6 @@ function RecentInvoices({
     </div>
     <CardTableFooter label={`${rows.length} of ${invoices.length} invoices`} />
     </>
-  )
-}
-
-// Small footer band for the in-card tables: a row/record count (the full list lives on its page).
-function CardTableFooter({ label }: { label: string }) {
-  return (
-    <div className="scns-cardtable__foot">
-      <span>{label}</span>
-    </div>
   )
 }
 

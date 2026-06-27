@@ -350,11 +350,11 @@ Pantalla de acceso del operador. Email + password → token Sanctum (Bearer) gua
     name/email requeridos, email/billing válidos, country ISO-2. Sin permiso `update clients` los
     inputs quedan `disabled` (solo lectura). Se re-inicializa al navegar entre clientes
     (`key={client.id}`).
-  - **Rail derecho (`.scns-client-rail`):** dos cards apiladas — **Packages** e **Invoices** (títulos
-    sin contador), cada una con una **mini-tabla alineada** (`.scns-minitable`: cabecera tenue
-    uppercase, columnas numéricas mono a la derecha, divisores hairline). Packages: Package (link
-    uppercase punteado a `/packages/:id`) · Plan · MRR · Status. Invoices: Invoice · Due · Amount ·
-    Status (`BillingTag`).
+  - **Rail derecho (`.scns-client-rail`):** dos cards apiladas — **Packages** e **Invoices** — con el
+    **mismo chrome `.scns-cardtable` que las cards del Dashboard** (header band, filas 40px, divisores,
+    `bodyPadding={0}`, footer de count vía `CardTableFooter`) + kebab "View all" en el header. Packages:
+    Package (link a `/packages/:id`, fila clicable) · Plan · MRR · Status. Invoices: Invoice · Due ·
+    Amount · Status (`BillingTag`).
   - El `ClientFormModal` solo se usa ya para **crear** desde la lista.
   - **Acciones por card (OverflowMenu kebab "⋮" en el header, prop `action` de `Card`):** el primario
     (guardar) vive en el FAB; el kebab recoge lo secundario/destructivo. **Details** → Discard changes
