@@ -4,6 +4,7 @@ import { Dropdown, NumberInput, RadioButton, RadioButtonGroup, TextArea, TextInp
 import { useStore } from '../store/store'
 import { useToast } from '../providers/ToastProvider'
 import { api } from '../lib/api'
+import { formatCurrencyShort } from '../lib/format'
 import type { Plan } from '../store/types'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -20,9 +21,9 @@ function numOrNull(v: string): number | null {
 }
 
 // Wide multi-step create flow (Carbon CreateTearsheet, left progress stepper) for standing up a new
-// package: Client → Plan → Config. The Plan step is always a brand-new plan for a new package (the
-// package name is typed). Submit creates the plan (POST /plans → real id), then provisions
-// (POST /provisioning); a new client is created inline by the provisioning endpoint.
+// package: Client → Plan → Review. The Plan step is always a brand-new plan for a new package (the
+// package name is typed; slug auto-derives from it). Submit creates the plan (POST /plans → real id),
+// then provisions (POST /provisioning); a new client is created inline by the provisioning endpoint.
 //
 // NOTE: the package code must already exist on disk (`packages/<Client>/<Package>`, scaffolded via
 // `php artisan make:package` by the dev) — provisioning verifies it. That scaffold step is manual.
@@ -37,7 +38,7 @@ export function PackageCreateTearsheet({ open, onClose }: { open: boolean; onClo
   const [newName, setNewName] = useState('')
   const [newEmail, setNewEmail] = useState('')
   const [newBillingEmail, setNewBillingEmail] = useState('')
-  // Plan (always new) — for a new package whose name is typed.
+  // Plan (always new) — for a new package whose name is typed; slug auto-derives from it.
   const [pkgName, setPkgName] = useState('')
   const [planName, setPlanName] = useState('')
   const [planDesc, setPlanDesc] = useState('')
@@ -46,8 +47,6 @@ export function PackageCreateTearsheet({ open, onClose }: { open: boolean; onClo
   const [qDb, setQDb] = useState('')
   const [qStorage, setQStorage] = useState('')
   const [qUsers, setQUsers] = useState('')
-  // Config
-  const [pkgSlug, setPkgSlug] = useState('')
 
   // Reset to a clean flow once the tearsheet has closed (stays mounted to animate out).
   useEffect(() => {
@@ -55,7 +54,7 @@ export function PackageCreateTearsheet({ open, onClose }: { open: boolean; onClo
     setClientMode(clients.length ? 'existing' : 'new'); setClientId(clients[0]?.id ?? '')
     setNewName(''); setNewEmail(''); setNewBillingEmail('')
     setPkgName(''); setPlanName(''); setPlanDesc(''); setPlanPrice('0')
-    setQReq(''); setQDb(''); setQStorage(''); setQUsers(''); setPkgSlug('')
+    setQReq(''); setQDb(''); setQStorage(''); setQUsers('')
   }, [open, clients])
 
   const clientStepInvalid =
@@ -81,14 +80,13 @@ export function PackageCreateTearsheet({ open, onClose }: { open: boolean; onClo
       },
     })
 
-    // 2. Provision — a new client is created inline by the endpoint.
-    const pathSlug = slug(pkgSlug) || undefined
+    // 2. Provision — slug auto-derives from the package name on the backend; a new client is
+    // created inline by the endpoint.
     const input =
       clientMode === 'existing'
-        ? { plan_id: created.id, client_id: clientId || undefined, slug: pathSlug }
+        ? { plan_id: created.id, client_id: clientId || undefined }
         : {
             plan_id: created.id,
-            slug: pathSlug,
             client: {
               slug: slug(newName),
               name: newName.trim(),
@@ -179,6 +177,11 @@ export function PackageCreateTearsheet({ open, onClose }: { open: boolean; onClo
             onChange={(e) => setPkgName(e.target.value)}
             helperText="The package's code must already exist on disk (scaffolded via make:package)."
           />
+          {pkgName.trim() && (
+            <p className="scns-helper" style={{ fontSize: 12, marginTop: -8 }}>
+              API path: <code>/api/v1/{slug(pkgName)}</code> · auto from the package name.
+            </p>
+          )}
           <TextInput id="pct-plan-name" labelText="Plan name" placeholder="Pro" value={planName} onChange={(e) => setPlanName(e.target.value)} />
           <TextArea id="pct-plan-desc" labelText="Description (optional)" rows={2} value={planDesc} onChange={(e) => setPlanDesc(e.target.value)} />
           <TextInput id="pct-plan-price" labelText="Price / month" type="number" value={planPrice} onChange={(e) => setPlanPrice(e.target.value)} />
@@ -191,24 +194,18 @@ export function PackageCreateTearsheet({ open, onClose }: { open: boolean; onClo
       </CreateTearsheetStep>
 
       <CreateTearsheetStep
-        title="Config"
-        subtitle="Optional slug, then review and create."
-        fieldsetLegendText="Configuration"
-        fieldsetLegendId="pct-legend-config"
+        title="Review"
+        subtitle="Confirm the details, then create."
+        fieldsetLegendText="Review"
+        fieldsetLegendId="pct-legend-review"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 480 }}>
-          <TextInput
-            id="pct-slug"
-            labelText="Package slug (optional)"
-            placeholder="auto from package name"
-            value={pkgSlug}
-            onChange={(e) => setPkgSlug(e.target.value)}
-            helperText="Path segment of the API (/api/v1/<slug>). The host comes from the client. Leave blank to let the backend derive it."
-          />
           <div className="scns-cardtable" style={{ border: '1px solid var(--scns-border)' }}>
             <ReviewRow label="Client" value={clientMode === 'existing' ? selectedClient?.name ?? '—' : `${newName.trim() || '—'} (new)`} />
             <ReviewRow label="Package" value={pkgName.trim() || '—'} />
+            <ReviewRow label="Slug" value={pkgName.trim() ? `${slug(pkgName)} (auto)` : '—'} />
             <ReviewRow label="Plan" value={planName.trim() ? `${planName.trim()} (new)` : '—'} />
+            <ReviewRow label="Price" value={`${formatCurrencyShort(Number(planPrice) || 0)}/mo`} />
           </div>
         </div>
       </CreateTearsheetStep>
