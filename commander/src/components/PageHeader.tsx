@@ -13,10 +13,9 @@ interface Props {
   primaryAction?: PrimaryAction
   /** Extra controls rendered left of the primary action (e.g. Export). */
   actions?: ReactNode
-  titleClassName?: string
 }
 
-export function PageHeader({ title, subtitle, primaryAction, actions, titleClassName }: Props) {
+export function PageHeader({ title, subtitle, primaryAction, actions }: Props) {
   return (
     <div
       style={{
@@ -28,7 +27,7 @@ export function PageHeader({ title, subtitle, primaryAction, actions, titleClass
       }}
     >
       <div style={{ minWidth: 0 }}>
-        <h1 className={titleClassName} style={{ fontSize: 24, fontWeight: 400, margin: 0 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 400, margin: 0 }}>
           {title}
         </h1>
         {subtitle != null && (

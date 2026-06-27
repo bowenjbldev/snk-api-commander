@@ -83,11 +83,6 @@ export interface Package {
   quotas?: QuotaMetric[]
 }
 
-/** Provisionado == tiene instancia viva (provisioned_at no nulo). */
-export function isProvisioned(p: Package): boolean {
-  return p.provisioned_at != null
-}
-
 export type MetricKey = 'requests_day' | 'disk_db_mb' | 'disk_storage_mb' | 'users_total'
 
 export type OnExceed = 'none' | 'warn' | 'suspend'

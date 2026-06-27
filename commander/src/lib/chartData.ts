@@ -1,4 +1,4 @@
-// Deterministic chart-data generators (seeded PRNG → stable shapes across renders).
+// Chart-data transforms: shape API rollups/snapshots/git-activity into ECharts series.
 import type { GitDailyActivity, HttpMethod, Package, TopEndpoint, UsageRollup, UsageSnapshot } from '../store/types'
 import type { Bucket } from './timeRanges'
 
@@ -10,8 +10,6 @@ export interface Point {
 
 export const PALETTE = ['#6929c4', '#1192e8', '#005d5d', '#9f1853', '#fa4d56']
 export const OTHER_COLOR = '#8d8d8d'
-export const COLOR_4XX = '#d2a106'
-export const COLOR_5XX = '#fa4d56'
 
 // Stable package→colour map (top packages by requests get the categorical palette, the rest fold to
 // grey) so a given package keeps the SAME colour across every chart on the dashboard.
@@ -35,91 +33,6 @@ export function packageTagTypeMap(packages: Package[]): Record<string, PackageTa
     map[p.name] = i < TAG_TYPES.length ? TAG_TYPES[i] : 'cool-gray'
   })
   return map
-}
-
-function mulberry32(seed: number): () => number {
-  let a = seed
-  return () => {
-    a |= 0
-    a = (a + 0x6d2b79f5) | 0
-    let t = Math.imul(a ^ (a >>> 15), 1 | a)
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
-}
-
-function hourly(group: string, base: number, seed: number, points: number, opts?: { diurnal?: number; noise?: number; spikeAt?: number; spikeMul?: number }): Point[] {
-  const rnd = mulberry32(seed)
-  const now = Date.now()
-  const diurnal = opts?.diurnal ?? 0.35
-  const noise = opts?.noise ?? 0.25
-  const out: Point[] = []
-  for (let i = 0; i < points; i++) {
-    const date = new Date(now - (points - 1 - i) * 3_600_000)
-    const hour = date.getUTCHours()
-    const wave = 1 + diurnal * Math.sin((hour / 24) * Math.PI * 2 - Math.PI / 2)
-    let value = base * wave * (1 - noise / 2 + rnd() * noise)
-    if (opts?.spikeAt != null && i === opts.spikeAt) value *= opts.spikeMul ?? 3
-    out.push({ group, date, value: Math.max(0, value) })
-  }
-  return out
-}
-
-function seedFrom(s: string): number {
-  let h = 2166136261
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i)
-    h = Math.imul(h, 16777619)
-  }
-  return h >>> 0
-}
-
-// Dashboard: requests/hour, last 48h, stacked by top-4 packages + "other".
-export function requestsPerHourStacked(packages: Package[]): { data: Point[]; groups: string[] } {
-  const sorted = [...packages].sort((a, b) => b.requests_24h - a.requests_24h)
-  const top = sorted.slice(0, 4)
-  const rest = sorted.slice(4)
-  const groups = [...top.map((p) => p.name), 'other']
-  const data: Point[] = []
-  top.forEach((p, idx) => data.push(...hourly(p.name, p.requests_24h / 24, seedFrom(String(p.id)) + idx, 48)))
-  const otherBase = rest.reduce((s, p) => s + p.requests_24h, 0) / 24
-  data.push(...hourly('other', otherBase, 99, 48))
-  return { data, groups }
-}
-
-// Dashboard: combined 4xx+5xx error rate %, last 48h, with a burst spike.
-export function errorRate48(): Point[] {
-  return hourly('error %', 1.8, 7, 48, { diurnal: 0.2, noise: 0.4, spikeAt: 33, spikeMul: 3.6 }).map((p) => ({
-    ...p,
-    value: Math.min(7, p.value),
-  }))
-}
-
-// Usage tab (per package).
-export function usageRequests(pkg: Package): Point[] {
-  return hourly('requests', Math.max(pkg.requests_24h / 24, 20), seedFrom(String(pkg.id)), 48, { diurnal: 0.4 })
-}
-export function usageErrorRate(pkg: Package): Point[] {
-  const s = seedFrom(String(pkg.id))
-  return [
-    ...hourly('4xx', 1.2, s + 1, 48, { diurnal: 0.2, noise: 0.5 }),
-    ...hourly('5xx', 0.4, s + 2, 48, { diurnal: 0.15, noise: 0.6 }),
-  ]
-}
-export function usageLatency(pkg: Package): Point[] {
-  const s = seedFrom(String(pkg.id))
-  return [
-    ...hourly('avg', 129, s + 3, 48, { diurnal: 0.18, noise: 0.2 }),
-    ...hourly('p95', 472, s + 4, 48, { diurnal: 0.22, noise: 0.25 }),
-  ]
-}
-export function usageTransfer(pkg: Package): Point[] {
-  const s = seedFrom(String(pkg.id))
-  const base = Math.max(pkg.requests_24h / 24 / 8, 5)
-  return [
-    ...hourly('in', base, s + 5, 48, { diurnal: 0.35 }),
-    ...hourly('out', base * 3.5, s + 6, 48, { diurnal: 0.35 }),
-  ]
 }
 
 // ── Real usage (per deployment) — from the deploy's core_usage_rollups ───────────

@@ -9,7 +9,7 @@ interface Props {
   showLabel?: boolean
 }
 
-export function fillColor(ratio: number): string {
+function fillColor(ratio: number): string {
   if (ratio > 1) return 'var(--scns-error)'
   if (ratio >= 0.8) return 'var(--scns-warning)'
   return 'var(--scns-success)'

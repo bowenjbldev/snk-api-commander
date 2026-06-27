@@ -30,7 +30,7 @@ export interface ShellColumn<R> {
   width?: number | string
 }
 
-export interface BatchAction {
+interface BatchAction {
   label: string
   icon?: CarbonIconType
   onClick: (ids: (string | number)[]) => void

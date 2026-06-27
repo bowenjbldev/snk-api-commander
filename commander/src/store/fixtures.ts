@@ -20,7 +20,6 @@ import type {
   QuotaMetric,
   RecentCommit,
   Subscription,
-  TopEndpoint,
 } from './types'
 
 const S = 1000
@@ -535,33 +534,3 @@ function clamp(v: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, v))
 }
 
-// Top endpoints per package for the Usage tab. kestrel-track is hand-authored
-// (matches the design); others are derived deterministically from request volume.
-const KESTREL_ENDPOINTS: TopEndpoint[] = [
-  { route: '/v1/track/{shipment}', method: 'GET', requests: 64209, error_rate: 0.008, p95_ms: 412 },
-  { route: '/v1/shipments', method: 'POST', requests: 22118, error_rate: 0.012, p95_ms: 488 },
-  { route: '/v1/shipments/{id}', method: 'GET', requests: 19540, error_rate: 0.006, p95_ms: 301 },
-  { route: '/v1/routes/optimize', method: 'POST', requests: 12002, error_rate: 0.041, p95_ms: 1204 },
-  { route: '/v1/webhooks/delivery', method: 'POST', requests: 9310, error_rate: 0.024, p95_ms: 644 },
-  { route: '/v1/auth/token', method: 'POST', requests: 6221, error_rate: 0.002, p95_ms: 188 },
-]
-
-export function topEndpointsFor(p: Package): TopEndpoint[] {
-  if (p.slug === 'kestrel-track') return KESTREL_ENDPOINTS
-  const noun = (p.slug ?? p.name).replace(/-api$/, '').replace(/-/g, '/')
-  const base = Math.max(p.requests_24h, 200)
-  const specs: Array<[string, TopEndpoint['method'], number, number, number]> = [
-    [`/v1/${noun}`, 'GET', 0.42, 0.006, 220],
-    [`/v1/${noun}/{id}`, 'GET', 0.27, 0.009, 188],
-    [`/v1/${noun}/query`, 'POST', 0.16, 0.014, 470],
-    [`/v1/auth/token`, 'POST', 0.09, 0.003, 142],
-    [`/v1/webhooks/notify`, 'POST', 0.06, 0.021, 612],
-  ]
-  return specs.map(([route, method, share, err, p95]) => ({
-    route,
-    method,
-    requests: Math.round(base * 7 * share),
-    error_rate: err,
-    p95_ms: p95,
-  }))
-}

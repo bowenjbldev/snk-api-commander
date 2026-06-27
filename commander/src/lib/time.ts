@@ -10,10 +10,6 @@ export function msUntil(iso: string, nowMs: number): number {
   return new Date(iso).getTime() - nowMs
 }
 
-export function msSince(iso: string, nowMs: number): number {
-  return nowMs - new Date(iso).getTime()
-}
-
 /** "3h ago", "2m ago", "just now", or "in 5h" for the future. */
 export function formatRelative(iso: string, nowMs: number): string {
   const diff = nowMs - new Date(iso).getTime()
