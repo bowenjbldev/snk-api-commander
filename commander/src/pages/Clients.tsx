@@ -8,12 +8,13 @@ import { PageHeader } from '../components/PageHeader'
 import { KpiCluster, KpiTile } from '../components/KpiCluster'
 import { DataTableShell, type ShellColumn } from '../components/DataTableShell'
 import { QuotaBar } from '../components/QuotaBar'
+import { Delta } from '../components/Delta'
 import { Sparkline } from '../components/Sparkline'
 import { RelativeTime } from '../components/RelativeTime'
 import { useFirstLoad } from '../hooks/useFirstLoad'
 import { ClientCreatePanel } from '../components/ClientCreatePanel'
 import { platformUsage } from '../lib/api'
-import { formatCurrencyShort, formatCompact, formatPercent } from '../lib/format'
+import { formatCurrencyShort, formatCompact } from '../lib/format'
 import type { Client, UsageSnapshot } from '../store/types'
 
 type StatusMix = { active: number; grace: number; suspended: number }
@@ -299,7 +300,7 @@ export function Clients() {
         <KpiTile
           label="Clients"
           value={clients.length}
-          helper={deltas.clients != null ? <Delta ratio={deltas.clients} /> : `${active} active · ${clients.length - active} inactive`}
+          helper={deltas.clients != null ? <Delta value={deltas.clients} suffix="· 30d" /> : `${active} active · ${clients.length - active} inactive`}
           icon={<UserMultiple size={20} />}
         />
         <KpiTile
@@ -312,10 +313,10 @@ export function Clients() {
         <KpiTile
           label="Packages"
           value={packages.length}
-          helper={deltas.packages != null ? <Delta ratio={deltas.packages} /> : 'provisioned'}
+          helper={deltas.packages != null ? <Delta value={deltas.packages} suffix="· 30d" /> : 'provisioned'}
           icon={<Box size={20} />}
         />
-        <KpiTile label="MRR" value={formatCurrencyShort(totalMrr)} helper={deltas.mrr != null ? <Delta ratio={deltas.mrr} /> : 'current terms'} icon={<Money size={20} />} />
+        <KpiTile label="MRR" value={formatCurrencyShort(totalMrr)} helper={deltas.mrr != null ? <Delta value={deltas.mrr} suffix="· 30d" /> : 'current terms'} icon={<Money size={20} />} />
         <KpiTile
           label="At risk"
           value={overdueClients.size}
@@ -405,13 +406,3 @@ export function Clients() {
   )
 }
 
-// Month-over-month delta for a KPI tile helper: green up / red down, shown only when a prior base
-// exists (the caller passes null otherwise). Up always reads positive here (growth metrics).
-function Delta({ ratio }: { ratio: number }) {
-  const up = ratio >= 0
-  return (
-    <span className={up ? 'scns-val-green' : 'scns-val-red'}>
-      {up ? '▲' : '▼'} {formatPercent(Math.abs(ratio))} · 30d
-    </span>
-  )
-}

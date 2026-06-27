@@ -8,6 +8,7 @@ import { useCan } from '../store/auth'
 import { useToast } from '../providers/ToastProvider'
 import { KpiCluster, KpiTile } from '../components/KpiCluster'
 import { Card } from '../components/Card'
+import { Delta } from '../components/Delta'
 import { EmptyState } from '../components/EmptyState'
 import { RelativeTime } from '../components/RelativeTime'
 import { ClientStatusTag, PackageStatusTag, BillingTag } from '../components/tags/StatusTag'
@@ -146,8 +147,8 @@ export function ClientDetail() {
 
       <div style={{ margin: '24px 0' }}>
         <KpiCluster columns={4}>
-          <KpiTile label="Packages" value={packages.length} helper={deltas.packages != null ? <Delta ratio={deltas.packages} /> : 'provisioned'} icon={<Box size={20} />} />
-          <KpiTile label="MRR" value={mrr > 0 ? formatCurrencyShort(mrr) : '—'} helper={deltas.mrr != null ? <Delta ratio={deltas.mrr} /> : 'current terms'} icon={<Money size={20} />} />
+          <KpiTile label="Packages" value={packages.length} helper={deltas.packages != null ? <Delta value={deltas.packages} suffix="· 30d" /> : 'provisioned'} icon={<Box size={20} />} />
+          <KpiTile label="MRR" value={mrr > 0 ? formatCurrencyShort(mrr) : '—'} helper={deltas.mrr != null ? <Delta value={deltas.mrr} suffix="· 30d" /> : 'current terms'} icon={<Money size={20} />} />
           <KpiTile label="Requests · 24h" value={formatCompact(requests24h)} helper="across packages" icon={<Activity size={20} />} />
           <KpiTile
             label="Quota health"
@@ -434,12 +435,3 @@ function ClientEditForm({ client, canEdit }: { client: Client; canEdit: boolean 
   )
 }
 
-// Month-over-month delta for a KPI tile helper: green up / red down, only when a prior base exists.
-function Delta({ ratio }: { ratio: number }) {
-  const up = ratio >= 0
-  return (
-    <span className={up ? 'scns-val-green' : 'scns-val-red'}>
-      {up ? '▲' : '▼'} {formatPercent(Math.abs(ratio))} · 30d
-    </span>
-  )
-}

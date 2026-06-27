@@ -10,6 +10,7 @@ import { ChartCard, ChartLegend } from '../components/ChartCard'
 import { EChart } from '../components/EChart'
 import { CommitGraph } from '../components/CommitGraph'
 import { EmptyState } from '../components/EmptyState'
+import { Delta } from '../components/Delta'
 import { MethodTag } from '../components/tags/MethodTag'
 import { timeSeriesOption, legendItems } from '../lib/echartsOptions'
 import { snapshotsToPlatformSeries, dailyToCodeFrequency, packageColorMap, packageTagTypeMap, OTHER_COLOR } from '../lib/chartData'
@@ -245,19 +246,19 @@ export function Dashboard() {
         <KpiTile
           label="Requests"
           value={formatCompact(kpis.requests)}
-          helper={<RatioTrend ratio={kpis.requestsDelta} suffix="vs prior period" />}
+          helper={<Delta value={kpis.requestsDelta} suffix="vs prior period" />}
           icon={<Activity size={20} />}
         />
         <KpiTile
           label="Error rate"
           value={formatPercent(kpis.errorRate, 1)}
-          helper={<PointsTrend points={kpis.errorRateDelta} suffix="vs prior period" invert />}
+          helper={<Delta value={kpis.errorRateDelta} suffix="vs prior period" invert decimals={1} />}
           icon={<Warning size={20} />}
         />
         <KpiTile
           label="MRR"
           value={formatCurrencyShort(dash.mrr)}
-          helper={<RatioTrend ratio={mrrDelta} suffix="vs prior period" />}
+          helper={<Delta value={mrrDelta} suffix="vs prior period" />}
           icon={<Money size={20} />}
         />
       </KpiCluster>
@@ -530,28 +531,4 @@ function ChartPlaceholder({ loading, error, height }: { loading: boolean; error:
   )
 }
 
-// Period-over-period trend (current window vs the prior one). Rendered only when a prior base exists;
-// nothing is shown otherwise so the operator never sees a fabricated arrow.
-function RatioTrend({ ratio, suffix }: { ratio: number | null; suffix: string }) {
-  if (ratio == null) return null
-  const up = ratio >= 0
-  return (
-    <span className={up ? 'scns-val-green' : 'scns-val-red'}>
-      {up ? '▲' : '▼'} {formatPercent(Math.abs(ratio))} {suffix}
-    </span>
-  )
-}
-
-// Trend expressed in percentage points (for rate-style KPIs). `invert` flips the color semantics
-// so that a rising error rate reads red.
-function PointsTrend({ points, suffix, invert }: { points: number | null; suffix: string; invert?: boolean }) {
-  if (points == null) return null
-  const up = points >= 0
-  const good = invert ? !up : up
-  return (
-    <span className={good ? 'scns-val-green' : 'scns-val-red'}>
-      {up ? '▲' : '▼'} {formatPercent(Math.abs(points), 1)} {suffix}
-    </span>
-  )
-}
 
