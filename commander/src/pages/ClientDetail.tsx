@@ -399,9 +399,6 @@ function ClientEditForm({ client, canEdit }: { client: Client; canEdit: boolean 
         <TextInput id="cd-email" labelText="Email" value={email} disabled={ro} onChange={(e) => setEmail(e.target.value)} invalid={submitted && !!emailError} invalidText={emailError} />
         <TextInput id="cd-phone" labelText="Phone (optional)" value={phone} disabled={ro} onChange={(e) => setPhone(e.target.value)} />
         <TextArea id="cd-notes" labelText="Notes (optional)" rows={2} value={notes} disabled={ro} onChange={(e) => setNotes(e.target.value)} />
-        <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 4 }}>
-          <Toggle id="cd-active" labelText="Status" labelA="Inactive" labelB="Active" toggled={active} disabled={ro} onToggle={setActive} />
-        </div>
       </div>
 
       <p className="scns-section-label" style={{ marginTop: 32 }}>Billing</p>
@@ -420,6 +417,10 @@ function ClientEditForm({ client, canEdit }: { client: Client; canEdit: boolean 
           <SelectItem value="net_30" text="Net 30" />
           <SelectItem value="net_60" text="Net 60" />
         </Select>
+      </div>
+
+      <div style={{ marginTop: 24 }}>
+        <Toggle id="cd-active" labelText="Status" labelA="Inactive" labelB="Active" toggled={active} disabled={ro} onToggle={setActive} />
       </div>
     </Card>
 

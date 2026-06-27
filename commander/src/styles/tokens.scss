@@ -504,6 +504,11 @@ body {
     grid-template-columns: 1fr;
   }
 }
+// General rule: multi-line text areas span the full grid width (a half-width textarea reads cramped);
+// single-line inputs keep the 2-column grid.
+.scns-form-grid .cds--form-item:has(textarea) {
+  grid-column: 1 / -1;
+}
 
 // Client detail: live edit form (left) + compact packages/invoices rail (right). The rail
 // gets a hairline separator and collapses below the form on narrow viewports.

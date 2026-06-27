@@ -125,11 +125,12 @@ Header (ambos temas): bg `#161616`, borde `#393939`, texto `#f4f4f4`.
 
 - **Rejilla `.scns-form-grid` de 2 columnas fijas** (no auto-fit): `repeat(2, minmax(0,1fr))`,
   gap `16px 20px`, colapsa a 1 columna en <600px.
-- **Sin celdas vacías.** Ordena los campos para que cada sección tenga un **número par** de ítems y
-  las filas queden completas (p. ej. Contact = 6 ítems → 3 filas; Billing = 8 → 4 filas). **No dejes
-  controles sueltos a media fila**: empareja los pequeños (un `Toggle`, un `Select`) o el `TextArea`
-  con otro campo dentro de la misma rejilla en vez de ponerlos en su propia fila ancha. El `TextArea`
-  va como una celda más (media anchura), no flotando con hueco a la derecha.
+- **`TextArea` a fila completa.** Por norma general los multi-línea (notas/comentarios) **ocupan todo
+  el ancho** de la rejilla (`grid-column: 1 / -1` vía `.scns-form-grid .cds--form-item:has(textarea)`);
+  un textarea a media anchura lee apretado. Los inputs de una línea mantienen las 2 columnas.
+- **Sin celdas vacías** entre los inputs de una línea: ordénalos para que las filas de 2 queden
+  completas. Los **checkboxes/toggles van al final del form** (p. ej. el `Status` del cliente, tras
+  Billing), no intercalados entre campos de texto.
 - **Inputs sobre card/panel → token theme-aware `--scns-field`.** Carbon iguala el campo
   (`--cds-field`) al `--cds-layer` de la card, así que se funden. Usa `--scns-field` (clase scoped
   `.scns-client-form` / `.scns-create-flow`): en **oscuro** → `field-02` (más **claro**/elevado, el campo
