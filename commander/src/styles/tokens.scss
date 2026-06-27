@@ -477,9 +477,15 @@ body {
   bottom: 32px;
   z-index: 100;
   display: flex;
-  gap: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
   animation: scns-fab-in 0.16s ease-out;
+}
+// Carbon's ButtonSet forces each button to inline-size:100% / max 196px (for full-width modal
+// footers); in the right-anchored FAB that resizes the buttons when Discard appears and shifts the
+// primary. Size them to content so the Save stays put and Discard just slots in to its left.
+.scns-save-fab .cds--btn-set .cds--btn {
+  inline-size: auto;
+  max-inline-size: none;
 }
 @keyframes scns-fab-in {
   from { opacity: 0; transform: translateY(8px); }

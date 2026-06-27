@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { Button, InlineNotification, TextInput, TextArea, Select, SelectItem, Toggle, OverflowMenu, OverflowMenuItem, MenuButton, MenuItem, MenuItemDivider } from '@carbon/react'
-import { Box, Money, Activity, MeterAlt, Save } from '@carbon/icons-react'
+import { Button, ButtonSet, InlineNotification, TextInput, TextArea, Select, SelectItem, Toggle, OverflowMenu, OverflowMenuItem, MenuButton, MenuItem, MenuItemDivider } from '@carbon/react'
+import { Box, Money, Activity, MeterAlt } from '@carbon/icons-react'
 import { Breadcrumbs } from '../app/Breadcrumbs'
 import { useStore, useClient, useProvisionedPackages } from '../store/store'
 import { useCan } from '../store/auth'
@@ -389,15 +389,9 @@ function ClientEditForm({ client, canEdit }: { client: Client; canEdit: boolean 
 
   const ro = !canEdit
 
-  const menu = canEdit ? (
-    <OverflowMenu size="sm" flipped aria-label="Client actions">
-      <OverflowMenuItem itemText="Discard changes" disabled={!dirty} onClick={reset} />
-    </OverflowMenu>
-  ) : undefined
-
   return (
     <>
-    <Card title="Details" action={menu} bodyClassName="scns-client-form" bodyPadding={24}>
+    <Card title="Details" bodyClassName="scns-client-form" bodyPadding={24}>
       <p className="scns-section-label">Contact</p>
       <div className="scns-form-grid">
         <TextInput id="cd-name" labelText="Name" value={name} disabled={ro} onChange={(e) => setName(e.target.value)} invalid={submitted && !!nameError} invalidText={nameError} />
@@ -431,7 +425,10 @@ function ClientEditForm({ client, canEdit }: { client: Client; canEdit: boolean 
 
     {canEdit && (
       <div className="scns-save-fab">
-        <Button kind="primary" size="lg" renderIcon={Save} onClick={save} disabled={!dirty}>Save changes</Button>
+        <ButtonSet>
+          {dirty && <Button kind="secondary" size="lg" onClick={reset}>Discard</Button>}
+          <Button kind="primary" size="lg" onClick={save} disabled={!dirty}>Save changes</Button>
+        </ButtonSet>
       </div>
     )}
     </>

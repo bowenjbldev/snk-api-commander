@@ -140,9 +140,10 @@ Header (ambos temas): bg `#161616`, borde `#393939`, texto `#f4f4f4`.
   editable (inputs como vista). El guardado va en un **botón flotante** (`.scns-save-fab`, estilo FAB
   Material **con estética IBM**: cuadrado, IBM Blue, elevación sobria, abajo-derecha, fixed): **siempre
   visible** mientras haya permiso, **deshabilitado/neutro hasta que haya un cambio** y entonces pasa a
-  primary activo; al guardar vuelve a neutro. Sin permiso `update clients`, los inputs van `disabled`
-  (solo lectura) y no se muestra el FAB. Resetea el estado del form al cambiar de entidad
-  (`key={id}`). Los modales (`*FormModal`) se reservan para **crear** desde las listas.
+  primary activo; al guardar vuelve a neutro. **Cuando hay cambios, junto al Save aparece un botón
+  `Discard` (secondary)** en el mismo FAB; sin cambios solo está el Save (deshabilitado). Sin permiso
+  `update clients`, los inputs van `disabled` (solo lectura) y no se muestra el FAB. Resetea el estado del
+  form al cambiar de entidad (`key={id}`). Los modales (`*FormModal`) se reservan para **crear** desde las listas.
 
 ---
 
@@ -356,14 +357,12 @@ Pantalla de acceso del operador. Email + password → token Sanctum (Bearer) gua
     Package (link a `/packages/:id`, fila clicable) · Plan · MRR · Status. Invoices: Invoice · Due ·
     Amount · Status (`BillingTag`).
   - El `ClientFormModal` solo se usa ya para **crear** desde la lista.
-  - **Acciones por card (OverflowMenu kebab "⋮" en el header, prop `action` de `Card`):** el primario
-    (guardar) vive en el FAB; el kebab recoge lo secundario/destructivo. **Details** → Discard changes
-    (`disabled` sin cambios) · Delete client (`isDelete`, **stub** → toast "Not available yet",
-    pendiente de backend). **Packages** → New package for this client (`provision packages`).
-    **Invoices** → New invoice (`create invoices`) · View all invoices. "New invoice"/"New package"
-    abren `InvoiceFormModal`/`ProvisionModal` con el **cliente prefijado y bloqueado** (props
-    aditivas `clientId` / `lockClientId`). El header de card pasa a `align-items: center` para alinear
-    el kebab con el título.
+  - **Acciones:** las de creación/destructivas viven en el **`MenuButton` "Actions"** del header de la
+    página (New package / New invoice / Delete client `stub`), abriendo `ProvisionModal`/`InvoiceFormModal`
+    con el **cliente prefijado y bloqueado** (props `clientId`/`lockClientId`). El **Details no lleva
+    kebab**: el `Save` vive en el FAB y, con cambios, aparece a su lado un `Discard` (secondary). Las cards
+    **Packages**/**Invoices** llevan un kebab "⋮" solo con **View all**. El header de card usa
+    `align-items: center` para alinear el kebab con el título.
 - Enlaces a cliente (CommandPalette, OverviewTab del package) apuntan a `/clients/:id`.
 - Derivaciones por cliente (sin endpoints/tablas nuevas): MRR = `price_monthly` de subscriptions
   `ended_at == null` excl. `billing_status == 'overdue'` (idéntico al Dashboard); Traffic 24h = suma
