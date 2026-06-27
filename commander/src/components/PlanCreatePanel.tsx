@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { NumberInput, TextArea, TextInput, Toggle } from '@carbon/react'
+import { FormGroup, NumberInput, Stack, TextArea, TextInput, Toggle } from '@carbon/react'
 import { useStore } from '../store/store'
 import { useToast } from '../providers/ToastProvider'
 import { CreatePanel } from './CreatePanel'
@@ -72,7 +72,7 @@ export function PlanCreatePanel({
 
   return (
     <CreatePanel open={open} title="New plan" subtitle={`Pricing & quota defaults for ${packageName}`} formTitle="Plan details" submitLabel="Create plan" onSubmit={submit} onClose={onClose}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <Stack gap={5}>
         <TextInput
           id="pc-package"
           labelText="Package"
@@ -91,16 +91,19 @@ export function PlanCreatePanel({
           invalidText={nameError}
         />
         <TextArea id="pc-desc" labelText="Description (optional)" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
-        <TextInput id="pc-price" labelText="Price / month" type="number" value={price} onChange={(e) => setPrice(e.target.value)} />
+        <NumberInput id="pc-price" label="Price / month" hideSteppers min={0} value={price} onChange={(_e, { value }) => setPrice(String(value ?? ''))} />
 
-        <p className="scns-section-label" style={{ marginTop: 8 }}>Default quota limits · blank = unlimited</p>
-        <NumberInput id="pc-q-req" label="Requests / day" hideSteppers value={qReq} onChange={(_e, { value }) => setQReq(String(value ?? ''))} />
-        <NumberInput id="pc-q-db" label="DB size (MB)" hideSteppers value={qDb} onChange={(_e, { value }) => setQDb(String(value ?? ''))} />
-        <NumberInput id="pc-q-storage" label="Storage (MB)" hideSteppers value={qStorage} onChange={(_e, { value }) => setQStorage(String(value ?? ''))} />
-        <NumberInput id="pc-q-users" label="Users total" hideSteppers value={qUsers} onChange={(_e, { value }) => setQUsers(String(value ?? ''))} />
+        <FormGroup legendText="Default quota limits · blank = unlimited">
+          <Stack gap={5}>
+            <NumberInput id="pc-q-req" label="Requests / day" hideSteppers value={qReq} onChange={(_e, { value }) => setQReq(String(value ?? ''))} />
+            <NumberInput id="pc-q-db" label="DB size (MB)" hideSteppers value={qDb} onChange={(_e, { value }) => setQDb(String(value ?? ''))} />
+            <NumberInput id="pc-q-storage" label="Storage (MB)" hideSteppers value={qStorage} onChange={(_e, { value }) => setQStorage(String(value ?? ''))} />
+            <NumberInput id="pc-q-users" label="Users total" hideSteppers value={qUsers} onChange={(_e, { value }) => setQUsers(String(value ?? ''))} />
+          </Stack>
+        </FormGroup>
 
         <Toggle id="pc-active" labelText="Status" labelA="Inactive" labelB="Active" toggled={active} onToggle={setActive} />
-      </div>
+      </Stack>
     </CreatePanel>
   )
 }

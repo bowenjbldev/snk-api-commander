@@ -1313,3 +1313,17 @@ body {
     display: flex;
   }
 }
+
+// ── Create tearsheet: keep the always-dark masthead visible ───────────────────
+// The tearsheet root IS the modal overlay (`.cds--modal`: fixed, 100vh, top 0) and its dim is a
+// `::before` with inset:0 — so by default the scrim covers + dims the 48px header. Start the whole
+// overlay below the header (matches the side-panel precedent, design §6). The panel stays flush under
+// the header by letting its container fill the offset overlay (override the default 100% - 3rem cap,
+// which would otherwise drop the panel another 48px and leave a gap).
+.scns-create-flow.c4p--tearsheet {
+  inset-block-start: 3rem;
+  block-size: calc(100vh - 3rem);
+}
+.scns-create-flow.c4p--tearsheet .c4p--tearsheet__container {
+  max-block-size: 100%;
+}
