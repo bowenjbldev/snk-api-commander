@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { Dropdown, Button, Tag } from '@carbon/react'
-import { Box, CheckmarkOutline, Time, PauseOutline, Activity, Money, Close } from '@carbon/icons-react'
+import { Box, CheckmarkOutline, Time, PauseOutline, Activity, Money, Close, Add } from '@carbon/icons-react'
 import { useStore } from '../store/store'
+import { useCan } from '../store/auth'
 import { PageHeader } from '../components/PageHeader'
+import { PackageCreateTearsheet } from '../components/PackageCreateTearsheet'
 import { KpiCluster, KpiTile } from '../components/KpiCluster'
 import { DataTableShell, type ShellColumn } from '../components/DataTableShell'
 import { QuotaBar } from '../components/QuotaBar'
 import { Sparkline } from '../components/Sparkline'
 import { RelativeTime } from '../components/RelativeTime'
+import { Delta } from '../components/Delta'
 import { useFirstLoad } from '../hooks/useFirstLoad'
 import { platformUsage } from '../lib/api'
-import { formatCountdownShort, msUntil, formatMonthYear, formatAbsoluteUTC } from '../lib/time'
+import { formatCountdownShort, msUntil } from '../lib/time'
 import { formatCompact, formatCurrencyShort } from '../lib/format'
 import type { Package, UsageSnapshot } from '../store/types'
 
@@ -58,7 +61,9 @@ export function Packages() {
   const clients = useStore((s) => s.clients)
   const subscriptions = useStore((s) => s.subscriptions)
   const navigate = useNavigate()
+  const can = useCan()
 
+  const [createOpen, setCreateOpen] = useState(false)
   const [provFilter, setProvFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [listingFilter, setListingFilter] = useState('all')
@@ -87,6 +92,22 @@ export function Packages() {
         .reduce((a, s) => a + Number(s.price_monthly || 0), 0),
     [subscriptions],
   )
+
+  // MoM deltas where a prior value is honestly derivable (created_at / active subscription terms).
+  // Null with no prior base → tile keeps its descriptive helper. Active/grace/suspended counts have
+  // no point-in-time history → no delta (same rule as Clients).
+  const deltas = useMemo(() => {
+    const cutoff = Date.now() - 30 * 86_400_000
+    const ratio = (now: number, prior: number) => (prior > 0 ? (now - prior) / prior : null)
+    const pkgsPrior = packages.filter((p) => Date.parse(p.created_at) <= cutoff).length
+    let mrrPrior = 0
+    for (const s of subscriptions) {
+      const started = Date.parse(s.started_at)
+      const ended = s.ended_at ? Date.parse(s.ended_at) : null
+      if (started <= cutoff && (ended == null || ended > cutoff)) mrrPrior += Number(s.price_monthly) || 0
+    }
+    return { packages: ratio(packages.length, pkgsPrior), mrr: ratio(mrr, mrrPrior) }
+  }, [packages, subscriptions, mrr])
 
   // Per-package 48h request sparkline series — straight from the platform usage feed (keyed by
   // package_id, no aggregation needed). Local state, like the Dashboard / Clients.
@@ -222,18 +243,6 @@ export function Packages() {
           <span className="scns-helper">—</span>
         ),
     },
-    {
-      key: 'created',
-      header: 'Created',
-      sortable: true,
-      sortValue: (p) => p.created_at,
-      width: 110,
-      render: (p) => (
-        <span className="scns-reltime" title={formatAbsoluteUTC(p.created_at)}>
-          {formatMonthYear(p.created_at)}
-        </span>
-      ),
-    },
   ]
 
   return (
@@ -241,16 +250,21 @@ export function Packages() {
       <PageHeader
         title="Packages"
         subtitle="Business packages, plans and live deployments"
+        primaryAction={
+          can('provision packages')
+            ? { label: 'Create package', icon: Add, onClick: () => setCreateOpen(true) }
+            : undefined
+        }
       />
 
       <div style={{ marginBottom: 32 }}>
         <KpiCluster columns={6}>
-          <KpiTile label="Packages" value={packages.length} helper={`${provisioned.length} provisioned`} icon={<Box size={20} />} />
+          <KpiTile label="Packages" value={packages.length} helper={deltas.packages != null ? <Delta value={deltas.packages} suffix="· 30d" /> : `${provisioned.length} provisioned`} icon={<Box size={20} />} />
           <KpiTile label="Active" value={counts.active} helper="operational" icon={<CheckmarkOutline size={20} />} iconClass="scns-val-green" />
           <KpiTile label="In grace" value={counts.grace} valueClass={counts.grace > 0 ? 'scns-val-amber' : undefined} helper="awaiting payment" icon={<Time size={20} />} iconClass={counts.grace > 0 ? 'scns-val-amber' : undefined} />
           <KpiTile label="Suspended" value={counts.suspended} valueClass={counts.suspended > 0 ? 'scns-val-red' : undefined} helper="serving HTTP 402" icon={<PauseOutline size={20} />} iconClass={counts.suspended > 0 ? 'scns-val-red' : undefined} />
           <KpiTile label="Requests · 24h" value={formatCompact(requests24h)} helper="across packages" icon={<Activity size={20} />} />
-          <KpiTile label="MRR" value={formatCurrencyShort(mrr)} helper="current terms" icon={<Money size={20} />} />
+          <KpiTile label="MRR" value={formatCurrencyShort(mrr)} helper={deltas.mrr != null ? <Delta value={deltas.mrr} suffix="· 30d" /> : 'current terms'} icon={<Money size={20} />} />
         </KpiCluster>
       </div>
 
@@ -310,6 +324,8 @@ export function Packages() {
           </>
         }
       />
+
+      <PackageCreateTearsheet open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>
   )
 }
