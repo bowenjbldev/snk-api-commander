@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('folio_settings', function (Blueprint $table) {
             $table->id(); // singleton: fila 1
-            $table->json('settings')->nullable(); // {theme, theme_overrides, tenant:{name,tagline,city}, onboarded}
+            $table->json('settings')->nullable(); // {theme, theme_overrides, tenant, onboarded}
             $table->timestamps();
         });
     }

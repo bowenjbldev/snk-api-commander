@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Packages\Snk\Folio\Models\SnkFolioCategoryModel;
 use Packages\Snk\Folio\Models\SnkFolioLayoutModel;
 use Packages\Snk\Folio\Models\SnkFolioPostModel;
 use Packages\Snk\Folio\Models\SnkFolioPostSlugModel;
@@ -30,10 +31,15 @@ class SnkFolioPublicController extends Controller
             ->where('status', 'published')
             ->orderByDesc('published_at');
         if (! empty($data['cat'])) {
-            $query->where('cat', $data['cat']);
+            $query->whereHas('category', fn ($q) => $q->where('slug', $data['cat']));
         }
 
         return response()->json($query->limit($data['count'] ?? 50)->get());
+    }
+
+    public function categories(): JsonResponse
+    {
+        return response()->json(SnkFolioCategoryModel::query()->orderBy('id')->get());
     }
 
     public function post(string $slug): JsonResponse
