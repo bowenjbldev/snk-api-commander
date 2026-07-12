@@ -3,8 +3,11 @@
 namespace Packages\Snk\Folio\Http\Controllers;
 
 use Dedoc\Scramble\Attributes\Group;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Snk\Folio\Models\SnkFolioPostModel;
+use Packages\Snk\Folio\Models\SnkFolioPostSlugModel;
 
 /**
  * CRUD de articulos del periodico (contrato Post de snk-news, en snake_case).
@@ -42,7 +45,7 @@ class SnkFolioPostsController extends CoreBaseApiController
         'body_blocks.*.config' => 'nullable|array',
         'tags' => 'nullable|array',
         'tags.*' => 'string|max:64',
-        'slug' => 'nullable|string|max:255',
+        'slug' => 'nullable|string|max:255|unique:folio_posts,slug',
         'featured' => 'nullable|boolean',
         'scheduled_for' => 'nullable|string|max:32',
         'seo_title' => 'nullable|string|max:500',
@@ -65,10 +68,33 @@ class SnkFolioPostsController extends CoreBaseApiController
         'body_blocks.*.config' => 'nullable|array',
         'tags' => 'nullable|array',
         'tags.*' => 'string|max:64',
-        'slug' => 'nullable|string|max:255',
+        'slug' => 'nullable|string|max:255|unique:folio_posts,slug,{id}',
         'featured' => 'nullable|boolean',
         'scheduled_for' => 'nullable|string|max:32',
         'seo_title' => 'nullable|string|max:500',
         'seo_description' => 'nullable|string',
     ];
+
+    /** Al renombrar el slug, guarda el antiguo en el historial (la URL vieja hará 301). */
+    public function update(Request $request, $id = null): JsonResponse
+    {
+        $previousSlug = $id !== null
+            ? SnkFolioPostModel::query()->whereKey($id)->value('slug')
+            : null;
+
+        $response = parent::update($request, $id);
+
+        if ($response->getStatusCode() === 200 && $previousSlug) {
+            $newSlug = SnkFolioPostModel::query()->whereKey($id)->value('slug');
+            if ($newSlug !== $previousSlug) {
+                SnkFolioPostSlugModel::updateOrCreate(['slug' => $previousSlug], ['post_id' => $id]);
+            }
+            if ($newSlug) {
+                // Si el post recupera un slug que estaba en el historial, vuelve a ser el actual.
+                SnkFolioPostSlugModel::query()->where('slug', $newSlug)->delete();
+            }
+        }
+
+        return $response;
+    }
 }
