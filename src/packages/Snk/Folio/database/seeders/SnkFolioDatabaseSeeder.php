@@ -3,7 +3,6 @@
 namespace Packages\Snk\Folio\Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Snk\Folio\Models\SnkFolioAuthorModel;
 use Packages\Snk\Folio\Models\SnkFolioCategoryModel;
@@ -78,7 +77,8 @@ class SnkFolioDatabaseSeeder extends Seeder
 
         $demo = CoreUserModel::firstOrCreate(
             ['email' => 'reader@snk.test'],
-            ['name' => 'Demo Reader', 'password' => Hash::make('password')]
+            // Sin Hash::make: el cast 'hashed' del modelo ya lo hace (doble hash = login roto).
+            ['name' => 'Demo Reader', 'password' => 'password']
         );
         $demo->assignRole($reader);
     }
