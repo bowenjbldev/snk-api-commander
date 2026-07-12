@@ -28,6 +28,7 @@ class SnkFolioPostModel extends Model
             'body_blocks' => 'array',
             'featured' => 'boolean',
             'published_at' => 'datetime',
+            'scheduled_for' => 'datetime',
             'reads' => 'integer',
         ];
     }

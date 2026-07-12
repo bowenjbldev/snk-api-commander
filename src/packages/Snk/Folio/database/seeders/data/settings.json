@@ -1,0 +1,10 @@
+{
+ "theme": "estandar",
+ "theme_overrides": [],
+ "tenant": {
+  "name": null,
+  "tagline": null,
+  "city": null
+ },
+ "onboarded": true
+}

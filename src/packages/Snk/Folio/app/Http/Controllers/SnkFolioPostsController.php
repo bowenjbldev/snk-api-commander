@@ -53,7 +53,7 @@ class SnkFolioPostsController extends CoreBaseApiController
         'tags.*' => 'string|max:64',
         'slug' => 'nullable|string|max:255|unique:folio_posts,slug',
         'featured' => 'nullable|boolean',
-        'scheduled_for' => 'nullable|string|max:32',
+        'scheduled_for' => 'nullable|date',
         'meta' => 'nullable|array:seo_title,seo_description',
         'meta.seo_title' => 'nullable|string|max:500',
         'meta.seo_description' => 'nullable|string',
@@ -77,7 +77,7 @@ class SnkFolioPostsController extends CoreBaseApiController
         'tags.*' => 'string|max:64',
         'slug' => 'nullable|string|max:255|unique:folio_posts,slug,{id}',
         'featured' => 'nullable|boolean',
-        'scheduled_for' => 'nullable|string|max:32',
+        'scheduled_for' => 'nullable|date',
         'meta' => 'nullable|array:seo_title,seo_description',
         'meta.seo_title' => 'nullable|string|max:500',
         'meta.seo_description' => 'nullable|string',
@@ -159,7 +159,7 @@ class SnkFolioPostsController extends CoreBaseApiController
         if ($imageSent) {
             $url = $data['image'] ?? null;
             $columns['cover_media_id'] = $url
-                ? SnkFolioMediaModel::firstOrCreate(['url' => $url])->id
+                ? SnkFolioMediaModel::firstOrCreateByUrl($url)->id
                 : null;
         }
 

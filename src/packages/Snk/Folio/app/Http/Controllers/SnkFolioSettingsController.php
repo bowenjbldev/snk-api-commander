@@ -41,9 +41,17 @@ class SnkFolioSettingsController extends Controller
             'tenant.tagline' => 'nullable|string|max:255',
             'tenant.city' => 'nullable|string|max:255',
             'onboarded' => 'nullable|boolean',
+            'version' => 'nullable|integer|min:1',
         ]);
 
         $row = $this->singleton();
+
+        // Concurrencia optimista opcional (como folio_layouts): si el cliente manda
+        // la versión que leyó y otro guardado ganó, 409 en vez de last-write-wins.
+        if (isset($data['version']) && (int) $data['version'] !== (int) $row->version) {
+            return response()->json(['error' => 'Version conflict', 'version' => $row->version], 409);
+        }
+        unset($data['version']);
         // Merge parcial: solo pisa las claves enviadas; tenant tambien se mergea por dentro
         // para que {tenant:{name}} no borre tagline/city.
         $settings = $row->settings ?? [];
@@ -51,6 +59,7 @@ class SnkFolioSettingsController extends Controller
             $data['tenant'] = array_merge($settings['tenant'] ?? [], $data['tenant']);
         }
         $row->settings = array_merge($settings, $data);
+        $row->version = (int) $row->version + 1;
         $row->save();
 
         return response()->json($this->payload($row));
@@ -60,6 +69,7 @@ class SnkFolioSettingsController extends Controller
     {
         $settings = array_merge(self::DEFAULTS, $row->settings ?? []);
         $settings['tenant'] = array_merge(self::DEFAULTS['tenant'], $settings['tenant'] ?? []);
+        $settings['version'] = (int) $row->version;
 
         return $settings;
     }

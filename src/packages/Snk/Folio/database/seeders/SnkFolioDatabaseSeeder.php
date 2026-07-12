@@ -7,7 +7,9 @@ use Illuminate\Support\Facades\Hash;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Snk\Folio\Models\SnkFolioAuthorModel;
 use Packages\Snk\Folio\Models\SnkFolioCategoryModel;
+use Packages\Snk\Folio\Models\SnkFolioLayoutModel;
 use Packages\Snk\Folio\Models\SnkFolioMediaModel;
+use Packages\Snk\Folio\Models\SnkFolioSettingModel;
 use Packages\Snk\Folio\Models\SnkFolioPostModel;
 use Packages\Snk\Folio\Models\SnkFolioTagModel;
 use Spatie\Permission\Models\Permission;
@@ -36,6 +38,24 @@ class SnkFolioDatabaseSeeder extends Seeder
         $this->seedPermissions();
         $this->seedCategories();
         $this->seedPosts();
+        $this->seedLayouts();
+        $this->seedSettings();
+    }
+
+    /** Composición de arranque (snapshot del builder): un fresh ya no deja la portada en blanco. */
+    private function seedLayouts(): void
+    {
+        $layouts = json_decode((string) file_get_contents(__DIR__.'/data/layouts.json'), true);
+        foreach ($layouts as $row) {
+            SnkFolioLayoutModel::firstOrCreate(['layout' => $row['layout']], ['schema' => $row['schema']]);
+        }
+    }
+
+    /** Identidad/tema de arranque; firstOrCreate: nunca pisa lo que el tenant ya editó. */
+    private function seedSettings(): void
+    {
+        $settings = json_decode((string) file_get_contents(__DIR__.'/data/settings.json'), true);
+        SnkFolioSettingModel::firstOrCreate(['id' => 1], ['settings' => $settings]);
     }
 
     private function seedPermissions(): void
@@ -77,7 +97,7 @@ class SnkFolioDatabaseSeeder extends Seeder
             $category = SnkFolioCategoryModel::query()->where('slug', $post['cat'])->first();
             $author = SnkFolioAuthorModel::firstOrCreate(['name' => trim($post['author'])]);
             $media = ! empty($post['image'])
-                ? SnkFolioMediaModel::firstOrCreate(['url' => $post['image']])
+                ? SnkFolioMediaModel::firstOrCreateByUrl($post['image'])
                 : null;
 
             $row = SnkFolioPostModel::firstOrCreate(['slug' => $post['slug']], [

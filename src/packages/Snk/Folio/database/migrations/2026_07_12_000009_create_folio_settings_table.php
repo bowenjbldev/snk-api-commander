@@ -11,6 +11,7 @@ return new class extends Migration
         Schema::create('folio_settings', function (Blueprint $table) {
             $table->id(); // singleton: fila 1
             $table->json('settings')->nullable(); // {theme, theme_overrides, tenant, onboarded}
+            $table->unsignedInteger('version')->default(1); // concurrencia optimista (409), como folio_layouts
             $table->timestamps();
         });
     }

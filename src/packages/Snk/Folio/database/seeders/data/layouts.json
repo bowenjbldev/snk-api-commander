@@ -1,0 +1,590 @@
+[
+ {
+  "layout": "portada",
+  "schema": {
+   "version": 1,
+   "sections": [
+    {
+     "id": "s-9s6yw2",
+     "columns": [
+      {
+       "id": "c-q5hznq",
+       "blocks": [
+        {
+         "id": "b-9svby5",
+         "type": "hero",
+         "config": {
+          "data": {
+           "mode": "auto",
+           "category": "destacadas",
+           "count": 4,
+           "sort": "recent"
+          },
+          "layout": "magazine",
+          "leadMedia": "top",
+          "leadExcerpt": true,
+          "sideExcerpt": false
+         },
+         "visibility": {
+          "desktop": true,
+          "tablet": true,
+          "mobile": true
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "s-jkqlkk",
+     "columns": [
+      {
+       "id": "c-774b37",
+       "blocks": [
+        {
+         "id": "b-y9m3p1",
+         "type": "lista",
+         "config": {
+          "data": {
+           "mode": "auto",
+           "category": "destacadas",
+           "count": 6,
+           "sort": "recent"
+          },
+          "preset": "cronologia",
+          "showExcerpt": false,
+          "showMeta": true,
+          "thumb": "left",
+          "numbered": true
+         },
+         "visibility": {
+          "desktop": true,
+          "tablet": true,
+          "mobile": true
+         }
+        }
+       ],
+       "header": "Live"
+      },
+      {
+       "id": "c-q3ddny",
+       "blocks": [
+        {
+         "id": "b-b4d2gh",
+         "type": "masleido",
+         "config": {
+          "data": {
+           "mode": "auto",
+           "category": "destacadas",
+           "count": 5,
+           "sort": "read"
+          },
+          "preset": "numerada",
+          "window": "dia",
+          "showReads": true,
+          "numberStyle": "serif"
+         },
+         "visibility": {
+          "desktop": true,
+          "tablet": true,
+          "mobile": true
+         }
+        }
+       ],
+       "header": "Most read"
+      }
+     ]
+    },
+    {
+     "id": "s-os0moc",
+     "columns": [
+      {
+       "id": "c-r5r1pm",
+       "blocks": [
+        {
+         "id": "b-l1o9s6",
+         "type": "grid",
+         "config": {
+          "data": {
+           "mode": "auto",
+           "category": "internacional",
+           "count": 5,
+           "sort": "recent"
+          },
+          "preset": "mosaico",
+          "cols": "3",
+          "ratio": "16/9",
+          "showExcerpt": false,
+          "showKicker": true
+         },
+         "visibility": {
+          "desktop": true,
+          "tablet": true,
+          "mobile": true
+         }
+        }
+       ]
+      }
+     ],
+     "header": {
+      "show": true,
+      "title": "International"
+     }
+    },
+    {
+     "id": "s-uyjqtz",
+     "columns": [
+      {
+       "id": "c-fyu40g",
+       "blocks": [
+        {
+         "id": "b-4ezhb3",
+         "type": "carrusel",
+         "config": {
+          "data": {
+           "mode": "auto",
+           "category": "politica",
+           "count": 3,
+           "sort": "recent"
+          },
+          "preset": "overlay",
+          "slides": 3,
+          "arrows": false,
+          "dots": false
+         },
+         "visibility": {
+          "desktop": true,
+          "tablet": true,
+          "mobile": true
+         }
+        }
+       ]
+      }
+     ],
+     "header": {
+      "show": true,
+      "title": "In depth"
+     }
+    },
+    {
+     "id": "s-vpmeij",
+     "columns": [
+      {
+       "id": "c-43un1m",
+       "blocks": [
+        {
+         "id": "b-5pr6h2",
+         "type": "post",
+         "config": {
+          "data": {
+           "mode": "auto",
+           "category": "economia",
+           "count": 1,
+           "sort": "manualOrder",
+           "pinnedPostIds": [
+            "p43"
+           ]
+          },
+          "preset": "tarjeta",
+          "imagePos": "left",
+          "showExcerpt": true,
+          "showMeta": true,
+          "showKicker": true
+         },
+         "visibility": {
+          "desktop": true,
+          "tablet": true,
+          "mobile": true
+         }
+        }
+       ]
+      },
+      {
+       "id": "c-fiqw5u",
+       "blocks": [
+        {
+         "id": "b-euyvfb",
+         "type": "lista",
+         "config": {
+          "data": {
+           "mode": "auto",
+           "category": "economia",
+           "count": 5,
+           "sort": "recent"
+          },
+          "preset": "titulares",
+          "showExcerpt": true,
+          "showMeta": false,
+          "thumb": "left",
+          "numbered": false
+         },
+         "visibility": {
+          "desktop": true,
+          "tablet": true,
+          "mobile": true
+         }
+        }
+       ]
+      }
+     ],
+     "header": {
+      "show": true,
+      "title": "Economy"
+     }
+    },
+    {
+     "id": "s-v8xzne",
+     "columns": [
+      {
+       "id": "c-mn18qc",
+       "blocks": [
+        {
+         "id": "b-b3ssco",
+         "type": "lista",
+         "config": {
+          "data": {
+           "mode": "auto",
+           "category": "tecnologia",
+           "count": 4,
+           "sort": "recent"
+          },
+          "preset": "miniatura",
+          "showExcerpt": false,
+          "showMeta": false,
+          "thumb": "left",
+          "numbered": true
+         },
+         "visibility": {
+          "desktop": true,
+          "tablet": true,
+          "mobile": true
+         }
+        }
+       ],
+       "header": "Technology"
+      },
+      {
+       "id": "c-a07b9b",
+       "blocks": [
+        {
+         "id": "b-383zy7",
+         "type": "lista",
+         "config": {
+          "data": {
+           "mode": "auto",
+           "category": "cultura",
+           "count": 4,
+           "sort": "recent"
+          },
+          "preset": "mixto",
+          "showExcerpt": false,
+          "showMeta": false,
+          "thumb": "left",
+          "numbered": true
+         },
+         "visibility": {
+          "desktop": true,
+          "tablet": true,
+          "mobile": true
+         }
+        }
+       ],
+       "header": "Culture"
+      }
+     ]
+    },
+    {
+     "id": "s-pqyzsu",
+     "columns": [
+      {
+       "id": "c-ctvjxc",
+       "blocks": [
+        {
+         "id": "b-snmond",
+         "type": "grid",
+         "config": {
+          "data": {
+           "mode": "auto",
+           "category": "sociedad",
+           "count": 5,
+           "sort": "recent"
+          },
+          "preset": "destacado",
+          "cols": "3",
+          "ratio": "16/9",
+          "showExcerpt": false,
+          "showKicker": true
+         },
+         "visibility": {
+          "desktop": true,
+          "tablet": true,
+          "mobile": true
+         }
+        }
+       ]
+      }
+     ],
+     "header": {
+      "show": true,
+      "title": "Society"
+     }
+    },
+    {
+     "id": "s-fmp1a9",
+     "columns": [
+      {
+       "id": "c-mr0d7v",
+       "blocks": [
+        {
+         "id": "b-r6e04e",
+         "type": "grid",
+         "config": {
+          "data": {
+           "mode": "auto",
+           "category": "deportes",
+           "count": 3,
+           "sort": "recent"
+          },
+          "preset": "overlay",
+          "cols": "3",
+          "ratio": "16/9",
+          "showExcerpt": false,
+          "showKicker": true
+         },
+         "visibility": {
+          "desktop": true,
+          "tablet": true,
+          "mobile": true
+         }
+        }
+       ]
+      }
+     ],
+     "header": {
+      "show": true,
+      "title": "Sports"
+     }
+    },
+    {
+     "id": "s-qtuzzg",
+     "columns": [
+      {
+       "id": "c-fjaf5o",
+       "blocks": [
+        {
+         "id": "b-2xivsv",
+         "type": "opinion",
+         "config": {
+          "data": {
+           "mode": "auto",
+           "category": "destacadas",
+           "count": 4,
+           "sort": "recent"
+          },
+          "preset": "tira",
+          "showExcerpt": true
+         },
+         "visibility": {
+          "desktop": true,
+          "tablet": true,
+          "mobile": true
+         }
+        }
+       ]
+      }
+     ],
+     "header": {
+      "show": true,
+      "title": "Opinion"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "layout": "seccion",
+  "schema": {
+   "version": 1,
+   "sections": [
+    {
+     "id": "s-hj7xf0",
+     "columns": [
+      {
+       "id": "c-ztonmc",
+       "blocks": [
+        {
+         "id": "b-73zgl2",
+         "type": "lista",
+         "config": {
+          "data": {
+           "mode": "auto",
+           "category": "destacadas",
+           "count": 5,
+           "sort": "recent"
+          },
+          "preset": "titulares",
+          "showExcerpt": true,
+          "showMeta": true,
+          "thumb": "left",
+          "numbered": true
+         },
+         "visibility": {
+          "desktop": true,
+          "tablet": true,
+          "mobile": true
+         }
+        }
+       ],
+       "header": "Breaking news"
+      },
+      {
+       "id": "c-0pbms3",
+       "blocks": [
+        {
+         "id": "b-ra4hub",
+         "type": "masleido",
+         "config": {
+          "data": {
+           "mode": "auto",
+           "category": "destacadas",
+           "count": 5,
+           "sort": "read"
+          },
+          "preset": "miniatura",
+          "window": "semana",
+          "showReads": true,
+          "numberStyle": "serif"
+         },
+         "visibility": {
+          "desktop": true,
+          "tablet": true,
+          "mobile": true
+         }
+        }
+       ],
+       "header": "Most read"
+      }
+     ]
+    },
+    {
+     "id": "s-wfpori",
+     "columns": [
+      {
+       "id": "c-7vyjgh",
+       "blocks": [
+        {
+         "id": "b-3i1h45",
+         "type": "post",
+         "config": {
+          "data": {
+           "mode": "auto",
+           "category": "destacadas",
+           "count": 1,
+           "sort": "recent"
+          },
+          "preset": "tarjeta",
+          "imagePos": "left",
+          "showExcerpt": true,
+          "showMeta": true,
+          "showKicker": true
+         },
+         "visibility": {
+          "desktop": true,
+          "tablet": true,
+          "mobile": true
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "s-lro302",
+     "columns": [
+      {
+       "id": "c-347efa",
+       "blocks": [
+        {
+         "id": "b-rs69j7",
+         "type": "grid",
+         "config": {
+          "data": {
+           "mode": "auto",
+           "category": "destacadas",
+           "count": 6,
+           "sort": "recent"
+          },
+          "preset": "mosaico",
+          "cols": "3",
+          "ratio": "16/9",
+          "showExcerpt": false,
+          "showKicker": true
+         },
+         "visibility": {
+          "desktop": true,
+          "tablet": true,
+          "mobile": true
+         }
+        }
+       ]
+      }
+     ],
+     "header": {
+      "show": true,
+      "title": "More news"
+     }
+    },
+    {
+     "id": "s-akd58r",
+     "columns": [
+      {
+       "id": "c-jnp7fs",
+       "blocks": [
+        {
+         "id": "b-b4b98f",
+         "type": "tags",
+         "config": {
+          "source": "populares",
+          "title": "Popular tags",
+          "max": 8,
+          "style": "pill"
+         },
+         "visibility": {
+          "desktop": true,
+          "tablet": true,
+          "mobile": true
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "s-lp8a8u",
+     "columns": [
+      {
+       "id": "c-uowb6j",
+       "blocks": [
+        {
+         "id": "b-0jmhj5",
+         "type": "newsletter",
+         "config": {
+          "title": "The day's key stories, in your inbox at 8:00",
+          "subtitle": "No spam. Unsubscribe anytime.",
+          "buttonLabel": "Subscribe",
+          "layout": "inline"
+         },
+         "visibility": {
+          "desktop": true,
+          "tablet": true,
+          "mobile": true
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ }
+]
