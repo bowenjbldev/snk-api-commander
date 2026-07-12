@@ -24,6 +24,28 @@ services:
         aliases:
           - api-app
 
+  # Laravel scheduler: dispara los comandos programados (commander:* y folio:*).
+  # schedule:work corre en foreground y evalúa el schedule cada minuto — el
+  # equivalente Docker del cron `schedule:run`. Reusa la imagen del app pero
+  # salta su entrypoint (migraciones/permisos ya los hace app); restart cubre
+  # el arranque en frío mientras app instala vendor/.
+  scheduler:
+    image: snk-api-commander-app
+    restart: unless-stopped
+    working_dir: /var/www/src
+    entrypoint: ["php", "artisan", "schedule:work"]
+    volumes:
+      - ./src:/var/www/src
+      - ./.git:/var/www/.git:ro
+      - /var/www/src/bootstrap/cache
+    depends_on:
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+
   # Nginx Service
   nginx:
     image: nginx:alpine
