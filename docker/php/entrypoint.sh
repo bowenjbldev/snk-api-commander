@@ -38,6 +38,11 @@ if [ ! -f bootstrap/cache/packages.php ]; then
     php artisan package:discover --ansi
 fi
 
+# Symlink public/storage → storage/app/public (media subida por los tenants).
+if [ ! -L public/storage ]; then
+    php artisan storage:link
+fi
+
 # Con sqlite, migrate necesita que el archivo exista (clon fresco no lo trae)
 EFFECTIVE_DB="${DB_CONNECTION:-$(grep -E '^DB_CONNECTION=' .env | cut -d '=' -f2)}"
 if [ "$EFFECTIVE_DB" = "sqlite" ] && [ ! -f database/database.sqlite ]; then

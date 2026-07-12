@@ -3,6 +3,9 @@
 namespace Packages\Snk\Folio\Http\Controllers;
 
 use Dedoc\Scramble\Attributes\Group;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Snk\Folio\Models\SnkFolioMediaModel;
 
@@ -38,4 +41,43 @@ class SnkFolioMediaController extends CoreBaseApiController
         'width' => 'nullable|integer|min:0',
         'height' => 'nullable|integer|min:0',
     ];
+
+    /**
+     * Sube una imagen al disco compartido, en carpeta por tenant (la BD del par
+     * cliente-paquete). La url guardada es RELATIVA (/storage/…): el mismo host
+     * del tenant la sirve vía nginx (public/storage → storage/app/public).
+     */
+    public function upload(Request $request): JsonResponse
+    {
+        if ($response = $this->requirePermission($this->storePermission)) {
+            return $response;
+        }
+
+        $data = $request->validate([
+            'file' => 'required|image|mimes:jpeg,png,webp,avif,gif|max:10240', // 10 MB
+            'alt' => 'nullable|string|max:500',
+            'caption' => 'nullable|string|max:500',
+        ]);
+
+        $file = $data['file'];
+        // Carpeta por tenant: el disco es compartido entre pares cliente-paquete.
+        $dir = 'media/'.DB::connection()->getDatabaseName();
+        $path = $file->store($dir, 'public');
+        [$width, $height] = @getimagesize($file->getRealPath()) ?: [null, null];
+
+        $media = SnkFolioMediaModel::create([
+            'url' => '/storage/'.$path,
+            'alt' => $data['alt'] ?? null,
+            'caption' => $data['caption'] ?? null,
+            'mime' => $file->getMimeType(),
+            'width' => $width,
+            'height' => $height,
+            'size_bytes' => $file->getSize(),
+            'disk' => 'public',
+            'path' => $path,
+            'uploaded_by' => auth()->id(),
+        ]);
+
+        return response()->json($media, 201);
+    }
 }

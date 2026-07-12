@@ -41,6 +41,7 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::post('posts/{post}/revisions/{revision}/restore', [SnkFolioPostsController::class, 'restore']);
     Route::apiResource('categories', SnkFolioCategoriesController::class);
     Route::apiResource('authors', SnkFolioAuthorsController::class);
+    Route::post('media/upload', [SnkFolioMediaController::class, 'upload']);
     Route::apiResource('media', SnkFolioMediaController::class);
     Route::apiResource('tags', SnkFolioTagsController::class);
     Route::apiResource('comments', SnkFolioCommentsController::class);
