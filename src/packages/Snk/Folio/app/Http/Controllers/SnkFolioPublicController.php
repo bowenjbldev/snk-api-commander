@@ -33,6 +33,10 @@ class SnkFolioPublicController extends Controller
 
         $query = SnkFolioPostModel::query()
             ->where('status', 'published')
+            // Vistas reales agregadas (folio_post_views): el «más leído» del frontend
+            // ordena por ellas; hoy y últimos 7 días.
+            ->withSum(['views as views_day' => fn ($q) => $q->where('date', now()->toDateString())], 'views')
+            ->withSum(['views as views_week' => fn ($q) => $q->where('date', '>=', now()->subDays(6)->toDateString())], 'views')
             ->orderByDesc('published_at');
         if (! empty($data['cat'])) {
             $query->whereHas('category', fn ($q) => $q->where('slug', $data['cat']));

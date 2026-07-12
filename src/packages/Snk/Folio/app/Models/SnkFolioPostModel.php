@@ -29,6 +29,8 @@ class SnkFolioPostModel extends Model
             'featured' => 'boolean',
             'published_at' => 'datetime',
             'scheduled_for' => 'datetime',
+            'views_day' => 'integer',
+            'views_week' => 'integer',
             'reads' => 'integer',
         ];
     }
@@ -56,6 +58,11 @@ class SnkFolioPostModel extends Model
     public function metaRows(): HasMany
     {
         return $this->hasMany(SnkFolioPostMetaModel::class, 'post_id');
+    }
+
+    public function views(): HasMany
+    {
+        return $this->hasMany(SnkFolioPostViewModel::class, 'post_id');
     }
 
     /** La portada serializada como `cover` (objeto media o null). */
