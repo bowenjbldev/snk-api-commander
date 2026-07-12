@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('folio_posts', function (Blueprint $table) {
-            $table->string('id', 128)->primary(); // id generado por el cliente (seeds p01..p60, nuevos u{ts36})
+            $table->id(); // PK entera (convención: toda tabla folio_* lleva PK autoincremental); es EL id del post
             $table->string('cat', 32);
             $table->string('title', 500);
             $table->text('excerpt');

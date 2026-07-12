@@ -26,8 +26,7 @@ class SnkFolioPostsController extends CoreBaseApiController
     protected string $destroyPermission = 'delete posts';
 
     protected array $validationRulesStore = [
-        // Mismo regex que normalizePost en snk-news: el cliente genera el id (u{ts36}).
-        'id' => 'required|string|max:128|regex:/^[A-Za-z][A-Za-z0-9_-]{0,127}$/|unique:folio_posts,id',
+        // El id lo asigna el server (PK entera); el cliente no envía id.
         'cat' => 'required|string|max:32',
         'title' => 'required|string|max:500',
         'excerpt' => 'required|string',

@@ -37,7 +37,8 @@ class SnkFolioDatabaseSeeder extends Seeder
     {
         $posts = json_decode((string) file_get_contents(__DIR__.'/data/posts.json'), true);
         foreach ($posts as $post) {
-            SnkFolioPostModel::firstOrCreate(['id' => $post['id']], $post);
+            // ponytail: idempotencia por slug (el id lo asigna la PK autoincremental)
+            SnkFolioPostModel::firstOrCreate(['slug' => $post['slug']], $post);
         }
     }
 }

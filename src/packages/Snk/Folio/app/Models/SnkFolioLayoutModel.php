@@ -8,13 +8,6 @@ class SnkFolioLayoutModel extends Model
 {
     protected $table = 'folio_layouts';
 
-    // PK natural: 'portada' | 'seccion'.
-    protected $primaryKey = 'layout';
-
-    public $incrementing = false;
-
-    protected $keyType = 'string';
-
     protected $guarded = [];
 
     protected function casts(): array

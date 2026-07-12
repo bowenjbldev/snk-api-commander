@@ -9,11 +9,6 @@ class SnkFolioPostModel extends Model
 {
     protected $table = 'folio_posts';
 
-    // El id lo genera el cliente (seeds p01..p60, nuevos u{ts36}); string PK, no autoincremental.
-    public $incrementing = false;
-
-    protected $keyType = 'string';
-
     protected $guarded = [];
 
     protected function casts(): array

@@ -1,6 +1,5 @@
 [
 	{
-		"id": "p01",
 		"cat": "politica",
 		"title": "Climate summit reaches a historic agreement after 14 hours of negotiation",
 		"excerpt": "The 196 signatory countries commit to tripling renewable energy by 2030 and to phasing out coal \"in a just and orderly way.\"",
@@ -64,7 +63,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p02",
 		"cat": "economia",
 		"title": "The Central Bank cuts rates for the first time in two years",
 		"excerpt": "The 25-basis-point cut aims to revive lending as consumption slows.",
@@ -128,7 +126,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p03",
 		"cat": "cultura",
 		"title": "Remains of the ancient Roman port unearthed in Seville",
 		"excerpt": "The site, found during construction work, rewrites the trading history of Roman Baetica.",
@@ -183,7 +180,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p04",
 		"cat": "sociedad",
 		"title": "Festival season kicks off with record attendance",
 		"excerpt": "More than three million tickets sold confirm the cultural sector's recovery.",
@@ -247,7 +243,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p05",
 		"cat": "internacional",
 		"title": "WHO sets a new record in childhood vaccination coverage",
 		"excerpt": "89% of children received their basic doses last year, according to the annual report.",
@@ -302,7 +297,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p06",
 		"cat": "deportes",
 		"title": "Epic last-minute comeback seals promotion",
 		"excerpt": "Vargas' goal in the 93rd minute sparks celebration in a stand that had waited a decade for the moment.",
@@ -366,7 +360,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p07",
 		"cat": "tecnologia",
 		"title": "A local startup unveils the first low-power neural chip",
 		"excerpt": "It promises to boost the efficiency of edge AI devices tenfold.",
@@ -430,7 +423,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p08",
 		"cat": "politica",
 		"title": "Congress passes the housing law reform",
 		"excerpt": "The measure caps rent increases in high-pressure areas and expands public housing.",
@@ -485,7 +477,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p09",
 		"cat": "economia",
 		"title": "Inflation eases to 2.4% and nears the target",
 		"excerpt": "Fresh food and energy lead the slowdown in prices this quarter.",
@@ -540,7 +531,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p10",
 		"cat": "cultura",
 		"title": "A retrospective brings together the painter's complete work for the first time",
 		"excerpt": "The show spans five decades of an essential, long-overlooked artist.",
@@ -604,7 +594,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p11",
 		"cat": "sociedad",
 		"title": "The new bike lane connects the six central districts",
 		"excerpt": "The 42-kilometer network opens after two years of construction and neighborhood debate.",
@@ -659,7 +648,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p12",
 		"cat": "internacional",
 		"title": "Peace talks resume after months of deadlock",
 		"excerpt": "Both delegations accept a temporary ceasefire as a gesture of goodwill.",
@@ -723,7 +711,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p13",
 		"cat": "deportes",
 		"title": "The women's national team routs its rival and qualifies with authority",
 		"excerpt": "Three first-half goals settle a match that was never in doubt.",
@@ -778,7 +765,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p14",
 		"cat": "tecnologia",
 		"title": "The digital outage exposes the fragility of the cloud",
 		"excerpt": "A six-hour failure hits thousands of services and reopens the debate over dependence.",
@@ -842,7 +828,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p15",
 		"cat": "politica",
 		"title": "A bare-minimum budget deal amid tension",
 		"excerpt": "Social spending is preserved but infrastructure investment is postponed.",
@@ -897,7 +882,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p16",
 		"cat": "economia",
 		"title": "Tourism breaks its all-time revenue record",
 		"excerpt": "Average spending per visitor rises 8% despite a slight drop in overnight stays.",
@@ -952,7 +936,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p17",
 		"cat": "cultura",
 		"title": "The last great master of the artisan craft dies at 91",
 		"excerpt": "He leaves behind a school of disciples who keep a centuries-old technique alive.",
@@ -1016,7 +999,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p18",
 		"cat": "sociedad",
 		"title": "A study links irregular sleep to school performance",
 		"excerpt": "Researchers call for a later start to the secondary school day.",
@@ -1071,7 +1053,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p19",
 		"cat": "internacional",
 		"title": "A tight election opens the door to unprecedented alliances",
 		"excerpt": "The count drags on and no party reaches a majority on its own.",
@@ -1126,7 +1107,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p20",
 		"cat": "deportes",
 		"title": "The veteran announces his retirement at the end of the season",
 		"excerpt": "He closes a twenty-year career with two continental titles and an untarnished legacy.",
@@ -1190,7 +1170,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p21",
 		"cat": "tecnologia",
 		"title": "Augmented reality reaches the classroom in a pilot program",
 		"excerpt": "Fifty schools test interactive materials in science and geography.",
@@ -1245,7 +1224,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p22",
 		"cat": "sociedad",
 		"title": "Volunteers replant the hillside razed by the wildfire",
 		"excerpt": "The grassroots effort plants twenty thousand trees in a single day.",
@@ -1309,7 +1287,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p23",
 		"cat": "cultura",
 		"title": "The independent film festival reveals its lineup",
 		"excerpt": "Forty premieres and a strand devoted to social documentary define this edition.",
@@ -1364,7 +1341,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p24",
 		"cat": "economia",
 		"title": "Small businesses lead job creation this quarter",
 		"excerpt": "Small retail and hospitality account for most of the new contracts.",
@@ -1428,7 +1404,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p25",
 		"cat": "internacional",
 		"title": "The G20 summit ends without a deal on poor countries' debt",
 		"excerpt": "The major economies push debt relief to a new technical round next autumn.",
@@ -1492,7 +1467,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p26",
 		"cat": "politica",
 		"title": "The Constitutional Court unanimously upholds the transparency law",
 		"excerpt": "The ruling clears the last appeal and requires senior officials to publish their agendas.",
@@ -1556,7 +1530,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p27",
 		"cat": "tecnologia",
 		"title": "The first level-4 self-driving cars will be tested on city streets",
 		"excerpt": "The pilot starts with a fleet of thirty vehicles and a safety driver on board.",
@@ -1620,7 +1593,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p28",
 		"cat": "deportes",
 		"title": "The marathon breaks its participation record with twenty thousand runners",
 		"excerpt": "Organizers close registration in record time and weigh raising the cap for next year.",
@@ -1684,7 +1656,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p29",
 		"cat": "economia",
 		"title": "The minimum wage rises 5% after a deal between unions and employers",
 		"excerpt": "The agreement, sealed in the early hours, benefits two and a half million workers.",
@@ -1748,7 +1719,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p30",
 		"cat": "cultura",
 		"title": "The national library digitizes half a million historical documents",
 		"excerpt": "The open archive includes manuscripts, maps and press from the last four centuries.",
@@ -1812,7 +1782,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p31",
 		"cat": "internacional",
 		"title": "A migration agreement reshapes the bloc's external borders",
 		"excerpt": "A distribution of applications and a shared reception fund anchor the new pact.",
@@ -1876,7 +1845,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p32",
 		"cat": "tecnologia",
 		"title": "Quantum computing reaches its first verifiable commercial milestone",
 		"excerpt": "A company demonstrates a real advantage on a logistics problem the industry was watching closely.",
@@ -1940,7 +1908,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p33",
 		"cat": "sociedad",
 		"title": "Birth rate rebounds for the first time in a decade, institute says",
 		"excerpt": "Experts attribute the shift to childcare support and subsidized housing.",
@@ -2004,7 +1971,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p34",
 		"cat": "politica",
 		"title": "The city council approves the largest public housing plan in twenty years",
 		"excerpt": "The investment will build eight thousand affordable homes on land now unused.",
@@ -2068,7 +2034,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p35",
 		"cat": "politica",
 		"title": "The opposition forces an inquiry into emergency contracts",
 		"excerpt": "The bureau accepts the request after weeks of deadlock and sets a schedule of hearings.",
@@ -2132,7 +2097,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p36",
 		"cat": "economia",
 		"title": "Public debt falls below 100% of GDP for the first time since the pandemic",
 		"excerpt": "Growth and inflation do more for the ratio than spending cuts, analysts warn.",
@@ -2179,7 +2143,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p37",
 		"cat": "internacional",
 		"title": "The EU approves the green tariff on steel imports",
 		"excerpt": "The border adjustment mechanism takes effect in January and strains ties with three trade partners.",
@@ -2243,7 +2206,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p38",
 		"cat": "deportes",
 		"title": "The local cycling team unveils its bid to take on the grand tours",
 		"excerpt": "A doubled budget, eight signings and a declared bet on the velodrome's youth academy.",
@@ -2299,7 +2261,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p39",
 		"cat": "tecnologia",
 		"title": "The public supercomputer opens its queues to small businesses",
 		"excerpt": "A 20% quota of computing hours is reserved for firms with fewer than fifty employees.",
@@ -2346,7 +2307,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p40",
 		"cat": "cultura",
 		"title": "The theater reopens after restoration with a season of classic comedy",
 		"excerpt": "Four years of work restore the 1892 auditorium and add a chamber hall.",
@@ -2393,7 +2353,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p41",
 		"cat": "sociedad",
 		"title": "Food banks warn of a critical summer",
 		"excerpt": "Donations fall 18% while the number of families served grows for the third month running.",
@@ -2449,7 +2408,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p42",
 		"cat": "politica",
 		"title": "The Senate returns the coastal law with amendments from three groups",
 		"excerpt": "The text goes back to Congress with changes to boundary lines and the concessions regime.",
@@ -2496,7 +2454,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p43",
 		"cat": "economia",
 		"title": "Housing marks its eighth straight quarter of price rises",
 		"excerpt": "The average price climbs 6.2% year on year, with high-pressure cities leading.",
@@ -2543,7 +2500,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p44",
 		"cat": "internacional",
 		"title": "The thaw opens a new Arctic trade route and a diplomatic dispute",
 		"excerpt": "Three powers claim passage rights over a corridor that cuts eleven days off Asian freight.",
@@ -2607,7 +2563,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p45",
 		"cat": "deportes",
 		"title": "The academy takes charge again: five debutants in the first team",
 		"excerpt": "The club turns necessity into a plan and renews its head of youth development.",
@@ -2663,7 +2618,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p46",
 		"cat": "tecnologia",
 		"title": "Telecoms switch on the 6G pilot network in three cities",
 		"excerpt": "The trial, limited to industrial parks, will measure latency for robotics and connected vehicles.",
@@ -2710,7 +2664,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p47",
 		"cat": "cultura",
 		"title": "The book fair closes with record sales and a debate over fixed pricing",
 		"excerpt": "Booksellers cheer the figures and call to protect the maximum discount against the platforms.",
@@ -2757,7 +2710,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p48",
 		"cat": "sociedad",
 		"title": "The neighborhood that organized to drive the heatwave out of the classrooms",
 		"excerpt": "Awnings, fans and a neighbor-run watering shift cool the schoolyard by four degrees.",
@@ -2813,7 +2765,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p49",
 		"cat": "politica",
 		"title": "The Ombudsman calls for reform of the immigration rules",
 		"excerpt": "The annual report documents appointment delays of over a year and proposes a fast-track procedure.",
@@ -2860,7 +2811,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p50",
 		"cat": "economia",
 		"title": "Farming records its first profitable harvest in five years",
 		"excerpt": "Spring rain and farm-gate prices give respite to a sector coming off three years of losses.",
@@ -2907,7 +2857,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p51",
 		"cat": "internacional",
 		"title": "The humanitarian mission manages to open the southern corridor",
 		"excerpt": "The first forty aid trucks cross after six weeks of negotiation.",
@@ -2963,7 +2912,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p52",
 		"cat": "deportes",
 		"title": "Local basketball will play in Europe twenty years later",
 		"excerpt": "A final-day win seals a berth the city celebrated into the early hours.",
@@ -3010,7 +2958,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p53",
 		"cat": "tecnologia",
 		"title": "The AI law takes effect with the industry divided",
 		"excerpt": "High-risk systems will have eighteen months to be audited; startups ask for a single point of contact.",
@@ -3074,7 +3021,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p54",
 		"cat": "cultura",
 		"title": "The museum returns the claimed pieces and opens a restitution protocol",
 		"excerpt": "The handover, sealed with a joint ceremony, makes the institution a European reference in the postcolonial debate.",
@@ -3130,7 +3076,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p55",
 		"cat": "sociedad",
 		"title": "Pets can now ride the subway at any hour",
 		"excerpt": "The rules scrap the restricted window after a year of trials with no notable incidents.",
@@ -3177,7 +3122,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p56",
 		"cat": "politica",
 		"title": "The map of the youth vote that worries every party",
 		"excerpt": "A five-point breakdown of a generation that decides late, votes differently and stays loyal to no one.",
@@ -3224,7 +3168,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p57",
 		"cat": "economia",
 		"title": "European funds spent finally top 70%",
 		"excerpt": "The latest tranche is concentrated in small-business digitization and the EV charging network.",
@@ -3271,7 +3214,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p58",
 		"cat": "internacional",
 		"title": "The observatory confirms the warmest year on record in the southern hemisphere",
 		"excerpt": "Ocean anomalies double the decade's average and bring the cyclone season forward.",
@@ -3318,7 +3260,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p59",
 		"cat": "deportes",
 		"title": "The historic rival returns to the women's derby with a sellout guaranteed",
 		"excerpt": "Tickets sell out in five hours and the club weighs opening the overflow stand.",
@@ -3374,7 +3315,6 @@
 		"scheduled_for": null
 	},
 	{
-		"id": "p60",
 		"cat": "tecnologia",
 		"title": "What changes for your phone with the new universal charger",
 		"excerpt": "A practical guide: which devices are left out, what happens to old cables and what to look for when buying.",
