@@ -25,7 +25,10 @@ class SnkFolioAuthorsController extends CoreBaseApiController
         'name' => 'required|string|max:255',
         'slug' => 'nullable|string|max:255|unique:folio_authors,slug',
         'bio' => 'nullable|string',
-        'avatar_url' => 'nullable|string|max:2048',
+        'avatar_media_id' => 'nullable|integer|exists:folio_media,id',
+        'website' => 'nullable|string|max:2048',
+        'socials' => 'nullable|array',
+        'socials.*' => 'string|max:2048',
         'user_id' => 'nullable|integer|exists:users,id',
     ];
 
@@ -33,7 +36,10 @@ class SnkFolioAuthorsController extends CoreBaseApiController
         'name' => 'sometimes|required|string|max:255',
         'slug' => 'nullable|string|max:255|unique:folio_authors,slug,{id}',
         'bio' => 'nullable|string',
-        'avatar_url' => 'nullable|string|max:2048',
+        'avatar_media_id' => 'nullable|integer|exists:folio_media,id',
+        'website' => 'nullable|string|max:2048',
+        'socials' => 'nullable|array',
+        'socials.*' => 'string|max:2048',
         'user_id' => 'nullable|integer|exists:users,id',
     ];
 }

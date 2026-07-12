@@ -11,6 +11,7 @@ use Packages\Snk\Folio\Models\SnkFolioCategoryModel;
 use Packages\Snk\Folio\Models\SnkFolioMediaModel;
 use Packages\Snk\Folio\Models\SnkFolioPostMetaModel;
 use Packages\Snk\Folio\Models\SnkFolioPostModel;
+use Packages\Snk\Folio\Models\SnkFolioPostRevisionModel;
 use Packages\Snk\Folio\Models\SnkFolioPostSlugModel;
 use Packages\Snk\Folio\Models\SnkFolioTagModel;
 
@@ -95,7 +96,11 @@ class SnkFolioPostsController extends CoreBaseApiController
         }
         $data = $validator->validated();
 
-        $post = SnkFolioPostModel::create($this->columnsFrom($data));
+        $post = SnkFolioPostModel::create([
+            ...$this->columnsFrom($data),
+            'created_by' => auth()->id(),
+            'updated_by' => auth()->id(),
+        ]);
         $this->syncRelations($post, $data);
 
         return response()->json($post->fresh(), 201);
@@ -122,8 +127,16 @@ class SnkFolioPostsController extends CoreBaseApiController
         }
         $data = $validator->validated();
 
+        // Historial de versiones: snapshot de las columnas ANTES de aplicar el cambio.
+        SnkFolioPostRevisionModel::create([
+            'post_id' => $post->id,
+            'user_id' => auth()->id(),
+            'payload' => $post->getAttributes(),
+        ]);
+
         $previousSlug = $post->slug;
         $post->fill($this->columnsFrom($data, $request));
+        $post->updated_by = auth()->id();
         $post->save();
         $this->syncRelations($post, $data);
 
@@ -136,6 +149,22 @@ class SnkFolioPostsController extends CoreBaseApiController
         }
 
         return response()->json($post->fresh());
+    }
+
+    /** Historial de versiones de un post (más reciente primero). */
+    public function revisions($id): JsonResponse
+    {
+        if ($response = $this->requirePermission($this->showPermission)) {
+            return $response;
+        }
+
+        return response()->json(
+            SnkFolioPostRevisionModel::query()
+                ->where('post_id', $id)
+                ->with('user:id,name')
+                ->orderByDesc('created_at')
+                ->get()
+        );
     }
 
     /** Payload del editor → columnas: resuelve category/author/image a FKs; el resto pasa tal cual. */

@@ -14,7 +14,10 @@ return new class extends Migration
             $table->string('name');
             $table->string('slug')->unique();
             $table->text('bio')->nullable();
-            $table->string('avatar_url', 2048)->nullable();
+            // Perfil público E-E-A-T: avatar de la biblioteca (relacional), web y redes.
+            $table->foreignId('avatar_media_id')->nullable()->constrained('folio_media')->nullOnDelete();
+            $table->string('website', 2048)->nullable();
+            $table->json('socials')->nullable(); // {twitter, linkedin, ...} — pares libres
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
         });

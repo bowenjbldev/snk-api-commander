@@ -24,13 +24,13 @@ class SnkFolioDatabaseSeeder extends Seeder
 {
     /** Fuente de verdad de la taxonomía (el hue pinta el gradiente sin foto en el frontend). */
     private const CATEGORIES = [
-        'politica' => ['name' => 'Politics', 'hue' => 25],
-        'economia' => ['name' => 'Economy', 'hue' => 250],
-        'cultura' => ['name' => 'Culture', 'hue' => 310],
-        'sociedad' => ['name' => 'Society', 'hue' => 150],
-        'deportes' => ['name' => 'Sports', 'hue' => 50],
-        'tecnologia' => ['name' => 'Technology', 'hue' => 195],
-        'internacional' => ['name' => 'International', 'hue' => 275],
+        'politica' => ['name' => 'Politics', 'hue' => 25, 'description' => 'Government, parliament, elections and public policy.'],
+        'economia' => ['name' => 'Economy', 'hue' => 250, 'description' => 'Markets, business, employment and personal finance.'],
+        'cultura' => ['name' => 'Culture', 'hue' => 310, 'description' => 'Books, film, music, arts and heritage.'],
+        'sociedad' => ['name' => 'Society', 'hue' => 150, 'description' => 'Education, health, housing and everyday life.'],
+        'deportes' => ['name' => 'Sports', 'hue' => 50, 'description' => 'Results, matches and the stories behind the game.'],
+        'tecnologia' => ['name' => 'Technology', 'hue' => 195, 'description' => 'Science, innovation and the digital world.'],
+        'internacional' => ['name' => 'International', 'hue' => 275, 'description' => 'World news and global affairs.'],
     ];
 
     public function run(): void
@@ -85,8 +85,10 @@ class SnkFolioDatabaseSeeder extends Seeder
 
     private function seedCategories(): void
     {
+        $position = 0;
         foreach (self::CATEGORIES as $slug => $attrs) {
-            SnkFolioCategoryModel::firstOrCreate(['slug' => $slug], $attrs);
+            // position = orden de declaración (el orden del nav público)
+            SnkFolioCategoryModel::firstOrCreate(['slug' => $slug], [...$attrs, 'position' => $position++]);
         }
     }
 

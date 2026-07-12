@@ -13,6 +13,10 @@ return new class extends Migration
             $table->string('slug', 64)->unique(); // 'politica', 'deportes'... la URL de la sección
             $table->string('name');
             $table->smallInteger('hue')->default(220); // gradiente de PostThumb sin foto
+            // Secciones jerárquicas (Deportes → Fútbol); borrar el padre promociona hijas a raíz.
+            $table->foreignId('parent_id')->nullable()->constrained('folio_categories')->nullOnDelete();
+            $table->text('description')->nullable(); // la página pública de sección la usa (SEO)
+            $table->unsignedSmallInteger('position')->default(0); // orden del nav
             $table->timestamps();
         });
     }

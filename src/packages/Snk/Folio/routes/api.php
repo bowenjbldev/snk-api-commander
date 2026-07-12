@@ -35,6 +35,7 @@ Route::middleware(['api'])->group(function () {
 
 Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::apiResource('posts', SnkFolioPostsController::class);
+    Route::get('posts/{post}/revisions', [SnkFolioPostsController::class, 'revisions']);
     Route::apiResource('categories', SnkFolioCategoriesController::class);
     Route::apiResource('authors', SnkFolioAuthorsController::class);
     Route::apiResource('media', SnkFolioMediaController::class);

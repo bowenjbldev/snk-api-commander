@@ -11,6 +11,7 @@ use Packages\Snk\Folio\Models\SnkFolioCommentModel;
 use Packages\Snk\Folio\Models\SnkFolioLayoutModel;
 use Packages\Snk\Folio\Models\SnkFolioPostModel;
 use Packages\Snk\Folio\Models\SnkFolioPostSlugModel;
+use Packages\Snk\Folio\Models\SnkFolioPostViewModel;
 use Packages\Snk\Folio\Models\SnkFolioSettingModel;
 
 /**
@@ -40,7 +41,7 @@ class SnkFolioPublicController extends Controller
 
     public function categories(): JsonResponse
     {
-        return response()->json(SnkFolioCategoryModel::query()->orderBy('id')->get());
+        return response()->json(SnkFolioCategoryModel::query()->orderBy('position')->orderBy('id')->get());
     }
 
     public function post(string $slug): JsonResponse
@@ -50,6 +51,8 @@ class SnkFolioPublicController extends Controller
             ->where('status', 'published')
             ->first();
         if ($post) {
+            SnkFolioPostViewModel::hit($post->id); // lectura de hoy (más leído real)
+
             return response()->json($post);
         }
 

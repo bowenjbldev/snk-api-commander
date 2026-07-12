@@ -23,6 +23,9 @@ return new class extends Migration
             $table->string('slug')->nullable()->unique();   // URL SEO; null en borradores
             $table->boolean('featured')->default(false);
             $table->timestamp('scheduled_for')->nullable();
+            // Auditoría editorial: quién creó y quién tocó por última vez.
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
 
             $table->index(['status', 'published_at']);
