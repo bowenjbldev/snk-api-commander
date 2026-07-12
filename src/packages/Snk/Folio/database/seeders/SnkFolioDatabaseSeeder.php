@@ -3,6 +3,8 @@
 namespace Packages\Snk\Folio\Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+use Packages\Core\Models\CoreUserModel;
 use Packages\Snk\Folio\Models\SnkFolioAuthorModel;
 use Packages\Snk\Folio\Models\SnkFolioCategoryModel;
 use Packages\Snk\Folio\Models\SnkFolioMediaModel;
@@ -39,7 +41,7 @@ class SnkFolioDatabaseSeeder extends Seeder
     private function seedPermissions(): void
     {
         $names = [];
-        foreach (['posts', 'categories', 'authors', 'media', 'tags'] as $resource) {
+        foreach (['posts', 'categories', 'authors', 'media', 'tags', 'comments'] as $resource) {
             foreach (['index', 'show', 'create', 'update', 'delete'] as $action) {
                 $names[] = "$action $resource";
             }
@@ -49,6 +51,16 @@ class SnkFolioDatabaseSeeder extends Seeder
         }
         $admin = Role::findOrCreate('admin', 'sanctum');
         $admin->givePermissionTo($names);
+
+        // Lector registrado: solo puede comentar (la lectura pública no exige auth).
+        $reader = Role::findOrCreate('reader', 'sanctum');
+        $reader->givePermissionTo('create comments');
+
+        $demo = CoreUserModel::firstOrCreate(
+            ['email' => 'reader@snk.test'],
+            ['name' => 'Demo Reader', 'password' => Hash::make('password')]
+        );
+        $demo->assignRole($reader);
     }
 
     private function seedCategories(): void

@@ -7,6 +7,7 @@ use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Packages\Snk\Folio\Models\SnkFolioCategoryModel;
+use Packages\Snk\Folio\Models\SnkFolioCommentModel;
 use Packages\Snk\Folio\Models\SnkFolioLayoutModel;
 use Packages\Snk\Folio\Models\SnkFolioPostModel;
 use Packages\Snk\Folio\Models\SnkFolioPostSlugModel;
@@ -65,6 +66,27 @@ class SnkFolioPublicController extends Controller
         }
 
         return response()->json(['error' => 'Not found'], 404);
+    }
+
+    /** Comentarios aprobados de un artículo publicado (planos; parent_id arma el hilo). */
+    public function comments(string $slug): JsonResponse
+    {
+        $postId = SnkFolioPostModel::query()
+            ->where('slug', $slug)
+            ->where('status', 'published')
+            ->value('id');
+        if ($postId === null) {
+            return response()->json(['error' => 'Not found'], 404);
+        }
+
+        $comments = SnkFolioCommentModel::query()
+            ->where('post_id', $postId)
+            ->where('status', 'approved')
+            ->with('user:id,name') // solo el nombre: el email del lector no sale al público
+            ->orderBy('created_at')
+            ->get(['id', 'post_id', 'user_id', 'parent_id', 'body', 'created_at']);
+
+        return response()->json($comments);
     }
 
     public function layout(string $layout): JsonResponse

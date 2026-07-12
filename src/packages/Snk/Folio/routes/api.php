@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Packages\Snk\Folio\Http\Controllers\SnkFolioAuthController;
 use Packages\Snk\Folio\Http\Controllers\SnkFolioAuthorsController;
 use Packages\Snk\Folio\Http\Controllers\SnkFolioCategoriesController;
+use Packages\Snk\Folio\Http\Controllers\SnkFolioCommentsController;
 use Packages\Snk\Folio\Http\Controllers\SnkFolioLayoutsController;
 use Packages\Snk\Folio\Http\Controllers\SnkFolioMediaController;
 use Packages\Snk\Folio\Http\Controllers\SnkFolioTagsController;
@@ -27,6 +28,7 @@ Route::middleware(['api'])->group(function () {
     Route::get('public/posts', [SnkFolioPublicController::class, 'posts']);
     Route::get('public/categories', [SnkFolioPublicController::class, 'categories']);
     Route::get('public/posts/{slug}', [SnkFolioPublicController::class, 'post']);
+    Route::get('public/posts/{slug}/comments', [SnkFolioPublicController::class, 'comments']);
     Route::get('public/layouts/{layout}', [SnkFolioPublicController::class, 'layout'])->whereIn('layout', ['portada', 'seccion']);
     Route::get('public/site', [SnkFolioPublicController::class, 'site']);
 });
@@ -37,6 +39,7 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::apiResource('authors', SnkFolioAuthorsController::class);
     Route::apiResource('media', SnkFolioMediaController::class);
     Route::apiResource('tags', SnkFolioTagsController::class);
+    Route::apiResource('comments', SnkFolioCommentsController::class);
 
     Route::get('layouts/{layout}', [SnkFolioLayoutsController::class, 'show'])->whereIn('layout', ['portada', 'seccion']);
     Route::put('layouts/{layout}', [SnkFolioLayoutsController::class, 'update'])->whereIn('layout', ['portada', 'seccion']);
