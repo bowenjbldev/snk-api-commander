@@ -48,7 +48,7 @@ class SnkFolioPostsController extends CoreBaseApiController
         'body' => 'nullable|string',
         'body_blocks' => 'nullable|array',
         'body_blocks.*.id' => 'required|string|max:128',
-        'body_blocks.*.type' => 'required|in:texto,cita,imagen,galeria,video,muro,separador',
+        'body_blocks.*.type' => 'required|in:text,quote,image,gallery,video,paywall,divider',
         'body_blocks.*.config' => 'nullable|array',
         'tags' => 'nullable|array',
         'tags.*' => 'string|max:64',
@@ -72,7 +72,7 @@ class SnkFolioPostsController extends CoreBaseApiController
         'body' => 'nullable|string',
         'body_blocks' => 'nullable|array',
         'body_blocks.*.id' => 'required|string|max:128',
-        'body_blocks.*.type' => 'required|in:texto,cita,imagen,galeria,video,muro,separador',
+        'body_blocks.*.type' => 'required|in:text,quote,image,gallery,video,paywall,divider',
         'body_blocks.*.config' => 'nullable|array',
         'tags' => 'nullable|array',
         'tags.*' => 'string|max:64',
@@ -165,6 +165,35 @@ class SnkFolioPostsController extends CoreBaseApiController
                 ->orderByDesc('created_at')
                 ->get()
         );
+    }
+
+    /** Restaura una revisión: el estado actual se snapshotea antes (restore reversible). */
+    public function restore($id, $revisionId): JsonResponse
+    {
+        if ($response = $this->requirePermission($this->updatePermission)) {
+            return $response;
+        }
+
+        $post = SnkFolioPostModel::query()->find($id);
+        $revision = SnkFolioPostRevisionModel::query()->whereKey($revisionId)->where('post_id', $id)->first();
+        if (! $post || ! $revision) {
+            return response()->json(['error' => 'Record not found'], 404);
+        }
+
+        SnkFolioPostRevisionModel::create([
+            'post_id' => $post->id,
+            'user_id' => auth()->id(),
+            'payload' => $post->getAttributes(),
+        ]);
+
+        $columns = collect($revision->payload)
+            ->except(['id', 'created_at', 'updated_at', 'created_by', 'updated_by'])
+            ->all();
+        $post->fill($columns);
+        $post->updated_by = auth()->id();
+        $post->save();
+
+        return response()->json($post->fresh());
     }
 
     /** Payload del editor → columnas: resuelve category/author/image a FKs; el resto pasa tal cual. */

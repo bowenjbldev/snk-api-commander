@@ -79,6 +79,30 @@ class SnkFolioLayoutsController extends Controller
         );
     }
 
+    /** Restaura una revisión del documento (el estado actual se snapshotea antes). */
+    public function restore(string $layout, $revisionId): JsonResponse
+    {
+        $row = SnkFolioLayoutModel::query()->where('layout', $layout)->first();
+        $revision = $row
+            ? SnkFolioLayoutRevisionModel::query()->whereKey($revisionId)->where('layout_id', $row->id)->first()
+            : null;
+        if (! $row || ! $revision) {
+            return response()->json(['error' => 'Record not found'], 404);
+        }
+
+        SnkFolioLayoutRevisionModel::create([
+            'layout_id' => $row->id,
+            'user_id' => auth()->id(),
+            'schema' => $row->schema,
+        ]);
+
+        $row->schema = $revision->schema;
+        $row->version = $row->version + 1;
+        $row->save();
+
+        return response()->json($this->payload($row));
+    }
+
     private function payload(SnkFolioLayoutModel $row): array
     {
         return [

@@ -1,6 +1,6 @@
 [
  {
-  "layout": "portada",
+  "layout": "front",
   "schema": {
    "version": 1,
    "sections": [
@@ -43,7 +43,7 @@
        "blocks": [
         {
          "id": "b-y9m3p1",
-         "type": "lista",
+         "type": "list",
          "config": {
           "data": {
            "mode": "auto",
@@ -51,7 +51,7 @@
            "count": 6,
            "sort": "recent"
           },
-          "preset": "cronologia",
+          "preset": "timeline",
           "showExcerpt": false,
           "showMeta": true,
           "thumb": "left",
@@ -71,7 +71,7 @@
        "blocks": [
         {
          "id": "b-b4d2gh",
-         "type": "masleido",
+         "type": "mostread",
          "config": {
           "data": {
            "mode": "auto",
@@ -79,8 +79,8 @@
            "count": 5,
            "sort": "read"
           },
-          "preset": "numerada",
-          "window": "dia",
+          "preset": "numbered",
+          "window": "day",
           "showReads": true,
           "numberStyle": "serif"
          },
@@ -111,7 +111,7 @@
            "count": 5,
            "sort": "recent"
           },
-          "preset": "mosaico",
+          "preset": "mosaic",
           "cols": "3",
           "ratio": "16/9",
           "showExcerpt": false,
@@ -139,7 +139,7 @@
        "blocks": [
         {
          "id": "b-4ezhb3",
-         "type": "carrusel",
+         "type": "carousel",
          "config": {
           "data": {
            "mode": "auto",
@@ -185,7 +185,7 @@
             "p43"
            ]
           },
-          "preset": "tarjeta",
+          "preset": "card",
           "imagePos": "left",
           "showExcerpt": true,
           "showMeta": true,
@@ -204,7 +204,7 @@
        "blocks": [
         {
          "id": "b-euyvfb",
-         "type": "lista",
+         "type": "list",
          "config": {
           "data": {
            "mode": "auto",
@@ -212,7 +212,7 @@
            "count": 5,
            "sort": "recent"
           },
-          "preset": "titulares",
+          "preset": "headlines",
           "showExcerpt": true,
           "showMeta": false,
           "thumb": "left",
@@ -240,7 +240,7 @@
        "blocks": [
         {
          "id": "b-b3ssco",
-         "type": "lista",
+         "type": "list",
          "config": {
           "data": {
            "mode": "auto",
@@ -248,7 +248,7 @@
            "count": 4,
            "sort": "recent"
           },
-          "preset": "miniatura",
+          "preset": "thumbnail",
           "showExcerpt": false,
           "showMeta": false,
           "thumb": "left",
@@ -268,7 +268,7 @@
        "blocks": [
         {
          "id": "b-383zy7",
-         "type": "lista",
+         "type": "list",
          "config": {
           "data": {
            "mode": "auto",
@@ -276,7 +276,7 @@
            "count": 4,
            "sort": "recent"
           },
-          "preset": "mixto",
+          "preset": "mixed",
           "showExcerpt": false,
           "showMeta": false,
           "thumb": "left",
@@ -309,7 +309,7 @@
            "count": 5,
            "sort": "recent"
           },
-          "preset": "destacado",
+          "preset": "featured",
           "cols": "3",
           "ratio": "16/9",
           "showExcerpt": false,
@@ -381,7 +381,7 @@
            "count": 4,
            "sort": "recent"
           },
-          "preset": "tira",
+          "preset": "strip",
           "showExcerpt": true
          },
          "visibility": {
@@ -402,7 +402,7 @@
   }
  },
  {
-  "layout": "seccion",
+  "layout": "section",
   "schema": {
    "version": 1,
    "sections": [
@@ -414,7 +414,7 @@
        "blocks": [
         {
          "id": "b-73zgl2",
-         "type": "lista",
+         "type": "list",
          "config": {
           "data": {
            "mode": "auto",
@@ -422,7 +422,7 @@
            "count": 5,
            "sort": "recent"
           },
-          "preset": "titulares",
+          "preset": "headlines",
           "showExcerpt": true,
           "showMeta": true,
           "thumb": "left",
@@ -442,7 +442,7 @@
        "blocks": [
         {
          "id": "b-ra4hub",
-         "type": "masleido",
+         "type": "mostread",
          "config": {
           "data": {
            "mode": "auto",
@@ -450,8 +450,8 @@
            "count": 5,
            "sort": "read"
           },
-          "preset": "miniatura",
-          "window": "semana",
+          "preset": "thumbnail",
+          "window": "week",
           "showReads": true,
           "numberStyle": "serif"
          },
@@ -482,7 +482,7 @@
            "count": 1,
            "sort": "recent"
           },
-          "preset": "tarjeta",
+          "preset": "card",
           "imagePos": "left",
           "showExcerpt": true,
           "showMeta": true,
@@ -514,7 +514,7 @@
            "count": 6,
            "sort": "recent"
           },
-          "preset": "mosaico",
+          "preset": "mosaic",
           "cols": "3",
           "ratio": "16/9",
           "showExcerpt": false,

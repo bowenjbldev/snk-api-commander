@@ -30,7 +30,7 @@ Route::middleware(['api'])->group(function () {
     Route::get('public/categories', [SnkFolioPublicController::class, 'categories']);
     Route::get('public/posts/{slug}', [SnkFolioPublicController::class, 'post']);
     Route::get('public/posts/{slug}/comments', [SnkFolioPublicController::class, 'comments']);
-    Route::get('public/layouts/{layout}', [SnkFolioPublicController::class, 'layout'])->whereIn('layout', ['portada', 'seccion']);
+    Route::get('public/layouts/{layout}', [SnkFolioPublicController::class, 'layout'])->whereIn('layout', ['front', 'section']);
     Route::get('public/site', [SnkFolioPublicController::class, 'site']);
     Route::post('public/subscribe', [SnkFolioPublicController::class, 'subscribe'])->middleware('throttle:10,1');
 });
@@ -38,6 +38,7 @@ Route::middleware(['api'])->group(function () {
 Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::apiResource('posts', SnkFolioPostsController::class);
     Route::get('posts/{post}/revisions', [SnkFolioPostsController::class, 'revisions']);
+    Route::post('posts/{post}/revisions/{revision}/restore', [SnkFolioPostsController::class, 'restore']);
     Route::apiResource('categories', SnkFolioCategoriesController::class);
     Route::apiResource('authors', SnkFolioAuthorsController::class);
     Route::apiResource('media', SnkFolioMediaController::class);
@@ -46,9 +47,10 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
 
     Route::apiResource('subscribers', SnkFolioSubscribersController::class)->only(['index', 'show', 'store', 'update', 'destroy']);
 
-    Route::get('layouts/{layout}/revisions', [SnkFolioLayoutsController::class, 'revisions'])->whereIn('layout', ['portada', 'seccion']);
-    Route::get('layouts/{layout}', [SnkFolioLayoutsController::class, 'show'])->whereIn('layout', ['portada', 'seccion']);
-    Route::put('layouts/{layout}', [SnkFolioLayoutsController::class, 'update'])->whereIn('layout', ['portada', 'seccion']);
+    Route::get('layouts/{layout}/revisions', [SnkFolioLayoutsController::class, 'revisions'])->whereIn('layout', ['front', 'section']);
+    Route::post('layouts/{layout}/revisions/{revision}/restore', [SnkFolioLayoutsController::class, 'restore'])->whereIn('layout', ['front', 'section']);
+    Route::get('layouts/{layout}', [SnkFolioLayoutsController::class, 'show'])->whereIn('layout', ['front', 'section']);
+    Route::put('layouts/{layout}', [SnkFolioLayoutsController::class, 'update'])->whereIn('layout', ['front', 'section']);
 
     Route::get('settings', [SnkFolioSettingsController::class, 'show']);
     Route::put('settings', [SnkFolioSettingsController::class, 'update']);
