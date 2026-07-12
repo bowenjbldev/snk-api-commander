@@ -418,7 +418,7 @@ FROM (
 
 INSERT INTO commander_package_repos
   (package_id, provider, workspace, repo_slug, path_prefix, default_branch, last_synced_at, last_synced_sha, created_at, updated_at)
-VALUES ($pid, 'local', 'snake', 'snake-laravel-api', 'packages/$sc/$name', 'main', NOW(), SUBSTRING(MD5(RAND()),1,40), NOW(), NOW())
+VALUES ($pid, 'local', 'snake', 'snk-api-commander', 'packages/$sc/$name', 'main', NOW(), SUBSTRING(MD5(RAND()),1,40), NOW(), NOW())
 ON DUPLICATE KEY UPDATE last_synced_at=VALUES(last_synced_at), last_synced_sha=VALUES(last_synced_sha);
 
 UPDATE commander_packages SET

@@ -30,7 +30,7 @@ El proyecto se documenta en tres ficheros, cada uno con un alcance distinto:
 Solo necesitas Docker (composer, PHP y migraciones corren dentro del contenedor):
 
 ```bash
-git clone <repo> && cd snake-laravel-api
+git clone <repo> && cd snk-api-commander
 cp .env.example .env          # puertos, dominios (ajusta si quieres)
 cp src/.env.example src/.env  # BD commander + root multi-BD (centralizado)
 bash scripts/setup-ssl.sh     # cert wildcard *.BASE_DOMAIN con mkcert (se auto-descarga si falta)
@@ -38,7 +38,7 @@ docker compose up -d          # build + composer install + APP_KEY + migrate com
 curl -k https://localhost:8443/api/v1   # health check (Core, agnostico de paquete)
 ```
 
-El entrypoint migra el deploy **commander** (`core:migrate`, sin `--package`): registro, metering, panel del operador y la base Laravel. Las BD de cada paquete las crea el provisioning. Para que el panel de operador tenga un admin, siémbralo una vez:
+El entrypoint migra el deploy **commander** (`core:migrate`, sin argumentos): registro, metering, panel del operador y la base Laravel. Las BD de cada paquete las crea el provisioning. Para que el panel de operador tenga un admin, siémbralo una vez:
 
 ```bash
 docker compose exec app php artisan core:seed --force   # commander; admin@snake.com / secret1234
@@ -232,7 +232,7 @@ El **codigo** per-cliente viaja por git (lo programas en local con `make:package
 4. **Crea la BD del paquete** (`CREATE DATABASE {cliente}_{slug}`) y corre `core:migrate --client=<cliente> --package=<X>` (base Laravel + negocio) + `core:seed --client=<cliente> --package=<X>` (admin) **en esa BD**.
 5. Activa + escribe las cuotas del plan sobre `package_id` (en la commander).
 
-El paquete queda vivo al terminar (`{cliente}.dom/api/v1/{slug}/...`). De-provisionar (`DELETE /packages/{name}`) hace `DROP DATABASE` + de-provision **soft** en la commander (conserva la fila + el historial de billing). Un plan oferta un tipo lógico (`Shop`); es provisionable si ese código existe bajo **algún** cliente (`packages/*/Shop`).
+El paquete queda vivo al terminar (`{cliente}.dom/api/v1/{slug}/...`). De-provisionar (`DELETE /packages/{name}`) hace `DROP DATABASE` + de-provision **soft** en la commander (conserva la fila + el historial de billing). Un plan oferta un tipo lógico (`Shop`); para provisionarlo al cliente elegido debe existir su código en `packages/<Cliente>/Shop`.
 
 ## Comandos Artisan
 
@@ -379,11 +379,9 @@ packages/Acme/Shop/
 
 - **Core** (`packages/Core/database/migrations/`, primer nivel): solo la **base Laravel**, que corre en la commander (para el operador) Y en CADA BD de paquete: roles/permisos (Spatie), schema base (`users`, `sessions`, `cache`, `jobs`...), tokens Sanctum.
 - **Commander** (`packages/Commander/database/migrations/`, tablas `commander_*`): la **tabla única `commander_packages`** —la instancia viva 1:1 por par (cliente, paquete): `client_id` + `slug` + `name` + `database` + suscripción + estado + KPIs + `provisioned_at`, con `UNIQUE(client_id, slug)` (sin columna `subdomain`); **no existe tabla `commander_deployments`**— + el metering (`commander_request_logs`, `commander_usage_rollups`, por `package_id`) + el resto del panel (`commander_clients` —su `slug` ES el host del cliente—, `commander_subscriptions`, `commander_invoices`, `commander_quotas` —tabla única: el panel edita límites/política y el motor mide/aplica sobre la misma fila—, `commander_activity_events`...). Solo en la BD `commander`.
-- **Negocio**: `packages/<Cliente>/<Paquete>/database/migrations/` (solo en la BD del paquete).
+- **Negocio**: `packages/<Cliente>/<Paquete>/database/migrations/` (solo en la BD del paquete). **Convención: las tablas de negocio llevan el prefijo del paquete lógico en snake_case** —igual que el framework usa `commander_*`—: `folio_posts`, `folio_layouts` (paquete `Folio`), `shop_products` (paquete `Shop`). La BD ya aísla por par (cliente, paquete), así que el prefijo no incluye el cliente; separa las tablas de negocio de la base Laravel de Core (`users`, `cache`, `jobs`...) que convive en la misma BD.
 
 `core:migrate` (sin args) corre base + Commander en la BD `commander`; el provisioning corre `core:migrate --client=<cliente> --package=<X>` (base + negocio) en la BD del paquete. Regla: `--client` + `--package` juntos ⟹ tenant (BD `{cliente}_{paquete}`); sin ninguno ⟹ commander.
-
-`core:migrate` (sin `--package`) corre la base + las del Commander en la BD `commander`; el provisioning corre `core:migrate --package=<X>` (base + negocio) en la BD del paquete. Regla: `--package` ⟹ tenant (BD = snake(package)); sin `--package` ⟹ commander.
 
 ### Seeder por defecto
 

@@ -1,6 +1,6 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "snake/snake-laravel-api",
+    "name": "snake/snk-api-commander",
     "type": "project",
     "description": "Snake Laravel API",
     "keywords": [
@@ -39,7 +39,9 @@
             "Packages\\Core\\": "packages/Core/app/",
             "Packages\\Core\\Database\\Seeders\\": "packages/Core/database/seeders/",
             "Packages\\Initech\\Crm\\": "packages/Initech/Crm/app/",
-            "Packages\\Initech\\Crm\\Database\\Seeders\\": "packages/Initech/Crm/database/seeders/"
+            "Packages\\Initech\\Crm\\Database\\Seeders\\": "packages/Initech/Crm/database/seeders/",
+            "Packages\\Snk\\Folio\\": "packages/Snk/Folio/app/",
+            "Packages\\Snk\\Folio\\Database\\Seeders\\": "packages/Snk/Folio/database/seeders/"
         }
     },
     "autoload-dev": {

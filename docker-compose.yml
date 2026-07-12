@@ -1,7 +1,7 @@
 services:
   # PHP Application (Laravel)
   app:
-    image: snake-laravel-api-app
+    image: snk-api-commander-app
     build:
       context: .
       dockerfile: docker/php/Dockerfile

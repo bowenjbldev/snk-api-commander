@@ -1,0 +1,3423 @@
+[
+	{
+		"id": "p01",
+		"cat": "politica",
+		"title": "Climate summit reaches a historic agreement after 14 hours of negotiation",
+		"excerpt": "The 196 signatory countries commit to tripling renewable energy by 2030 and to phasing out coal \"in a just and orderly way.\"",
+		"author": "Pedro Aranda",
+		"published_at": "2026-06-28T18:00:00.000Z",
+		"reads": 18420,
+		"image": "https://images.unsplash.com/photo-1552799446-159ba9523315?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "climate-summit-reaches-a-historic-agreement-after-14-hours-of-negotiation",
+		"tags": [
+			"climate",
+			"summit",
+			"energy"
+		],
+		"body_blocks": [
+			{
+				"id": "p01-t0",
+				"type": "texto",
+				"config": {
+					"text": "The plenary hall erupted in applause at 4:12 in the morning, when the presidency declared closed a text that had seemed impossible a week earlier. The agreement commits the 196 signatory countries to tripling installed renewable capacity before 2030 and sets, for the first time in a binding document, a timetable for phasing out coal.",
+					"html": "<p>The plenary hall erupted in applause at 4:12 in the morning, when the presidency declared closed a text that had seemed impossible a week earlier. The agreement commits the 196 signatory countries to tripling installed renewable capacity before 2030 and sets, for the first time in a binding document, a timetable for phasing out coal.</p>"
+				}
+			},
+			{
+				"id": "p01-q",
+				"type": "cita",
+				"config": {
+					"text": "In one night we approved what we had been putting off for a decade.",
+					"attribution": "— Amina Osei, summit presidency",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p01-t1",
+				"type": "texto",
+				"config": {
+					"text": "The delegations of the island nations, which had threatened to walk away from the table, welcomed the inclusion of a compensation fund endowed with 90 billion. \"Without that fund there was no signature,\" sources close to the European negotiation acknowledged.",
+					"html": "<p>The delegations of the island nations, which had threatened to walk away from the table, welcomed the inclusion of a compensation fund endowed with 90 billion. &quot;Without that fund there was no signature,&quot; sources close to the European negotiation acknowledged.</p>"
+				}
+			},
+			{
+				"id": "p01-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1624324378932-68e20f332982?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "The plenary hall, minutes after the agreement.",
+					"caption": "The plenary hall, minutes after the agreement.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p01-t2",
+				"type": "texto",
+				"config": {
+					"text": "Analysts warn that success will depend on the national plans each country submits over the next eighteen months. The agreement's fine print allows extensions \"in exceptional economic circumstances,\" the loophole through which the great climate commitments tend to slip.",
+					"html": "<p>Analysts warn that success will depend on the national plans each country submits over the next eighteen months. The agreement's fine print allows extensions &quot;in exceptional economic circumstances,&quot; the loophole through which the great climate commitments tend to slip.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p02",
+		"cat": "economia",
+		"title": "The Central Bank cuts rates for the first time in two years",
+		"excerpt": "The 25-basis-point cut aims to revive lending as consumption slows.",
+		"author": "Lucía Ferrer",
+		"published_at": "2026-06-28T17:00:00.000Z",
+		"reads": 12950,
+		"image": "https://images.unsplash.com/photo-1579621970795-87facc2f976d?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-central-bank-cuts-rates-for-the-first-time-in-two-years",
+		"tags": [
+			"rates",
+			"central bank",
+			"lending"
+		],
+		"body_blocks": [
+			{
+				"id": "p02-t0",
+				"type": "texto",
+				"config": {
+					"text": "The Central Bank's governing council lowered interest rates yesterday by 25 basis points, to 3.25%, the first cut in two years. The decision, adopted by a broad majority, seeks to revive lending that has been stalled for three quarters.",
+					"html": "<p>The Central Bank's governing council lowered interest rates yesterday by 25 basis points, to 3.25%, the first cut in two years. The decision, adopted by a broad majority, seeks to revive lending that has been stalled for three quarters.</p>"
+				}
+			},
+			{
+				"id": "p02-q",
+				"type": "cita",
+				"config": {
+					"text": "It was starting to cost more than it protects.",
+					"attribution": "— Central Bank presidency",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p02-t1",
+				"type": "texto",
+				"config": {
+					"text": "The institution's president argued that inflation \"is where we wanted it to be\" and that keeping monetary policy tight \"was starting to cost more than it protects.\" Markets had priced in the move for weeks: the stock exchange barely reacted.",
+					"html": "<p>The institution's president argued that inflation &quot;is where we wanted it to be&quot; and that keeping monetary policy tight &quot;was starting to cost more than it protects.&quot; Markets had priced in the move for weeks: the stock exchange barely reacted.</p>"
+				}
+			},
+			{
+				"id": "p02-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1501167786227-4cba60f6d58f?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "Central Bank headquarters, yesterday morning.",
+					"caption": "Central Bank headquarters, yesterday morning.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p02-t2",
+				"type": "texto",
+				"config": {
+					"text": "Commercial banks, however, will be slow to pass on the cut. The analysts consulted estimate that variable-rate mortgages will not feel the relief until autumn, and that credit to small businesses will be the last to move.",
+					"html": "<p>Commercial banks, however, will be slow to pass on the cut. The analysts consulted estimate that variable-rate mortgages will not feel the relief until autumn, and that credit to small businesses will be the last to move.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p03",
+		"cat": "cultura",
+		"title": "Remains of the ancient Roman port unearthed in Seville",
+		"excerpt": "The site, found during construction work, rewrites the trading history of Roman Baetica.",
+		"author": "Marta Gil",
+		"published_at": "2026-06-28T16:00:00.000Z",
+		"reads": 7340,
+		"image": "https://images.unsplash.com/photo-1622082679766-c5912d9416eb?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "remains-of-the-ancient-roman-port-unearthed-in-seville",
+		"tags": [
+			"archaeology",
+			"seville",
+			"heritage"
+		],
+		"body_blocks": [
+			{
+				"id": "p03-t0",
+				"type": "texto",
+				"config": {
+					"text": "Work on an underground parking garage in Seville's old town has brought to light the remains of a first-century Roman wharf, with carved moorings and a stretch of port roadway in a state of preservation that archaeologists describe as exceptional.",
+					"html": "<p>Work on an underground parking garage in Seville's old town has brought to light the remains of a first-century Roman wharf, with carved moorings and a stretch of port roadway in a state of preservation that archaeologists describe as exceptional.</p>"
+				}
+			},
+			{
+				"id": "p03-t1",
+				"type": "texto",
+				"config": {
+					"text": "The find forces a redrawing of Baetica's commercial map: the port lay half a kilometer farther south than the chronicles placed it, which would explain the puzzle of the oil warehouses found in the nineties \"in the middle of nowhere.\"",
+					"html": "<p>The find forces a redrawing of Baetica's commercial map: the port lay half a kilometer farther south than the chronicles placed it, which would explain the puzzle of the oil warehouses found in the nineties &quot;in the middle of nowhere.&quot;</p>"
+				}
+			},
+			{
+				"id": "p03-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1630288214173-a119cf823388?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "The carved moorings, seen from the excavation.",
+					"caption": "The carved moorings, seen from the excavation.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p03-t2",
+				"type": "texto",
+				"config": {
+					"text": "The regional culture department has halted the work and is studying how to integrate the remains into a visitable space, as was done with the forum in Cartagena. Residents are divided: heritage or parking spaces.",
+					"html": "<p>The regional culture department has halted the work and is studying how to integrate the remains into a visitable space, as was done with the forum in Cartagena. Residents are divided: heritage or parking spaces.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p04",
+		"cat": "sociedad",
+		"title": "Festival season kicks off with record attendance",
+		"excerpt": "More than three million tickets sold confirm the cultural sector's recovery.",
+		"author": "Iván Soto",
+		"published_at": "2026-06-28T15:00:00.000Z",
+		"reads": 9610,
+		"image": "https://images.unsplash.com/photo-1582711012124-a56cf82307a0?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "festival-season-kicks-off-with-record-attendance",
+		"tags": [
+			"festivals",
+			"music",
+			"summer"
+		],
+		"body_blocks": [
+			{
+				"id": "p04-t0",
+				"type": "texto",
+				"config": {
+					"text": "More than three million tickets sold before July even begins: the festival season opens with figures the sector had not seen since before the pandemic, and with a new phenomenon, the shared pass among friends who take turns on different days.",
+					"html": "<p>More than three million tickets sold before July even begins: the festival season opens with figures the sector had not seen since before the pandemic, and with a new phenomenon, the shared pass among friends who take turns on different days.</p>"
+				}
+			},
+			{
+				"id": "p04-q",
+				"type": "cita",
+				"config": {
+					"text": "The mid-sized festival with no brand behind it is doomed.",
+					"attribution": "— A veteran promoter on the circuit",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p04-t1",
+				"type": "texto",
+				"config": {
+					"text": "Promoters celebrate the recovery but admit the underlying problem: fees have doubled and the numbers only add up with sponsorship. \"The mid-sized festival with no brand behind it is doomed,\" sums up the director of one of the circuit's veteran events.",
+					"html": "<p>Promoters celebrate the recovery but admit the underlying problem: fees have doubled and the numbers only add up with sponsorship. &quot;The mid-sized festival with no brand behind it is doomed,&quot; sums up the director of one of the circuit's veteran events.</p>"
+				}
+			},
+			{
+				"id": "p04-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "The crowd during the first day of the summer circuit.",
+					"caption": "The crowd during the first day of the summer circuit.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p04-t2",
+				"type": "texto",
+				"config": {
+					"text": "The host cities do their own math: each big festival leaves between 20 and 40 million in the local economy, but also sleepless nights. Three city councils are already studying capping decibels after two in the morning.",
+					"html": "<p>The host cities do their own math: each big festival leaves between 20 and 40 million in the local economy, but also sleepless nights. Three city councils are already studying capping decibels after two in the morning.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p05",
+		"cat": "internacional",
+		"title": "WHO sets a new record in childhood vaccination coverage",
+		"excerpt": "89% of children received their basic doses last year, according to the annual report.",
+		"author": "Clara Méndez",
+		"published_at": "2026-06-28T14:00:00.000Z",
+		"reads": 15880,
+		"image": "https://images.unsplash.com/photo-1612277795421-9bc7706a4a34?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "who-sets-a-new-record-in-childhood-vaccination-coverage",
+		"tags": [
+			"health",
+			"vaccines",
+			"childhood"
+		],
+		"body_blocks": [
+			{
+				"id": "p05-t0",
+				"type": "texto",
+				"config": {
+					"text": "89% of children under five received the basic doses of the vaccination schedule last year, according to the WHO's annual report: the best figure in the historical series and confirmation that the drop caused by the pandemic has been fully reversed.",
+					"html": "<p>89% of children under five received the basic doses of the vaccination schedule last year, according to the WHO's annual report: the best figure in the historical series and confirmation that the drop caused by the pandemic has been fully reversed.</p>"
+				}
+			},
+			{
+				"id": "p05-t1",
+				"type": "texto",
+				"config": {
+					"text": "The progress is concentrated in South Asia and sub-Saharan Africa, where door-to-door campaigns and the solar cold chain have reached communities that had been outside the system for a decade.",
+					"html": "<p>The progress is concentrated in South Asia and sub-Saharan Africa, where door-to-door campaigns and the solar cold chain have reached communities that had been outside the system for a decade.</p>"
+				}
+			},
+			{
+				"id": "p05-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1611694449252-02453c27856a?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "Door-to-door vaccination campaign, this winter.",
+					"caption": "Door-to-door vaccination campaign, this winter.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p05-t2",
+				"type": "texto",
+				"config": {
+					"text": "The last mile remains, the most expensive: fourteen million children with no dose at all, almost all in conflict zones. The organization is calling for a mechanism to vaccinate during humanitarian truces, tested successfully in two countries this year.",
+					"html": "<p>The last mile remains, the most expensive: fourteen million children with no dose at all, almost all in conflict zones. The organization is calling for a mechanism to vaccinate during humanitarian truces, tested successfully in two countries this year.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p06",
+		"cat": "deportes",
+		"title": "Epic last-minute comeback seals promotion",
+		"excerpt": "Vargas' goal in the 93rd minute sparks celebration in a stand that had waited a decade for the moment.",
+		"author": "Diego Cano",
+		"published_at": "2026-06-28T13:00:00.000Z",
+		"reads": 28730,
+		"image": "https://images.unsplash.com/photo-1489944440615-453fc2b6a9a9?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "epic-last-minute-comeback-seals-promotion",
+		"tags": [
+			"football",
+			"promotion",
+			"fans"
+		],
+		"body_blocks": [
+			{
+				"id": "p06-t0",
+				"type": "texto",
+				"config": {
+					"text": "Twenty years of waiting fit into a corner kick. When Vargas connected in the 93rd minute and the ball crept in off the far post, the whole stand understood at once that promotion was real: hugs with strangers, scarves in the air and a ground that took an hour to empty.",
+					"html": "<p>Twenty years of waiting fit into a corner kick. When Vargas connected in the 93rd minute and the ball crept in off the far post, the whole stand understood at once that promotion was real: hugs with strangers, scarves in the air and a ground that took an hour to empty.</p>"
+				}
+			},
+			{
+				"id": "p06-q",
+				"type": "cita",
+				"config": {
+					"text": "I've been coming since I was eight. Today I brought my daughter and we went up. I can't explain it.",
+					"attribution": "— A season-ticket holder in the north stand",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p06-t1",
+				"type": "texto",
+				"config": {
+					"text": "The team had done everything possible to complicate it: a sending-off at half-time, a penalty missed in the 70th and an opponent that lived off counterattacks. The comeback was born where no one was looking, in the two defensive changes that pushed the team twenty meters up the pitch.",
+					"html": "<p>The team had done everything possible to complicate it: a sending-off at half-time, a penalty missed in the 70th and an opponent that lived off counterattacks. The comeback was born where no one was looking, in the two defensive changes that pushed the team twenty meters up the pitch.</p>"
+				}
+			},
+			{
+				"id": "p06-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "The north stand, in the 93rd minute.",
+					"caption": "The north stand, in the 93rd minute.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p06-t2",
+				"type": "texto",
+				"config": {
+					"text": "The city took to the streets until dawn. Today, a reception at city hall and a question already circulating in the bars: who pays for a top-flight squad?",
+					"html": "<p>The city took to the streets until dawn. Today, a reception at city hall and a question already circulating in the bars: who pays for a top-flight squad?</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p07",
+		"cat": "tecnologia",
+		"title": "A local startup unveils the first low-power neural chip",
+		"excerpt": "It promises to boost the efficiency of edge AI devices tenfold.",
+		"author": "Nora Ibáñez",
+		"published_at": "2026-06-28T12:00:00.000Z",
+		"reads": 11200,
+		"image": "https://images.unsplash.com/photo-1592659762303-90081d34b277?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "a-local-startup-unveils-the-first-low-power-neural-chip",
+		"tags": [
+			"chips",
+			"startups",
+			"artificial intelligence"
+		],
+		"body_blocks": [
+			{
+				"id": "p07-t0",
+				"type": "texto",
+				"config": {
+					"text": "A local startup of fourteen employees presented Lumen-1 yesterday, a low-power neural chip that promises to boost the efficiency of edge artificial-intelligence devices tenfold: cameras, sensors, wearables.",
+					"html": "<p>A local startup of fourteen employees presented Lumen-1 yesterday, a low-power neural chip that promises to boost the efficiency of edge artificial-intelligence devices tenfold: cameras, sensors, wearables.</p>"
+				}
+			},
+			{
+				"id": "p07-q",
+				"type": "cita",
+				"config": {
+					"text": "We want to manufacture in Europe.",
+					"attribution": "— Nora Ibáñez, founder",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p07-t1",
+				"type": "texto",
+				"config": {
+					"text": "The key is memory: instead of moving data to the processor, Lumen-1 computes inside the memory itself, the approach the big manufacturers have been promising and postponing for years. Independent benchmarks are expected in September.",
+					"html": "<p>The key is memory: instead of moving data to the processor, Lumen-1 computes inside the memory itself, the approach the big manufacturers have been promising and postponing for years. Independent benchmarks are expected in September.</p>"
+				}
+			},
+			{
+				"id": "p07-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "The Lumen-1 prototype, during the presentation.",
+					"caption": "The Lumen-1 prototype, during the presentation.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p07-t2",
+				"type": "texto",
+				"config": {
+					"text": "The company, born in a university lab, has closed a 30-million round and is turning down buyout offers for now. \"We want to manufacture in Europe,\" its founder repeats, aware that the phrase is worth more today than any benchmark.",
+					"html": "<p>The company, born in a university lab, has closed a 30-million round and is turning down buyout offers for now. &quot;We want to manufacture in Europe,&quot; its founder repeats, aware that the phrase is worth more today than any benchmark.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p08",
+		"cat": "politica",
+		"title": "Congress passes the housing law reform",
+		"excerpt": "The measure caps rent increases in high-pressure areas and expands public housing.",
+		"author": "Pedro Aranda",
+		"published_at": "2026-06-28T10:00:00.000Z",
+		"reads": 8450,
+		"image": "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "congress-passes-the-housing-law-reform",
+		"tags": [
+			"housing",
+			"congress",
+			"rent"
+		],
+		"body_blocks": [
+			{
+				"id": "p08-t0",
+				"type": "texto",
+				"config": {
+					"text": "Congress passed the housing law reform yesterday with a more comfortable majority than expected. The measure caps rent increases at the inflation rate in areas declared high-pressure and requires large landlords to offer social rent before carrying out an eviction.",
+					"html": "<p>Congress passed the housing law reform yesterday with a more comfortable majority than expected. The measure caps rent increases at the inflation rate in areas declared high-pressure and requires large landlords to offer social rent before carrying out an eviction.</p>"
+				}
+			},
+			{
+				"id": "p08-t1",
+				"type": "texto",
+				"config": {
+					"text": "The most disputed article, the one expanding public housing with state land ceded to cooperatives, passed by twelve votes. The regions now have six months to declare their high-pressure areas, and that is where the real battle begins.",
+					"html": "<p>The most disputed article, the one expanding public housing with state land ceded to cooperatives, passed by twelve votes. The regions now have six months to declare their high-pressure areas, and that is where the real battle begins.</p>"
+				}
+			},
+			{
+				"id": "p08-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "The chamber, during the vote on the reform.",
+					"caption": "The chamber, during the vote on the reform.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p08-t2",
+				"type": "texto",
+				"config": {
+					"text": "Landlords are announcing appeals and tenant groups are celebrating \"half a victory.\" Notaries, meanwhile, record a figure no one expected: long-term contracts grew by 14% on the announcement of the law alone.",
+					"html": "<p>Landlords are announcing appeals and tenant groups are celebrating &quot;half a victory.&quot; Notaries, meanwhile, record a figure no one expected: long-term contracts grew by 14% on the announcement of the law alone.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p09",
+		"cat": "economia",
+		"title": "Inflation eases to 2.4% and nears the target",
+		"excerpt": "Fresh food and energy lead the slowdown in prices this quarter.",
+		"author": "Lucía Ferrer",
+		"published_at": "2026-06-28T09:00:00.000Z",
+		"reads": 6120,
+		"image": "https://images.unsplash.com/photo-1741520965035-263d8a2fc652?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "inflation-eases-to-2-4-and-nears-the-target",
+		"tags": [
+			"inflation",
+			"prices",
+			"consumption"
+		],
+		"body_blocks": [
+			{
+				"id": "p09-t0",
+				"type": "texto",
+				"config": {
+					"text": "Inflation eased in June to 2.4%, two tenths less than in May and the level closest to the central bank's target in three years. Fresh food, which had been driving prices for a year, fell for the second month running.",
+					"html": "<p>Inflation eased in June to 2.4%, two tenths less than in May and the level closest to the central bank's target in three years. Fresh food, which had been driving prices for a year, fell for the second month running.</p>"
+				}
+			},
+			{
+				"id": "p09-t1",
+				"type": "texto",
+				"config": {
+					"text": "Energy helps: gas trades 30% below last year and a rainy spring has filled the reservoirs, making electricity cheaper. Core inflation, however, holds at 2.9%, with tourism services the main source of pressure.",
+					"html": "<p>Energy helps: gas trades 30% below last year and a rainy spring has filled the reservoirs, making electricity cheaper. Core inflation, however, holds at 2.9%, with tourism services the main source of pressure.</p>"
+				}
+			},
+			{
+				"id": "p09-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1635840420670-5470266ffa39?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "A municipal market, this week.",
+					"caption": "A municipal market, this week.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p09-t2",
+				"type": "texto",
+				"config": {
+					"text": "For the household budget, the translation is simple: the shopping basket no longer rises faster than wages. For monetary policy, too: the market takes another rate cut before year-end as a given.",
+					"html": "<p>For the household budget, the translation is simple: the shopping basket no longer rises faster than wages. For monetary policy, too: the market takes another rate cut before year-end as a given.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p10",
+		"cat": "cultura",
+		"title": "A retrospective brings together the painter's complete work for the first time",
+		"excerpt": "The show spans five decades of an essential, long-overlooked artist.",
+		"author": "Marta Gil",
+		"published_at": "2026-06-27T20:00:00.000Z",
+		"reads": 4980,
+		"image": "https://images.unsplash.com/photo-1578926375605-eaf7559b1458?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "a-retrospective-brings-together-the-painter-s-complete-work-for-the-first-time",
+		"tags": [
+			"art",
+			"exhibition",
+			"memory"
+		],
+		"body_blocks": [
+			{
+				"id": "p10-t0",
+				"type": "texto",
+				"config": {
+					"text": "Five decades of overlooked painting now fit into three rooms. The retrospective opening tomorrow brings together for the first time the complete work of an artist who exhibited little, sold less and always painted: 180 pieces, half of them never seen in public.",
+					"html": "<p>Five decades of overlooked painting now fit into three rooms. The retrospective opening tomorrow brings together for the first time the complete work of an artist who exhibited little, sold less and always painted: 180 pieces, half of them never seen in public.</p>"
+				}
+			},
+			{
+				"id": "p10-q",
+				"type": "cita",
+				"config": {
+					"text": "She painted all her life as if the world were going to look. The world arrived late.",
+					"attribution": "— Curator of the exhibition",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p10-t1",
+				"type": "texto",
+				"config": {
+					"text": "The curators have given up chronological order and group the work by obsessions: windows, bodies seen from behind, the light of kitchens. The effect is that of entering a lived-in home rather than a museum.",
+					"html": "<p>The curators have given up chronological order and group the work by obsessions: windows, bodies seen from behind, the light of kitchens. The effect is that of entering a lived-in home rather than a museum.</p>"
+				}
+			},
+			{
+				"id": "p10-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1578301996581-bf7caec556c0?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "Installation of the retrospective, last week.",
+					"caption": "Installation of the retrospective, last week.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p10-t2",
+				"type": "texto",
+				"config": {
+					"text": "The recognition comes too late for the painter, who died in 2019, but not for the market: her prices have multiplied eightfold since the museum announced the show. The family has donated the archive to shield it from speculation.",
+					"html": "<p>The recognition comes too late for the painter, who died in 2019, but not for the market: her prices have multiplied eightfold since the museum announced the show. The family has donated the archive to shield it from speculation.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p11",
+		"cat": "sociedad",
+		"title": "The new bike lane connects the six central districts",
+		"excerpt": "The 42-kilometer network opens after two years of construction and neighborhood debate.",
+		"author": "Iván Soto",
+		"published_at": "2026-06-27T20:00:00.000Z",
+		"reads": 5430,
+		"image": "https://images.unsplash.com/photo-1541625602330-2277a4c46182?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-new-bike-lane-connects-the-six-central-districts",
+		"tags": [
+			"mobility",
+			"cycling",
+			"urban planning"
+		],
+		"body_blocks": [
+			{
+				"id": "p11-t0",
+				"type": "texto",
+				"config": {
+					"text": "Forty-two kilometers, six districts and two years of construction and controversy: the downtown bike lane network entered full service yesterday. From early morning, the counters recorded peaks of 900 cyclists an hour on the north-south axis.",
+					"html": "<p>Forty-two kilometers, six districts and two years of construction and controversy: the downtown bike lane network entered full service yesterday. From early morning, the counters recorded peaks of 900 cyclists an hour on the north-south axis.</p>"
+				}
+			},
+			{
+				"id": "p11-t1",
+				"type": "texto",
+				"config": {
+					"text": "The design avoids the cheap solution of painting the lane onto the sidewalk: the network is segregated from traffic by a curb and has its own signals at 60 crossings. The shopkeepers who protested most now admit, grudgingly, that customers have not fallen away.",
+					"html": "<p>The design avoids the cheap solution of painting the lane onto the sidewalk: the network is segregated from traffic by a curb and has its own signals at 60 crossings. The shopkeepers who protested most now admit, grudgingly, that customers have not fallen away.</p>"
+				}
+			},
+			{
+				"id": "p11-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "The new north-south cycling axis, yesterday morning.",
+					"caption": "The new north-south cycling axis, yesterday morning.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p11-t2",
+				"type": "texto",
+				"config": {
+					"text": "The usual problem remains: theft. The city promises 3,000 secure parking spaces before December, the figure cycling associations consider the minimum for the network to also be used for the commute to work.",
+					"html": "<p>The usual problem remains: theft. The city promises 3,000 secure parking spaces before December, the figure cycling associations consider the minimum for the network to also be used for the commute to work.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p12",
+		"cat": "internacional",
+		"title": "Peace talks resume after months of deadlock",
+		"excerpt": "Both delegations accept a temporary ceasefire as a gesture of goodwill.",
+		"author": "Clara Méndez",
+		"published_at": "2026-06-27T20:00:00.000Z",
+		"reads": 13270,
+		"image": "https://images.unsplash.com/photo-1689859438394-2b59a858e31c?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "peace-talks-resume-after-months-of-deadlock",
+		"tags": [
+			"diplomacy",
+			"peace",
+			"international"
+		],
+		"body_blocks": [
+			{
+				"id": "p12-t0",
+				"type": "texto",
+				"config": {
+					"text": "After five months of silence, the delegations sat down again yesterday at the same table. The gesture that unlocked the meeting was a temporary three-week ceasefire, accepted by both sides \"as proof of good faith\" and verified by international observers.",
+					"html": "<p>After five months of silence, the delegations sat down again yesterday at the same table. The gesture that unlocked the meeting was a temporary three-week ceasefire, accepted by both sides &quot;as proof of good faith&quot; and verified by international observers.</p>"
+				}
+			},
+			{
+				"id": "p12-q",
+				"type": "cita",
+				"config": {
+					"text": "We've seen truces die in a week before.",
+					"attribution": "— A teacher in the border area",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p12-t1",
+				"type": "texto",
+				"config": {
+					"text": "No one in the room is yet talking about an agreement: this round's agenda is limited to humanitarian corridors and a prisoner exchange. But the veteran negotiators recall that this is how, with lists of names, the processes that ended in peace began.",
+					"html": "<p>No one in the room is yet talking about an agreement: this round's agenda is limited to humanitarian corridors and a prisoner exchange. But the veteran negotiators recall that this is how, with lists of names, the processes that ended in peace began.</p>"
+				}
+			},
+			{
+				"id": "p12-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1704477263453-bd124e991e1b?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "Arrival of the delegations at the venue for the talks.",
+					"caption": "Arrival of the delegations at the venue for the talks.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p12-t2",
+				"type": "texto",
+				"config": {
+					"text": "The border population received the news with a mix of hope and scars. \"We've seen truces die in a week before,\" says a teacher who has been teaching in a basement since March.",
+					"html": "<p>The border population received the news with a mix of hope and scars. &quot;We've seen truces die in a week before,&quot; says a teacher who has been teaching in a basement since March.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p13",
+		"cat": "deportes",
+		"title": "The women's national team routs its rival and qualifies with authority",
+		"excerpt": "Three first-half goals settle a match that was never in doubt.",
+		"author": "Diego Cano",
+		"published_at": "2026-06-27T20:00:00.000Z",
+		"reads": 17640,
+		"image": "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-women-s-national-team-routs-its-rival-and-qualifies-with-authority",
+		"tags": [
+			"women's national team",
+			"qualification",
+			"football"
+		],
+		"body_blocks": [
+			{
+				"id": "p13-t0",
+				"type": "texto",
+				"config": {
+					"text": "It was no contest: it was an exhibition. The women's national team settled qualification in 45 minutes with three textbook goals — high press, turnover and a run through the middle — against a side that did not cross the halfway line until the break.",
+					"html": "<p>It was no contest: it was an exhibition. The women's national team settled qualification in 45 minutes with three textbook goals — high press, turnover and a run through the middle — against a side that did not cross the halfway line until the break.</p>"
+				}
+			},
+			{
+				"id": "p13-t1",
+				"type": "texto",
+				"config": {
+					"text": "The head coach spread minutes in the second half with the tournament in mind: two under-20 players and the backup keeper made their debuts, and the keeper kept a clean sheet with two fine saves.",
+					"html": "<p>The head coach spread minutes in the second half with the tournament in mind: two under-20 players and the backup keeper made their debuts, and the keeper kept a clean sheet with two fine saves.</p>"
+				}
+			},
+			{
+				"id": "p13-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1522778526097-ce0a22ceb253?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "Celebration of the second goal, last night.",
+					"caption": "Celebration of the second goal, last night.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p13-t2",
+				"type": "texto",
+				"config": {
+					"text": "Qualification comes with a record audience — 2.1 million viewers on average — and with tickets for the next friendly sold out in three hours. The phenomenon is no longer a promise: it's box office.",
+					"html": "<p>Qualification comes with a record audience — 2.1 million viewers on average — and with tickets for the next friendly sold out in three hours. The phenomenon is no longer a promise: it's box office.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p14",
+		"cat": "tecnologia",
+		"title": "The digital outage exposes the fragility of the cloud",
+		"excerpt": "A six-hour failure hits thousands of services and reopens the debate over dependence.",
+		"author": "Nora Ibáñez",
+		"published_at": "2026-06-27T20:00:00.000Z",
+		"reads": 9890,
+		"image": "https://images.unsplash.com/photo-1580106815433-a5b1d1d53d85?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-digital-outage-exposes-the-fragility-of-the-cloud",
+		"tags": [
+			"cloud",
+			"outage",
+			"infrastructure"
+		],
+		"body_blocks": [
+			{
+				"id": "p14-t0",
+				"type": "texto",
+				"config": {
+					"text": "Six hours without the cloud: Thursday's outage knocked out thousands of applications, from payment gateways to the medical-appointment system of three regions. The cause, according to the preliminary report, was a network update that spread without the usual safeguards.",
+					"html": "<p>Six hours without the cloud: Thursday's outage knocked out thousands of applications, from payment gateways to the medical-appointment system of three regions. The cause, according to the preliminary report, was a network update that spread without the usual safeguards.</p>"
+				}
+			},
+			{
+				"id": "p14-q",
+				"type": "cita",
+				"config": {
+					"text": "It's not a technical problem, it's an architecture problem.",
+					"attribution": "— Researcher in distributed systems",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p14-t1",
+				"type": "texto",
+				"config": {
+					"text": "The failure reopened the debate over concentration: 68% of the country's digital public services run on two providers. \"It's not a technical problem, it's an architecture problem,\" sums up a researcher in distributed systems.",
+					"html": "<p>The failure reopened the debate over concentration: 68% of the country's digital public services run on two providers. &quot;It's not a technical problem, it's an architecture problem,&quot; sums up a researcher in distributed systems.</p>"
+				}
+			},
+			{
+				"id": "p14-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "Data center of the affected provider.",
+					"caption": "Data center of the affected provider.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p14-t2",
+				"type": "texto",
+				"config": {
+					"text": "The affected companies are studying million-euro claims, but cloud contracts limit liability to the monthly bill. The lesson, experts say, is not to abandon the cloud but to design for failure: multi-region, multi-provider and a paper plan for the day everything fails.",
+					"html": "<p>The affected companies are studying million-euro claims, but cloud contracts limit liability to the monthly bill. The lesson, experts say, is not to abandon the cloud but to design for failure: multi-region, multi-provider and a paper plan for the day everything fails.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p15",
+		"cat": "politica",
+		"title": "A bare-minimum budget deal amid tension",
+		"excerpt": "Social spending is preserved but infrastructure investment is postponed.",
+		"author": "Sara Lores",
+		"published_at": "2026-06-26T20:00:00.000Z",
+		"reads": 3760,
+		"image": "https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "a-bare-minimum-budget-deal-amid-tension",
+		"tags": [
+			"budget",
+			"deals",
+			"politics"
+		],
+		"body_blocks": [
+			{
+				"id": "p15-t0",
+				"type": "texto",
+				"config": {
+					"text": "There was a deal, but no one was smiling in the photo. The budget goes through with social spending intact — pensions, care, grants — and infrastructure investment deferred to a fund \"conditional on execution,\" the euphemism that made the pact possible.",
+					"html": "<p>There was a deal, but no one was smiling in the photo. The budget goes through with social spending intact — pensions, care, grants — and infrastructure investment deferred to a fund &quot;conditional on execution,&quot; the euphemism that made the pact possible.</p>"
+				}
+			},
+			{
+				"id": "p15-t1",
+				"type": "texto",
+				"config": {
+					"text": "The negotiation stalled until the end over the rail corridor, which is left with a commitment to study it and not a euro assigned. The regional partners sell the study as a victory; the opposition, as \"yet another drawer.\"",
+					"html": "<p>The negotiation stalled until the end over the rail corridor, which is left with a commitment to study it and not a euro assigned. The regional partners sell the study as a victory; the opposition, as &quot;yet another drawer.&quot;</p>"
+				}
+			},
+			{
+				"id": "p15-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1520452112805-c6692c840af0?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "The negotiators, after closing the deal.",
+					"caption": "The negotiators, after closing the deal.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p15-t2",
+				"type": "texto",
+				"config": {
+					"text": "The calendar is tight: the text enters committee next week and the government wants a final vote before August, with a majority that shifts a seat up, a seat down, depending on the day.",
+					"html": "<p>The calendar is tight: the text enters committee next week and the government wants a final vote before August, with a majority that shifts a seat up, a seat down, depending on the day.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p16",
+		"cat": "economia",
+		"title": "Tourism breaks its all-time revenue record",
+		"excerpt": "Average spending per visitor rises 8% despite a slight drop in overnight stays.",
+		"author": "Lucía Ferrer",
+		"published_at": "2026-06-26T20:00:00.000Z",
+		"reads": 4310,
+		"image": "https://images.unsplash.com/photo-1539635278303-d4002c07eae3?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "tourism-breaks-its-all-time-revenue-record",
+		"tags": [
+			"tourism",
+			"record",
+			"economy"
+		],
+		"body_blocks": [
+			{
+				"id": "p16-t0",
+				"type": "texto",
+				"config": {
+					"text": "Tourism breaks its ceiling again: first-half revenue exceeds last year's record by 11%, with a nuance that changes the reading — average spending per visitor rises 8% while overnight stays fall slightly.",
+					"html": "<p>Tourism breaks its ceiling again: first-half revenue exceeds last year's record by 11%, with a nuance that changes the reading — average spending per visitor rises 8% while overnight stays fall slightly.</p>"
+				}
+			},
+			{
+				"id": "p16-t1",
+				"type": "texto",
+				"config": {
+					"text": "The sector celebrates the shift toward \"higher-value\" tourism, but the data hide opposite geographies: the coast moderates its growth while inland cities with high-speed rail see weekend visits surge.",
+					"html": "<p>The sector celebrates the shift toward &quot;higher-value&quot; tourism, but the data hide opposite geographies: the coast moderates its growth while inland cities with high-speed rail see weekend visits surge.</p>"
+				}
+			},
+			{
+				"id": "p16-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1519922639192-e73293ca430e?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "A historic center packed in peak season.",
+					"caption": "A historic center packed in peak season.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p16-t2",
+				"type": "texto",
+				"config": {
+					"text": "The underlying debate remains open: three capitals are studying new tourist taxes and neighborhood associations in the historic centers are calling for limits on tourist rentals \"before the record eats the neighborhoods.\"",
+					"html": "<p>The underlying debate remains open: three capitals are studying new tourist taxes and neighborhood associations in the historic centers are calling for limits on tourist rentals &quot;before the record eats the neighborhoods.&quot;</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p17",
+		"cat": "cultura",
+		"title": "The last great master of the artisan craft dies at 91",
+		"excerpt": "He leaves behind a school of disciples who keep a centuries-old technique alive.",
+		"author": "Marta Gil",
+		"published_at": "2026-06-26T20:00:00.000Z",
+		"reads": 6700,
+		"image": "https://images.unsplash.com/photo-1660796334912-8ce8e9c2cff0?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-last-great-master-of-the-artisan-craft-dies-at-91",
+		"tags": [
+			"craftsmanship",
+			"obituary",
+			"trades"
+		],
+		"body_blocks": [
+			{
+				"id": "p17-t0",
+				"type": "texto",
+				"config": {
+					"text": "He worked until the last Friday. At 91 the last great master of a trade he himself watched dying without drama has passed away: \"Hands can be taught; what isn't inherited is patience,\" he would repeat in the workshop his grandfather opened in 1911.",
+					"html": "<p>He worked until the last Friday. At 91 the last great master of a trade he himself watched dying without drama has passed away: &quot;Hands can be taught; what isn't inherited is patience,&quot; he would repeat in the workshop his grandfather opened in 1911.</p>"
+				}
+			},
+			{
+				"id": "p17-q",
+				"type": "cita",
+				"config": {
+					"text": "Hands can be taught; what isn't inherited is patience.",
+					"attribution": "— The master, in a 2019 interview",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p17-t1",
+				"type": "texto",
+				"config": {
+					"text": "He leaves a school of sixteen disciples trained over four decades, and three of them keep workshops of their own. The ethnographic museum has spent months preparing an audiovisual archive of his techniques, recorded on 200 hours of material.",
+					"html": "<p>He leaves a school of sixteen disciples trained over four decades, and three of them keep workshops of their own. The ethnographic museum has spent months preparing an audiovisual archive of his techniques, recorded on 200 hours of material.</p>"
+				}
+			},
+			{
+				"id": "p17-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1660796334938-cf0b03be7e6d?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "The workshop, photographed last year.",
+					"caption": "The workshop, photographed last year.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p17-t2",
+				"type": "texto",
+				"config": {
+					"text": "The city is considering naming the workshop's square after him. His students propose something more useful: an annual grant for apprentices, \"because plaques don't sustain a trade.\"",
+					"html": "<p>The city is considering naming the workshop's square after him. His students propose something more useful: an annual grant for apprentices, &quot;because plaques don't sustain a trade.&quot;</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p18",
+		"cat": "sociedad",
+		"title": "A study links irregular sleep to school performance",
+		"excerpt": "Researchers call for a later start to the secondary school day.",
+		"author": "Iván Soto",
+		"published_at": "2026-06-26T20:00:00.000Z",
+		"reads": 5210,
+		"image": "https://images.unsplash.com/photo-1531353826977-0941b4779a1c?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "a-study-links-irregular-sleep-to-school-performance",
+		"tags": [
+			"sleep",
+			"education",
+			"adolescence"
+		],
+		"body_blocks": [
+			{
+				"id": "p18-t0",
+				"type": "texto",
+				"config": {
+					"text": "Sleeping little and at odd hours takes an academic toll: a study of 12,000 secondary students links the irregularity of sleep — more than its duration — to a measurable drop in performance, equivalent to half a school year in mathematics.",
+					"html": "<p>Sleeping little and at odd hours takes an academic toll: a study of 12,000 secondary students links the irregularity of sleep — more than its duration — to a measurable drop in performance, equivalent to half a school year in mathematics.</p>"
+				}
+			},
+			{
+				"id": "p18-t1",
+				"type": "texto",
+				"config": {
+					"text": "The most striking finding is not in total hours but in the weekend shift: teenagers who go to bed three hours later on Saturday perform worse on Tuesday, even if they sleep the same amount overall.",
+					"html": "<p>The most striking finding is not in total hours but in the weekend shift: teenagers who go to bed three hours later on Saturday perform worse on Tuesday, even if they sleep the same amount overall.</p>"
+				}
+			},
+			{
+				"id": "p18-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "A secondary classroom first thing in the morning.",
+					"caption": "A secondary classroom first thing in the morning.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p18-t2",
+				"type": "texto",
+				"config": {
+					"text": "The authors call for pushing the start of the secondary school day to nine, a measure tested in several countries with consistent results. Families applaud; the puzzle of school transport, for now, rules.",
+					"html": "<p>The authors call for pushing the start of the secondary school day to nine, a measure tested in several countries with consistent results. Families applaud; the puzzle of school transport, for now, rules.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p19",
+		"cat": "internacional",
+		"title": "A tight election opens the door to unprecedented alliances",
+		"excerpt": "The count drags on and no party reaches a majority on its own.",
+		"author": "Clara Méndez",
+		"published_at": "2026-06-25T20:00:00.000Z",
+		"reads": 10450,
+		"image": "https://images.unsplash.com/photo-1494172961521-33799ddd43a5?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "a-tight-election-opens-the-door-to-unprecedented-alliances",
+		"tags": [
+			"elections",
+			"alliances",
+			"international"
+		],
+		"body_blocks": [
+			{
+				"id": "p19-t0",
+				"type": "texto",
+				"config": {
+					"text": "The count ended in the early hours and cleared up nothing: no party tops 28% and parliament is split into five blocs that add up to comfortable majorities in no known combination.",
+					"html": "<p>The count ended in the early hours and cleared up nothing: no party tops 28% and parliament is split into five blocs that add up to comfortable majorities in no known combination.</p>"
+				}
+			},
+			{
+				"id": "p19-t1",
+				"type": "texto",
+				"config": {
+					"text": "Analysts point to two unprecedented scenarios: a grand coalition between historic rivals or a minority government sustained by crossed abstentions. The stock market, allergic to uncertainty, opened flat: investors no longer fear what has become routine.",
+					"html": "<p>Analysts point to two unprecedented scenarios: a grand coalition between historic rivals or a minority government sustained by crossed abstentions. The stock market, allergic to uncertainty, opened flat: investors no longer fear what has become routine.</p>"
+				}
+			},
+			{
+				"id": "p19-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1540908390241-82158ab62887?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "Following the count at the headquarters of one of the parties.",
+					"caption": "Following the count at the headquarters of one of the parties.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p19-t2",
+				"type": "texto",
+				"config": {
+					"text": "The only certainty is the calendar: the outgoing president has fourteen days to propose a candidate. If there is no investiture within two months, back to the polls — it would be the third time in four years.",
+					"html": "<p>The only certainty is the calendar: the outgoing president has fourteen days to propose a candidate. If there is no investiture within two months, back to the polls — it would be the third time in four years.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p20",
+		"cat": "deportes",
+		"title": "The veteran announces his retirement at the end of the season",
+		"excerpt": "He closes a twenty-year career with two continental titles and an untarnished legacy.",
+		"author": "Diego Cano",
+		"published_at": "2026-06-25T20:00:00.000Z",
+		"reads": 21300,
+		"image": "https://images.unsplash.com/photo-1530549387789-4c1017266635?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-veteran-announces-his-retirement-at-the-end-of-the-season",
+		"tags": [
+			"retirement",
+			"legend",
+			"sports"
+		],
+		"body_blocks": [
+			{
+				"id": "p20-t0",
+				"type": "texto",
+				"config": {
+					"text": "He announced it without a press conference, with a handwritten letter he photographed: at the end of the season the captain retires, twenty years, two continental titles and the unanimous sense that someone irreplaceable is leaving.",
+					"html": "<p>He announced it without a press conference, with a handwritten letter he photographed: at the end of the season the captain retires, twenty years, two continental titles and the unanimous sense that someone irreplaceable is leaving.</p>"
+				}
+			},
+			{
+				"id": "p20-q",
+				"type": "cita",
+				"config": {
+					"text": "Talk about the team, which is playing the semifinals.",
+					"attribution": "— The captain, in his farewell letter",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p20-t1",
+				"type": "texto",
+				"config": {
+					"text": "His career is better told through gestures than through trophies: the guard of honor his eternal rival gave him in 2021, the ovation from a rival stadium after his injury, the three years as captain without a single incident in the dressing room.",
+					"html": "<p>His career is better told through gestures than through trophies: the guard of honor his eternal rival gave him in 2021, the ovation from a rival stadium after his injury, the three years as captain without a single incident in the dressing room.</p>"
+				}
+			},
+			{
+				"id": "p20-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "The captain, saluting the stands last matchday.",
+					"caption": "The captain, saluting the stands last matchday.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p20-t2",
+				"type": "texto",
+				"config": {
+					"text": "The club is preparing a farewell for the final matchday and there is already a waiting list for the tribute. He, true to his style, asked for only one thing: \"Talk about the team, which is playing the semifinals.\"",
+					"html": "<p>The club is preparing a farewell for the final matchday and there is already a waiting list for the tribute. He, true to his style, asked for only one thing: &quot;Talk about the team, which is playing the semifinals.&quot;</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p21",
+		"cat": "tecnologia",
+		"title": "Augmented reality reaches the classroom in a pilot program",
+		"excerpt": "Fifty schools test interactive materials in science and geography.",
+		"author": "Nora Ibáñez",
+		"published_at": "2026-06-25T20:00:00.000Z",
+		"reads": 3980,
+		"image": "https://images.unsplash.com/photo-1738308508484-2a5226b4208d?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "augmented-reality-reaches-the-classroom-in-a-pilot-program",
+		"tags": [
+			"education",
+			"augmented reality",
+			"classrooms"
+		],
+		"body_blocks": [
+			{
+				"id": "p21-t0",
+				"type": "texto",
+				"config": {
+					"text": "Fifty schools, two subjects and a whole year ahead: the pilot program bringing augmented reality to science and geography classrooms begins, with interactive materials developed alongside two universities.",
+					"html": "<p>Fifty schools, two subjects and a whole year ahead: the pilot program bringing augmented reality to science and geography classrooms begins, with interactive materials developed alongside two universities.</p>"
+				}
+			},
+			{
+				"id": "p21-t1",
+				"type": "texto",
+				"config": {
+					"text": "In yesterday's demonstration, a fifth-grade class toured the digestive system from the inside and raised a mountain range with their hands. Teachers, more cautious than the pupils, value what matters: the material comes with a teaching guide and doesn't require an engineer to use it.",
+					"html": "<p>In yesterday's demonstration, a fifth-grade class toured the digestive system from the inside and raised a mountain range with their hands. Teachers, more cautious than the pupils, value what matters: the material comes with a teaching guide and doesn't require an engineer to use it.</p>"
+				}
+			},
+			{
+				"id": "p21-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "Demonstration of the geography material, yesterday.",
+					"caption": "Demonstration of the geography material, yesterday.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p21-t2",
+				"type": "texto",
+				"config": {
+					"text": "The pilot's evaluation will measure learning, not enthusiasm: control groups, the same exams and a public report at the end of the year. If the data hold up, the program will extend to 300 schools.",
+					"html": "<p>The pilot's evaluation will measure learning, not enthusiasm: control groups, the same exams and a public report at the end of the year. If the data hold up, the program will extend to 300 schools.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p22",
+		"cat": "sociedad",
+		"title": "Volunteers replant the hillside razed by the wildfire",
+		"excerpt": "The grassroots effort plants twenty thousand trees in a single day.",
+		"author": "Iván Soto",
+		"published_at": "2026-06-24T20:00:00.000Z",
+		"reads": 4620,
+		"image": "https://images.unsplash.com/photo-1448375240586-882707db888b?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "volunteers-replant-the-hillside-razed-by-the-wildfire",
+		"tags": [
+			"reforestation",
+			"volunteering",
+			"wildfires"
+		],
+		"body_blocks": [
+			{
+				"id": "p22-t0",
+				"type": "texto",
+				"config": {
+					"text": "Twenty thousand trees in a single day: the hillside left in ash by August's wildfire woke yesterday full of volunteers — 1,400 people, ages 6 to 84 — planting holm oak, cork oak and strawberry tree with the technique the foresters taught them on the mountain.",
+					"html": "<p>Twenty thousand trees in a single day: the hillside left in ash by August's wildfire woke yesterday full of volunteers — 1,400 people, ages 6 to 84 — planting holm oak, cork oak and strawberry tree with the technique the foresters taught them on the mountain.</p>"
+				}
+			},
+			{
+				"id": "p22-q",
+				"type": "cita",
+				"config": {
+					"text": "Planting is the party; the forest is won in August.",
+					"attribution": "— Director of the recovery plan",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p22-t1",
+				"type": "texto",
+				"config": {
+					"text": "The initiative was born in a group of residents from the worst-hit village and overwhelmed every forecast: there was a waiting list and buses from three provinces. The chosen species are no accident: mixed Mediterranean woodland, slower but more fire-resistant than the pine forest that burned.",
+					"html": "<p>The initiative was born in a group of residents from the worst-hit village and overwhelmed every forecast: there was a waiting list and buses from three provinces. The chosen species are no accident: mixed Mediterranean woodland, slower but more fire-resistant than the pine forest that burned.</p>"
+				}
+			},
+			{
+				"id": "p22-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1759681770982-313332e7f42c?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "Volunteers on the burned hillside, during the planting.",
+					"caption": "Volunteers on the burned hillside, during the planting.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p22-t2",
+				"type": "texto",
+				"config": {
+					"text": "The foresters now ask for the hardest thing: patience and support watering for two summers. \"Planting is the party; the forest is won in August,\" sums up the director of the recovery plan.",
+					"html": "<p>The foresters now ask for the hardest thing: patience and support watering for two summers. &quot;Planting is the party; the forest is won in August,&quot; sums up the director of the recovery plan.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p23",
+		"cat": "cultura",
+		"title": "The independent film festival reveals its lineup",
+		"excerpt": "Forty premieres and a strand devoted to social documentary define this edition.",
+		"author": "Marta Gil",
+		"published_at": "2026-06-24T20:00:00.000Z",
+		"reads": 3540,
+		"image": "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-independent-film-festival-reveals-its-lineup",
+		"tags": [
+			"cinema",
+			"festival",
+			"documentary"
+		],
+		"body_blocks": [
+			{
+				"id": "p23-t0",
+				"type": "texto",
+				"config": {
+					"text": "Forty premieres, fifteen countries and a clear bet: the independent film festival presented a program devoting its central strand to social documentary, with eight titles arriving straight from the major European festivals.",
+					"html": "<p>Forty premieres, fifteen countries and a clear bet: the independent film festival presented a program devoting its central strand to social documentary, with eight titles arriving straight from the major European festivals.</p>"
+				}
+			},
+			{
+				"id": "p23-t1",
+				"type": "texto",
+				"config": {
+					"text": "The opening will be a debut feature shot over three years in a public high school, and the closing brings back, in a restored print, the local classic that opened the first edition thirty years ago.",
+					"html": "<p>The opening will be a debut feature shot over three years in a public high school, and the closing brings back, in a restored print, the local classic that opened the first edition thirty years ago.</p>"
+				}
+			},
+			{
+				"id": "p23-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "Presentation of the program, yesterday.",
+					"caption": "Presentation of the program, yesterday.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p23-t2",
+				"type": "texto",
+				"config": {
+					"text": "Tickets go on sale Monday with a novelty aimed at young audiences: a full pass at half price for under-26s. Last year, that audience was already 40% of the box office.",
+					"html": "<p>Tickets go on sale Monday with a novelty aimed at young audiences: a full pass at half price for under-26s. Last year, that audience was already 40% of the box office.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p24",
+		"cat": "economia",
+		"title": "Small businesses lead job creation this quarter",
+		"excerpt": "Small retail and hospitality account for most of the new contracts.",
+		"author": "Sara Lores",
+		"published_at": "2026-06-23T20:00:00.000Z",
+		"reads": 2890,
+		"image": "https://images.unsplash.com/photo-1556742393-d75f468bfcb0?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "small-businesses-lead-job-creation-this-quarter",
+		"tags": [
+			"small business",
+			"employment",
+			"retail"
+		],
+		"body_blocks": [
+			{
+				"id": "p24-t0",
+				"type": "texto",
+				"config": {
+					"text": "This quarter's jobs bear the small-business stamp: small retail and hospitality account for six of every ten new contracts, with a figure unseen in the series — for the first time, more than half of those contracts are permanent.",
+					"html": "<p>This quarter's jobs bear the small-business stamp: small retail and hospitality account for six of every ten new contracts, with a figure unseen in the series — for the first time, more than half of those contracts are permanent.</p>"
+				}
+			},
+			{
+				"id": "p24-q",
+				"type": "cita",
+				"config": {
+					"text": "Training someone costs six months; losing them, a summer.",
+					"attribution": "— Owner of a café downtown",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p24-t1",
+				"type": "texto",
+				"config": {
+					"text": "Behind the shift is the labor reform, but also a change of strategy: the businesses that survived the hard years now compete to retain staff. \"Training someone costs six months; losing them, a summer,\" sums up the owner of a café with four employees.",
+					"html": "<p>Behind the shift is the labor reform, but also a change of strategy: the businesses that survived the hard years now compete to retain staff. &quot;Training someone costs six months; losing them, a summer,&quot; sums up the owner of a café with four employees.</p>"
+				}
+			},
+			{
+				"id": "p24-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "A downtown shop, this week.",
+					"caption": "A downtown shop, this week.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p24-t2",
+				"type": "texto",
+				"config": {
+					"text": "Economists point to the shadow in the data: the sector's productivity remains flat and margins are thin. Small-business employment grows, but its sustainability hinges on the pending digitization.",
+					"html": "<p>Economists point to the shadow in the data: the sector's productivity remains flat and margins are thin. Small-business employment grows, but its sustainability hinges on the pending digitization.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p25",
+		"cat": "internacional",
+		"title": "The G20 summit ends without a deal on poor countries' debt",
+		"excerpt": "The major economies push debt relief to a new technical round next autumn.",
+		"author": "Clara Méndez",
+		"published_at": "2026-06-22T20:00:00.000Z",
+		"reads": 8930,
+		"image": "https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-g20-summit-ends-without-a-deal-on-poor-countries-debt",
+		"tags": [
+			"g20",
+			"debt",
+			"cooperation"
+		],
+		"body_blocks": [
+			{
+				"id": "p25-t0",
+				"type": "texto",
+				"config": {
+					"text": "The G20 summit ended without the agreement the most indebted countries had hoped for. The final communiqué acknowledges the urgency of easing the debt of vulnerable economies, but defers any concrete relief to a technical round that will not be held until autumn.",
+					"html": "<p>The G20 summit ended without the agreement the most indebted countries had hoped for. The final communiqué acknowledges the urgency of easing the debt of vulnerable economies, but defers any concrete relief to a technical round that will not be held until autumn.</p>"
+				}
+			},
+			{
+				"id": "p25-q",
+				"type": "cita",
+				"config": {
+					"text": "We go home with a phrase of goodwill and a bill that keeps growing.",
+					"attribution": "— A participating finance minister",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p25-t1",
+				"type": "texto",
+				"config": {
+					"text": "The African delegations expressed their disappointment in unusually blunt language. \"We go home with a phrase of goodwill and a bill that keeps growing every month,\" summed up a finance minister at the close of the final session.",
+					"html": "<p>The African delegations expressed their disappointment in unusually blunt language. &quot;We go home with a phrase of goodwill and a bill that keeps growing every month,&quot; summed up a finance minister at the close of the final session.</p>"
+				}
+			},
+			{
+				"id": "p25-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1626125345510-4603468eedfb?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "Closing session of the summit.",
+					"caption": "Closing session of the summit.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p25-t2",
+				"type": "texto",
+				"config": {
+					"text": "Private creditors, absent from the table but decisive in the equation, are the knot no summit has managed to untie. Without their participation, multilateral bodies warn, any public relief merely buys time.",
+					"html": "<p>Private creditors, absent from the table but decisive in the equation, are the knot no summit has managed to untie. Without their participation, multilateral bodies warn, any public relief merely buys time.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p26",
+		"cat": "politica",
+		"title": "The Constitutional Court unanimously upholds the transparency law",
+		"excerpt": "The ruling clears the last appeal and requires senior officials to publish their agendas.",
+		"author": "Sara Lores",
+		"published_at": "2026-06-22T20:00:00.000Z",
+		"reads": 5240,
+		"image": "https://images.unsplash.com/photo-1623008946073-ad1c850ad0dd?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-constitutional-court-unanimously-upholds-the-transparency-law",
+		"tags": [
+			"justice",
+			"transparency",
+			"institutions"
+		],
+		"body_blocks": [
+			{
+				"id": "p26-t0",
+				"type": "texto",
+				"config": {
+					"text": "The Constitutional Court unanimously upheld the transparency law and cleared the last appeal blocking its entry into force. The ruling requires senior officials to publish their full agendas and to justify in writing every meeting with interest groups.",
+					"html": "<p>The Constitutional Court unanimously upheld the transparency law and cleared the last appeal blocking its entry into force. The ruling requires senior officials to publish their full agendas and to justify in writing every meeting with interest groups.</p>"
+				}
+			},
+			{
+				"id": "p26-q",
+				"type": "cita",
+				"config": {
+					"text": "Whoever exercises a public function accepts scrutiny proportional to their power.",
+					"attribution": "— Ruling of the Constitutional Court",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p26-t1",
+				"type": "texto",
+				"config": {
+					"text": "The judges rejected the idea that the law violates public officials' right to privacy: \"Whoever exercises a public function accepts scrutiny proportional to their power,\" reads the ruling, already circulating as a quotation among civic organizations.",
+					"html": "<p>The judges rejected the idea that the law violates public officials' right to privacy: &quot;Whoever exercises a public function accepts scrutiny proportional to their power,&quot; reads the ruling, already circulating as a quotation among civic organizations.</p>"
+				}
+			},
+			{
+				"id": "p26-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1593115057322-e94b77572f20?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "Headquarters of the Constitutional Court.",
+					"caption": "Headquarters of the Constitutional Court.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p26-t2",
+				"type": "texto",
+				"config": {
+					"text": "Its application, however, begins with practical doubts. Small municipalities plead a lack of resources to maintain the register and ask for an extension the ministry, for now, does not contemplate.",
+					"html": "<p>Its application, however, begins with practical doubts. Small municipalities plead a lack of resources to maintain the register and ask for an extension the ministry, for now, does not contemplate.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p27",
+		"cat": "tecnologia",
+		"title": "The first level-4 self-driving cars will be tested on city streets",
+		"excerpt": "The pilot starts with a fleet of thirty vehicles and a safety driver on board.",
+		"author": "Nora Ibáñez",
+		"published_at": "2026-06-21T20:00:00.000Z",
+		"reads": 12680,
+		"image": "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-first-level-4-self-driving-cars-will-be-tested-on-city-streets",
+		"tags": [
+			"automotive",
+			"ai",
+			"mobility"
+		],
+		"body_blocks": [
+			{
+				"id": "p27-t0",
+				"type": "texto",
+				"config": {
+					"text": "The first level-4 self-driving cars will begin test runs through the city this month. The initial fleet of thirty vehicles will operate within a defined downtown perimeter, always with a safety driver on board ready to take back control.",
+					"html": "<p>The first level-4 self-driving cars will begin test runs through the city this month. The initial fleet of thirty vehicles will operate within a defined downtown perimeter, always with a safety driver on board ready to take back control.</p>"
+				}
+			},
+			{
+				"id": "p27-q",
+				"type": "cita",
+				"config": {
+					"text": "Our lives are at stake in the remaining one percent.",
+					"attribution": "— Spokesperson for the pedestrians' platform",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p27-t1",
+				"type": "texto",
+				"config": {
+					"text": "Level 4 means the vehicle can handle driving on its own within that zone, without human intervention under normal conditions. It's the leap the industry has pursued for a decade and which until now was confined to closed circuits.",
+					"html": "<p>Level 4 means the vehicle can handle driving on its own within that zone, without human intervention under normal conditions. It's the leap the industry has pursued for a decade and which until now was confined to closed circuits.</p>"
+				}
+			},
+			{
+				"id": "p27-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "One of the pilot vehicles, on a test run.",
+					"caption": "One of the pilot vehicles, on a test run.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p27-t2",
+				"type": "texto",
+				"config": {
+					"text": "Pedestrian and cycling associations urge caution and open data. \"It's not enough for the car to be safe 99% of the time; our lives are at stake in the remaining 1%,\" their spokesperson warned at the program's presentation.",
+					"html": "<p>Pedestrian and cycling associations urge caution and open data. &quot;It's not enough for the car to be safe 99% of the time; our lives are at stake in the remaining 1%,&quot; their spokesperson warned at the program's presentation.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p28",
+		"cat": "deportes",
+		"title": "The marathon breaks its participation record with twenty thousand runners",
+		"excerpt": "Organizers close registration in record time and weigh raising the cap for next year.",
+		"author": "Diego Cano",
+		"published_at": "2026-06-21T20:00:00.000Z",
+		"reads": 9450,
+		"image": "https://images.unsplash.com/photo-1613936360976-8f35cf0e5461?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-marathon-breaks-its-participation-record-with-twenty-thousand-runners",
+		"tags": [
+			"marathon",
+			"athletics",
+			"city"
+		],
+		"body_blocks": [
+			{
+				"id": "p28-t0",
+				"type": "texto",
+				"config": {
+					"text": "The city marathon broke its participation record with twenty thousand registered runners, a figure that forced registration to close in just three days. The organization is studying whether to raise the cap next year without compromising the safety of the course.",
+					"html": "<p>The city marathon broke its participation record with twenty thousand registered runners, a figure that forced registration to close in just three days. The organization is studying whether to raise the cap next year without compromising the safety of the course.</p>"
+				}
+			},
+			{
+				"id": "p28-q",
+				"type": "cita",
+				"config": {
+					"text": "What matters isn't the time, it's finishing together.",
+					"attribution": "— A group of neighborhood runners",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p28-t1",
+				"type": "texto",
+				"config": {
+					"text": "The race, which crosses the six historic districts, has become a phenomenon that spills beyond sport: full hotels, businesses all-in and a volunteer operation that this year topped fifteen hundred people.",
+					"html": "<p>The race, which crosses the six historic districts, has become a phenomenon that spills beyond sport: full hotels, businesses all-in and a volunteer operation that this year topped fifteen hundred people.</p>"
+				}
+			},
+			{
+				"id": "p28-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "The start of last year's edition.",
+					"caption": "The start of last year's edition.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p28-t2",
+				"type": "texto",
+				"config": {
+					"text": "Among the participants, one story captures the mood: a group of neighbors who took up running during the pandemic and who this Sunday will cross the finish line together for the first time. \"What matters isn't the time, it's finishing together,\" they say.",
+					"html": "<p>Among the participants, one story captures the mood: a group of neighbors who took up running during the pandemic and who this Sunday will cross the finish line together for the first time. &quot;What matters isn't the time, it's finishing together,&quot; they say.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p29",
+		"cat": "economia",
+		"title": "The minimum wage rises 5% after a deal between unions and employers",
+		"excerpt": "The agreement, sealed in the early hours, benefits two and a half million workers.",
+		"author": "Lucía Ferrer",
+		"published_at": "2026-06-20T20:00:00.000Z",
+		"reads": 14320,
+		"image": "https://images.unsplash.com/photo-1669951584605-4deba095a87f?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-minimum-wage-rises-5-after-a-deal-between-unions-and-employers",
+		"tags": [
+			"wages",
+			"work",
+			"agreement"
+		],
+		"body_blocks": [
+			{
+				"id": "p29-t0",
+				"type": "texto",
+				"config": {
+					"text": "The minimum wage will rise 5% after the deal sealed in the early hours between unions and employers, an agreement that benefits two and a half million workers and avoids, for the second year running, the government having to set it by decree.",
+					"html": "<p>The minimum wage will rise 5% after the deal sealed in the early hours between unions and employers, an agreement that benefits two and a half million workers and avoids, for the second year running, the government having to set it by decree.</p>"
+				}
+			},
+			{
+				"id": "p29-q",
+				"type": "cita",
+				"config": {
+					"text": "It's a deal no one signs entirely happy, and that's usually a good sign.",
+					"attribution": "— Sources at the negotiating table",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p29-t1",
+				"type": "texto",
+				"config": {
+					"text": "The negotiation nearly broke down over the timetable for applying it. Employers demanded phasing the rise in two stages; unions, applying it all at once in January. The final formula applies the full increase but delays its entry into force by a month.",
+					"html": "<p>The negotiation nearly broke down over the timetable for applying it. Employers demanded phasing the rise in two stages; unions, applying it all at once in January. The final formula applies the full increase but delays its entry into force by a month.</p>"
+				}
+			},
+			{
+				"id": "p29-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1556740714-a8395b3bf30f?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "Press conference after the agreement.",
+					"caption": "Press conference after the agreement.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p29-t2",
+				"type": "texto",
+				"config": {
+					"text": "Economists debate the effect on employment in tight-margin sectors. Most recent studies rule out a significant impact, though they agree that the room for further rises is narrowing.",
+					"html": "<p>Economists debate the effect on employment in tight-margin sectors. Most recent studies rule out a significant impact, though they agree that the room for further rises is narrowing.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p30",
+		"cat": "cultura",
+		"title": "The national library digitizes half a million historical documents",
+		"excerpt": "The open archive includes manuscripts, maps and press from the last four centuries.",
+		"author": "Marta Gil",
+		"published_at": "2026-06-20T20:00:00.000Z",
+		"reads": 4110,
+		"image": "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-national-library-digitizes-half-a-million-historical-documents",
+		"tags": [
+			"archive",
+			"heritage",
+			"digital"
+		],
+		"body_blocks": [
+			{
+				"id": "p30-t0",
+				"type": "texto",
+				"config": {
+					"text": "The national library completed the digitization of half a million historical documents and published them in an open, free-access archive. The collection brings together manuscripts, maps, scores and press from the last four centuries, much of it never before consultable outside the reserved-collections room.",
+					"html": "<p>The national library completed the digitization of half a million historical documents and published them in an open, free-access archive. The collection brings together manuscripts, maps, scores and press from the last four centuries, much of it never before consultable outside the reserved-collections room.</p>"
+				}
+			},
+			{
+				"id": "p30-q",
+				"type": "cita",
+				"config": {
+					"text": "Every sixteenth-century page is a conservation decision.",
+					"attribution": "— Digitization laboratory",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p30-t1",
+				"type": "texto",
+				"config": {
+					"text": "The project, which stretched over six years, required designing custom scanners for the most fragile volumes. \"Every sixteenth-century page is a conservation decision,\" explain those in charge of the lab.",
+					"html": "<p>The project, which stretched over six years, required designing custom scanners for the most fragile volumes. &quot;Every sixteenth-century page is a conservation decision,&quot; explain those in charge of the lab.</p>"
+				}
+			},
+			{
+				"id": "p30-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1588580000645-4562a6d2c839?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "Digitizing an old manuscript.",
+					"caption": "Digitizing an old manuscript.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p30-t2",
+				"type": "texto",
+				"config": {
+					"text": "Researchers from around the world are already combing the archive. In the first week, the site logged more visits than the reading room did in a whole year, a figure that reopens the debate over the physical future of the great libraries.",
+					"html": "<p>Researchers from around the world are already combing the archive. In the first week, the site logged more visits than the reading room did in a whole year, a figure that reopens the debate over the physical future of the great libraries.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p31",
+		"cat": "internacional",
+		"title": "A migration agreement reshapes the bloc's external borders",
+		"excerpt": "A distribution of applications and a shared reception fund anchor the new pact.",
+		"author": "Clara Méndez",
+		"published_at": "2026-06-19T20:00:00.000Z",
+		"reads": 10770,
+		"image": "https://images.unsplash.com/photo-1587290538095-53583b6753e5?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "a-migration-agreement-reshapes-the-bloc-s-external-borders",
+		"tags": [
+			"migration",
+			"borders",
+			"agreement"
+		],
+		"body_blocks": [
+			{
+				"id": "p31-t0",
+				"type": "texto",
+				"config": {
+					"text": "A long-negotiated migration agreement reshapes the bloc's external borders. The text distributes asylum applications according to each country's population and income and creates a shared reception fund that will finance first-response centers.",
+					"html": "<p>A long-negotiated migration agreement reshapes the bloc's external borders. The text distributes asylum applications according to each country's population and income and creates a shared reception fund that will finance first-response centers.</p>"
+				}
+			},
+			{
+				"id": "p31-q",
+				"type": "cita",
+				"config": {
+					"text": "An agreement no one celebrates is, sometimes, the only one possible.",
+					"attribution": "— Negotiating delegation",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p31-t1",
+				"type": "texto",
+				"config": {
+					"text": "The pact breaks years of deadlock, but leaves wounds. The front-line countries consider the distribution insufficient and humanitarian organizations warn that the fund prioritizes border control over integration.",
+					"html": "<p>The pact breaks years of deadlock, but leaves wounds. The front-line countries consider the distribution insufficient and humanitarian organizations warn that the fund prioritizes border control over integration.</p>"
+				}
+			},
+			{
+				"id": "p31-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1603224318119-652cfccfae36?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "A first-reception center at the border.",
+					"caption": "A first-reception center at the border.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p31-t2",
+				"type": "texto",
+				"config": {
+					"text": "Implementation will be gradual and subject to annual review. The first test will come with the season of greatest migratory pressure, when the new solidarity mechanism has to prove it works beyond paper.",
+					"html": "<p>Implementation will be gradual and subject to annual review. The first test will come with the season of greatest migratory pressure, when the new solidarity mechanism has to prove it works beyond paper.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p32",
+		"cat": "tecnologia",
+		"title": "Quantum computing reaches its first verifiable commercial milestone",
+		"excerpt": "A company demonstrates a real advantage on a logistics problem the industry was watching closely.",
+		"author": "Nora Ibáñez",
+		"published_at": "2026-06-19T20:00:00.000Z",
+		"reads": 7860,
+		"image": "https://images.unsplash.com/photo-1708011271954-c0d2b3155ded?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "quantum-computing-reaches-its-first-verifiable-commercial-milestone",
+		"tags": [
+			"quantum",
+			"research",
+			"industry"
+		],
+		"body_blocks": [
+			{
+				"id": "p32-t0",
+				"type": "texto",
+				"config": {
+					"text": "Quantum computing reached its first verifiable commercial milestone. A company demonstrated, before independent auditors, a real advantage over classical computing on a logistics optimization problem the industry was following with expectation.",
+					"html": "<p>Quantum computing reached its first verifiable commercial milestone. A company demonstrated, before independent auditors, a real advantage over classical computing on a logistics optimization problem the industry was following with expectation.</p>"
+				}
+			},
+			{
+				"id": "p32-q",
+				"type": "cita",
+				"config": {
+					"text": "From niche to revolution there's still a long way.",
+					"attribution": "— Researcher in quantum computing",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p32-t1",
+				"type": "texto",
+				"config": {
+					"text": "The experiment doesn't deliver the old promise of breaking cryptography or simulating complex molecules, but it does cross a symbolic line: for the first time, a quantum machine does better and faster something a company cares about paying for.",
+					"html": "<p>The experiment doesn't deliver the old promise of breaking cryptography or simulating complex molecules, but it does cross a symbolic line: for the first time, a quantum machine does better and faster something a company cares about paying for.</p>"
+				}
+			},
+			{
+				"id": "p32-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1666112835145-d79fc3f2e008?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "Inside a quantum computer.",
+					"caption": "Inside a quantum computer.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p32-t2",
+				"type": "texto",
+				"config": {
+					"text": "Experts urge restraint. \"We've gone from the lab demonstration to niche usefulness; from niche to revolution there's still a long way,\" qualified a researcher unconnected to the project. The sector, even so, smells the turning point.",
+					"html": "<p>Experts urge restraint. &quot;We've gone from the lab demonstration to niche usefulness; from niche to revolution there's still a long way,&quot; qualified a researcher unconnected to the project. The sector, even so, smells the turning point.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p33",
+		"cat": "sociedad",
+		"title": "Birth rate rebounds for the first time in a decade, institute says",
+		"excerpt": "Experts attribute the shift to childcare support and subsidized housing.",
+		"author": "Iván Soto",
+		"published_at": "2026-06-18T20:00:00.000Z",
+		"reads": 6050,
+		"image": "https://images.unsplash.com/photo-1510154221590-ff63e90a136f?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "birth-rate-rebounds-for-the-first-time-in-a-decade-institute-says",
+		"tags": [
+			"birth rate",
+			"demographics",
+			"family"
+		],
+		"body_blocks": [
+			{
+				"id": "p33-t0",
+				"type": "texto",
+				"config": {
+					"text": "The birth rate rebounded for the first time in a decade, according to the statistics institute. The increase is modest —barely 2%— but it breaks a trend that seemed immovable and had turned demographic winter into a recurring topic.",
+					"html": "<p>The birth rate rebounded for the first time in a decade, according to the statistics institute. The increase is modest —barely 2%— but it breaks a trend that seemed immovable and had turned demographic winter into a recurring topic.</p>"
+				}
+			},
+			{
+				"id": "p33-q",
+				"type": "cita",
+				"config": {
+					"text": "The decision to have children is also a decision about square meters.",
+					"attribution": "— Demographer at the institute",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p33-t1",
+				"type": "texto",
+				"config": {
+					"text": "Experts attribute the change to the combination of childcare support, extended leave and, above all, access to subsidized housing for young families. \"The decision to have children is also a decision about square meters,\" sums up a demographer.",
+					"html": "<p>Experts attribute the change to the combination of childcare support, extended leave and, above all, access to subsidized housing for young families. &quot;The decision to have children is also a decision about square meters,&quot; sums up a demographer.</p>"
+				}
+			},
+			{
+				"id": "p33-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1566004100631-35d015d6a491?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "The children's area of an urban park.",
+					"caption": "The children's area of an urban park.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p33-t2",
+				"type": "texto",
+				"config": {
+					"text": "Caution dominates the readings. A single year does not make a series, and the factors that pushed the figure depend on budget lines renegotiated each year. The rebound, they warn, is as reversible as its arrival was.",
+					"html": "<p>Caution dominates the readings. A single year does not make a series, and the factors that pushed the figure depend on budget lines renegotiated each year. The rebound, they warn, is as reversible as its arrival was.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p34",
+		"cat": "politica",
+		"title": "The city council approves the largest public housing plan in twenty years",
+		"excerpt": "The investment will build eight thousand affordable homes on land now unused.",
+		"author": "Pedro Aranda",
+		"published_at": "2026-06-18T20:00:00.000Z",
+		"reads": 4780,
+		"image": "https://images.unsplash.com/photo-1587582423116-ec07293f0395?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-city-council-approves-the-largest-public-housing-plan-in-twenty-years",
+		"tags": [
+			"housing",
+			"municipal",
+			"urban planning"
+		],
+		"body_blocks": [
+			{
+				"id": "p34-t0",
+				"type": "texto",
+				"config": {
+					"text": "The city council approved the largest public housing plan in twenty years. The investment will build eight thousand affordable homes on land now unused, with a seven-year timetable and a protected-rent model that shields the homes from speculative sale.",
+					"html": "<p>The city council approved the largest public housing plan in twenty years. The investment will build eight thousand affordable homes on land now unused, with a seven-year timetable and a protected-rent model that shields the homes from speculative sale.</p>"
+				}
+			},
+			{
+				"id": "p34-q",
+				"type": "cita",
+				"config": {
+					"text": "The goal is historic; now it can't stay on paper.",
+					"attribution": "— Housing platform",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p34-t1",
+				"type": "texto",
+				"config": {
+					"text": "The plan passed with a broad majority but not without misgivings. The opposition questioned the financing and the pace of execution; the housing movements, present in the gallery, welcomed the goal and demanded it not stay on paper, like others before.",
+					"html": "<p>The plan passed with a broad majority but not without misgivings. The opposition questioned the financing and the pace of execution; the housing movements, present in the gallery, welcomed the goal and demanded it not stay on paper, like others before.</p>"
+				}
+			},
+			{
+				"id": "p34-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "The municipal plot where the plan will begin.",
+					"caption": "The municipal plot where the plan will begin.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p34-t2",
+				"type": "texto",
+				"config": {
+					"text": "The key will be the land. The council is mobilizing municipal plots and disused former facilities, but it needs the regional administration's cooperation for the largest developments. Without that agreement, the planning councillor admits, \"the plan advances at half speed.\"",
+					"html": "<p>The key will be the land. The council is mobilizing municipal plots and disused former facilities, but it needs the regional administration's cooperation for the largest developments. Without that agreement, the planning councillor admits, &quot;the plan advances at half speed.&quot;</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p35",
+		"cat": "politica",
+		"title": "The opposition forces an inquiry into emergency contracts",
+		"excerpt": "The bureau accepts the request after weeks of deadlock and sets a schedule of hearings.",
+		"author": "Sara Lores",
+		"published_at": "2026-06-17T20:00:00.000Z",
+		"reads": 7120,
+		"image": "https://images.unsplash.com/photo-1486299267070-83823f5448dd?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-opposition-forces-an-inquiry-into-emergency-contracts",
+		"tags": [
+			"congress",
+			"contracts",
+			"transparency"
+		],
+		"body_blocks": [
+			{
+				"id": "p35-t0",
+				"type": "texto",
+				"config": {
+					"text": "The bureau of Congress accepted the inquiry into emergency contracts after weeks of deadlock. The approved calendar foresees hearings from September and a report before the end of the year.",
+					"html": "<p>The bureau of Congress accepted the inquiry into emergency contracts after weeks of deadlock. The approved calendar foresees hearings from September and a report before the end of the year.</p>"
+				}
+			},
+			{
+				"id": "p35-q",
+				"type": "cita",
+				"config": {
+					"text": "Method and little theatrics.",
+					"attribution": "— Spokesperson for the inquiry",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p35-t1",
+				"type": "texto",
+				"config": {
+					"text": "The list of witnesses, still open, includes two former senior officials and the procurement heads of three ministries. The legal advisers warn that part of the documentation is before the courts and will arrive redacted.",
+					"html": "<p>The list of witnesses, still open, includes two former senior officials and the procurement heads of three ministries. The legal advisers warn that part of the documentation is before the courts and will arrive redacted.</p>"
+				}
+			},
+			{
+				"id": "p35-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "The bureau of Congress, during the vote on the inquiry.",
+					"caption": "The bureau of Congress, during the vote on the inquiry.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p35-t2",
+				"type": "texto",
+				"config": {
+					"text": "The groups that pushed the inquiry promise \"method and little theatrics.\" The experience of previous inquiries, turned into TV sets, works against the intention.",
+					"html": "<p>The groups that pushed the inquiry promise &quot;method and little theatrics.&quot; The experience of previous inquiries, turned into TV sets, works against the intention.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p36",
+		"cat": "economia",
+		"title": "Public debt falls below 100% of GDP for the first time since the pandemic",
+		"excerpt": "Growth and inflation do more for the ratio than spending cuts, analysts warn.",
+		"author": "Lucía Ferrer",
+		"published_at": "2026-06-17T20:00:00.000Z",
+		"reads": 5980,
+		"image": "https://images.unsplash.com/photo-1556740714-a8395b3bf30f?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "public-debt-falls-below-100-of-gdp-for-the-first-time-since-the-pandemic",
+		"tags": [
+			"debt",
+			"gdp",
+			"public accounts"
+		],
+		"body_blocks": [
+			{
+				"id": "p36-t0",
+				"type": "texto",
+				"config": {
+					"text": "Public debt closed the quarter at 99.4% of GDP, below the symbolic 100% threshold for the first time since the pandemic. The improvement owes more to the denominator — growth and inflation — than to spending cuts.",
+					"html": "<p>Public debt closed the quarter at 99.4% of GDP, below the symbolic 100% threshold for the first time since the pandemic. The improvement owes more to the denominator — growth and inflation — than to spending cuts.</p>"
+				}
+			},
+			{
+				"id": "p36-t1",
+				"type": "texto",
+				"config": {
+					"text": "Analysts at the fiscal watchdog welcome the figure and cool the reading: aging will pressure the accounts over the coming decade and the current cushion \"is built now or it isn't built.\"",
+					"html": "<p>Analysts at the fiscal watchdog welcome the figure and cool the reading: aging will pressure the accounts over the coming decade and the current cushion &quot;is built now or it isn't built.&quot;</p>"
+				}
+			},
+			{
+				"id": "p36-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1744130400729-c4aee523f490?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "Façade of the Ministry of the Economy.",
+					"caption": "Façade of the Ministry of the Economy.",
+					"ratio": "16/9"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p37",
+		"cat": "internacional",
+		"title": "The EU approves the green tariff on steel imports",
+		"excerpt": "The border adjustment mechanism takes effect in January and strains ties with three trade partners.",
+		"author": "Clara Méndez",
+		"published_at": "2026-06-16T20:00:00.000Z",
+		"reads": 8340,
+		"image": "https://images.unsplash.com/photo-1697698532634-ea59b636ccea?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-eu-approves-the-green-tariff-on-steel-imports",
+		"tags": [
+			"eu",
+			"tariffs",
+			"steel"
+		],
+		"body_blocks": [
+			{
+				"id": "p37-t0",
+				"type": "texto",
+				"config": {
+					"text": "The green tariff on imported steel will take effect in January after the final approval of the European council. The mechanism taxes imports according to their carbon footprint and seeks to protect local industry from competition with lax standards.",
+					"html": "<p>The green tariff on imported steel will take effect in January after the final approval of the European council. The mechanism taxes imports according to their carbon footprint and seeks to protect local industry from competition with lax standards.</p>"
+				}
+			},
+			{
+				"id": "p37-q",
+				"type": "cita",
+				"config": {
+					"text": "It's not protectionism, it's climate coherence.",
+					"attribution": "— Trade commissioner",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p37-t1",
+				"type": "texto",
+				"config": {
+					"text": "Three trade partners have already announced consultations at the World Trade Organization. Brussels argues that the adjustment \"is not protectionism, it's climate coherence,\" and the European steel industry breathes after a decade of global overcapacity.",
+					"html": "<p>Three trade partners have already announced consultations at the World Trade Organization. Brussels argues that the adjustment &quot;is not protectionism, it's climate coherence,&quot; and the European steel industry breathes after a decade of global overcapacity.</p>"
+				}
+			},
+			{
+				"id": "p37-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1635800199270-128c26680ed5?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "A steelworks in the north of the country, last week.",
+					"caption": "A steelworks in the north of the country, last week.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p37-t2",
+				"type": "texto",
+				"config": {
+					"text": "The fine print leaves out, for now, processed products: the automotive lobby warns that taxed steel will enter anyway \"inside a car built abroad.\"",
+					"html": "<p>The fine print leaves out, for now, processed products: the automotive lobby warns that taxed steel will enter anyway &quot;inside a car built abroad.&quot;</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p38",
+		"cat": "deportes",
+		"title": "The local cycling team unveils its bid to take on the grand tours",
+		"excerpt": "A doubled budget, eight signings and a declared bet on the velodrome's youth academy.",
+		"author": "Diego Cano",
+		"published_at": "2026-06-16T20:00:00.000Z",
+		"reads": 6470,
+		"image": "https://images.unsplash.com/photo-1534787238916-9ba6764efd4f?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-local-cycling-team-unveils-its-bid-to-take-on-the-grand-tours",
+		"tags": [
+			"cycling",
+			"project",
+			"youth academy"
+		],
+		"body_blocks": [
+			{
+				"id": "p38-t0",
+				"type": "texto",
+				"config": {
+					"text": "The local cycling team presented the project with which it wants to contend in the grand tours within three years: a doubled budget, eight signings and a development structure that absorbs the velodrome's youth academy.",
+					"html": "<p>The local cycling team presented the project with which it wants to contend in the grand tours within three years: a doubled budget, eight signings and a development structure that absorbs the velodrome's youth academy.</p>"
+				}
+			},
+			{
+				"id": "p38-q",
+				"type": "cita",
+				"config": {
+					"text": "We want to stop buying finished talent and start manufacturing it.",
+					"attribution": "— The team's sporting director",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p38-t1",
+				"type": "texto",
+				"config": {
+					"text": "The most talked-about bet is no signing but its own performance lab, a rarity outside the big teams. \"We want to stop buying finished talent and start manufacturing it,\" summed up the sporting director.",
+					"html": "<p>The most talked-about bet is no signing but its own performance lab, a rarity outside the big teams. &quot;We want to stop buying finished talent and start manufacturing it,&quot; summed up the sporting director.</p>"
+				}
+			},
+			{
+				"id": "p38-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1452573992436-6d508f200b30?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "Presentation of the project, at the municipal velodrome.",
+					"caption": "Presentation of the project, at the municipal velodrome.",
+					"ratio": "16/9"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p39",
+		"cat": "tecnologia",
+		"title": "The public supercomputer opens its queues to small businesses",
+		"excerpt": "A 20% quota of computing hours is reserved for firms with fewer than fifty employees.",
+		"author": "Nora Ibáñez",
+		"published_at": "2026-06-16T20:00:00.000Z",
+		"reads": 4890,
+		"image": "https://images.unsplash.com/photo-1683322499436-f4383dd59f5a?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-public-supercomputer-opens-its-queues-to-small-businesses",
+		"tags": [
+			"supercomputing",
+			"small business",
+			"science"
+		],
+		"body_blocks": [
+			{
+				"id": "p39-t0",
+				"type": "texto",
+				"config": {
+					"text": "The public supercomputer will open 20% of its computing hours to small businesses from autumn. The call, with a simplified technical evaluation, seeks to bring simulation and model training closer to firms that can't afford commercial cloud.",
+					"html": "<p>The public supercomputer will open 20% of its computing hours to small businesses from autumn. The call, with a simplified technical evaluation, seeks to bring simulation and model training closer to firms that can't afford commercial cloud.</p>"
+				}
+			},
+			{
+				"id": "p39-t1",
+				"type": "texto",
+				"config": {
+					"text": "The first approved use cases range from designing industrial molds to forecasting electricity demand. The center estimates that each hour of computing given up returns seven in economic activity, a figure the tech sector disputes but celebrates.",
+					"html": "<p>The first approved use cases range from designing industrial molds to forecasting electricity demand. The center estimates that each hour of computing given up returns seven in economic activity, a figure the tech sector disputes but celebrates.</p>"
+				}
+			},
+			{
+				"id": "p39-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "The machine room of the supercomputing center.",
+					"caption": "The machine room of the supercomputing center.",
+					"ratio": "16/9"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p40",
+		"cat": "cultura",
+		"title": "The theater reopens after restoration with a season of classic comedy",
+		"excerpt": "Four years of work restore the 1892 auditorium and add a chamber hall.",
+		"author": "Marta Gil",
+		"published_at": "2026-06-15T20:00:00.000Z",
+		"reads": 3720,
+		"image": "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-theater-reopens-after-restoration-with-a-season-of-classic-comedy",
+		"tags": [
+			"theater",
+			"restoration",
+			"heritage"
+		],
+		"body_blocks": [
+			{
+				"id": "p40-t0",
+				"type": "texto",
+				"config": {
+					"text": "Four years of work and a restoration debated down to the last gilding: the theater reopens next week with a season devoted to classic comedy and an auditorium returned to its 1892 layout.",
+					"html": "<p>Four years of work and a restoration debated down to the last gilding: the theater reopens next week with a season devoted to classic comedy and an auditorium returned to its 1892 layout.</p>"
+				}
+			},
+			{
+				"id": "p40-t1",
+				"type": "texto",
+				"config": {
+					"text": "The renovation adds a chamber hall beneath the stage, excavated without touching the protected façade. The historic subscriptions are respected: the front row will still belong to the same twelve families, \"by customary right and because no one dares to dispute it,\" the management jokes.",
+					"html": "<p>The renovation adds a chamber hall beneath the stage, excavated without touching the protected façade. The historic subscriptions are respected: the front row will still belong to the same twelve families, &quot;by customary right and because no one dares to dispute it,&quot; the management jokes.</p>"
+				}
+			},
+			{
+				"id": "p40-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1514306191717-452ec28c7814?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "The restored auditorium, on the press visit.",
+					"caption": "The restored auditorium, on the press visit.",
+					"ratio": "16/9"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p41",
+		"cat": "sociedad",
+		"title": "Food banks warn of a critical summer",
+		"excerpt": "Donations fall 18% while the number of families served grows for the third month running.",
+		"author": "Iván Soto",
+		"published_at": "2026-06-15T20:00:00.000Z",
+		"reads": 6890,
+		"image": "https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "food-banks-warn-of-a-critical-summer",
+		"tags": [
+			"food",
+			"donations",
+			"poverty"
+		],
+		"body_blocks": [
+			{
+				"id": "p41-t0",
+				"type": "texto",
+				"config": {
+					"text": "Food banks face a critical summer: donations fall 18% compared with last year while the number of families served grows for the third month running. The mismatch already forces rationing of parcels in two provinces.",
+					"html": "<p>Food banks face a critical summer: donations fall 18% compared with last year while the number of families served grows for the third month running. The mismatch already forces rationing of parcels in two provinces.</p>"
+				}
+			},
+			{
+				"id": "p41-q",
+				"type": "cita",
+				"config": {
+					"text": "We're not short of food to hand out; we're short of hands to hand it out.",
+					"attribution": "— Federation of food banks",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p41-t1",
+				"type": "texto",
+				"config": {
+					"text": "The drop is not only economic: the volunteer base is aging and the warehouses empty of hands in July and August. The federation asks companies for \"solidarity holidays\" and is studying opening collection in afternoon slots to attract young volunteers.",
+					"html": "<p>The drop is not only economic: the volunteer base is aging and the warehouses empty of hands in July and August. The federation asks companies for &quot;solidarity holidays&quot; and is studying opening collection in afternoon slots to attract young volunteers.</p>"
+				}
+			},
+			{
+				"id": "p41-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "The sorting warehouse of the food bank, this month.",
+					"caption": "The sorting warehouse of the food bank, this month.",
+					"ratio": "16/9"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p42",
+		"cat": "politica",
+		"title": "The Senate returns the coastal law with amendments from three groups",
+		"excerpt": "The text goes back to Congress with changes to boundary lines and the concessions regime.",
+		"author": "Pedro Aranda",
+		"published_at": "2026-06-14T20:00:00.000Z",
+		"reads": 3450,
+		"image": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-senate-returns-the-coastal-law-with-amendments-from-three-groups",
+		"tags": [
+			"senate",
+			"coasts",
+			"amendments"
+		],
+		"body_blocks": [
+			{
+				"id": "p42-t0",
+				"type": "texto",
+				"config": {
+					"text": "The Senate returned the coastal law to Congress with amendments from three different groups, a move that delays the law but does not derail it: the majority takes for granted that the text will be approved before the end of the session period.",
+					"html": "<p>The Senate returned the coastal law to Congress with amendments from three different groups, a move that delays the law but does not derail it: the majority takes for granted that the text will be approved before the end of the session period.</p>"
+				}
+			},
+			{
+				"id": "p42-t1",
+				"type": "texto",
+				"config": {
+					"text": "The changes affect the boundary lines in consolidated urban stretches and the concessions regime, the economic heart of the law. Coastal municipalities are divided: the tourist ones ask for long extensions; the small ones, protection against beach loss.",
+					"html": "<p>The changes affect the boundary lines in consolidated urban stretches and the concessions regime, the economic heart of the law. Coastal municipalities are divided: the tourist ones ask for long extensions; the small ones, protection against beach loss.</p>"
+				}
+			},
+			{
+				"id": "p42-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1473116763249-2faaef81ccda?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "View of the coastline affected by the new boundary lines.",
+					"caption": "View of the coastline affected by the new boundary lines.",
+					"ratio": "16/9"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p43",
+		"cat": "economia",
+		"title": "Housing marks its eighth straight quarter of price rises",
+		"excerpt": "The average price climbs 6.2% year on year, with high-pressure cities leading.",
+		"author": "Lucía Ferrer",
+		"published_at": "2026-06-14T20:00:00.000Z",
+		"reads": 11240,
+		"image": "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "housing-marks-its-eighth-straight-quarter-of-price-rises",
+		"tags": [
+			"housing",
+			"prices",
+			"market"
+		],
+		"body_blocks": [
+			{
+				"id": "p43-t0",
+				"type": "texto",
+				"config": {
+					"text": "The price of housing marks its eighth consecutive quarter of rises with a year-on-year increase of 6.2%. The capitals declared high-pressure areas lead the table, with rent growing faster than purchase.",
+					"html": "<p>The price of housing marks its eighth consecutive quarter of rises with a year-on-year increase of 6.2%. The capitals declared high-pressure areas lead the table, with rent growing faster than purchase.</p>"
+				}
+			},
+			{
+				"id": "p43-t1",
+				"type": "texto",
+				"config": {
+					"text": "Supply still fails to respond: permits for new construction grow timidly and existing housing absorbs 80% of transactions. Experts repeat the underlying diagnosis — a shortage of product where there is demand — and disagree on everything else.",
+					"html": "<p>Supply still fails to respond: permits for new construction grow timidly and existing housing absorbs 80% of transactions. Experts repeat the underlying diagnosis — a shortage of product where there is demand — and disagree on everything else.</p>"
+				}
+			},
+			{
+				"id": "p43-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "A new-build development in the district extension.",
+					"caption": "A new-build development in the district extension.",
+					"ratio": "16/9"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p44",
+		"cat": "internacional",
+		"title": "The thaw opens a new Arctic trade route and a diplomatic dispute",
+		"excerpt": "Three powers claim passage rights over a corridor that cuts eleven days off Asian freight.",
+		"author": "Clara Méndez",
+		"published_at": "2026-06-13T20:00:00.000Z",
+		"reads": 9560,
+		"image": "https://images.unsplash.com/photo-1493328967571-819121ed5085?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-thaw-opens-a-new-arctic-trade-route-and-a-diplomatic-dispute",
+		"tags": [
+			"arctic",
+			"trade",
+			"geopolitics"
+		],
+		"body_blocks": [
+			{
+				"id": "p44-t0",
+				"type": "texto",
+				"config": {
+					"text": "The summer thaw has, for the first time, continuously opened the eastern Arctic trade route, a corridor that shortens freight between Asia and Europe by eleven days. Three powers already claim passage rights and escort fees.",
+					"html": "<p>The summer thaw has, for the first time, continuously opened the eastern Arctic trade route, a corridor that shortens freight between Asia and Europe by eleven days. Three powers already claim passage rights and escort fees.</p>"
+				}
+			},
+			{
+				"id": "p44-q",
+				"type": "cita",
+				"config": {
+					"text": "A highway with no gas stations.",
+					"attribution": "— Shipowner on the first commercial crossing",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p44-t1",
+				"type": "texto",
+				"config": {
+					"text": "Shipping companies do the math with caution: the fuel saving is real, but insurance triples and the navigable window is still twelve weeks. The shipowners who tried the route this year speak of \"a highway with no gas stations.\"",
+					"html": "<p>Shipping companies do the math with caution: the fuel saving is real, but insurance triples and the navigable window is still twelve weeks. The shipowners who tried the route this year speak of &quot;a highway with no gas stations.&quot;</p>"
+				}
+			},
+			{
+				"id": "p44-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1515133997814-e6460be24073?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "A cargo ship crossing the Arctic corridor, this summer.",
+					"caption": "A cargo ship crossing the Arctic corridor, this summer.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p44-t2",
+				"type": "texto",
+				"config": {
+					"text": "The environmental cost worries scientists: heavy traffic accelerates the thaw that makes it possible, a loop the polar summits have spent a decade failing to regulate.",
+					"html": "<p>The environmental cost worries scientists: heavy traffic accelerates the thaw that makes it possible, a loop the polar summits have spent a decade failing to regulate.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p45",
+		"cat": "deportes",
+		"title": "The academy takes charge again: five debutants in the first team",
+		"excerpt": "The club turns necessity into a plan and renews its head of youth development.",
+		"author": "Diego Cano",
+		"published_at": "2026-06-13T20:00:00.000Z",
+		"reads": 5230,
+		"image": "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-academy-takes-charge-again-five-debutants-in-the-first-team",
+		"tags": [
+			"youth academy",
+			"debutants",
+			"football"
+		],
+		"body_blocks": [
+			{
+				"id": "p45-t0",
+				"type": "texto",
+				"config": {
+					"text": "Five academy players will hold first-team registrations next season, the biggest internal promotion in fifteen years. The club turns into a plan what began as necessity — the salary cap — and renews its head of youth development through 2030.",
+					"html": "<p>Five academy players will hold first-team registrations next season, the biggest internal promotion in fifteen years. The club turns into a plan what began as necessity — the salary cap — and renews its head of youth development through 2030.</p>"
+				}
+			},
+			{
+				"id": "p45-q",
+				"type": "cita",
+				"config": {
+					"text": "Here you don't debut; you arrive to stay.",
+					"attribution": "— The captain, at the presentation",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p45-t1",
+				"type": "texto",
+				"config": {
+					"text": "The dressing room receives the bet with the usual codes: the veterans put the newcomers through their initiation and the captain sums up the house doctrine: \"Here you don't debut; you arrive to stay.\"",
+					"html": "<p>The dressing room receives the bet with the usual codes: the veterans put the newcomers through their initiation and the captain sums up the house doctrine: &quot;Here you don't debut; you arrive to stay.&quot;</p>"
+				}
+			},
+			{
+				"id": "p45-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "The five debutants, at the training ground.",
+					"caption": "The five debutants, at the training ground.",
+					"ratio": "16/9"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p46",
+		"cat": "tecnologia",
+		"title": "Telecoms switch on the 6G pilot network in three cities",
+		"excerpt": "The trial, limited to industrial parks, will measure latency for robotics and connected vehicles.",
+		"author": "Nora Ibáñez",
+		"published_at": "2026-06-12T20:00:00.000Z",
+		"reads": 7810,
+		"image": "https://images.unsplash.com/photo-1602738394809-92b112ae96c5?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "telecoms-switch-on-the-6g-pilot-network-in-three-cities",
+		"tags": [
+			"6g",
+			"telecommunications",
+			"industry"
+		],
+		"body_blocks": [
+			{
+				"id": "p46-t0",
+				"type": "texto",
+				"config": {
+					"text": "The operators switched on the 6G pilot network yesterday in three industrial parks. The eighteen-month trial will measure sub-millisecond latency for collaborative robotics and connected vehicles.",
+					"html": "<p>The operators switched on the 6G pilot network yesterday in three industrial parks. The eighteen-month trial will measure sub-millisecond latency for collaborative robotics and connected vehicles.</p>"
+				}
+			},
+			{
+				"id": "p46-t1",
+				"type": "texto",
+				"config": {
+					"text": "The previous generation has not yet paid off its antennas and the sector knows it: commercial rollout won't arrive before 2030. The pilot seeks something else — for local industry to reach the standards with patents of its own rather than rented.",
+					"html": "<p>The previous generation has not yet paid off its antennas and the sector knows it: commercial rollout won't arrive before 2030. The pilot seeks something else — for local industry to reach the standards with patents of its own rather than rented.</p>"
+				}
+			},
+			{
+				"id": "p46-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1594199679806-d543943615c8?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "A 6G pilot antenna in one of the parks.",
+					"caption": "A 6G pilot antenna in one of the parks.",
+					"ratio": "16/9"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p47",
+		"cat": "cultura",
+		"title": "The book fair closes with record sales and a debate over fixed pricing",
+		"excerpt": "Booksellers cheer the figures and call to protect the maximum discount against the platforms.",
+		"author": "Marta Gil",
+		"published_at": "2026-06-12T20:00:00.000Z",
+		"reads": 4560,
+		"image": "https://images.unsplash.com/photo-1694730750153-8b66cf3dd014?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-book-fair-closes-with-record-sales-and-a-debate-over-fixed-pricing",
+		"tags": [
+			"books",
+			"fair",
+			"bookshops"
+		],
+		"body_blocks": [
+			{
+				"id": "p47-t0",
+				"type": "texto",
+				"config": {
+					"text": "The book fair closed with record sales — 9% more than last year — and with a debate that dominated the stalls: fixed pricing. Booksellers ask to shield the maximum discount against the platforms and mid-sized publishers back them.",
+					"html": "<p>The book fair closed with record sales — 9% more than last year — and with a debate that dominated the stalls: fixed pricing. Booksellers ask to shield the maximum discount against the platforms and mid-sized publishers back them.</p>"
+				}
+			},
+			{
+				"id": "p47-t1",
+				"type": "texto",
+				"config": {
+					"text": "The publishing phenomenon was translated fiction from small countries, with three titles sold out in the first week. The longest signing queues, however, are still for historical-novel authors: two hours in line under the sun.",
+					"html": "<p>The publishing phenomenon was translated fiction from small countries, with three titles sold out in the first week. The longest signing queues, however, are still for historical-novel authors: two hours in line under the sun.</p>"
+				}
+			},
+			{
+				"id": "p47-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1741851374666-1bc849a293c3?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "The atmosphere on the fair's central avenue, last Sunday.",
+					"caption": "The atmosphere on the fair's central avenue, last Sunday.",
+					"ratio": "16/9"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p48",
+		"cat": "sociedad",
+		"title": "The neighborhood that organized to drive the heatwave out of the classrooms",
+		"excerpt": "Awnings, fans and a neighbor-run watering shift cool the schoolyard by four degrees.",
+		"author": "Iván Soto",
+		"published_at": "2026-06-11T20:00:00.000Z",
+		"reads": 8120,
+		"image": "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-neighborhood-that-organized-to-drive-the-heatwave-out-of-the-classrooms",
+		"tags": [
+			"heat",
+			"schools",
+			"neighbors"
+		],
+		"body_blocks": [
+			{
+				"id": "p48-t0",
+				"type": "texto",
+				"config": {
+					"text": "The schoolyard thermometer read 41 degrees when the neighborhood association decided to wait no longer for help: awnings bought by public subscription, fans donated by the shops and a watering shift that cools the asphalt by four degrees first thing in the morning.",
+					"html": "<p>The schoolyard thermometer read 41 degrees when the neighborhood association decided to wait no longer for help: awnings bought by public subscription, fans donated by the shops and a watering shift that cools the asphalt by four degrees first thing in the morning.</p>"
+				}
+			},
+			{
+				"id": "p48-q",
+				"type": "cita",
+				"config": {
+					"text": "The provisional can't become the plan.",
+					"attribution": "— The school's management",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p48-t1",
+				"type": "texto",
+				"config": {
+					"text": "The solution, homemade and photographed by half the city, ended up before the city council: the council is studying replicating the model in eleven more schools and the education community asks that the provisional not replace the pending thermal renovation.",
+					"html": "<p>The solution, homemade and photographed by half the city, ended up before the city council: the council is studying replicating the model in eleven more schools and the education community asks that the provisional not replace the pending thermal renovation.</p>"
+				}
+			},
+			{
+				"id": "p48-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "The awnings installed by the neighbors over the schoolyard.",
+					"caption": "The awnings installed by the neighbors over the schoolyard.",
+					"ratio": "16/9"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p49",
+		"cat": "politica",
+		"title": "The Ombudsman calls for reform of the immigration rules",
+		"excerpt": "The annual report documents appointment delays of over a year and proposes a fast-track procedure.",
+		"author": "Sara Lores",
+		"published_at": "2026-06-11T20:00:00.000Z",
+		"reads": 4210,
+		"image": "https://images.unsplash.com/photo-1549637642-90187f64f420?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-ombudsman-calls-for-reform-of-the-immigration-rules",
+		"tags": [
+			"immigration",
+			"ombudsman",
+			"administration"
+		],
+		"body_blocks": [
+			{
+				"id": "p49-t0",
+				"type": "texto",
+				"config": {
+					"text": "The Ombudsman's annual report documents appointment delays of over a year for immigration procedures and proposes a fast-track procedure for renewals without changes of circumstance, which are seven of every ten cases.",
+					"html": "<p>The Ombudsman's annual report documents appointment delays of over a year for immigration procedures and proposes a fast-track procedure for renewals without changes of circumstance, which are seven of every ten cases.</p>"
+				}
+			},
+			{
+				"id": "p49-t1",
+				"type": "texto",
+				"config": {
+					"text": "The collapse, the report notes, is not one of rules but of resources: the same staff now process three times the caseload of a decade ago. Civil-servant associations agree with the diagnosis and add the missing figure: a thousand unfilled posts.",
+					"html": "<p>The collapse, the report notes, is not one of rules but of resources: the same staff now process three times the caseload of a decade ago. Civil-servant associations agree with the diagnosis and add the missing figure: a thousand unfilled posts.</p>"
+				}
+			},
+			{
+				"id": "p49-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "A queue outside an immigration office, first thing in the morning.",
+					"caption": "A queue outside an immigration office, first thing in the morning.",
+					"ratio": "16/9"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p50",
+		"cat": "economia",
+		"title": "Farming records its first profitable harvest in five years",
+		"excerpt": "Spring rain and farm-gate prices give respite to a sector coming off three years of losses.",
+		"author": "Lucía Ferrer",
+		"published_at": "2026-06-10T20:00:00.000Z",
+		"reads": 3980,
+		"image": "https://images.unsplash.com/photo-1471268762677-cb5179779bfe?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "farming-records-its-first-profitable-harvest-in-five-years",
+		"tags": [
+			"agriculture",
+			"harvest",
+			"prices"
+		],
+		"body_blocks": [
+			{
+				"id": "p50-t0",
+				"type": "texto",
+				"config": {
+					"text": "Farming will close its first profitable season in five years: the spring rain filled the reservoirs at just the right moment and farm-gate prices hold above costs for the first time since the energy crisis.",
+					"html": "<p>Farming will close its first profitable season in five years: the spring rain filled the reservoirs at just the right moment and farm-gate prices hold above costs for the first time since the energy crisis.</p>"
+				}
+			},
+			{
+				"id": "p50-t1",
+				"type": "texto",
+				"config": {
+					"text": "The respite doesn't erase the trend: the cultivated area keeps falling and the generational handover isn't coming. Farming organizations want to use the good year to negotiate the structural: expanded climate insurance and standard contracts with distribution.",
+					"html": "<p>The respite doesn't erase the trend: the cultivated area keeps falling and the generational handover isn't coming. Farming organizations want to use the good year to negotiate the structural: expanded climate insurance and standard contracts with distribution.</p>"
+				}
+			},
+			{
+				"id": "p50-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1515276427842-f85802d514a2?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "A combine harvester working the plateau, this month.",
+					"caption": "A combine harvester working the plateau, this month.",
+					"ratio": "16/9"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p51",
+		"cat": "internacional",
+		"title": "The humanitarian mission manages to open the southern corridor",
+		"excerpt": "The first forty aid trucks cross after six weeks of negotiation.",
+		"author": "Clara Méndez",
+		"published_at": "2026-06-10T20:00:00.000Z",
+		"reads": 12470,
+		"image": "https://images.unsplash.com/photo-1559225306-3f60aa7b39a3?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-humanitarian-mission-manages-to-open-the-southern-corridor",
+		"tags": [
+			"humanitarian",
+			"corridor",
+			"conflict"
+		],
+		"body_blocks": [
+			{
+				"id": "p51-t0",
+				"type": "texto",
+				"config": {
+					"text": "The first forty trucks of humanitarian aid crossed the southern corridor yesterday after six weeks of negotiation between the parties and international bodies. The convoy carried drinking water, medical supplies and fuel for the field hospitals.",
+					"html": "<p>The first forty trucks of humanitarian aid crossed the southern corridor yesterday after six weeks of negotiation between the parties and international bodies. The convoy carried drinking water, medical supplies and fuel for the field hospitals.</p>"
+				}
+			},
+			{
+				"id": "p51-q",
+				"type": "cita",
+				"config": {
+					"text": "We need to plan seriously, not truck by truck.",
+					"attribution": "— Coordinator of the mission",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p51-t1",
+				"type": "texto",
+				"config": {
+					"text": "The opening is fragile: the agreement renews every seventy-two hours and the convoys advance within agreed time windows. The agencies ask for a monthly commitment \"to plan seriously and not truck by truck.\"",
+					"html": "<p>The opening is fragile: the agreement renews every seventy-two hours and the convoys advance within agreed time windows. The agencies ask for a monthly commitment &quot;to plan seriously and not truck by truck.&quot;</p>"
+				}
+			},
+			{
+				"id": "p51-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1580115465903-0e4a824a4e9a?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "The first convoy, crossing the southern checkpoint.",
+					"caption": "The first convoy, crossing the southern checkpoint.",
+					"ratio": "16/9"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p52",
+		"cat": "deportes",
+		"title": "Local basketball will play in Europe twenty years later",
+		"excerpt": "A final-day win seals a berth the city celebrated into the early hours.",
+		"author": "Diego Cano",
+		"published_at": "2026-06-09T20:00:00.000Z",
+		"reads": 9840,
+		"image": "https://images.unsplash.com/photo-1627627256672-027a4613d028?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "local-basketball-will-play-in-europe-twenty-years-later",
+		"tags": [
+			"basketball",
+			"europe",
+			"qualification"
+		],
+		"body_blocks": [
+			{
+				"id": "p52-t0",
+				"type": "texto",
+				"config": {
+					"text": "Twenty years later, local basketball returns to Europe. The win on the final matchday — buzzer-beater included — sealed a berth the arena celebrated like a title and the city stretched into the early hours.",
+					"html": "<p>Twenty years later, local basketball returns to Europe. The win on the final matchday — buzzer-beater included — sealed a berth the arena celebrated like a title and the city stretched into the early hours.</p>"
+				}
+			},
+			{
+				"id": "p52-t1",
+				"type": "texto",
+				"config": {
+					"text": "The feat has fine print: the European budget requires expanding the roster and the arena needs renovations to meet the continental standard. The club opens a \"historic, like the season\" membership drive this month.",
+					"html": "<p>The feat has fine print: the European budget requires expanding the roster and the arena needs renovations to meet the continental standard. The club opens a &quot;historic, like the season&quot; membership drive this month.</p>"
+				}
+			},
+			{
+				"id": "p52-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1519861531473-9200262188bf?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "The celebration in the arena, after the final buzzer.",
+					"caption": "The celebration in the arena, after the final buzzer.",
+					"ratio": "16/9"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p53",
+		"cat": "tecnologia",
+		"title": "The AI law takes effect with the industry divided",
+		"excerpt": "High-risk systems will have eighteen months to be audited; startups ask for a single point of contact.",
+		"author": "Nora Ibáñez",
+		"published_at": "2026-06-09T20:00:00.000Z",
+		"reads": 10380,
+		"image": "https://images.unsplash.com/photo-1527430253228-e93688616381?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-ai-law-takes-effect-with-the-industry-divided",
+		"tags": [
+			"ai",
+			"regulation",
+			"startups"
+		],
+		"body_blocks": [
+			{
+				"id": "p53-t0",
+				"type": "texto",
+				"config": {
+					"text": "The artificial-intelligence law took effect yesterday with the industry divided: systems classified as high-risk have eighteen months to be audited and registered, and fines for non-compliance escalate to 6% of global turnover.",
+					"html": "<p>The artificial-intelligence law took effect yesterday with the industry divided: systems classified as high-risk have eighteen months to be audited and registered, and fines for non-compliance escalate to 6% of global turnover.</p>"
+				}
+			},
+			{
+				"id": "p53-q",
+				"type": "cita",
+				"config": {
+					"text": "Guides that fit in under five hundred pages.",
+					"attribution": "— Startup association",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p53-t1",
+				"type": "texto",
+				"config": {
+					"text": "The big tech firms arrive with their homework started; the startups ask for a single point of contact and sector guides \"that fit in under five hundred pages.\" Independent auditors, meanwhile, rub their hands: there's more demand than experts.",
+					"html": "<p>The big tech firms arrive with their homework started; the startups ask for a single point of contact and sector guides &quot;that fit in under five hundred pages.&quot; Independent auditors, meanwhile, rub their hands: there's more demand than experts.</p>"
+				}
+			},
+			{
+				"id": "p53-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1737644467636-6b0053476bb2?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "A session on the new law, the day it took effect.",
+					"caption": "A session on the new law, the day it took effect.",
+					"ratio": "16/9"
+				}
+			},
+			{
+				"id": "p53-t2",
+				"type": "texto",
+				"config": {
+					"text": "The public register of systems will be the acid test: if it fills up, the law works; if it stays empty, the fine print will have won.",
+					"html": "<p>The public register of systems will be the acid test: if it fills up, the law works; if it stays empty, the fine print will have won.</p>"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p54",
+		"cat": "cultura",
+		"title": "The museum returns the claimed pieces and opens a restitution protocol",
+		"excerpt": "The handover, sealed with a joint ceremony, makes the institution a European reference in the postcolonial debate.",
+		"author": "Marta Gil",
+		"published_at": "2026-06-08T20:00:00.000Z",
+		"reads": 5670,
+		"image": "https://images.unsplash.com/photo-1606819717115-9159c900370b?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-museum-returns-the-claimed-pieces-and-opens-a-restitution-protocol",
+		"tags": [
+			"museums",
+			"restitution",
+			"heritage"
+		],
+		"body_blocks": [
+			{
+				"id": "p54-t0",
+				"type": "texto",
+				"config": {
+					"text": "The museum handed over yesterday the pieces claimed for decades and approved a permanent restitution protocol, the first of a major institution in the country. The return was sealed with a joint ceremony and a reciprocal-loan agreement.",
+					"html": "<p>The museum handed over yesterday the pieces claimed for decades and approved a permanent restitution protocol, the first of a major institution in the country. The return was sealed with a joint ceremony and a reciprocal-loan agreement.</p>"
+				}
+			},
+			{
+				"id": "p54-q",
+				"type": "cita",
+				"config": {
+					"text": "A museum isn't measured by what it holds.",
+					"attribution": "— The museum's management",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p54-t1",
+				"type": "texto",
+				"config": {
+					"text": "The management argues that the gesture doesn't empty the galleries but orders them: \"A museum isn't measured by what it holds, but by what it can tell with a clear conscience.\" The protocol sets response deadlines and a joint committee with outside historians.",
+					"html": "<p>The management argues that the gesture doesn't empty the galleries but orders them: &quot;A museum isn't measured by what it holds, but by what it can tell with a clear conscience.&quot; The protocol sets response deadlines and a joint committee with outside historians.</p>"
+				}
+			},
+			{
+				"id": "p54-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1518998053901-5348d3961a04?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "The ceremony handing over the pieces, yesterday.",
+					"caption": "The ceremony handing over the pieces, yesterday.",
+					"ratio": "16/9"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p55",
+		"cat": "sociedad",
+		"title": "Pets can now ride the subway at any hour",
+		"excerpt": "The rules scrap the restricted window after a year of trials with no notable incidents.",
+		"author": "Iván Soto",
+		"published_at": "2026-06-08T20:00:00.000Z",
+		"reads": 7350,
+		"image": "https://images.unsplash.com/photo-1519313825-713a373f2bce?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "pets-can-now-ride-the-subway-at-any-hour",
+		"tags": [
+			"pets",
+			"subway",
+			"mobility"
+		],
+		"body_blocks": [
+			{
+				"id": "p55-t0",
+				"type": "texto",
+				"config": {
+					"text": "Pets can now ride the subway at any hour: the rules remove the restricted morning window after a year of trials with no notable incidents. A carrier for small animals and a muzzle and short leash for large dogs remain mandatory.",
+					"html": "<p>Pets can now ride the subway at any hour: the rules remove the restricted morning window after a year of trials with no notable incidents. A carrier for small animals and a muzzle and short leash for large dogs remain mandatory.</p>"
+				}
+			},
+			{
+				"id": "p55-t1",
+				"type": "texto",
+				"config": {
+					"text": "The change comes with data: in the trial year there were more complaints about music without headphones than about animals. Associations welcome the measure and ask for the next step — regulated access on intercity buses too.",
+					"html": "<p>The change comes with data: in the trial year there were more complaints about music without headphones than about animals. Associations welcome the measure and ask for the next step — regulated access on intercity buses too.</p>"
+				}
+			},
+			{
+				"id": "p55-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1515165562839-978bbcf18277?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "A passenger with their dog, on the platform.",
+					"caption": "A passenger with their dog, on the platform.",
+					"ratio": "16/9"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p56",
+		"cat": "politica",
+		"title": "The map of the youth vote that worries every party",
+		"excerpt": "A five-point breakdown of a generation that decides late, votes differently and stays loyal to no one.",
+		"author": "Sara Lores",
+		"published_at": "2026-06-07T20:00:00.000Z",
+		"reads": 0,
+		"image": "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "draft",
+		"slug": "the-map-of-the-youth-vote-that-worries-every-party",
+		"tags": [
+			"youth vote",
+			"analysis",
+			"elections"
+		],
+		"body_blocks": [
+			{
+				"id": "p56-t0",
+				"type": "texto",
+				"config": {
+					"text": "Deciding late, voting differently at each election and staying loyal to no one: the youth vote has become the most contested and least understood territory on the board. This analysis cross-references the semester's five polls to map it.",
+					"html": "<p>Deciding late, voting differently at each election and staying loyal to no one: the youth vote has become the most contested and least understood territory on the board. This analysis cross-references the semester's five polls to map it.</p>"
+				}
+			},
+			{
+				"id": "p56-t1",
+				"type": "texto",
+				"config": {
+					"text": "The first takeaway is disintermediation: the political conversation of under-thirties happens on channels where the parties arrive late and with a forced accent. The second, volatility: one in three changed their ballot between the last two elections.",
+					"html": "<p>The first takeaway is disintermediation: the political conversation of under-thirties happens on channels where the parties arrive late and with a forced accent. The second, volatility: one in three changed their ballot between the last two elections.</p>"
+				}
+			},
+			{
+				"id": "p56-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1506755594592-349d12a7c52a?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "Working material for the polling analysis.",
+					"caption": "Working material for the polling analysis.",
+					"ratio": "16/9"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p57",
+		"cat": "economia",
+		"title": "European funds spent finally top 70%",
+		"excerpt": "The latest tranche is concentrated in small-business digitization and the EV charging network.",
+		"author": "Lucía Ferrer",
+		"published_at": "2026-06-07T20:00:00.000Z",
+		"reads": 4630,
+		"image": "https://images.unsplash.com/photo-1593941707874-ef25b8b4a92b?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "european-funds-spent-finally-top-70",
+		"tags": [
+			"european funds",
+			"execution",
+			"small business"
+		],
+		"body_blocks": [
+			{
+				"id": "p57-t0",
+				"type": "texto",
+				"config": {
+					"text": "The execution of European funds finally topped 70% after two years below forecast. The latest tranche is concentrated in small-business digitization and the EV charging network, the two lines that had been most stuck.",
+					"html": "<p>The execution of European funds finally topped 70% after two years below forecast. The latest tranche is concentrated in small-business digitization and the EV charging network, the two lines that had been most stuck.</p>"
+				}
+			},
+			{
+				"id": "p57-t1",
+				"type": "texto",
+				"config": {
+					"text": "The figure improves the picture before Brussels but doesn't close the internal debate: the regions demand more management leeway and the municipalities that bureaucracy \"be measured in weeks, not in calls for applications.\"",
+					"html": "<p>The figure improves the picture before Brussels but doesn't close the internal debate: the regions demand more management leeway and the municipalities that bureaucracy &quot;be measured in weeks, not in calls for applications.&quot;</p>"
+				}
+			},
+			{
+				"id": "p57-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1593941707882-a5bba14938c7?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "A charging point funded by the funds, newly installed.",
+					"caption": "A charging point funded by the funds, newly installed.",
+					"ratio": "16/9"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p58",
+		"cat": "internacional",
+		"title": "The observatory confirms the warmest year on record in the southern hemisphere",
+		"excerpt": "Ocean anomalies double the decade's average and bring the cyclone season forward.",
+		"author": "Clara Méndez",
+		"published_at": "2026-06-06T20:00:00.000Z",
+		"reads": 6920,
+		"image": "https://images.unsplash.com/photo-1509326066092-14b2e882fe86?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-observatory-confirms-the-warmest-year-on-record-in-the-southern-hemisphere",
+		"tags": [
+			"climate",
+			"record",
+			"observatory"
+		],
+		"body_blocks": [
+			{
+				"id": "p58-t0",
+				"type": "texto",
+				"config": {
+					"text": "The observatory confirmed that the southern hemisphere has just closed its warmest year since records began. The sea-temperature anomalies double the decade's average and have brought the cyclone season forward by a month.",
+					"html": "<p>The observatory confirmed that the southern hemisphere has just closed its warmest year since records began. The sea-temperature anomalies double the decade's average and have brought the cyclone season forward by a month.</p>"
+				}
+			},
+			{
+				"id": "p58-t1",
+				"type": "texto",
+				"config": {
+					"text": "The region's weather services are revising their protocols: models trained on twentieth-century climate \"fall short of what's already happening,\" admits the report, which calls for doubling the network of observation buoys.",
+					"html": "<p>The region's weather services are revising their protocols: models trained on twentieth-century climate &quot;fall short of what's already happening,&quot; admits the report, which calls for doubling the network of observation buoys.</p>"
+				}
+			},
+			{
+				"id": "p58-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1468581264429-2548ef9eb732?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "An ocean observation buoy, during maintenance.",
+					"caption": "An ocean observation buoy, during maintenance.",
+					"ratio": "16/9"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p59",
+		"cat": "deportes",
+		"title": "The historic rival returns to the women's derby with a sellout guaranteed",
+		"excerpt": "Tickets sell out in five hours and the club weighs opening the overflow stand.",
+		"author": "Diego Cano",
+		"published_at": "2026-06-06T20:00:00.000Z",
+		"reads": 8570,
+		"image": "https://images.unsplash.com/photo-1522778526097-ce0a22ceb253?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "published",
+		"slug": "the-historic-rival-returns-to-the-women-s-derby-with-a-sellout-guaranteed",
+		"tags": [
+			"derby",
+			"women's",
+			"box office"
+		],
+		"body_blocks": [
+			{
+				"id": "p59-t0",
+				"type": "texto",
+				"config": {
+					"text": "The women's derby returns after the historic rival's promotion and does so with a sellout guaranteed: tickets sold out in five hours and the club is studying opening the overflow stand for the first time in a league match.",
+					"html": "<p>The women's derby returns after the historic rival's promotion and does so with a sellout guaranteed: tickets sold out in five hours and the club is studying opening the overflow stand for the first time in a league match.</p>"
+				}
+			},
+			{
+				"id": "p59-q",
+				"type": "cita",
+				"config": {
+					"text": "The rivalry is the best marketing we have.",
+					"attribution": "— The captains, at the derby presentation",
+					"style": "bar"
+				}
+			},
+			{
+				"id": "p59-t1",
+				"type": "texto",
+				"config": {
+					"text": "The rivalry, which in men's football spans a century of history, plays its fourth edition in the women's game — and the first with both squads fully professional. The captains recorded the match poster together: \"The rivalry is the best marketing we have.\"",
+					"html": "<p>The rivalry, which in men's football spans a century of history, plays its fourth edition in the women's game — and the first with both squads fully professional. The captains recorded the match poster together: &quot;The rivalry is the best marketing we have.&quot;</p>"
+				}
+			},
+			{
+				"id": "p59-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1489944440615-453fc2b6a9a9?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "The derby poster, unveiled this week.",
+					"caption": "The derby poster, unveiled this week.",
+					"ratio": "16/9"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": null
+	},
+	{
+		"id": "p60",
+		"cat": "tecnologia",
+		"title": "What changes for your phone with the new universal charger",
+		"excerpt": "A practical guide: which devices are left out, what happens to old cables and what to look for when buying.",
+		"author": "Nora Ibáñez",
+		"published_at": "2026-06-05T20:00:00.000Z",
+		"reads": 0,
+		"image": "https://images.unsplash.com/photo-1625276254563-f0fbbf66a5e7?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+		"status": "scheduled",
+		"slug": "what-changes-for-your-phone-with-the-new-universal-charger",
+		"tags": [
+			"universal charger",
+			"consumer",
+			"guide"
+		],
+		"body_blocks": [
+			{
+				"id": "p60-t0",
+				"type": "texto",
+				"config": {
+					"text": "The universal charger has been mandatory since this month for new phones and tablets. This practical guide goes over which devices fall outside the rule, what happens to old cables and what to look for on the box before buying.",
+					"html": "<p>The universal charger has been mandatory since this month for new phones and tablets. This practical guide goes over which devices fall outside the rule, what happens to old cables and what to look for on the box before buying.</p>"
+				}
+			},
+			{
+				"id": "p60-t1",
+				"type": "texto",
+				"config": {
+					"text": "The first surprise is in the fine print: the requirement applies to the port, not the charger — manufacturers can keep selling the plug separately. The second, in the power: two cables identical on the outside can charge at very different speeds.",
+					"html": "<p>The first surprise is in the fine print: the requirement applies to the port, not the charger — manufacturers can keep selling the plug separately. The second, in the power: two cables identical on the outside can charge at very different speeds.</p>"
+				}
+			},
+			{
+				"id": "p60-i",
+				"type": "imagen",
+				"config": {
+					"src": "https://images.unsplash.com/photo-1683322499436-f4383dd59f5a?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
+					"alt": "Cables and chargers compatible with the new rule.",
+					"caption": "Cables and chargers compatible with the new rule.",
+					"ratio": "16/9"
+				}
+			}
+		],
+		"featured": false,
+		"scheduled_for": "2026-07-15T09:00"
+	}
+]

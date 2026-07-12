@@ -34,7 +34,7 @@ app y misma BD que el registro `commander_*`). Un token de tenant no entra aquí
 
 - **React 19 · React Router 7 · TypeScript 5.9 · Vite 7**
 - **IBM Carbon Design System v11**: `@carbon/react`, `@carbon/styles`, `@carbon/icons-react`
-- **`@carbon/charts-react`** para gráficas (paleta categórica Carbon por defecto)
+- **ECharts 6** para gráficas canvas, con paleta basada en tokens Carbon
 - **`zustand`** para el estado (store de datos + store de auth)
 - **IBM Plex Sans / IBM Plex Mono** self-hosted vía `@ibm/plex`
 
@@ -74,7 +74,7 @@ Principios:
 Dos temas runtime-switchable, persistidos en `localStorage`, **g100 (oscuro) por defecto**.
 Se aplican como zona Carbon (`cds--g100` / `cds--g10`) sobre `<body>`. El **Header siempre va
 oscuro** en ambos temas (re-tematizado a `g100` con un `<Theme>` anidado, estilo IBM Cloud).
-Las gráficas no siguen el tema de Carbon: las options llevan `theme` explícito reconstruido con
+ECharts no hereda el tema de Carbon: las options se reconstruyen con la paleta activa mediante
 `useMemo`.
 
 | Token | g100 (oscuro) | g10 (claro) |
@@ -144,7 +144,8 @@ Header (ambos temas): bg `#161616`, borde `#393939`, texto `#f4f4f4`.
   primary activo; al guardar vuelve a neutro. **Cuando hay cambios, junto al Save aparece un botón
   `Discard` (secondary)** en el mismo FAB; sin cambios solo está el Save (deshabilitado). Sin permiso
   `update clients`, los inputs van `disabled` (solo lectura) y no se muestra el FAB. Resetea el estado del
-  form al cambiar de entidad (`key={id}`). Los modales (`*FormModal`) se reservan para **crear** desde las listas.
+  form al cambiar de entidad (`key={id}`). Los modales quedan para edición, confirmaciones y flujos
+  compactos; las altas con muchos campos usan side panel o tearsheet.
 
 ---
 
@@ -177,28 +178,28 @@ Header (ambos temas): bg `#161616`, borde `#393939`, texto `#f4f4f4`.
 | Side panel (create flows) | `CreateSidePanel` (`@carbon/ibm-products`, variante `slideIn`, sin overlay) |
 | Barras de cuota | `QuotaBar` (barra 4–6px) / `ProgressBar` |
 | Listas clave/valor | `StructuredList` |
-| base_url / secret | `CodeSnippet` inline + copiar (`CopyableCode`), eye-toggle para revelar |
+| base_url | snippet inline + copiar (`CopyableCode`) |
 | Tabs de detalle | `Tabs` (line) |
 | Notificaciones | `ToastNotification` (success/error), `InlineNotification` (warning) |
-| Gráficas | `@carbon/charts-react`: StackedBar / Line / Area (envueltas en `ChartCard`) |
+| Gráficas | `EChart` (ECharts canvas: bar/line/heatmap, envuelto en `ChartCard`) |
 | Skeletons | `DataTableSkeleton`, `SkeletonText` |
 | Edición inline de cuota | `InlineEdit` custom: valor con subrayado dashed → `TextInput` con ✓ / ✕ |
 
 Componentes reutilizables propios (`commander/src/components/`): `DataTableShell`, `Card`,
-`ChartCard`, `CreatePanel`, `ClientCreatePanel`, `PlanCreatePanel`, `InlineEdit`, `StatusTag`,
+`ChartCard`, `EChart`, `CreatePanel`, `ClientCreatePanel`, `PlanCreatePanel`,
+`PackageCreateTearsheet`, `InlineEdit`, `StatusTag`,
 `AmberTag` / `MethodTag` (en `components/tags/`), `GraceCountdown`, `QuotaBar`, `KpiCluster`,
 `CopyableCode`, `EmptyState`, `PageHeader`, `RelativeTime`, `Sparkline`, `StatusMixBar`,
 `FullScreenLoading`, `CommandPalette`.
 
-Modales (`components/modals/`, reservados para **confirmaciones / cambios de estado**):
-`TypedConfirmModal`, `StateChangeModal`, `ProvisionModal`, `OverdueEnforcementModal`,
-`InvoiceFormModal`, `PlanFormModal`.
+Modales (`components/modals/`, para confirmaciones, cambios de estado y edición):
+`TypedConfirmModal`, `StateChangeModal`, `ChangePlanModal`, `ProvisionModal`,
+`OverdueEnforcementModal`, `InvoiceFormModal`, `PlanFormModal`.
 
-**Create flows → side panel, no modal.** La creación de entidades usa el **side panel canónico de
-Carbon** (`CreateSidePanel` de `@carbon/ibm-products`, envuelto en `CreatePanel`) en vez de un modal
-centrado: mantiene la lista visible y operable detrás, da aire al form multi-campo y es menos
-bloqueante (guía Carbon de *create flows*). Migrados: **`ClientCreatePanel`** y **`PlanCreatePanel`**.
-Invoice y provisioning siguen en modal (`InvoiceFormModal` / `ProvisionModal`).
+**Create flows según tamaño.** Clientes y planes usan el **side panel canónico de Carbon**
+(`CreateSidePanel` de `@carbon/ibm-products`, envuelto en `CreatePanel`). La creación completa de un
+package usa `PackageCreateTearsheet` (Client → Plan → Review). Las facturas usan side panel desde el
+detalle de cliente y modal desde la lista; provisionar un package ya registrado usa `ProvisionModal`.
 
 **Acción primaria de tabla → siempre a la DERECHA.** El botón de crear (Create/New) de una colección
 nunca va a la izquierda intercalado entre filtros y search:
@@ -318,7 +319,7 @@ Pantalla de acceso del operador. Email + password → token Sanctum (Bearer) gua
 - **KPI cluster** (5 tiles, mismo patrón que Dashboard): Clients (total + active/inactive) ·
   Active (verde) · Packages provisionados · MRR (términos vigentes) · At risk (clientes con factura
   overdue, rojo). Todo derivado del store cargado — sin endpoints ni tablas nuevas.
-- Tabla enriquecida (minicharts CSS/SVG ligeros — **sin Carbon charts por fila** por el coste de
+- Tabla enriquecida (minicharts CSS/SVG ligeros — **sin instancias ECharts por fila** por el coste de
   re-layout). Columnas, ordenadas por relevancia:
   - **Client** — una sola línea: **tag de estado** del cliente (active/inactive) a la izquierda +
     nombre link en negrita. (El riesgo de impago se ve vía el KPI "At risk" y el filtro Billing.)
@@ -357,10 +358,9 @@ Pantalla de acceso del operador. Email + password → token Sanctum (Bearer) gua
     `bodyPadding={0}`, footer de count vía `CardTableFooter`) + kebab "View all" en el header. Packages:
     Package (link a `/packages/:id`, fila clicable) · Plan · MRR · Status. Invoices: Invoice · Due ·
     Amount · Status (`BillingTag`).
-  - El `ClientFormModal` solo se usa ya para **crear** desde la lista.
-  - **Acciones:** las de creación/destructivas viven en el **`MenuButton` "Actions"** del header de la
-    página (New package / New invoice / Delete client `stub`), abriendo `ProvisionModal`/`InvoiceFormModal`
-    con el **cliente prefijado y bloqueado** (props `clientId`/`lockClientId`). El **Details no lleva
+  - La creación desde la lista usa `ClientCreatePanel`; la edición permanece in situ.
+  - **Acciones:** el **`MenuButton` "Actions"** del header ofrece New invoice y Delete client (`stub`).
+    New invoice abre `InvoiceFormModal` como side panel con el cliente prefijado y bloqueado. El **Details no lleva
     kebab**: el `Save` vive en el FAB y, con cambios, aparece a su lado un `Discard` (secondary). Las cards
     **Packages**/**Invoices** llevan un kebab "⋮" solo con **View all**. El header de card usa
     `align-items: center` para alinear el kebab con el título.
@@ -368,23 +368,23 @@ Pantalla de acceso del operador. Email + password → token Sanctum (Bearer) gua
 - Derivaciones por cliente (sin endpoints/tablas nuevas): MRR = `price_monthly` de subscriptions
   `ended_at == null` excl. `billing_status == 'overdue'` (idéntico al Dashboard); Traffic 24h = suma
   de `requests_24h`; status mix / worst `quota_health` / `max(last_seen)` recorriendo sus packages;
-  sparkline 48h agregando los snapshots de `/usage/platform`.
+  sparkline 48h agregando los buckets de rollup de `/usage/platform`.
 - Alta vía **`ClientCreatePanel`** (side panel, ver §6); edición in situ en `/clients/:id`.
 
 ### Packages (hub central) + detalle con tabs
-- **Lista de packages** (`Package`): la tabla única de packages de negocio, sincronizada desde
-  disco (`packages/*`) y enriquecida por la API con `on_disk` y conteo de planes. Cada fila lleva el
-  catálogo (label/description/listing_status, editable) y —si está provisionada— lo operativo de su
-  instancia viva.
+- **Lista de packages** (`Package`): filas registradas en `commander_packages`, creadas por
+  provisioning y conservadas como catálogo tras de-provisionar. La API no inserta desde disco: solo
+  enriquece cada fila con `on_disk` (derivado de `packages/*/*`) y el conteo de planes. Cada fila lleva
+  metadatos de catálogo y —si está provisionada— lo operativo de su instancia viva. El alta completa
+  usa `PackageCreateTearsheet` (cliente, plan y revisión).
 - **`/packages/:id`** → `PackageDetail` con `Tabs` (line) y `<Outlet context>` (la ruta direcciona
   por id numérico — patrón unificado con `/clients/:id` — pero internamente resuelve `pkg.name`, que
   es la clave de negocio que usan la API y el store):
-  - **Overview** — identidad + estado del package provisionado (State card con countdown de grace),
-    details (StructuredList: cliente, package, suscripción, created, last seen, `base_url`),
-    control secret (snippet enmascarado + rotar), cuotas (gauges). Si el package aún no tiene
-    instancia viva, el empty state muestra la **CTA de Provision**.
-  - **Plans** — catálogo de planes del package (precio + límites de cuota por defecto). CRUD
-    vía `PlanFormModal`.
+  - **Overview** — formulario editable de metadatos de catálogo; si hay instancia viva, banner
+    condicional para grace/suspended y rail con cliente, suscripción, fechas, `base_url` y resumen de
+    cuotas. Si no hay instancia viva, el empty state muestra la **CTA de Provision**.
+  - **Plans** — catálogo de planes del package (precio + límites de cuota por defecto). Alta vía
+    `PlanCreatePanel`; edición vía `PlanFormModal`.
   - **Quotas** — límites reales/editables del package provisionado: `requests_day`,
     `disk_db_mb`, `disk_storage_mb`, `users_total`, uso actual, límite inline, política
     `none`/`warn`/`suspend` y fecha de exceso.
@@ -398,26 +398,22 @@ Pantalla de acceso del operador. Email + password → token Sanctum (Bearer) gua
   Amount · Issued · Due (overdue en rojo con retraso; late-pending en ámbar) · Status · ⋮.
   Filas overdue muestran el estado de enforcement (`→ grace` / `→ suspended`).
 - Overflow: Open / Edit / Mark as paid / Mark as overdue… / Delete.
-- Alta/edición vía `InvoiceFormModal`. Ver flujo de enforcement en §10.
+- Alta/edición vía `InvoiceFormModal`: modal desde la lista y side panel al crear desde el detalle
+  de cliente. Ver flujo de enforcement en §10.
 
 ### Usage (plataforma)
 Vista agregada de toda la flota desde `GET /usage/platform` (suma de `commander_usage_rollups`
 por package/bucket en vivo, sin tabla de caché): stacked bar de requests + error rate.
 
 ### Request Logs (explorer, read-only)
-- Header: "raw request log · read-only". (Sin stream en tiempo real: se hace fetch on demand /
-  poll, no websocket.)
-- Toolbar: search de ruta, filtros Package/Method, rango de tiempo, chips de clase de estado
-  `2xx 3xx 4xx 5xx`.
-- Tabla densa (34px, todo Plex Mono 11.5px): time (UTC ms) · package · method (GET/POST) ·
-  route · status color-coded (2xx verde, 3xx gris, 4xx ámbar, 5xx rojo) · ms · user · bytes.
-- Fila seleccionada → **panel de detalle** (derecha) con todos los campos + body de respuesta
-  (JSON) + bloque de contexto enlazando a la causa (cuota, etc.).
+- Fetch bajo demanda, sin websocket; botón Refresh y filtro opcional por package.
+- Search local por package/método/ruta/status/IP.
+- Tabla: time · package (oculto al filtrar uno) · method · route · status color-coded · ms · IP.
 
 ### Settings
-Perfil del operador + preferencias de plataforma (singleton, server-persistido):
+Perfil del operador + preferencias de plataforma (singleton, persistido en servidor):
 `default_grace_hours` (alimenta el grace real), `operator_name`, `operator_email`,
-`notify_on_suspend`, `notify_on_overdue`, tema.
+`notify_on_suspend`, `notify_on_overdue`. El tema se persiste aparte en `localStorage`.
 
 ### NotFound
 404 dentro del shell para rutas desconocidas.
@@ -432,10 +428,10 @@ Perfil del operador + preferencias de plataforma (singleton, server-persistido):
   el CRUD del panel.
 - **Tipos = tablas reales.** `commander/src/store/types.ts` espeja `commander_*`
   (`commander_packages`, `commander_quotas`, `commander_usage_rollups`,
-  `commander_request_logs`, …). Cada package es **una fila `Package` única** (tabla única
-  `commander_packages`): catálogo (label/description/listing_status) + operativo (slug/estado/
-  KPIs/`client_id`). Está provisionado cuando **`provisioned_at != null`** — sin objeto anidado ni
-  colección `deployments` separada, y sin tabla de registro aparte.
+  `commander_request_logs`, …). Cada registro es una fila `Package` de `commander_packages`, creada
+  por provisioning: catálogo (label/description/listing_status) + operativo (slug/estado/KPIs/
+  `client_id`). Está provisionado cuando **`provisioned_at != null`**; el de-provision conserva la
+  fila sin sus columnas operativas. No hay objeto anidado, colección `deployments` ni registro aparte.
 - **Mutaciones optimistas + reconcile.** Cada acción aplica el cambio local al instante y dispara
   la llamada API; al éxito reconcilia con la entidad del servidor (autoritativo); al fallo,
   muestra toast y **re-sincroniza** con `loadData()`. Las acciones de estado por package (keyed
@@ -460,15 +456,16 @@ Las acciones suspend/grace/resume escriben in-process la fila `commander_package
 - **Suspend** (`StateChangeModal` danger): reason requerido (`payment_overdue`/`abuse`/`manual`)
   + mensaje client-facing (se devuelve en el 402). **No** requiere confirmación tipeada (es
   reversible). La API deja de servir → los usuarios reciben **HTTP 402**.
-- **Grace**: mismo modal + datetime picker con default **+default_grace_hours** (Settings, 72h).
-  Countdown vivo en tag de tabla y en la State card del detalle.
+- **Grace**: mismo modal con duración basada en **default_grace_hours** (Settings, 72h).
+  Countdown vivo en los `PackageStatusTag`.
 - **Resume**: vuelve a `active`.
-- Disponible desde: overflow de fila, batch bar, header de detalle, State card y los follow-up de
-  facturas — **todos reutilizan los mismos modales**.
+- Disponible desde el menú Actions del detalle y los follow-up de facturas; ambos reutilizan los
+  mismos modales.
 
 ### Provisioning (client-first, un paso, in-process)
-`ProvisionModal` → `POST /provisioning` con `plan_id` + cliente (nuevo o existente). El `slug` del
-cliente **ES su host** (no hay parámetro de subdominio aparte). El servidor crea cliente +
+`PackageCreateTearsheet` crea primero el plan y luego llama a `POST /provisioning`; `ProvisionModal`
+reutiliza el mismo endpoint para un package/plan ya registrado. El payload lleva `plan_id` + cliente
+(nuevo o existente). El `slug` del cliente **ES su host** (no hay parámetro de subdominio aparte). El servidor crea cliente +
 suscripción + **instancia viva** (crea la BD, migra, siembra y activa el package) atómicamente; al
 éxito el panel hace `loadData()`. Sin paso de host.
 
@@ -480,14 +477,14 @@ suscripción + **instancia viva** (crea la BD, migra, siembra y activa el packag
   (danger). La elección escribe el `enforcement` de la factura y el estado del package.
 
 ### Acciones destructivas / irreversibles
-Borrar entidad y **rotar secreto** requieren **confirmación tipeada** (`TypedConfirmModal`:
-escribe el nombre para habilitar el botón danger).
+De-provisionar un package y borrar una factura requieren **confirmación tipeada**
+(`TypedConfirmModal`: escribe el identificador para habilitar el botón danger).
 
 ### Reglas globales
-- **Toda mutación** lleva estado optimista/loading + `ToastNotification` (éxito **y** fallo con
-  enlace de reintento).
+- **Toda mutación** lleva estado optimista/loading + `ToastNotification`; al fallo se resincroniza
+  el store con la API.
 - **Las tablas nunca saltan al cargar**: skeleton rows con la misma altura que las reales.
-- **Los countdowns de grace tictean en vivo** (tag en tablas, countdown gigante en detalle).
+- **Los countdowns de grace tictean en vivo** dentro de `PackageStatusTag`.
 - **Fechas relativas** con absoluta al hover.
 - **Accesibilidad**: contraste WCAG AA en ambos temas, focus ring visible (Carbon 2px Blue 60),
   navegación completa por teclado, `aria-sort` en cabeceras ordenables, `aria-live` para toasts.
@@ -505,7 +502,9 @@ Rutas reales (`src/packages/Commander/routes/api.php`, todas bajo `auth:sanctum`
 | Clients / Plans / Users | `apiResource clients`, `plans`, `users` |
 | Provisioning | `POST provisioning` (client-first, un paso) → `{ package }` |
 | Estado de package | `POST packages/{name}/{suspend\|grace\|resume}` |
+| Cambio de plan | `POST packages/{name}/change-plan` |
 | Uso / logs por package | `GET packages/{name}/usage` · `GET packages/{name}/logs` |
+| Insights por package | `GET packages/{name}/insights` |
 | Subscriptions / Invoices | `apiResource` |
 | Quotas | `apiResource quotas` (index/show/update) |
 | Activity | `apiResource activity` (index/show) |

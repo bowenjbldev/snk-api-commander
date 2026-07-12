@@ -5,7 +5,7 @@ Single-operator admin panel for the SnakeCloud platform — remote control
 usage, quotas, request logs) for subscription-based REST API packages.
 
 Standalone **Vite + React + TypeScript** SPA built with **IBM Carbon Design System
-v11** (`@carbon/react`) and `@carbon/charts-react`, **wired to the live Commander REST
+v11** (`@carbon/react`) and **ECharts** (canvas), **wired to the live Commander REST
 API** (`src/packages/Commander`). In production it is served at `commander.<BASE_DOMAIN>`.
 
 > Design system reference (rules, pages, flows): [`../design/README.md`](../design/README.md).
@@ -60,15 +60,15 @@ content-hashed `/assets/` immutably. (A future `Commander` deploy can serve `dis
 ## Stack
 
 - React 19 · React Router 7 · TypeScript 5.9 · Vite 7
-- `@carbon/react` 1.109 · `@carbon/styles` · `@carbon/icons-react` · `@carbon/charts-react` 1.27
+- `@carbon/react` 1.109 · `@carbon/styles` · `@carbon/icons-react` · ECharts 6.1
 - `zustand` for the in-memory store · self-hosted IBM Plex via `@ibm/plex`
 
 ## Data
 
 The app runs on the **live Commander REST API**. The zustand store starts empty and
 `loadData()` fetches clients, packages (via `packagesApi.list()`), subscriptions, invoices,
-quotas, plans, the activity feed and operator settings in parallel from the API; the registry is
-populated by provisioning (`POST /provisioning`) and the panel's CRUD. There is no demo dataset in
+quotas, plans, the activity feed, recent commits and operator settings in parallel from the API; the registry is
+populated by provisioning (`POST /provisioning`) and retained after de-provisioning. There is no demo dataset in
 production (`src/store/fixtures.ts` is used only to seed unit/component tests).
 
 All mutations are **optimistic with reconcile**: each action mutates the store locally and
@@ -80,8 +80,8 @@ server assigns the real id.
 
 The domain types in `src/store/types.ts` mirror the backend `commander_*` tables
 (`commander_packages`, `commander_quotas`, `commander_usage_rollups`,
-`commander_request_logs`, …); the store holds `packages: Package[]` — one unified row per package
-(catalog: label/description/listing_status + the operational columns when provisioned). A package is
+`commander_request_logs`, …); the store holds `packages: Package[]` — one unified row per registered
+package instance (catalog metadata + operational columns when provisioned). A package is
 live when `provisioned_at != null`; there is no separate registry type nor a nested instance object.
 The HTTP client lives in
 `src/lib/api.ts` (fetch wrapper, Bearer token, `ApiError`, 401 handler). A `Commander` deploy can
@@ -93,9 +93,9 @@ Commander is the control plane for the centralized Laravel app. The SPA does not
 deploy containers; it operates on package types that already exist in `src/packages/*` and asks the
 backend to provision, suspend, resume and de-provision runtime instances.
 
-1. Package catalog: `GET /packages` syncs package types from disk into the single
-   `commander_packages` table (catalog-only rows until provisioned) and enriches each row with
-   `on_disk` and a plan count.
+1. Package registry: `GET /packages` reads the existing `commander_packages` rows and enriches each
+   with `on_disk` (derived from `packages/*/*`) and a plan count. It does not insert rows from disk;
+   provisioning creates them and de-provisioning keeps them as catalog-only history.
 2. Plan setup: the operator creates `commander_plans` rows for a deployed package type. A plan
    stores the package name plus default quota limits.
 3. Provisioning: `POST /provisioning` receives a plan and either an existing client or a new client
@@ -103,8 +103,9 @@ backend to provision, suspend, resume and de-provision runtime instances.
    `commander_packages` (identity + client link + active subscription pointer + runtime state),
    creates the `commander_subscriptions` row, seeds the package's quota rows in `commander_quotas`
    (the single quota table — edited by the panel and enforced by the backend), then creates the
-   tenant database and runs `core:migrate --package=<Package>` + `core:seed --package=<Package>`.
-4. Runtime requests: package subdomains resolve through `commander_packages`. Request metering
+   tenant database and runs `core:migrate --client=<client> --package=<Package>` +
+   `core:seed --client=<client> --package=<Package>`.
+4. Runtime requests: the client host plus package path resolve through `commander_packages`. Request metering
    writes `commander_request_logs`, rollups aggregate into `commander_usage_rollups`, and
    `commander:refresh` recomputes each package's cached KPIs (requests_24h, quota_health, last_seen).
    The platform chart reads `commander_usage_rollups` aggregated on the fly (no snapshot cache).
@@ -123,15 +124,16 @@ backend to provision, suspend, resume and de-provision runtime instances.
 ## Commander tables
 
 All tables below live in the commander database. `commander_packages` is the single source of truth
-for packages: one row per package type (catalog: label/description/listing_status, synced from disk)
-that also carries the live 1:1 instance columns — identity, runtime state, client/subscription links
-and cached KPIs — once provisioned (`provisioned_at != null`). There is no separate registry table.
+for packages: provisioning creates one row per registered instance. That row carries catalog metadata
+plus identity, runtime state, client/subscription links and cached KPIs while live
+(`provisioned_at != null`). De-provisioning clears the operational columns but retains the row and
+billing history. There is no separate registry table.
 
 | Table | Purpose | Key relationships |
 |-------|---------|-------------------|
 | `commander_plans` | Commercial plans for provisionable package types, including default quota limits. | `package` is a package name string. |
 | `commander_clients` | Customer/account ledger: contact, billing and status fields. | Protected by `RESTRICT` from packages, subscriptions and invoices. |
-| `commander_packages` | The single package table: one row per package type with catalog metadata (`label`, `description`, `listing_status`, synced from disk) plus the live 1:1 instance columns when provisioned — identity (`client_id`/`slug`, tenant `database`), runtime state (status, reason/message, grace timestamps, changed_at), client/subscription links, cached KPIs (requests_24h, quota_health, last_seen) and `provisioned_at`. De-provision is soft (nulls the operational columns, keeps the row + billing history). | FK to `commander_clients` (`RESTRICT`). `subscription_id` is an uncoupled active pointer; `commander_subscriptions.package_id` is authoritative. Referenced by subscriptions, invoices, quotas, usage rollups/snapshots and activity events. |
+| `commander_packages` | The single package table: one row per registered instance, created by provisioning, with catalog metadata (`label`, `description`, `listing_status`) plus live identity (`client_id`/`slug`, tenant `database`), runtime state, client/subscription links, cached KPIs and `provisioned_at`. `GET /packages` only enriches stored rows with disk presence and plan count. De-provision is soft (nulls the operational columns, keeps the row + billing history). | FK to `commander_clients` (`RESTRICT`). `subscription_id` is an uncoupled active pointer; `commander_subscriptions.package_id` is authoritative. Referenced by subscriptions, invoices, quotas, usage rollups and activity events. |
 | `commander_subscriptions` | Subscription **terms** for a package (1:N = plan history): each row is a term with a plan snapshot (`plan` name + frozen `price_monthly`, plus a `plan_id` FK for traceability), `billing_status`, `auto_suspend` and a period (`started_at`/`ended_at`). The **current term** has `ended_at IS NULL` (pointed to by `commander_packages.subscription_id`); closed terms are history. "Change plan" closes the current term and opens a new one. | FK to client (`RESTRICT`) and package (`CASCADE`); `plan_id` is an uncoupled trace (no FK, like `subscription_id`). |
 | `commander_invoices` | Invoice ledger with readable invoice number, amount, due dates, status and enforcement marker. | FK to client (`RESTRICT`) and package (`CASCADE`). |
 | `commander_quotas` | Single quota table per (package, metric): `limit_value`/`on_exceed`/`unit` edited by the panel; `current_value`/`measured_at`/`exceeded_at` measured and enforced by the backend. No separate metrics table. | FK to package (`CASCADE`), unique by `package_id + metric_key`. |
@@ -159,7 +161,7 @@ FK = foreign key, idx = index, uniq = unique. Listed in run order.
 |-------|---------|
 | `commander_clients` | `id` · `slug`(uniq) · `name` · `status`(idx) · `email` · `billing_email` · `phone` · `company` · `tax_id` · `payment_terms` · `address_line1` · `address_line2` · `city` · `postal_code` · `country` · `notes` · ts |
 | `commander_packages` | `id` · `client_id`(FK) · `subscription_id` · `slug` · `name` · `database` · `label` · `description` · `listing_status` · `status` · `reason` · `message` · `grace_until` · `changed_at` · `requests_24h` · `quota_health` · `last_seen` · `provisioned_at` · ts — uniq(`client_id,slug`), idx(`subscription_id`), idx(`provisioned_at`) |
-| `commander_request_logs` | `id` · `package_id`(FK,idx) · `user_id` · `token_id` · `method` · `route` · `path` · `status` · `duration_ms` · `ip` · `request_bytes` · `response_bytes` · `memory_kb` · ts — idx(`created_at`) |
+| `commander_request_logs` | `id` · `package_id`(idx, sin FK) · `user_id` · `token_id` · `method` · `route` · `path` · `status` · `duration_ms` · `ip` · `request_bytes` · `response_bytes` · `memory_kb` · ts — idx(`created_at`) |
 | `commander_usage_rollups` | `id` · `package_id`(FK) · `period` · `period_start` · `route` · `method` · `status_class` · `request_count` · `error_count` · `avg_duration_ms` · `p95_duration_ms` · `total_request_bytes` · `total_response_bytes` · `unique_users` · ts — uniq(bucket), idx(`period,period_start`) |
 | `commander_subscriptions` | `id` · `client_id`(FK) · `package_id`(FK) · `plan_id`(idx) · `plan` · `price_monthly` · `billing_status` · `auto_suspend` · `started_at` · `ended_at` · ts — idx(`package_id,ended_at`) |
 | `commander_invoices` | `id` · `client_id`(FK) · `package_id`(FK) · `number`(uniq) · `amount` · `status`(idx) · `enforcement` · `issued_at` · `due_at`(idx) · ts |
@@ -173,8 +175,7 @@ FK = foreign key, idx = index, uniq = unique. Listed in run order.
 
 ### SPA realignment (done — 2026-06-25)
 
-The SPA was realigned to the client-first / nested-packages model. Verified: `tsc -b` clean, 33 tests
-green. What changed:
+The SPA was realigned to the client-first / nested-packages model. What changed:
 
 - **Removed stale columns**: dropped `commander_packages.changed_by` + the `ChangedBy` type, and
   `commander_activity_events.by` (`ev.by` in Dashboard). The actor is no longer stored — event origin
@@ -189,7 +190,7 @@ green. What changed:
   preserved and the SPA reads line up.
 - **Insights tab (built — 2026-06-25)**: `commander_package_repos` / `commander_package_commits` /
   `commander_package_activity_daily` are surfaced by `GET /packages/{name}/insights` and rendered in
-  `PackageDetail/InsightsTab` — a contribution heatmap (`@carbon/charts` HeatmapChart, week×weekday),
+  `PackageDetail/InsightsTab` — an ECharts canvas contribution heatmap (week×weekday),
   a weekly code-frequency chart (additions/deletions) and a recent-commits table, fed by
   `commander:git:sync`. Range toggle 3/6/12 months; all-time summary KPIs.
 
@@ -210,9 +211,9 @@ src/
 ├── store/          zustand store (API-backed, optimistic) · auth store · types (= commander_* tables)
 │                   · transitions (state machine) · fixtures (tests only)
 ├── lib/api.ts      fetch wrapper — Bearer auth, ApiError, 401 handler, typed endpoints
-├── components/     reusable primitives — DataTableShell, Drawer, DetailPanel, InlineEdit,
-│                   StatusTag/AmberTag/MethodTag, GraceCountdown, QuotaBar, KpiCluster,
-│                   CopyableCode, CommandPalette, ChartCard, modals/
+├── components/     reusable primitives — DataTableShell, Card, InlineEdit, EChart,
+│                   status/method tags, GraceCountdown, QuotaBar, KpiCluster, CopyableCode,
+│                   CommandPalette, ChartCard, create flows and modals/
 ├── pages/          Dashboard · Clients · Packages (hub + detail tabs: Overview/Plans/
 │                   Quotas/Usage/Logs/Insights/Settings) · Invoices · Usage · RequestLogs ·
 │                   Settings · Login (Packages absorbs Deployments+Catalog+Quotas+Subscriptions)
@@ -225,13 +226,13 @@ src/
 
 - **Theming**: the active theme is applied as a Carbon zone class (`cds--g100` /
   `cds--g10`) on `<body>`; the Header re-themes to `g100` via a nested `<Theme>` so it
-  stays dark in both modes. Charts don't follow Carbon's theme — options carry an
-  explicit `theme` rebuilt via `useMemo`.
+  stays dark in both modes. ECharts does not inherit Carbon's theme, so its options are
+  rebuilt with the active palette via `useMemo`.
 - **Live updates without table churn**: a single 1s clock lives in `TickProvider`;
   only `GraceCountdown` / `RelativeTime` leaves subscribe to it, so tables don't
   re-render every second. Request logs are fetched on demand / polled (no realtime stream).
 - **Optimistic + reconcile**: store actions mutate locally and fire the API call, reconciling
   with the authoritative server entity on success and resyncing via `loadData()` on failure.
-- **Actions**: `ActionsProvider` owns the suspend/grace/resume/rotate/delete and
-  overdue-enforcement modals and exposes openers via `useActions()`, reused by list
-  rows, batch bar, detail header, state card and invoice flows.
+- **Actions**: `ActionsProvider` owns the suspend/grace/resume/de-provision and
+  overdue-enforcement modals and exposes openers via `useActions()`, reused by the package detail
+  and invoice flows.
