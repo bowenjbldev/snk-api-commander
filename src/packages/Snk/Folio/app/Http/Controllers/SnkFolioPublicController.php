@@ -13,6 +13,7 @@ use Packages\Snk\Folio\Models\SnkFolioPostModel;
 use Packages\Snk\Folio\Models\SnkFolioPostSlugModel;
 use Packages\Snk\Folio\Models\SnkFolioPostViewModel;
 use Packages\Snk\Folio\Models\SnkFolioSettingModel;
+use Packages\Snk\Folio\Models\SnkFolioSubscriberModel;
 
 /**
  * Lectura pública del periódico (sin auth): solo contenido `published`, resuelto por
@@ -26,6 +27,7 @@ class SnkFolioPublicController extends Controller
     {
         $data = $request->validate([
             'cat' => 'nullable|string|max:32',
+            'q' => 'nullable|string|min:2|max:128',
             'count' => 'nullable|integer|min:1|max:100',
         ]);
 
@@ -34,6 +36,10 @@ class SnkFolioPublicController extends Controller
             ->orderByDesc('published_at');
         if (! empty($data['cat'])) {
             $query->whereHas('category', fn ($q) => $q->where('slug', $data['cat']));
+        }
+        // Buscador del sitio: FULLTEXT sobre título y entradilla.
+        if (! empty($data['q'])) {
+            $query->whereFullText(['title', 'excerpt'], $data['q']);
         }
 
         return response()->json($query->limit($data['count'] ?? 50)->get());
@@ -100,6 +106,16 @@ class SnkFolioPublicController extends Controller
             'layout' => $layout,
             'schema' => $row?->schema ?? ['version' => 1, 'sections' => []],
         ]);
+    }
+
+    /** Alta pública al boletín: idempotente por email; el estado nace pending. */
+    public function subscribe(Request $request): JsonResponse
+    {
+        $data = $request->validate(['email' => 'required|email|max:255']);
+        SnkFolioSubscriberModel::firstOrCreate(['email' => strtolower($data['email'])]);
+
+        // Respuesta uniforme exista o no: no revela si un email está suscrito.
+        return response()->json(['ok' => true], 202);
     }
 
     /** Identidad + tema, lo mínimo para renderizar la salida pública. */

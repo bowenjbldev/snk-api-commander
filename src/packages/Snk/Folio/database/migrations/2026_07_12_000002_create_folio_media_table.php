@@ -11,6 +11,7 @@ return new class extends Migration
         // Biblioteca de medios: hoy URLs externas; path/dimensiones preparan el upload futuro.
         Schema::create('folio_media', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('uploaded_by')->nullable()->constrained('users')->nullOnDelete();
             $table->string('url', 2048);
             // sha1(url): dedup real (url no cabe en un índice UNIQUE); lo rellena el modelo.
             $table->char('url_hash', 40)->unique();
@@ -23,7 +24,6 @@ return new class extends Migration
             $table->unsignedBigInteger('size_bytes')->nullable();
             $table->string('disk', 32)->nullable();
             $table->string('path', 1024)->nullable();
-            $table->foreignId('uploaded_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
         });
     }

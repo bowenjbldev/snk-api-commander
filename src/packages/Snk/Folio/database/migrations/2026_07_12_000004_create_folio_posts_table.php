@@ -13,6 +13,9 @@ return new class extends Migration
             $table->foreignId('category_id')->constrained('folio_categories');
             $table->foreignId('author_id')->constrained('folio_authors');
             $table->foreignId('cover_media_id')->nullable()->constrained('folio_media')->nullOnDelete();
+            // Auditoría editorial: quién creó y quién tocó por última vez.
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->string('title', 500);
             $table->text('excerpt');
             $table->timestamp('published_at')->nullable(); // null = borrador sin fecha
@@ -23,14 +26,13 @@ return new class extends Migration
             $table->string('slug')->nullable()->unique();   // URL SEO; null en borradores
             $table->boolean('featured')->default(false);
             $table->timestamp('scheduled_for')->nullable();
-            // Auditoría editorial: quién creó y quién tocó por última vez.
-            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
 
             $table->index(['status', 'published_at']);
             // La query del scheduler: scheduled con fecha vencida → published.
             $table->index(['status', 'scheduled_for']);
+            // Buscador del sitio (public/posts?q=) sin motor externo.
+            $table->fullText(['title', 'excerpt']);
         });
     }
 

@@ -61,7 +61,7 @@ class SnkFolioDatabaseSeeder extends Seeder
     private function seedPermissions(): void
     {
         $names = [];
-        foreach (['posts', 'categories', 'authors', 'media', 'tags', 'comments'] as $resource) {
+        foreach (['posts', 'categories', 'authors', 'media', 'tags', 'comments', 'subscribers'] as $resource) {
             foreach (['index', 'show', 'create', 'update', 'delete'] as $action) {
                 $names[] = "$action $resource";
             }

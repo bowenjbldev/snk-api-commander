@@ -7,6 +7,7 @@ use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Packages\Snk\Folio\Models\SnkFolioLayoutModel;
+use Packages\Snk\Folio\Models\SnkFolioLayoutRevisionModel;
 
 /**
  * Documentos LayoutSchema del builder (portada/seccion), uno por fila, con concurrencia
@@ -50,11 +51,32 @@ class SnkFolioLayoutsController extends Controller
             ], 409);
         }
 
+        // Historial: snapshot del documento ANTES de pisarlo (deshace «Use composition»).
+        SnkFolioLayoutRevisionModel::create([
+            'layout_id' => $row->id,
+            'user_id' => auth()->id(),
+            'schema' => $row->schema,
+        ]);
+
         $row->schema = $data['schema'];
         $row->version = $row->version + 1;
         $row->save();
 
         return response()->json($this->payload($row));
+    }
+
+    /** Historial del documento (más reciente primero). */
+    public function revisions(string $layout): JsonResponse
+    {
+        $layoutId = SnkFolioLayoutModel::query()->where('layout', $layout)->value('id');
+
+        return response()->json(
+            SnkFolioLayoutRevisionModel::query()
+                ->where('layout_id', $layoutId ?? 0)
+                ->with('user:id,name')
+                ->orderByDesc('created_at')
+                ->get()
+        );
     }
 
     private function payload(SnkFolioLayoutModel $row): array

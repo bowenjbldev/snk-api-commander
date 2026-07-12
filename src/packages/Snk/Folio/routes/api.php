@@ -11,6 +11,7 @@ use Packages\Snk\Folio\Http\Controllers\SnkFolioTagsController;
 use Packages\Snk\Folio\Http\Controllers\SnkFolioPostsController;
 use Packages\Snk\Folio\Http\Controllers\SnkFolioPublicController;
 use Packages\Snk\Folio\Http\Controllers\SnkFolioSettingsController;
+use Packages\Snk\Folio\Http\Controllers\SnkFolioSubscribersController;
 use Packages\Snk\Folio\Http\Controllers\SnkFolioUsersController;
 
 Route::middleware(['api'])->group(function () {
@@ -31,6 +32,7 @@ Route::middleware(['api'])->group(function () {
     Route::get('public/posts/{slug}/comments', [SnkFolioPublicController::class, 'comments']);
     Route::get('public/layouts/{layout}', [SnkFolioPublicController::class, 'layout'])->whereIn('layout', ['portada', 'seccion']);
     Route::get('public/site', [SnkFolioPublicController::class, 'site']);
+    Route::post('public/subscribe', [SnkFolioPublicController::class, 'subscribe'])->middleware('throttle:10,1');
 });
 
 Route::middleware(['api', 'auth:sanctum'])->group(function () {
@@ -42,6 +44,9 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::apiResource('tags', SnkFolioTagsController::class);
     Route::apiResource('comments', SnkFolioCommentsController::class);
 
+    Route::apiResource('subscribers', SnkFolioSubscribersController::class)->only(['index', 'show', 'store', 'update', 'destroy']);
+
+    Route::get('layouts/{layout}/revisions', [SnkFolioLayoutsController::class, 'revisions'])->whereIn('layout', ['portada', 'seccion']);
     Route::get('layouts/{layout}', [SnkFolioLayoutsController::class, 'show'])->whereIn('layout', ['portada', 'seccion']);
     Route::put('layouts/{layout}', [SnkFolioLayoutsController::class, 'update'])->whereIn('layout', ['portada', 'seccion']);
 
