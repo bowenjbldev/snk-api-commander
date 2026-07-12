@@ -24,13 +24,13 @@ class SnkFolioDatabaseSeeder extends Seeder
 {
     /** Fuente de verdad de la taxonomía (el hue pinta el gradiente sin foto en el frontend). */
     private const CATEGORIES = [
-        'politica' => ['name' => 'Politics', 'hue' => 25, 'description' => 'Government, parliament, elections and public policy.'],
-        'economia' => ['name' => 'Economy', 'hue' => 250, 'description' => 'Markets, business, employment and personal finance.'],
-        'cultura' => ['name' => 'Culture', 'hue' => 310, 'description' => 'Books, film, music, arts and heritage.'],
-        'sociedad' => ['name' => 'Society', 'hue' => 150, 'description' => 'Education, health, housing and everyday life.'],
-        'deportes' => ['name' => 'Sports', 'hue' => 50, 'description' => 'Results, matches and the stories behind the game.'],
-        'tecnologia' => ['name' => 'Technology', 'hue' => 195, 'description' => 'Science, innovation and the digital world.'],
-        'internacional' => ['name' => 'International', 'hue' => 275, 'description' => 'World news and global affairs.'],
+        'politics' => ['name' => 'Politics', 'hue' => 25, 'description' => 'Government, parliament, elections and public policy.'],
+        'economy' => ['name' => 'Economy', 'hue' => 250, 'description' => 'Markets, business, employment and personal finance.'],
+        'culture' => ['name' => 'Culture', 'hue' => 310, 'description' => 'Books, film, music, arts and heritage.'],
+        'society' => ['name' => 'Society', 'hue' => 150, 'description' => 'Education, health, housing and everyday life.'],
+        'sports' => ['name' => 'Sports', 'hue' => 50, 'description' => 'Results, matches and the stories behind the game.'],
+        'technology' => ['name' => 'Technology', 'hue' => 195, 'description' => 'Science, innovation and the digital world.'],
+        'international' => ['name' => 'International', 'hue' => 275, 'description' => 'World news and global affairs.'],
     ];
 
     public function run(): void

@@ -16,7 +16,7 @@
          "config": {
           "data": {
            "mode": "auto",
-           "category": "destacadas",
+           "category": "featured",
            "count": 4,
            "sort": "recent"
           },
@@ -47,7 +47,7 @@
          "config": {
           "data": {
            "mode": "auto",
-           "category": "destacadas",
+           "category": "featured",
            "count": 6,
            "sort": "recent"
           },
@@ -75,7 +75,7 @@
          "config": {
           "data": {
            "mode": "auto",
-           "category": "destacadas",
+           "category": "featured",
            "count": 5,
            "sort": "read"
           },
@@ -107,7 +107,7 @@
          "config": {
           "data": {
            "mode": "auto",
-           "category": "internacional",
+           "category": "international",
            "count": 5,
            "sort": "recent"
           },
@@ -143,7 +143,7 @@
          "config": {
           "data": {
            "mode": "auto",
-           "category": "politica",
+           "category": "politics",
            "count": 3,
            "sort": "recent"
           },
@@ -178,7 +178,7 @@
          "config": {
           "data": {
            "mode": "auto",
-           "category": "economia",
+           "category": "economy",
            "count": 1,
            "sort": "manualOrder",
            "pinnedPostIds": [
@@ -208,7 +208,7 @@
          "config": {
           "data": {
            "mode": "auto",
-           "category": "economia",
+           "category": "economy",
            "count": 5,
            "sort": "recent"
           },
@@ -244,7 +244,7 @@
          "config": {
           "data": {
            "mode": "auto",
-           "category": "tecnologia",
+           "category": "technology",
            "count": 4,
            "sort": "recent"
           },
@@ -272,7 +272,7 @@
          "config": {
           "data": {
            "mode": "auto",
-           "category": "cultura",
+           "category": "culture",
            "count": 4,
            "sort": "recent"
           },
@@ -305,7 +305,7 @@
          "config": {
           "data": {
            "mode": "auto",
-           "category": "sociedad",
+           "category": "society",
            "count": 5,
            "sort": "recent"
           },
@@ -341,7 +341,7 @@
          "config": {
           "data": {
            "mode": "auto",
-           "category": "deportes",
+           "category": "sports",
            "count": 3,
            "sort": "recent"
           },
@@ -377,7 +377,7 @@
          "config": {
           "data": {
            "mode": "auto",
-           "category": "destacadas",
+           "category": "featured",
            "count": 4,
            "sort": "recent"
           },
@@ -418,7 +418,7 @@
          "config": {
           "data": {
            "mode": "auto",
-           "category": "destacadas",
+           "category": "featured",
            "count": 5,
            "sort": "recent"
           },
@@ -446,7 +446,7 @@
          "config": {
           "data": {
            "mode": "auto",
-           "category": "destacadas",
+           "category": "featured",
            "count": 5,
            "sort": "read"
           },
@@ -478,7 +478,7 @@
          "config": {
           "data": {
            "mode": "auto",
-           "category": "destacadas",
+           "category": "featured",
            "count": 1,
            "sort": "recent"
           },
@@ -510,7 +510,7 @@
          "config": {
           "data": {
            "mode": "auto",
-           "category": "destacadas",
+           "category": "featured",
            "count": 6,
            "sort": "recent"
           },

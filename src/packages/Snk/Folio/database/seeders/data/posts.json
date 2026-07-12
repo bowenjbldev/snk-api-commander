@@ -1,6 +1,6 @@
 [
 	{
-		"cat": "politica",
+		"cat": "politics",
 		"title": "Climate summit reaches a historic agreement after 14 hours of negotiation",
 		"excerpt": "The 196 signatory countries commit to tripling renewable energy by 2030 and to phasing out coal \"in a just and orderly way.\"",
 		"author": "Pedro Aranda",
@@ -63,7 +63,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "economia",
+		"cat": "economy",
 		"title": "The Central Bank cuts rates for the first time in two years",
 		"excerpt": "The 25-basis-point cut aims to revive lending as consumption slows.",
 		"author": "Lucía Ferrer",
@@ -126,7 +126,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "cultura",
+		"cat": "culture",
 		"title": "Remains of the ancient Roman port unearthed in Seville",
 		"excerpt": "The site, found during construction work, rewrites the trading history of Roman Baetica.",
 		"author": "Marta Gil",
@@ -180,9 +180,9 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "sociedad",
+		"cat": "society",
 		"title": "Festival season kicks off with record attendance",
-		"excerpt": "More than three million tickets sold confirm the cultural sector's recovery.",
+		"excerpt": "More than three million tickets sold confirm the culturel sector's recovery.",
 		"author": "Iván Soto",
 		"published_at": "2026-06-28T15:00:00.000Z",
 		"reads": 9610,
@@ -243,7 +243,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "internacional",
+		"cat": "international",
 		"title": "WHO sets a new record in childhood vaccination coverage",
 		"excerpt": "89% of children received their basic doses last year, according to the annual report.",
 		"author": "Clara Méndez",
@@ -297,7 +297,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "deportes",
+		"cat": "sports",
 		"title": "Epic last-minute comeback seals promotion",
 		"excerpt": "Vargas' goal in the 93rd minute sparks celebration in a stand that had waited a decade for the moment.",
 		"author": "Diego Cano",
@@ -360,7 +360,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "tecnologia",
+		"cat": "technology",
 		"title": "A local startup unveils the first low-power neural chip",
 		"excerpt": "It promises to boost the efficiency of edge AI devices tenfold.",
 		"author": "Nora Ibáñez",
@@ -423,7 +423,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "politica",
+		"cat": "politics",
 		"title": "Congress passes the housing law reform",
 		"excerpt": "The measure caps rent increases in high-pressure areas and expands public housing.",
 		"author": "Pedro Aranda",
@@ -477,7 +477,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "economia",
+		"cat": "economy",
 		"title": "Inflation eases to 2.4% and nears the target",
 		"excerpt": "Fresh food and energy lead the slowdown in prices this quarter.",
 		"author": "Lucía Ferrer",
@@ -531,7 +531,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "cultura",
+		"cat": "culture",
 		"title": "A retrospective brings together the painter's complete work for the first time",
 		"excerpt": "The show spans five decades of an essential, long-overlooked artist.",
 		"author": "Marta Gil",
@@ -594,7 +594,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "sociedad",
+		"cat": "society",
 		"title": "The new bike lane connects the six central districts",
 		"excerpt": "The 42-kilometer network opens after two years of construction and neighborhood debate.",
 		"author": "Iván Soto",
@@ -648,7 +648,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "internacional",
+		"cat": "international",
 		"title": "Peace talks resume after months of deadlock",
 		"excerpt": "Both delegations accept a temporary ceasefire as a gesture of goodwill.",
 		"author": "Clara Méndez",
@@ -711,7 +711,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "deportes",
+		"cat": "sports",
 		"title": "The women's national team routs its rival and qualifies with authority",
 		"excerpt": "Three first-half goals settle a match that was never in doubt.",
 		"author": "Diego Cano",
@@ -765,7 +765,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "tecnologia",
+		"cat": "technology",
 		"title": "The digital outage exposes the fragility of the cloud",
 		"excerpt": "A six-hour failure hits thousands of services and reopens the debate over dependence.",
 		"author": "Nora Ibáñez",
@@ -828,7 +828,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "politica",
+		"cat": "politics",
 		"title": "A bare-minimum budget deal amid tension",
 		"excerpt": "Social spending is preserved but infrastructure investment is postponed.",
 		"author": "Sara Lores",
@@ -882,7 +882,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "economia",
+		"cat": "economy",
 		"title": "Tourism breaks its all-time revenue record",
 		"excerpt": "Average spending per visitor rises 8% despite a slight drop in overnight stays.",
 		"author": "Lucía Ferrer",
@@ -936,7 +936,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "cultura",
+		"cat": "culture",
 		"title": "The last great master of the artisan craft dies at 91",
 		"excerpt": "He leaves behind a school of disciples who keep a centuries-old technique alive.",
 		"author": "Marta Gil",
@@ -999,7 +999,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "sociedad",
+		"cat": "society",
 		"title": "A study links irregular sleep to school performance",
 		"excerpt": "Researchers call for a later start to the secondary school day.",
 		"author": "Iván Soto",
@@ -1053,7 +1053,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "internacional",
+		"cat": "international",
 		"title": "A tight election opens the door to unprecedented alliances",
 		"excerpt": "The count drags on and no party reaches a majority on its own.",
 		"author": "Clara Méndez",
@@ -1107,7 +1107,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "deportes",
+		"cat": "sports",
 		"title": "The veteran announces his retirement at the end of the season",
 		"excerpt": "He closes a twenty-year career with two continental titles and an untarnished legacy.",
 		"author": "Diego Cano",
@@ -1170,7 +1170,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "tecnologia",
+		"cat": "technology",
 		"title": "Augmented reality reaches the classroom in a pilot program",
 		"excerpt": "Fifty schools test interactive materials in science and geography.",
 		"author": "Nora Ibáñez",
@@ -1224,7 +1224,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "sociedad",
+		"cat": "society",
 		"title": "Volunteers replant the hillside razed by the wildfire",
 		"excerpt": "The grassroots effort plants twenty thousand trees in a single day.",
 		"author": "Iván Soto",
@@ -1287,7 +1287,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "cultura",
+		"cat": "culture",
 		"title": "The independent film festival reveals its lineup",
 		"excerpt": "Forty premieres and a strand devoted to social documentary define this edition.",
 		"author": "Marta Gil",
@@ -1341,7 +1341,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "economia",
+		"cat": "economy",
 		"title": "Small businesses lead job creation this quarter",
 		"excerpt": "Small retail and hospitality account for most of the new contracts.",
 		"author": "Sara Lores",
@@ -1404,7 +1404,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "internacional",
+		"cat": "international",
 		"title": "The G20 summit ends without a deal on poor countries' debt",
 		"excerpt": "The major economies push debt relief to a new technical round next autumn.",
 		"author": "Clara Méndez",
@@ -1467,7 +1467,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "politica",
+		"cat": "politics",
 		"title": "The Constitutional Court unanimously upholds the transparency law",
 		"excerpt": "The ruling clears the last appeal and requires senior officials to publish their agendas.",
 		"author": "Sara Lores",
@@ -1530,7 +1530,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "tecnologia",
+		"cat": "technology",
 		"title": "The first level-4 self-driving cars will be tested on city streets",
 		"excerpt": "The pilot starts with a fleet of thirty vehicles and a safety driver on board.",
 		"author": "Nora Ibáñez",
@@ -1593,7 +1593,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "deportes",
+		"cat": "sports",
 		"title": "The marathon breaks its participation record with twenty thousand runners",
 		"excerpt": "Organizers close registration in record time and weigh raising the cap for next year.",
 		"author": "Diego Cano",
@@ -1656,7 +1656,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "economia",
+		"cat": "economy",
 		"title": "The minimum wage rises 5% after a deal between unions and employers",
 		"excerpt": "The agreement, sealed in the early hours, benefits two and a half million workers.",
 		"author": "Lucía Ferrer",
@@ -1719,7 +1719,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "cultura",
+		"cat": "culture",
 		"title": "The national library digitizes half a million historical documents",
 		"excerpt": "The open archive includes manuscripts, maps and press from the last four centuries.",
 		"author": "Marta Gil",
@@ -1782,7 +1782,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "internacional",
+		"cat": "international",
 		"title": "A migration agreement reshapes the bloc's external borders",
 		"excerpt": "A distribution of applications and a shared reception fund anchor the new pact.",
 		"author": "Clara Méndez",
@@ -1845,7 +1845,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "tecnologia",
+		"cat": "technology",
 		"title": "Quantum computing reaches its first verifiable commercial milestone",
 		"excerpt": "A company demonstrates a real advantage on a logistics problem the industry was watching closely.",
 		"author": "Nora Ibáñez",
@@ -1908,7 +1908,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "sociedad",
+		"cat": "society",
 		"title": "Birth rate rebounds for the first time in a decade, institute says",
 		"excerpt": "Experts attribute the shift to childcare support and subsidized housing.",
 		"author": "Iván Soto",
@@ -1971,7 +1971,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "politica",
+		"cat": "politics",
 		"title": "The city council approves the largest public housing plan in twenty years",
 		"excerpt": "The investment will build eight thousand affordable homes on land now unused.",
 		"author": "Pedro Aranda",
@@ -2034,7 +2034,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "politica",
+		"cat": "politics",
 		"title": "The opposition forces an inquiry into emergency contracts",
 		"excerpt": "The bureau accepts the request after weeks of deadlock and sets a schedule of hearings.",
 		"author": "Sara Lores",
@@ -2097,7 +2097,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "economia",
+		"cat": "economy",
 		"title": "Public debt falls below 100% of GDP for the first time since the pandemic",
 		"excerpt": "Growth and inflation do more for the ratio than spending cuts, analysts warn.",
 		"author": "Lucía Ferrer",
@@ -2143,7 +2143,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "internacional",
+		"cat": "international",
 		"title": "The EU approves the green tariff on steel imports",
 		"excerpt": "The border adjustment mechanism takes effect in January and strains ties with three trade partners.",
 		"author": "Clara Méndez",
@@ -2206,7 +2206,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "deportes",
+		"cat": "sports",
 		"title": "The local cycling team unveils its bid to take on the grand tours",
 		"excerpt": "A doubled budget, eight signings and a declared bet on the velodrome's youth academy.",
 		"author": "Diego Cano",
@@ -2261,7 +2261,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "tecnologia",
+		"cat": "technology",
 		"title": "The public supercomputer opens its queues to small businesses",
 		"excerpt": "A 20% quota of computing hours is reserved for firms with fewer than fifty employees.",
 		"author": "Nora Ibáñez",
@@ -2307,7 +2307,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "cultura",
+		"cat": "culture",
 		"title": "The theater reopens after restoration with a season of classic comedy",
 		"excerpt": "Four years of work restore the 1892 auditorium and add a chamber hall.",
 		"author": "Marta Gil",
@@ -2353,7 +2353,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "sociedad",
+		"cat": "society",
 		"title": "Food banks warn of a critical summer",
 		"excerpt": "Donations fall 18% while the number of families served grows for the third month running.",
 		"author": "Iván Soto",
@@ -2408,7 +2408,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "politica",
+		"cat": "politics",
 		"title": "The Senate returns the coastal law with amendments from three groups",
 		"excerpt": "The text goes back to Congress with changes to boundary lines and the concessions regime.",
 		"author": "Pedro Aranda",
@@ -2454,7 +2454,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "economia",
+		"cat": "economy",
 		"title": "Housing marks its eighth straight quarter of price rises",
 		"excerpt": "The average price climbs 6.2% year on year, with high-pressure cities leading.",
 		"author": "Lucía Ferrer",
@@ -2500,7 +2500,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "internacional",
+		"cat": "international",
 		"title": "The thaw opens a new Arctic trade route and a diplomatic dispute",
 		"excerpt": "Three powers claim passage rights over a corridor that cuts eleven days off Asian freight.",
 		"author": "Clara Méndez",
@@ -2563,7 +2563,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "deportes",
+		"cat": "sports",
 		"title": "The academy takes charge again: five debutants in the first team",
 		"excerpt": "The club turns necessity into a plan and renews its head of youth development.",
 		"author": "Diego Cano",
@@ -2618,7 +2618,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "tecnologia",
+		"cat": "technology",
 		"title": "Telecoms switch on the 6G pilot network in three cities",
 		"excerpt": "The trial, limited to industrial parks, will measure latency for robotics and connected vehicles.",
 		"author": "Nora Ibáñez",
@@ -2664,7 +2664,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "cultura",
+		"cat": "culture",
 		"title": "The book fair closes with record sales and a debate over fixed pricing",
 		"excerpt": "Booksellers cheer the figures and call to protect the maximum discount against the platforms.",
 		"author": "Marta Gil",
@@ -2710,7 +2710,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "sociedad",
+		"cat": "society",
 		"title": "The neighborhood that organized to drive the heatwave out of the classrooms",
 		"excerpt": "Awnings, fans and a neighbor-run watering shift cool the schoolyard by four degrees.",
 		"author": "Iván Soto",
@@ -2765,7 +2765,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "politica",
+		"cat": "politics",
 		"title": "The Ombudsman calls for reform of the immigration rules",
 		"excerpt": "The annual report documents appointment delays of over a year and proposes a fast-track procedure.",
 		"author": "Sara Lores",
@@ -2811,7 +2811,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "economia",
+		"cat": "economy",
 		"title": "Farming records its first profitable harvest in five years",
 		"excerpt": "Spring rain and farm-gate prices give respite to a sector coming off three years of losses.",
 		"author": "Lucía Ferrer",
@@ -2857,7 +2857,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "internacional",
+		"cat": "international",
 		"title": "The humanitarian mission manages to open the southern corridor",
 		"excerpt": "The first forty aid trucks cross after six weeks of negotiation.",
 		"author": "Clara Méndez",
@@ -2912,7 +2912,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "deportes",
+		"cat": "sports",
 		"title": "Local basketball will play in Europe twenty years later",
 		"excerpt": "A final-day win seals a berth the city celebrated into the early hours.",
 		"author": "Diego Cano",
@@ -2958,7 +2958,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "tecnologia",
+		"cat": "technology",
 		"title": "The AI law takes effect with the industry divided",
 		"excerpt": "High-risk systems will have eighteen months to be audited; startups ask for a single point of contact.",
 		"author": "Nora Ibáñez",
@@ -3021,7 +3021,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "cultura",
+		"cat": "culture",
 		"title": "The museum returns the claimed pieces and opens a restitution protocol",
 		"excerpt": "The handover, sealed with a joint ceremony, makes the institution a European reference in the postcolonial debate.",
 		"author": "Marta Gil",
@@ -3076,7 +3076,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "sociedad",
+		"cat": "society",
 		"title": "Pets can now ride the subway at any hour",
 		"excerpt": "The rules scrap the restricted window after a year of trials with no notable incidents.",
 		"author": "Iván Soto",
@@ -3122,7 +3122,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "politica",
+		"cat": "politics",
 		"title": "The map of the youth vote that worries every party",
 		"excerpt": "A five-point breakdown of a generation that decides late, votes differently and stays loyal to no one.",
 		"author": "Sara Lores",
@@ -3149,8 +3149,8 @@
 				"id": "p56-t1",
 				"type": "texto",
 				"config": {
-					"text": "The first takeaway is disintermediation: the political conversation of under-thirties happens on channels where the parties arrive late and with a forced accent. The second, volatility: one in three changed their ballot between the last two elections.",
-					"html": "<p>The first takeaway is disintermediation: the political conversation of under-thirties happens on channels where the parties arrive late and with a forced accent. The second, volatility: one in three changed their ballot between the last two elections.</p>"
+					"text": "The first takeaway is disintermediation: the politicsl conversation of under-thirties happens on channels where the parties arrive late and with a forced accent. The second, volatility: one in three changed their ballot between the last two elections.",
+					"html": "<p>The first takeaway is disintermediation: the politicsl conversation of under-thirties happens on channels where the parties arrive late and with a forced accent. The second, volatility: one in three changed their ballot between the last two elections.</p>"
 				}
 			},
 			{
@@ -3168,7 +3168,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "economia",
+		"cat": "economy",
 		"title": "European funds spent finally top 70%",
 		"excerpt": "The latest tranche is concentrated in small-business digitization and the EV charging network.",
 		"author": "Lucía Ferrer",
@@ -3214,7 +3214,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "internacional",
+		"cat": "international",
 		"title": "The observatory confirms the warmest year on record in the southern hemisphere",
 		"excerpt": "Ocean anomalies double the decade's average and bring the cyclone season forward.",
 		"author": "Clara Méndez",
@@ -3260,7 +3260,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "deportes",
+		"cat": "sports",
 		"title": "The historic rival returns to the women's derby with a sellout guaranteed",
 		"excerpt": "Tickets sell out in five hours and the club weighs opening the overflow stand.",
 		"author": "Diego Cano",
@@ -3315,7 +3315,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "tecnologia",
+		"cat": "technology",
 		"title": "What changes for your phone with the new universal charger",
 		"excerpt": "A practical guide: which devices are left out, what happens to old cables and what to look for when buying.",
 		"author": "Nora Ibáñez",
