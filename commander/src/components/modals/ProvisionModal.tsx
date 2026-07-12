@@ -10,6 +10,7 @@ import {
 import { useStore } from '../../store/store'
 import { useToast } from '../../providers/ToastProvider'
 import type { Plan } from '../../store/types'
+import { slugify, validEmail } from '../../lib/input'
 
 interface Props {
   open: boolean
@@ -29,12 +30,6 @@ interface Props {
   onClose: () => void
   /** Fired after a successful provision (e.g. to refresh / close the empty-state). */
   onProvisioned?: () => void
-}
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-function slug(s: string): string {
-  return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 }
 
 export function ProvisionModal({ open, packageName, plans, planId, lockClientId, onClose, onProvisioned }: Props) {
@@ -80,7 +75,7 @@ export function ProvisionModal({ open, packageName, plans, planId, lockClientId,
   const planError = !selectedPlan ? 'Select a plan' : ''
   const newNameError = clientMode === 'new' && !newName.trim() ? 'Required' : ''
   const newEmailError =
-    clientMode === 'new' ? (!newEmail.trim() ? 'Required' : !EMAIL_RE.test(newEmail) ? 'Invalid email' : '') : ''
+    clientMode === 'new' ? (!newEmail.trim() ? 'Required' : !validEmail(newEmail) ? 'Invalid email' : '') : ''
   const existingError = clientMode === 'existing' && !clientId ? 'Select a client' : ''
   const valid = !planError && !newNameError && !newEmailError && !existingError
 
@@ -89,7 +84,7 @@ export function ProvisionModal({ open, packageName, plans, planId, lockClientId,
     if (!valid || !selectedPlan) return
     setBusy(true)
     try {
-      const pathSlug = slug(pkgSlug) || undefined
+      const pathSlug = slugify(pkgSlug) || undefined
       const input =
         clientMode === 'existing'
           ? { plan_id: selectedPlan.id, client_id: clientId || undefined, slug: pathSlug }
@@ -97,7 +92,7 @@ export function ProvisionModal({ open, packageName, plans, planId, lockClientId,
               plan_id: selectedPlan.id,
               slug: pathSlug,
               client: {
-                slug: slug(newName),
+                slug: slugify(newName),
                 name: newName.trim(),
                 email: newEmail.trim(),
                 billing_email: newBillingEmail.trim() || undefined,

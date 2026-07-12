@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router'
 import {
   Button,
@@ -23,9 +23,10 @@ import { EmptyState } from '../../components/EmptyState'
 import { MethodTag } from '../../components/tags/MethodTag'
 import { KpiCluster, KpiTile } from '../../components/KpiCluster'
 import { timeSeriesOption } from '../../lib/echartsOptions'
-import { rollupsToUsageSeries, type UsageSeries } from '../../lib/chartData'
+import { rollupsToUsageSeries } from '../../lib/chartData'
 import { packagesApi } from '../../lib/api'
 import { formatBytes, formatCompact, formatInt, formatPercent } from '../../lib/format'
+import { useLoad } from '../../hooks/useLoad'
 
 function exportCsv(filename: string, rows: (string | number)[][]) {
   const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
@@ -36,12 +37,6 @@ function exportCsv(filename: string, rows: (string | number)[][]) {
   a.download = filename
   a.click()
   URL.revokeObjectURL(url)
-}
-
-interface UsageLoad {
-  loading: boolean
-  series: UsageSeries | null
-  error: string | null
 }
 
 export function UsageTab() {
@@ -65,29 +60,14 @@ function UsageView({ pkg }: { pkg: Package }) {
   const { theme } = useAppTheme()
   const toast = useToast()
   const [granularity, setGranularity] = useState(0) // 0 = hour, 1 = day
-  const [usage, setUsage] = useState<UsageLoad>({ loading: true, series: null, error: null })
-
   const period = granularity === 0 ? 'hour' : 'day'
-
-  // Pull the deploy's real rollups (read in-process from commander_usage_rollups) on mount + on toggle.
-  useEffect(() => {
-    let cancelled = false
-    setUsage({ loading: true, series: null, error: null })
+  const usage = useLoad(() => {
     const windowMs = granularity === 0 ? 48 * 3_600_000 : 30 * 86_400_000
     const from = new Date(Date.now() - windowMs).toISOString()
-    packagesApi.usage(pkg.name, { period, from })
-      .then((res) => {
-        if (!cancelled) setUsage({ loading: false, series: rollupsToUsageSeries(res.data ?? []), error: null })
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) setUsage({ loading: false, series: null, error: e instanceof Error ? e.message : 'Failed to load usage' })
-      })
-    return () => {
-      cancelled = true
-    }
+    return packagesApi.usage(pkg.name, { period, from }).then((res) => rollupsToUsageSeries(res.data ?? []))
   }, [pkg.name, granularity, period])
 
-  const series = usage.series
+  const series = usage.data
   const hasData = !!series && series.requests.length > 0
   const kpis = series?.kpis
   const endpoints = series?.topEndpoints ?? []

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Button,
   Dropdown,
@@ -10,6 +10,7 @@ import { DataTableShell, type ShellColumn } from '../components/DataTableShell'
 import { EmptyState } from '../components/EmptyState'
 import { MethodTag } from '../components/tags/MethodTag'
 import { useFirstLoad } from '../hooks/useFirstLoad'
+import { useLoad } from '../hooks/useLoad'
 import { platformLogs } from '../lib/api'
 import { formatInt } from '../lib/format'
 import { logTime } from '../lib/time'
@@ -19,12 +20,6 @@ import type { LogEntry } from '../store/types'
 // Sentinel for the "no package filter" Dropdown option (cross-fleet view).
 const ALL_PACKAGES = 'All packages'
 
-interface LogsLoad {
-  loading: boolean
-  logs: LogEntry[] | null
-  error: string | null
-}
-
 // Platform-wide request log: read commander_request_logs in-process (no /control, no proxy). By
 // default we tail every package; the package Dropdown is an optional filter (by package name).
 export function RequestLogs() {
@@ -32,24 +27,11 @@ export function RequestLogs() {
   // null == "All packages" (cross-fleet). A non-null name filters to one package.
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [tick, setTick] = useState(0)
-  const [state, setState] = useState<LogsLoad>({ loading: false, logs: null, error: null })
   const firstLoad = useFirstLoad()
-
-  useEffect(() => {
-    let cancelled = false
-    setState({ loading: true, logs: null, error: null })
-    platformLogs({ limit: 100, ...(selectedId ? { package: selectedId } : {}) })
-      .then((res) => {
-        if (!cancelled) setState({ loading: false, logs: res.data ?? [], error: null })
-      })
-      .catch((e: unknown) => {
-        if (!cancelled)
-          setState({ loading: false, logs: null, error: e instanceof Error ? e.message : 'Failed to load logs' })
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [selectedId, tick])
+  const state = useLoad(
+    () => platformLogs({ limit: 100, ...(selectedId ? { package: selectedId } : {}) }).then((res) => res.data ?? []),
+    [selectedId, tick],
+  )
 
   // El backend filtra logs por package NAME (param `package`), no por subdominio ni id numerico.
   // El dropdown muestra el nombre del package y manda ese mismo nombre como valor.
@@ -60,7 +42,7 @@ export function RequestLogs() {
     ],
     [packages],
   )
-  const logs = state.logs ?? []
+  const logs = state.data ?? []
 
   const columns: ShellColumn<LogEntry>[] = [
     {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { bucketStart, rollupsToUsageSeries, snapshotsToPlatformSeries } from './chartData'
+import { bucketStart, rollupsToUsageSeries, snapshotsToPlatformSeries, snapshotsToSparklines } from './chartData'
 import type { UsageRollup, UsageSnapshot } from '../store/types'
 
 const DAY = 86_400_000
@@ -111,6 +111,11 @@ describe('snapshotsToPlatformSeries', () => {
     expect(s.requests.data).toEqual([])
     expect(s.requests.groups).toEqual(['other'])
     expect(s.errorRate).toEqual([])
+  })
+
+  it('aggregates sparklines by package owner and time bucket', () => {
+    const rows = [snap(1, A, 3), snap(2, A, 4), snap(1, B, 5)]
+    expect(snapshotsToSparklines(rows, new Map([[1, 9], [2, 9]])).get(9)).toEqual([7, 5])
   })
 
   it('buckets daily snapshots by month (year filter) — sums per month, error rate stays a ratio', () => {

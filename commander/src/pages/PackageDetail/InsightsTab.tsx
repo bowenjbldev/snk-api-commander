@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router'
 import {
   ContentSwitcher,
@@ -25,18 +25,13 @@ import { dailyToCodeFrequency, dailyToHeatmap } from '../../lib/chartData'
 import { packagesApi } from '../../lib/api'
 import { formatCompact, formatInt } from '../../lib/format'
 import { formatDateUTC, formatRelative } from '../../lib/time'
+import { useLoad } from '../../hooks/useLoad'
 
 const RANGES = [
   { label: '3 mo', days: 91 },
   { label: '6 mo', days: 182 },
   { label: '12 mo', days: 364 },
 ]
-
-interface InsightsLoad {
-  loading: boolean
-  data: PackageInsights | null
-  error: string | null
-}
 
 export function InsightsTab() {
   const { packageRow } = useOutletContext<PackageContext>()
@@ -58,24 +53,8 @@ export function InsightsTab() {
 function InsightsView({ pkg }: { pkg: Package }) {
   const { theme } = useAppTheme()
   const [rangeIdx, setRangeIdx] = useState(2) // default 12 mo
-  const [state, setState] = useState<InsightsLoad>({ loading: true, data: null, error: null })
-
   const days = RANGES[rangeIdx].days
-
-  useEffect(() => {
-    let cancelled = false
-    setState({ loading: true, data: null, error: null })
-    packagesApi.insights(pkg.name, { days })
-      .then((res) => {
-        if (!cancelled) setState({ loading: false, data: res.data, error: null })
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) setState({ loading: false, data: null, error: e instanceof Error ? e.message : 'Failed to load insights' })
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [pkg.name, days])
+  const state = useLoad<PackageInsights>(() => packagesApi.insights(pkg.name, { days }).then((res) => res.data), [pkg.name, days])
 
   const insights = state.data
   const daily = insights?.daily ?? []

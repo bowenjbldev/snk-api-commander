@@ -288,21 +288,6 @@ body {
   transition: width 0.3s ease;
 }
 
-// ── Status-mix mini-bar ──────────────────────────────────────────────────────
-// Segmented sibling of the quota bar: a client's active/grace/suspended packages
-// as proportional slices. Sharp corners, same 6px weight.
-.scns-statusmix {
-  display: flex;
-  height: 6px;
-  overflow: hidden;
-  background: var(--cds-layer-accent);
-  border-radius: 0;
-}
-.scns-statusmix__seg {
-  height: 100%;
-  display: block;
-}
-
 // ── Bordered card / list ───────────────────────────────────────────────────────
 .scns-card {
   background: var(--cds-layer);

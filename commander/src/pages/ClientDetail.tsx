@@ -16,9 +16,8 @@ import { ClientStatusTag, PackageStatusTag, BillingTag } from '../components/tag
 import { InvoiceFormModal } from '../components/modals/InvoiceFormModal'
 import { formatMonthYear, formatRelative } from '../lib/time'
 import { formatCurrency, formatCurrencyShort, formatCompact, formatPercent } from '../lib/format'
-import type { Client, Invoice, Package, Subscription, PaymentTerms } from '../store/types'
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+import type { Client, Invoice, Package, Subscription } from '../store/types'
+import { clientDraft, clientErrors, clientPayload, type ClientDraft } from '../lib/clientForm'
 // Rail in-card table column templates (narrow ~360px column): same `.scns-cardtable` chrome as the
 // dashboard cards.
 const PKG_COLS = 'minmax(0, 1.2fr) minmax(0, 0.8fr) 52px 84px' // Package · Plan · MRR · Status
@@ -295,81 +294,26 @@ function ClientEditForm({ client, canEdit }: { client: Client; canEdit: boolean 
   const updateClient = useStore((s) => s.updateClient)
   const toast = useToast()
 
-  const [name, setName] = useState(client.name)
-  const [company, setCompany] = useState(client.company ?? '')
-  const [email, setEmail] = useState(client.email)
-  const [phone, setPhone] = useState(client.phone ?? '')
-  const [notes, setNotes] = useState(client.notes ?? '')
-  const [active, setActive] = useState(client.status === 'active')
-  const [billingEmail, setBillingEmail] = useState(client.billing_email ?? '')
-  const [taxId, setTaxId] = useState(client.tax_id ?? '')
-  const [address1, setAddress1] = useState(client.address_line1 ?? '')
-  const [address2, setAddress2] = useState(client.address_line2 ?? '')
-  const [city, setCity] = useState(client.city ?? '')
-  const [postal, setPostal] = useState(client.postal_code ?? '')
-  const [country, setCountry] = useState(client.country ?? '')
-  const [terms, setTerms] = useState<PaymentTerms | ''>(client.payment_terms ?? '')
+  const [draft, setDraft] = useState(() => clientDraft(client))
   const [submitted, setSubmitted] = useState(false)
+  const set = <K extends keyof ClientDraft>(key: K, value: ClientDraft[K]) =>
+    setDraft((current) => ({ ...current, [key]: value }))
+  const { name, company, email, phone, notes, active, billingEmail, taxId, address1, address2, city, postal, country, terms } = draft
 
   const reset = () => {
-    setName(client.name)
-    setCompany(client.company ?? '')
-    setEmail(client.email)
-    setPhone(client.phone ?? '')
-    setNotes(client.notes ?? '')
-    setActive(client.status === 'active')
-    setBillingEmail(client.billing_email ?? '')
-    setTaxId(client.tax_id ?? '')
-    setAddress1(client.address_line1 ?? '')
-    setAddress2(client.address_line2 ?? '')
-    setCity(client.city ?? '')
-    setPostal(client.postal_code ?? '')
-    setCountry(client.country ?? '')
-    setTerms(client.payment_terms ?? '')
+    setDraft(clientDraft(client))
     setSubmitted(false)
   }
 
-  const nameError = !name.trim() ? 'Required' : ''
-  const emailError = !email.trim() ? 'Required' : !EMAIL_RE.test(email) ? 'Enter a valid email' : ''
-  const billingEmailError = billingEmail.trim() && !EMAIL_RE.test(billingEmail) ? 'Enter a valid email' : ''
-  const countryError = country.trim() && country.trim().length !== 2 ? 'Use a 2-letter code' : ''
+  const { name: nameError, email: emailError, billingEmail: billingEmailError, country: countryError } = clientErrors(draft)
   const valid = !nameError && !emailError && !billingEmailError && !countryError
 
-  const dirty =
-    name.trim() !== client.name ||
-    company.trim() !== (client.company ?? '') ||
-    email.trim() !== client.email ||
-    phone.trim() !== (client.phone ?? '') ||
-    notes.trim() !== (client.notes ?? '') ||
-    active !== (client.status === 'active') ||
-    billingEmail.trim() !== (client.billing_email ?? '') ||
-    taxId.trim() !== (client.tax_id ?? '') ||
-    address1.trim() !== (client.address_line1 ?? '') ||
-    address2.trim() !== (client.address_line2 ?? '') ||
-    city.trim() !== (client.city ?? '') ||
-    postal.trim() !== (client.postal_code ?? '') ||
-    country.trim().toUpperCase() !== (client.country ?? '') ||
-    (terms || '') !== (client.payment_terms ?? '')
+  const dirty = JSON.stringify(clientPayload(draft)) !== JSON.stringify(clientPayload(clientDraft(client)))
 
   const save = () => {
     setSubmitted(true)
     if (!valid) return
-    updateClient(client.id, {
-      name: name.trim(),
-      company: company.trim(),
-      email: email.trim(),
-      phone: phone.trim() || undefined,
-      notes: notes.trim() || undefined,
-      status: active ? 'active' : 'inactive',
-      billing_email: billingEmail.trim() || null,
-      tax_id: taxId.trim() || null,
-      address_line1: address1.trim() || null,
-      address_line2: address2.trim() || null,
-      city: city.trim() || null,
-      postal_code: postal.trim() || null,
-      country: country.trim().toUpperCase() || null,
-      payment_terms: (terms || null) as PaymentTerms | null,
-    })
+    updateClient(client.id, clientPayload(draft))
     setSubmitted(false)
     toast.success('Client updated', name.trim())
   }
@@ -392,23 +336,23 @@ function ClientEditForm({ client, canEdit }: { client: Client; canEdit: boolean 
     >
       <p className="scns-section-label">Contact</p>
       <div className="scns-form-grid">
-        <TextInput id="cd-name" labelText="Name" value={name} disabled={ro} onChange={(e) => setName(e.target.value)} invalid={submitted && !!nameError} invalidText={nameError} />
-        <TextInput id="cd-company" labelText="Company" value={company} disabled={ro} onChange={(e) => setCompany(e.target.value)} />
-        <TextInput id="cd-email" labelText="Email" value={email} disabled={ro} onChange={(e) => setEmail(e.target.value)} invalid={submitted && !!emailError} invalidText={emailError} />
-        <TextInput id="cd-phone" labelText="Phone (optional)" value={phone} disabled={ro} onChange={(e) => setPhone(e.target.value)} />
-        <TextArea id="cd-notes" labelText="Notes (optional)" rows={4} value={notes} disabled={ro} onChange={(e) => setNotes(e.target.value)} />
+        <TextInput id="cd-name" labelText="Name" value={name} disabled={ro} onChange={(e) => set('name', e.target.value)} invalid={submitted && !!nameError} invalidText={nameError} />
+        <TextInput id="cd-company" labelText="Company" value={company} disabled={ro} onChange={(e) => set('company', e.target.value)} />
+        <TextInput id="cd-email" labelText="Email" value={email} disabled={ro} onChange={(e) => set('email', e.target.value)} invalid={submitted && !!emailError} invalidText={emailError} />
+        <TextInput id="cd-phone" labelText="Phone (optional)" value={phone} disabled={ro} onChange={(e) => set('phone', e.target.value)} />
+        <TextArea id="cd-notes" labelText="Notes (optional)" rows={4} value={notes} disabled={ro} onChange={(e) => set('notes', e.target.value)} />
       </div>
 
       <p className="scns-section-label" style={{ marginTop: 32 }}>Billing</p>
       <div className="scns-form-grid">
-        <TextInput id="cd-billing-email" labelText="Billing email (optional)" value={billingEmail} disabled={ro} onChange={(e) => setBillingEmail(e.target.value)} invalid={submitted && !!billingEmailError} invalidText={billingEmailError} />
-        <TextInput id="cd-tax" labelText="Tax / VAT ID (optional)" value={taxId} disabled={ro} onChange={(e) => setTaxId(e.target.value)} />
-        <TextInput id="cd-addr1" labelText="Address line 1 (optional)" value={address1} disabled={ro} onChange={(e) => setAddress1(e.target.value)} />
-        <TextInput id="cd-addr2" labelText="Address line 2 (optional)" value={address2} disabled={ro} onChange={(e) => setAddress2(e.target.value)} />
-        <TextInput id="cd-city" labelText="City (optional)" value={city} disabled={ro} onChange={(e) => setCity(e.target.value)} />
-        <TextInput id="cd-postal" labelText="Postal code (optional)" value={postal} disabled={ro} onChange={(e) => setPostal(e.target.value)} />
-        <TextInput id="cd-country" labelText="Country (ISO-2)" value={country} disabled={ro} onChange={(e) => setCountry(e.target.value)} invalid={submitted && !!countryError} invalidText={countryError} />
-        <Select id="cd-terms" labelText="Payment terms (optional)" value={terms} disabled={ro} onChange={(e) => setTerms(e.target.value as PaymentTerms | '')}>
+        <TextInput id="cd-billing-email" labelText="Billing email (optional)" value={billingEmail} disabled={ro} onChange={(e) => set('billingEmail', e.target.value)} invalid={submitted && !!billingEmailError} invalidText={billingEmailError} />
+        <TextInput id="cd-tax" labelText="Tax / VAT ID (optional)" value={taxId} disabled={ro} onChange={(e) => set('taxId', e.target.value)} />
+        <TextInput id="cd-addr1" labelText="Address line 1 (optional)" value={address1} disabled={ro} onChange={(e) => set('address1', e.target.value)} />
+        <TextInput id="cd-addr2" labelText="Address line 2 (optional)" value={address2} disabled={ro} onChange={(e) => set('address2', e.target.value)} />
+        <TextInput id="cd-city" labelText="City (optional)" value={city} disabled={ro} onChange={(e) => set('city', e.target.value)} />
+        <TextInput id="cd-postal" labelText="Postal code (optional)" value={postal} disabled={ro} onChange={(e) => set('postal', e.target.value)} />
+        <TextInput id="cd-country" labelText="Country (ISO-2)" value={country} disabled={ro} onChange={(e) => set('country', e.target.value)} invalid={submitted && !!countryError} invalidText={countryError} />
+        <Select id="cd-terms" labelText="Payment terms (optional)" value={terms} disabled={ro} onChange={(e) => set('terms', e.target.value as ClientDraft['terms'])}>
           <SelectItem value="" text="—" />
           <SelectItem value="prepaid" text="Prepaid" />
           <SelectItem value="net_15" text="Net 15" />
@@ -418,7 +362,7 @@ function ClientEditForm({ client, canEdit }: { client: Client; canEdit: boolean 
       </div>
 
       <div style={{ marginTop: 24 }}>
-        <Toggle id="cd-active" labelText="Status" labelA="Inactive" labelB="Active" toggled={active} disabled={ro} onToggle={setActive} />
+        <Toggle id="cd-active" labelText="Status" labelA="Inactive" labelB="Active" toggled={active} disabled={ro} onToggle={(value) => set('active', value)} />
       </div>
     </Card>
 
@@ -433,4 +377,3 @@ function ClientEditForm({ client, canEdit }: { client: Client; canEdit: boolean 
     </>
   )
 }
-

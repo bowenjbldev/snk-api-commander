@@ -3,6 +3,7 @@ import { Modal, NumberInput, TextArea, TextInput, Toggle } from '@carbon/react'
 import { useStore } from '../../store/store'
 import { useToast } from '../../providers/ToastProvider'
 import type { Plan } from '../../store/types'
+import { planDraft, planPayload, type PlanDraft } from '../../lib/planForm'
 
 interface Props {
   open: boolean
@@ -13,43 +14,20 @@ interface Props {
   onClose: () => void
 }
 
-function slug(s: string): string {
-  return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-}
-
-// '' (blank) → unlimited (null); a number → that limit.
-function numOrNull(v: string): number | null {
-  const t = v.trim()
-  if (t === '') return null
-  const n = Number(t)
-  return Number.isFinite(n) && n >= 0 ? Math.round(n) : null
-}
-
 export function PlanFormModal({ open, mode, plan, packageName, onClose }: Props) {
   const addPlan = useStore((s) => s.addPlan)
   const updatePlan = useStore((s) => s.updatePlan)
   const toast = useToast()
 
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [price, setPrice] = useState('0')
-  const [qReq, setQReq] = useState('')
-  const [qDb, setQDb] = useState('')
-  const [qStorage, setQStorage] = useState('')
-  const [qUsers, setQUsers] = useState('')
-  const [active, setActive] = useState(true)
+  const [draft, setDraft] = useState(planDraft)
   const [submitted, setSubmitted] = useState(false)
+  const set = <K extends keyof PlanDraft>(key: K, value: PlanDraft[K]) =>
+    setDraft((current) => ({ ...current, [key]: value }))
+  const { name, description, price, qReq, qDb, qStorage, qUsers, active } = draft
 
   useEffect(() => {
     if (open) {
-      setName(plan?.name ?? '')
-      setDescription(plan?.description ?? '')
-      setPrice(String(plan?.price_monthly ?? 0))
-      setQReq(plan?.q_requests_day != null ? String(plan.q_requests_day) : '')
-      setQDb(plan?.q_disk_db_mb != null ? String(plan.q_disk_db_mb) : '')
-      setQStorage(plan?.q_disk_storage_mb != null ? String(plan.q_disk_storage_mb) : '')
-      setQUsers(plan?.q_users_total != null ? String(plan.q_users_total) : '')
-      setActive(plan ? plan.status === 'active' : true)
+      setDraft(planDraft(plan))
       setSubmitted(false)
     }
   }, [open, plan])
@@ -62,32 +40,12 @@ export function PlanFormModal({ open, mode, plan, packageName, onClose }: Props)
   const submit = () => {
     setSubmitted(true)
     if (!valid) return
-    const quotas = {
-      q_requests_day: numOrNull(qReq),
-      q_disk_db_mb: numOrNull(qDb),
-      q_disk_storage_mb: numOrNull(qStorage),
-      q_users_total: numOrNull(qUsers),
-    }
+    const payload = planPayload(packageName, draft)
     if (mode === 'edit' && plan) {
-      updatePlan(plan.id, {
-        package: packageName,
-        name: name.trim(),
-        description: description.trim() || null,
-        price_monthly: Number(price) || 0,
-        status: active ? 'active' : 'inactive',
-        ...quotas,
-      })
+      updatePlan(plan.id, payload)
       toast.success('Plan updated', `${packageName} · ${name.trim()}`)
     } else {
-      addPlan({
-        slug: `${slug(packageName)}-${slug(name)}`,
-        package: packageName,
-        name: name.trim(),
-        description: description.trim() || null,
-        price_monthly: Number(price) || 0,
-        status: active ? 'active' : 'inactive',
-        ...quotas,
-      })
+      addPlan(payload)
       toast.success('Plan created', `${packageName} · ${name.trim()}`)
     }
     onClose()
@@ -112,19 +70,19 @@ export function PlanFormModal({ open, mode, plan, packageName, onClose }: Props)
           readOnly
           disabled
         />
-        <TextInput id="pl-name" labelText="Plan name" placeholder="Pro" value={name} onChange={(e) => setName(e.target.value)} invalid={submitted && !!nameError} invalidText={nameError} />
-        <TextArea id="pl-desc" labelText="Description (optional)" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
-        <TextInput id="pl-price" labelText="Price / month" type="number" value={price} onChange={(e) => setPrice(e.target.value)} />
+        <TextInput id="pl-name" labelText="Plan name" placeholder="Pro" value={name} onChange={(e) => set('name', e.target.value)} invalid={submitted && !!nameError} invalidText={nameError} />
+        <TextArea id="pl-desc" labelText="Description (optional)" rows={2} value={description} onChange={(e) => set('description', e.target.value)} />
+        <TextInput id="pl-price" labelText="Price / month" type="number" value={price} onChange={(e) => set('price', e.target.value)} />
 
         <div className="scns-helper" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '.04em', marginTop: 8 }}>
           Default quota limits · blank = unlimited
         </div>
-        <NumberInput id="pl-q-req" label="Requests / day" hideSteppers value={qReq} onChange={(_e, { value }) => setQReq(String(value ?? ''))} />
-        <NumberInput id="pl-q-db" label="DB size (MB)" hideSteppers value={qDb} onChange={(_e, { value }) => setQDb(String(value ?? ''))} />
-        <NumberInput id="pl-q-storage" label="Storage (MB)" hideSteppers value={qStorage} onChange={(_e, { value }) => setQStorage(String(value ?? ''))} />
-        <NumberInput id="pl-q-users" label="Users total" hideSteppers value={qUsers} onChange={(_e, { value }) => setQUsers(String(value ?? ''))} />
+        <NumberInput id="pl-q-req" label="Requests / day" hideSteppers value={qReq} onChange={(_e, { value }) => set('qReq', String(value ?? ''))} />
+        <NumberInput id="pl-q-db" label="DB size (MB)" hideSteppers value={qDb} onChange={(_e, { value }) => set('qDb', String(value ?? ''))} />
+        <NumberInput id="pl-q-storage" label="Storage (MB)" hideSteppers value={qStorage} onChange={(_e, { value }) => set('qStorage', String(value ?? ''))} />
+        <NumberInput id="pl-q-users" label="Users total" hideSteppers value={qUsers} onChange={(_e, { value }) => set('qUsers', String(value ?? ''))} />
 
-        <Toggle id="pl-active" labelText="Status" labelA="Inactive" labelB="Active" toggled={active} onToggle={setActive} />
+        <Toggle id="pl-active" labelText="Status" labelA="Inactive" labelB="Active" toggled={active} onToggle={(value) => set('active', value)} />
       </div>
     </Modal>
   )

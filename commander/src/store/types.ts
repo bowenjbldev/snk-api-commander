@@ -277,3 +277,24 @@ export interface RecentCommit extends GitCommit {
   package: string | null // package name (business key, for the /packages link)
   package_label: string | null
 }
+
+export interface Dataset {
+  clients: Client[]
+  packages: Package[]
+  subscriptions: Subscription[]
+  invoices: Invoice[]
+  quotas: QuotaMetric[]
+  plans: Plan[]
+  logs: LogEntry[]
+  activity: ActivityEvent[]
+  commits: RecentCommit[]
+  settings: OperatorSettings
+  dashboard: {
+    requests_24h: number
+    requests_delta: number
+    error_rate: number
+    error_rate_delta: number
+    mrr: number
+    mrr_delta: number
+  }
+}

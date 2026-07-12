@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { create } from 'zustand'
-import type { Dataset } from './fixtures'
 import { activity, applyPackageState, nextId, type StateOpts } from './transitions'
+import { slugify } from '../lib/input'
 import { api, packagesApi, platformCommits, settingsApi } from '../lib/api'
 import type {
   ActivityEvent,
@@ -13,6 +13,7 @@ import type {
   Plan,
   QuotaMetric,
   Subscription,
+  Dataset,
 } from './types'
 
 /** Payload for the client-first provisioning flow (POST /provisioning). */
@@ -130,14 +131,6 @@ const initial: Dataset = {
   },
 }
 
-function slug(name: string): string {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
-}
-
 // Next sequential invoice number (INV-YYYY-NNNN) — el handle de negocio. El backend exige `number`
 // único en POST /invoices y asigna el id (bigint); el panel lo deriva del max de los cargados.
 function nextInvoiceNumber(invoices: Invoice[]): string {
@@ -192,8 +185,24 @@ export const useStore = create<StoreState>((set, get) => {
       ),
     }))
 
+  const changeState = (
+    name: string,
+    status: Package['status'],
+    opts: StateOpts,
+    request: () => Promise<Package>,
+  ) => {
+    applyLocalState(name, status, opts)
+    const kind = status === 'active' ? 'resume' : status === 'suspended' ? 'suspend' : 'grace'
+    set((s) => ({ activity: [activity(kind, { package_id: pkgId(name), reason: opts.reason }), ...s.activity] }))
+    persist(request(), reconcilePackage(name))
+  }
+
   const replaceInvoice = (i: Invoice) =>
     set((s) => ({ invoices: s.invoices.map((x) => (x.id === i.id ? i : x)) }))
+  const patchInvoice = (id: number, patch: Partial<Invoice>) => {
+    set((s) => ({ invoices: s.invoices.map((i) => (i.id === id ? { ...i, ...patch } : i)) }))
+    persist(api<Invoice>(`/invoices/${id}`, { method: 'PATCH', body: patch }), replaceInvoice)
+  }
   // addInvoice: reconcilia por `number` (el id bigint lo asigna el servidor).
   const upsertInvoiceByNumber = (i: Invoice) =>
     set((s) => ({
@@ -272,49 +281,24 @@ export const useStore = create<StoreState>((set, get) => {
     },
 
     suspend: (name, input) => {
-      applyLocalState(name, 'suspended', {
-        reason: input.reason,
-        message: input.message,
-      })
-      set((s) => ({
-        activity: [
-          activity('suspend', { package_id: pkgId(name), reason: input.reason }),
-          ...s.activity,
-        ],
-      }))
-      persist(
-        packagesApi.suspend(name, { reason: input.reason, message: input.message ?? null }),
-        reconcilePackage(name),
+      changeState(
+        name, 'suspended', input,
+        () => packagesApi.suspend(name, { reason: input.reason, message: input.message ?? null }),
       )
     },
 
     grace: (name, input) => {
-      applyLocalState(name, 'grace', {
-        reason: input.reason,
-        message: input.message,
-        grace_until: input.grace_until,
-      })
-      set((s) => ({
-        activity: [
-          activity('grace', { package_id: pkgId(name), reason: input.reason }),
-          ...s.activity,
-        ],
-      }))
-      persist(
-        packagesApi.grace(name, {
+      changeState(
+        name, 'grace', input,
+        () => packagesApi.grace(name, {
           reason: input.reason,
           message: input.message ?? null,
           grace_until: input.grace_until,
         }),
-        reconcilePackage(name),
       )
     },
 
-    resume: (name) => {
-      applyLocalState(name, 'active', {})
-      set((s) => ({ activity: [activity('resume', { package_id: pkgId(name) }), ...s.activity] }))
-      persist(packagesApi.resume(name), reconcilePackage(name))
-    },
+    resume: (name) => changeState(name, 'active', {}, () => packagesApi.resume(name)),
 
     changePlan: (name, planId) => {
       const pkg = get().packages.find((p) => p.name === name)
@@ -412,27 +396,15 @@ export const useStore = create<StoreState>((set, get) => {
     },
 
     markInvoiceOverdue: (invoiceId) => {
-      set((s) => ({
-        invoices: s.invoices.map((i) => (i.id === invoiceId ? { ...i, status: 'overdue' } : i)),
-      }))
-      persist(
-        api<Invoice>(`/invoices/${invoiceId}`, { method: 'PATCH', body: { status: 'overdue' } }),
-        replaceInvoice,
-      )
+      patchInvoice(invoiceId, { status: 'overdue' })
     },
 
     setInvoiceEnforcement: (invoiceId, enforcement) => {
-      set((s) => ({
-        invoices: s.invoices.map((i) => (i.id === invoiceId ? { ...i, enforcement } : i)),
-      }))
-      persist(
-        api<Invoice>(`/invoices/${invoiceId}`, { method: 'PATCH', body: { enforcement } }),
-        replaceInvoice,
-      )
+      patchInvoice(invoiceId, { enforcement })
     },
 
     addClient: (client) => {
-      const slugVal = slug(client.name) || nextId('client')
+      const slugVal = slugify(client.name) || nextId('client')
       const tempId = -Date.now() // id temporal (negativo) hasta que el server asigne el bigint real
       set((s) => ({
         clients: [...s.clients, { ...client, id: tempId, slug: slugVal, created_at: new Date().toISOString() }],
@@ -541,8 +513,7 @@ export const useStore = create<StoreState>((set, get) => {
     },
 
     updateInvoice: (id, patch) => {
-      set((s) => ({ invoices: s.invoices.map((i) => (i.id === id ? { ...i, ...patch } : i)) }))
-      persist(api<Invoice>(`/invoices/${id}`, { method: 'PATCH', body: patch }), replaceInvoice)
+      patchInvoice(id, patch)
     },
 
     deleteInvoice: (id) => {
@@ -581,15 +552,6 @@ export const useStore = create<StoreState>((set, get) => {
 })
 
 // ── Convenience selectors ──────────────────────────────────────────────────────
-export const usePackage = (name: string | undefined): Package | undefined =>
-  useStore((s) => (name ? s.packages.find((p) => p.name === name) : undefined))
-
-// The package row only if it has a live instance (provisioned), else undefined.
-export const useProvisionedPackage = (name: string | undefined): Package | undefined =>
-  useStore((s) =>
-    name ? s.packages.find((p) => p.name === name && p.provisioned_at != null) : undefined,
-  )
-
 // All live provisioned package rows, as a stable array.
 export function useProvisionedPackages(): Package[] {
   const packages = useStore((s) => s.packages)

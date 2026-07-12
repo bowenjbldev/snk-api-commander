@@ -144,6 +144,23 @@ export interface PlatformSeries {
   errorRate: Point[] // groups '4xx' | '5xx' (each as % of bucket requests)
 }
 
+export function snapshotsToSparklines(
+  snapshots: UsageSnapshot[],
+  ownerByPackage?: ReadonlyMap<number, number | null>,
+): Map<number, number[]> {
+  const buckets = [...new Set(snapshots.map((s) => s.period_start))].sort()
+  const index = new Map(buckets.map((bucket, i) => [bucket, i]))
+  const series = new Map<number, number[]>()
+  for (const snapshot of snapshots) {
+    const owner = ownerByPackage ? ownerByPackage.get(snapshot.package_id) : snapshot.package_id
+    if (owner == null) continue
+    const values = series.get(owner) ?? new Array(buckets.length).fill(0)
+    values[index.get(snapshot.period_start)!] += Number(snapshot.request_count)
+    series.set(owner, values)
+  }
+  return series
+}
+
 export function snapshotsToPlatformSeries(snapshots: UsageSnapshot[], packageLabels: ReadonlyMap<number, string> = new Map(), bucket: Bucket = 'hour'): PlatformSeries {
   // Pick the top-4 packages by total requests; everything else folds into 'other'.
   // Keyed by numeric package_id internally; chart labels use operator-facing package names.

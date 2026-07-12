@@ -3,18 +3,7 @@ import { FormGroup, NumberInput, Stack, TextArea, TextInput, Toggle } from '@car
 import { useStore } from '../store/store'
 import { useToast } from '../providers/ToastProvider'
 import { CreatePanel } from './CreatePanel'
-
-function slug(s: string): string {
-  return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-}
-
-// '' (blank) → unlimited (null); a number → that limit.
-function numOrNull(v: string): number | null {
-  const t = v.trim()
-  if (t === '') return null
-  const n = Number(t)
-  return Number.isFinite(n) && n >= 0 ? Math.round(n) : null
-}
+import { planDraft, planPayload, type PlanDraft } from '../lib/planForm'
 
 // Create-plan flow in the canonical Carbon Side panel (CreateSidePanel via CreatePanel): a
 // single-column form that slides in from the right. Same field set + validation as the old modal.
@@ -31,21 +20,16 @@ export function PlanCreatePanel({
   const addPlan = useStore((s) => s.addPlan)
   const toast = useToast()
 
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [price, setPrice] = useState('0')
-  const [qReq, setQReq] = useState('')
-  const [qDb, setQDb] = useState('')
-  const [qStorage, setQStorage] = useState('')
-  const [qUsers, setQUsers] = useState('')
-  const [active, setActive] = useState(true)
+  const [draft, setDraft] = useState(planDraft)
   const [submitted, setSubmitted] = useState(false)
+  const set = <K extends keyof PlanDraft>(key: K, value: PlanDraft[K]) =>
+    setDraft((current) => ({ ...current, [key]: value }))
+  const { name, description, price, qReq, qDb, qStorage, qUsers, active } = draft
 
   // Stays mounted to slide out, so reset the form once closed (fresh form on reopen).
   useEffect(() => {
     if (open) return
-    setName(''); setDescription(''); setPrice('0'); setQReq(''); setQDb('')
-    setQStorage(''); setQUsers(''); setActive(true); setSubmitted(false)
+    setDraft(planDraft()); setSubmitted(false)
   }, [open])
 
   const nameError = !name.trim() ? 'Required' : ''
@@ -54,18 +38,7 @@ export function PlanCreatePanel({
   const submit = () => {
     setSubmitted(true)
     if (!valid) return
-    addPlan({
-      slug: `${slug(packageName)}-${slug(name)}`,
-      package: packageName,
-      name: name.trim(),
-      description: description.trim() || null,
-      price_monthly: Number(price) || 0,
-      status: active ? 'active' : 'inactive',
-      q_requests_day: numOrNull(qReq),
-      q_disk_db_mb: numOrNull(qDb),
-      q_disk_storage_mb: numOrNull(qStorage),
-      q_users_total: numOrNull(qUsers),
-    })
+    addPlan(planPayload(packageName, draft))
     toast.success('Plan created', `${packageName} · ${name.trim()}`)
     onClose()
   }
@@ -86,23 +59,23 @@ export function PlanCreatePanel({
           labelText="Plan name"
           placeholder="Pro"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => set('name', e.target.value)}
           invalid={submitted && !!nameError}
           invalidText={nameError}
         />
-        <TextArea id="pc-desc" labelText="Description (optional)" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
-        <NumberInput id="pc-price" label="Price / month" hideSteppers min={0} value={price} onChange={(_e, { value }) => setPrice(String(value ?? ''))} />
+        <TextArea id="pc-desc" labelText="Description (optional)" rows={2} value={description} onChange={(e) => set('description', e.target.value)} />
+        <NumberInput id="pc-price" label="Price / month" hideSteppers min={0} value={price} onChange={(_e, { value }) => set('price', String(value ?? ''))} />
 
         <FormGroup legendText="Default quota limits · blank = unlimited">
           <Stack gap={5}>
-            <NumberInput id="pc-q-req" label="Requests / day" hideSteppers value={qReq} onChange={(_e, { value }) => setQReq(String(value ?? ''))} />
-            <NumberInput id="pc-q-db" label="DB size (MB)" hideSteppers value={qDb} onChange={(_e, { value }) => setQDb(String(value ?? ''))} />
-            <NumberInput id="pc-q-storage" label="Storage (MB)" hideSteppers value={qStorage} onChange={(_e, { value }) => setQStorage(String(value ?? ''))} />
-            <NumberInput id="pc-q-users" label="Users total" hideSteppers value={qUsers} onChange={(_e, { value }) => setQUsers(String(value ?? ''))} />
+            <NumberInput id="pc-q-req" label="Requests / day" hideSteppers value={qReq} onChange={(_e, { value }) => set('qReq', String(value ?? ''))} />
+            <NumberInput id="pc-q-db" label="DB size (MB)" hideSteppers value={qDb} onChange={(_e, { value }) => set('qDb', String(value ?? ''))} />
+            <NumberInput id="pc-q-storage" label="Storage (MB)" hideSteppers value={qStorage} onChange={(_e, { value }) => set('qStorage', String(value ?? ''))} />
+            <NumberInput id="pc-q-users" label="Users total" hideSteppers value={qUsers} onChange={(_e, { value }) => set('qUsers', String(value ?? ''))} />
           </Stack>
         </FormGroup>
 
-        <Toggle id="pc-active" labelText="Status" labelA="Inactive" labelB="Active" toggled={active} onToggle={setActive} />
+        <Toggle id="pc-active" labelText="Status" labelA="Inactive" labelB="Active" toggled={active} onToggle={(value) => set('active', value)} />
       </Stack>
     </CreatePanel>
   )

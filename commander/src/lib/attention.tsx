@@ -3,22 +3,7 @@ import { useStore, useProvisionedPackages } from '../store/store'
 import { GraceCountdown } from '../components/GraceCountdown'
 import { formatCurrency, formatPercent } from './format'
 
-// Shared status tone for the dense triage rows. The tint tokens carry both themes, so a pill stays
-// legible in g100 and g10 (and in the always-dark header).
 export type Tone = 'red' | 'amber' | 'green' | 'blue'
-
-export function toneTint(tone: Tone): { bg: string; fg: string } {
-  switch (tone) {
-    case 'red':
-      return { bg: 'var(--scns-tag-red-bg)', fg: 'var(--scns-tag-red-text)' }
-    case 'amber':
-      return { bg: 'var(--scns-amber-bg)', fg: 'var(--scns-amber-text)' }
-    case 'green':
-      return { bg: 'var(--scns-method-green-bg)', fg: 'var(--scns-method-green-text)' }
-    case 'blue':
-      return { bg: 'var(--scns-method-blue-bg)', fg: 'var(--scns-method-blue-text)' }
-  }
-}
 
 export interface AttentionItem {
   id: string

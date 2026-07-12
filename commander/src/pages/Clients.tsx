@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Dropdown, Button, Tag } from '@carbon/react'
 import { Add, UserMultiple, CheckmarkOutline, Box, Money, WarningAlt, Close } from '@carbon/icons-react'
@@ -14,8 +14,10 @@ import { RelativeTime } from '../components/RelativeTime'
 import { useFirstLoad } from '../hooks/useFirstLoad'
 import { ClientCreatePanel } from '../components/ClientCreatePanel'
 import { platformUsage } from '../lib/api'
+import { snapshotsToSparklines } from '../lib/chartData'
+import { useLoad } from '../hooks/useLoad'
 import { formatCurrencyShort, formatCompact } from '../lib/format'
-import type { Client, UsageSnapshot } from '../store/types'
+import type { Client } from '../store/types'
 
 type StatusMix = { active: number; grace: number; suspended: number }
 
@@ -81,33 +83,11 @@ export function Clients() {
   // Per-client 48h request sparkline series — aggregated from the platform usage snapshot feed
   // (same async one-shot the Dashboard uses; kept in local state, not the store). Each snapshot's
   // package_id is mapped to its owning client and accumulated into a time-ordered bucket array.
-  const [spark, setSpark] = useState<Map<number, number[]>>(new Map())
-  useEffect(() => {
-    let cancelled = false
-    const pkgClient = new Map(packages.map((p) => [p.id, p.client_id]))
-    platformUsage({ period: 'hour', hours: 48 })
-      .then((res) => {
-        if (cancelled) return
-        const snaps: UsageSnapshot[] = res.data ?? []
-        const buckets = [...new Set(snaps.map((s) => s.period_start))].sort()
-        const idx = new Map(buckets.map((b, i) => [b, i]))
-        const next = new Map<number, number[]>()
-        for (const s of snaps) {
-          const clientId = pkgClient.get(s.package_id)
-          if (clientId == null) continue
-          const arr = next.get(clientId) ?? new Array(buckets.length).fill(0)
-          arr[idx.get(s.period_start)!] += Number(s.request_count || 0)
-          next.set(clientId, arr)
-        }
-        setSpark(next)
-      })
-      .catch(() => {
-        if (!cancelled) setSpark(new Map())
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [packages])
+  const pkgClient = useMemo(() => new Map(packages.map((p) => [p.id, p.client_id])), [packages])
+  const spark = useLoad(
+    () => platformUsage({ period: 'hour', hours: 48 }).then((res) => snapshotsToSparklines(res.data ?? [], pkgClient)),
+    [pkgClient],
+  ).data ?? new Map()
 
   // MRR per client = current subscription terms (ended_at == null), excluding overdue —
   // same rule the Dashboard MRR uses (store.ts loadData).
@@ -405,4 +385,3 @@ export function Clients() {
     </div>
   )
 }
-

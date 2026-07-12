@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useOutletContext, Link } from 'react-router'
 import {
   Button,
@@ -12,19 +12,14 @@ import {
   TableRow,
 } from '@carbon/react'
 import { Renew } from '@carbon/icons-react'
-import type { Package, LogEntry, PackageContext } from '../../store/types'
+import type { Package, PackageContext } from '../../store/types'
 import { EmptyState } from '../../components/EmptyState'
 import { MethodTag } from '../../components/tags/MethodTag'
 import { packagesApi } from '../../lib/api'
 import { formatInt } from '../../lib/format'
 import { logTime } from '../../lib/time'
 import { statusColor } from '../../lib/statusColor'
-
-interface LogsLoad {
-  loading: boolean
-  logs: LogEntry[] | null
-  error: string | null
-}
+import { useLoad } from '../../hooks/useLoad'
 
 export function LogsTab() {
   const { packageRow } = useOutletContext<PackageContext>()
@@ -44,25 +39,8 @@ export function LogsTab() {
 // Real recent requests for this package — read in-process from commander_request_logs.
 function LogsView({ pkg }: { pkg: Package }) {
   const [tick, setTick] = useState(0)
-  const [state, setState] = useState<LogsLoad>({ loading: true, logs: null, error: null })
-
-  useEffect(() => {
-    let cancelled = false
-    setState({ loading: true, logs: null, error: null })
-    packagesApi.logs(pkg.name, { limit: 50 })
-      .then((res) => {
-        if (!cancelled) setState({ loading: false, logs: res.data ?? [], error: null })
-      })
-      .catch((e: unknown) => {
-        if (!cancelled)
-          setState({ loading: false, logs: null, error: e instanceof Error ? e.message : 'Failed to load logs' })
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [pkg.name, tick])
-
-  const logs = state.logs ?? []
+  const state = useLoad(() => packagesApi.logs(pkg.name, { limit: 50 }).then((res) => res.data ?? []), [pkg.name, tick])
+  const logs = state.data ?? []
 
   return (
     <div>

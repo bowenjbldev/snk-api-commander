@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { Dropdown, Button, Tag } from '@carbon/react'
 import { Box, CheckmarkOutline, Time, PauseOutline, Activity, Money, Close, Add } from '@carbon/icons-react'
@@ -14,9 +14,11 @@ import { RelativeTime } from '../components/RelativeTime'
 import { Delta } from '../components/Delta'
 import { useFirstLoad } from '../hooks/useFirstLoad'
 import { platformUsage } from '../lib/api'
+import { snapshotsToSparklines } from '../lib/chartData'
+import { useLoad } from '../hooks/useLoad'
 import { formatCountdownShort, msUntil } from '../lib/time'
 import { formatCompact, formatCurrencyShort } from '../lib/format'
-import type { Package, UsageSnapshot } from '../store/types'
+import type { Package } from '../store/types'
 
 const PROV_ITEMS = [
   { id: 'all', label: 'Provisioned: All' },
@@ -111,30 +113,10 @@ export function Packages() {
 
   // Per-package 48h request sparkline series — straight from the platform usage feed (keyed by
   // package_id, no aggregation needed). Local state, like the Dashboard / Clients.
-  const [spark, setSpark] = useState<Map<number, number[]>>(new Map())
-  useEffect(() => {
-    let cancelled = false
-    platformUsage({ period: 'hour', hours: 48 })
-      .then((res) => {
-        if (cancelled) return
-        const snaps: UsageSnapshot[] = res.data ?? []
-        const buckets = [...new Set(snaps.map((s) => s.period_start))].sort()
-        const idx = new Map(buckets.map((b, i) => [b, i]))
-        const next = new Map<number, number[]>()
-        for (const s of snaps) {
-          const arr = next.get(s.package_id) ?? new Array(buckets.length).fill(0)
-          arr[idx.get(s.period_start)!] += Number(s.request_count || 0)
-          next.set(s.package_id, arr)
-        }
-        setSpark(next)
-      })
-      .catch(() => {
-        if (!cancelled) setSpark(new Map())
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const spark = useLoad(
+    () => platformUsage({ period: 'hour', hours: 48 }).then((res) => snapshotsToSparklines(res.data ?? [])),
+    [],
+  ).data ?? new Map()
 
   const filtered = useMemo(
     () =>

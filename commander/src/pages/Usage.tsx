@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router'
 import {
   Loading,
@@ -24,6 +24,7 @@ import { snapshotsToPlatformSeries, type PlatformSeries } from '../lib/chartData
 import { platformUsage } from '../lib/api'
 import { formatCompact, formatInt, formatPercent } from '../lib/format'
 import type { UsageSnapshot } from '../store/types'
+import { useLoad } from '../hooks/useLoad'
 
 // Real platform KPIs derived from the usage-snapshot cache: aggregate error rate over the most
 // recent 24h, plus period-over-period deltas vs the prior 24h of the same 48h series. Deltas are
@@ -65,35 +66,16 @@ export function Usage() {
   const dash = useStore((s) => s.dashboard)
   const packageLabels = useMemo(() => new Map(packages.map((p) => [p.id, p.name])), [packages])
 
-  const [platform, setPlatform] = useState<{
-    loading: boolean
-    series: PlatformSeries | null
-    kpis: UsageKpis
-    error: string | null
-  }>({
-    loading: true,
-    series: null,
-    kpis: { errorRate: 0, requestsDelta: null, errorRateDelta: null },
-    error: null,
-  })
-  useEffect(() => {
-    let cancelled = false
-    platformUsage({ period: 'hour', hours: 48 })
-      .then((res) => {
-        const snapshots = res.data ?? []
-        if (!cancelled) setPlatform({ loading: false, series: snapshotsToPlatformSeries(snapshots, packageLabels), kpis: deriveUsageKpis(snapshots), error: null })
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) setPlatform({ loading: false, series: null, kpis: { errorRate: 0, requestsDelta: null, errorRateDelta: null }, error: e instanceof Error ? e.message : 'Failed to load usage' })
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [packageLabels])
+  const platform = useLoad(() => platformUsage({ period: 'hour', hours: 48 }).then((res) => {
+    const snapshots = res.data ?? []
+    return { series: snapshotsToPlatformSeries(snapshots, packageLabels), kpis: deriveUsageKpis(snapshots) }
+  }), [packageLabels])
+  const series: PlatformSeries | null = platform.data?.series ?? null
+  const kpis = platform.data?.kpis ?? { errorRate: 0, requestsDelta: null, errorRateDelta: null }
 
-  const groups = useMemo(() => platform.series?.requests.groups ?? [], [platform.series])
-  const reqData = useMemo(() => platform.series?.requests.data ?? [], [platform.series])
-  const errData = useMemo(() => platform.series?.errorRate ?? [], [platform.series])
+  const groups = useMemo(() => series?.requests.groups ?? [], [series])
+  const reqData = useMemo(() => series?.requests.data ?? [], [series])
+  const errData = useMemo(() => series?.errorRate ?? [], [series])
   const hasChart = !platform.loading && !platform.error && reqData.length > 0
   const reqEOption = useMemo(() => timeSeriesOption(reqData, { theme, type: 'bar', stack: true, groups, showX: true }), [reqData, groups, theme])
   const errEOption = useMemo(() => timeSeriesOption(errData, { theme, type: 'line', area: true, stack: true, scale: { '4xx': '#d2a106', '5xx': '#fa4d56' }, yPercent: true, showX: true }), [errData, theme])
@@ -115,12 +97,12 @@ export function Usage() {
         <KpiTile
           label="Requests (24h)"
           value={formatCompact(dash.requests_24h)}
-          helper={<RatioTrend ratio={platform.kpis.requestsDelta} suffix="vs prior 24h" />}
+          helper={<RatioTrend ratio={kpis.requestsDelta} suffix="vs prior 24h" />}
         />
         <KpiTile
           label="Error rate (24h)"
-          value={formatPercent(platform.kpis.errorRate, 1)}
-          helper={<PointsTrend points={platform.kpis.errorRateDelta} suffix="vs prior 24h" invert />}
+          value={formatPercent(kpis.errorRate, 1)}
+          helper={<PointsTrend points={kpis.errorRateDelta} suffix="vs prior 24h" invert />}
         />
         <KpiTile label="Active packages" value={packages.filter((p) => p.status === 'active').length} helper={`of ${packages.length}`} />
         <KpiTile label="MRR" value={`$${formatInt(dash.mrr)}`} />

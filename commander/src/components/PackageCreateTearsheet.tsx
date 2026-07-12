@@ -21,19 +21,8 @@ import { api } from '../lib/api'
 import { formatCurrencyShort, formatInt, formatMb } from '../lib/format'
 import { baseDomain } from '../lib/package'
 import type { Plan } from '../store/types'
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-function slug(s: string): string {
-  return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-}
-// '' → unlimited (null); a number → that limit.
-function numOrNull(v: string): number | null {
-  const t = v.trim()
-  if (t === '') return null
-  const n = Number(t)
-  return Number.isFinite(n) && n >= 0 ? Math.round(n) : null
-}
+import { optionalLimit, slugify, validEmail } from '../lib/input'
+import { planDraft, planPayload, type PlanDraft } from '../lib/planForm'
 
 // Wide multi-step create flow (Carbon CreateTearsheet, left progress stepper) for standing up a new
 // package: Client → Plan → Review. The Plan step is always a brand-new plan for a new package (the
@@ -55,25 +44,21 @@ export function PackageCreateTearsheet({ open, onClose }: { open: boolean; onClo
   const [newBillingEmail, setNewBillingEmail] = useState('')
   // Plan (always new) — for a new package whose name is typed; slug auto-derives from it.
   const [pkgName, setPkgName] = useState('')
-  const [planName, setPlanName] = useState('')
-  const [planDesc, setPlanDesc] = useState('')
-  const [planPrice, setPlanPrice] = useState('0')
-  const [qReq, setQReq] = useState('')
-  const [qDb, setQDb] = useState('')
-  const [qStorage, setQStorage] = useState('')
-  const [qUsers, setQUsers] = useState('')
+  const [draft, setDraft] = useState(planDraft)
+  const setPlan = <K extends keyof PlanDraft>(key: K, value: PlanDraft[K]) =>
+    setDraft((current) => ({ ...current, [key]: value }))
+  const { name: planName, description: planDesc, price: planPrice, qReq, qDb, qStorage, qUsers } = draft
 
   // Reset to a clean flow once the tearsheet has closed (stays mounted to animate out).
   useEffect(() => {
     if (open) return
     setClientMode(clients.length ? 'existing' : 'new'); setClientId(clients[0]?.id ?? '')
     setNewName(''); setNewEmail(''); setNewBillingEmail('')
-    setPkgName(''); setPlanName(''); setPlanDesc(''); setPlanPrice('0')
-    setQReq(''); setQDb(''); setQStorage(''); setQUsers('')
+    setPkgName(''); setDraft(planDraft())
   }, [open, clients])
 
   const clientStepInvalid =
-    clientMode === 'existing' ? !clientId : !newName.trim() || !EMAIL_RE.test(newEmail)
+    clientMode === 'existing' ? !clientId : !newName.trim() || !validEmail(newEmail)
   const planStepInvalid = !pkgName.trim() || !planName.trim()
 
   const submit = async () => {
@@ -81,18 +66,7 @@ export function PackageCreateTearsheet({ open, onClose }: { open: boolean; onClo
     // 1. Create the plan (provisioning only takes plan_id).
     const created = await api<Plan>('/plans', {
       method: 'POST',
-      body: {
-        slug: `${slug(pkgName)}-${slug(planName)}`,
-        package: pkgName.trim(),
-        name: planName.trim(),
-        description: planDesc.trim() || null,
-        price_monthly: Number(planPrice) || 0,
-        status: 'active',
-        q_requests_day: numOrNull(qReq),
-        q_disk_db_mb: numOrNull(qDb),
-        q_disk_storage_mb: numOrNull(qStorage),
-        q_users_total: numOrNull(qUsers),
-      },
+      body: planPayload(pkgName.trim(), draft),
     })
 
     // 2. Provision — slug auto-derives from the package name on the backend; a new client is
@@ -103,7 +77,7 @@ export function PackageCreateTearsheet({ open, onClose }: { open: boolean; onClo
         : {
             plan_id: created.id,
             client: {
-              slug: slug(newName),
+              slug: slugify(newName),
               name: newName.trim(),
               email: newEmail.trim(),
               billing_email: newBillingEmail.trim() || undefined,
@@ -121,12 +95,12 @@ export function PackageCreateTearsheet({ open, onClose }: { open: boolean; onClo
   const selectedClient = clients.find((c) => c.id === clientId) ?? null
 
   // Review derivations (instance isn't provisioned yet, so build the host/url/db from inputs).
-  const clientSlug = clientMode === 'existing' ? selectedClient?.slug ?? '' : slug(newName)
-  const pkgSlug = slug(pkgName)
+  const clientSlug = clientMode === 'existing' ? selectedClient?.slug ?? '' : slugify(newName)
+  const pkgSlug = slugify(pkgName)
   const baseUrl = clientSlug && pkgSlug ? `https://${clientSlug}.${baseDomain()}/api/v1/${pkgSlug}` : '—'
   const dbName = clientSlug && pkgSlug ? `${clientSlug}_${pkgSlug}` : '—'
   const quotaText = (v: string, fmt: (n: number) => string) => {
-    const n = numOrNull(v)
+    const n = optionalLimit(v)
     return n === null ? 'Unlimited' : fmt(n)
   }
 
@@ -203,22 +177,22 @@ export function PackageCreateTearsheet({ open, onClose }: { open: boolean; onClo
             helperText={
               pkgName.trim() ? (
                 <>
-                  API path <code>/api/v1/{slug(pkgName)}</code> · code must already exist on disk (make:package).
+                  API path <code>/api/v1/{slugify(pkgName)}</code> · code must already exist on disk (make:package).
                 </>
               ) : (
                 "The package's code must already exist on disk (scaffolded via make:package)."
               )
             }
           />
-          <TextInput id="pct-plan-name" labelText="Plan name" placeholder="Pro" value={planName} onChange={(e) => setPlanName(e.target.value)} />
-          <TextArea id="pct-plan-desc" labelText="Description (optional)" rows={2} value={planDesc} onChange={(e) => setPlanDesc(e.target.value)} />
-          <NumberInput id="pct-plan-price" label="Price / month" hideSteppers min={0} value={planPrice} onChange={(_e, { value }) => setPlanPrice(String(value ?? ''))} />
+          <TextInput id="pct-plan-name" labelText="Plan name" placeholder="Pro" value={planName} onChange={(e) => setPlan('name', e.target.value)} />
+          <TextArea id="pct-plan-desc" labelText="Description (optional)" rows={2} value={planDesc} onChange={(e) => setPlan('description', e.target.value)} />
+          <NumberInput id="pct-plan-price" label="Price / month" hideSteppers min={0} value={planPrice} onChange={(_e, { value }) => setPlan('price', String(value ?? ''))} />
           <FormGroup legendText="Default quota limits · blank = unlimited">
             <Stack gap={5}>
-              <NumberInput id="pct-q-req" label="Requests / day" hideSteppers value={qReq} onChange={(_e, { value }) => setQReq(String(value ?? ''))} />
-              <NumberInput id="pct-q-db" label="DB size (MB)" hideSteppers value={qDb} onChange={(_e, { value }) => setQDb(String(value ?? ''))} />
-              <NumberInput id="pct-q-storage" label="Storage (MB)" hideSteppers value={qStorage} onChange={(_e, { value }) => setQStorage(String(value ?? ''))} />
-              <NumberInput id="pct-q-users" label="Users total" hideSteppers value={qUsers} onChange={(_e, { value }) => setQUsers(String(value ?? ''))} />
+              <NumberInput id="pct-q-req" label="Requests / day" hideSteppers value={qReq} onChange={(_e, { value }) => setPlan('qReq', String(value ?? ''))} />
+              <NumberInput id="pct-q-db" label="DB size (MB)" hideSteppers value={qDb} onChange={(_e, { value }) => setPlan('qDb', String(value ?? ''))} />
+              <NumberInput id="pct-q-storage" label="Storage (MB)" hideSteppers value={qStorage} onChange={(_e, { value }) => setPlan('qStorage', String(value ?? ''))} />
+              <NumberInput id="pct-q-users" label="Users total" hideSteppers value={qUsers} onChange={(_e, { value }) => setPlan('qUsers', String(value ?? ''))} />
             </Stack>
           </FormGroup>
         </Stack>
