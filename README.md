@@ -222,17 +222,17 @@ El "módulo" es un namespace derivado de la ruta: `Core`/`Commander` (framework,
 
 ## Provisioning (dar de alta un paquete)
 
-El **codigo** per-cliente viaja por git (lo programas en local con `make:package <Cliente> <Paquete>` y haces deploy). El Commander instancia un paquete **existente en disco** para un cliente, en un paso, in-process:
+El **codigo** per-cliente viaja por git (lo programas en local con `make:package <Cliente> <Paquete>` y haces deploy). El Commander registra el alta y la delega al worker privilegiado `provisioner`:
 
 `POST /provisioning` (en `commander.<BASE_DOMAIN>`, con `plan_id` + `client_id` existente **o** un objeto `client` nuevo, cuyo `slug` ES su host):
 
 1. Crea/resuelve cliente + suscripcion. El `slug` del cliente forma la carpeta de código y la BD.
 2. Valida que existe el código `packages/<Cliente>/<Paquete>` (si no, 422).
-3. Crea la fila `commander_packages` (la instancia viva `(client_id, slug)`).
-4. **Crea la BD del paquete** (`CREATE DATABASE {cliente}_{slug}`) y corre `core:migrate --client=<cliente> --package=<X>` (base Laravel + negocio) + `core:seed --client=<cliente> --package=<X>` (admin) **en esa BD**.
-5. Activa + escribe las cuotas del plan sobre `package_id` (en la commander).
+3. Crea la fila, suscripción y cuotas con `provisioned_at = null`, genera credenciales cifradas y devuelve `202`.
+4. `provisioner`, único proceso con permisos DDL, crea la BD y un usuario restringido, migra y siembra.
+5. Solo entonces asigna `provisioned_at`; ante un fallo elimina BD y usuario y revierte el alta.
 
-El paquete queda vivo al terminar (`{cliente}.dom/api/v1/{slug}/...`). De-provisionar (`DELETE /packages/{name}`) hace `DROP DATABASE` + de-provision **soft** en la commander (conserva la fila + el historial de billing). Un plan oferta un tipo lógico (`Shop`); para provisionarlo al cliente elegido debe existir su código en `packages/<Cliente>/Shop`.
+El paquete queda vivo al terminar (`{cliente}.dom/api/v1/{slug}/...`). De-provisionar (`DELETE /packages/{id}`) hace `DROP DATABASE` + de-provision **soft** en la commander (conserva la fila + el historial de billing). Un plan oferta un tipo lógico (`Shop`); para provisionarlo al cliente elegido debe existir su código en `packages/<Cliente>/Shop`.
 
 ## Comandos Artisan
 
@@ -249,8 +249,8 @@ composer dump-autoload
 ```bash
 php artisan core:migrate                              # COMMANDER: registro + metering + operador + base
 php artisan core:seed                                 # COMMANDER: admin + permisos del operador
-php artisan core:migrate --client=acme --package=Shop # TENANT: base + negocio (packages/Acme/Shop, BD acme_shop)
-php artisan core:seed    --client=acme --package=Shop # TENANT: admin + seeders del paquete (en su BD)
+docker compose exec -T provisioner php artisan core:migrate --client=acme --package=Shop # TENANT
+docker compose exec -T provisioner php artisan core:seed --client=acme --package=Shop    # TENANT
 php artisan core:migrate --rollback                   # rollback de la commander
 # Regla: --client + --package juntos => tenant (packages/Studly(client)/Package, BD snake(client)_snake(package));
 #        sin ninguno => commander. (normalmente las BD las gestiona el provisioning del Commander, no a mano)
@@ -268,7 +268,7 @@ php artisan commander:quota:measure                # mide disco/requests/usuario
 
 - Estados por paquete: `active` | `grace` (headers `X-Package-Status`) | `suspended` (402 en rutas de negocio; health y docs siguen respondiendo).
 - Metering por request en `commander_request_logs` (middleware terminable, cero latencia con FPM, columna `package_id`) + rollups en `commander_usage_rollups`.
-- El Commander cambia el estado de un paquete escribiendo `commander_packages` directamente: `POST /packages/{name}/suspend|grace|resume`.
+- El Commander cambia el estado de un paquete escribiendo `commander_packages` directamente: `POST /packages/{id}/suspend|grace|resume`.
 
 ### Simulación de datos (`scripts/simulate.sh`)
 
@@ -379,7 +379,7 @@ packages/Acme/Shop/
 
 - **Core** (`packages/Core/database/migrations/`, primer nivel): solo la **base Laravel**, que corre en la commander (para el operador) Y en CADA BD de paquete: roles/permisos (Spatie), schema base (`users`, `sessions`, `cache`, `jobs`...), tokens Sanctum.
 - **Commander** (`packages/Commander/database/migrations/`, tablas `commander_*`): la **tabla única `commander_packages`** —la instancia viva 1:1 por par (cliente, paquete): `client_id` + `slug` + `name` + `database` + suscripción + estado + KPIs + `provisioned_at`, con `UNIQUE(client_id, slug)` (sin columna `subdomain`); **no existe tabla `commander_deployments`**— + el metering (`commander_request_logs`, `commander_usage_rollups`, por `package_id`) + el resto del panel (`commander_clients` —su `slug` ES el host del cliente—, `commander_subscriptions`, `commander_invoices`, `commander_quotas` —tabla única: el panel edita límites/política y el motor mide/aplica sobre la misma fila—, `commander_activity_events`...). Solo en la BD `commander`.
-- **Negocio**: `packages/<Cliente>/<Paquete>/database/migrations/` (solo en la BD del paquete). **Convención: toda tabla de negocio lleva PK entera autoincremental (`$table->id()`; las claves de negocio van en columnas `UNIQUE`) y el prefijo del paquete lógico en snake_case** —igual que el framework usa `commander_*`—: `folio_posts`, `folio_layouts` (paquete `Folio`), `shop_products` (paquete `Shop`). La BD ya aísla por par (cliente, paquete), así que el prefijo no incluye el cliente; separa las tablas de negocio de la base Laravel de Core (`users`, `cache`, `jobs`...) que convive en la misma BD. **Orden de columnas (regla sagrada): primero la PK, después TODAS las FKs, luego las columnas de negocio por relevancia, y los `timestamps()` siempre al final.**
+- **Negocio**: `packages/<Cliente>/<Paquete>/database/migrations/` (solo en la BD del paquete). **Convención: toda tabla de negocio lleva PK entera autoincremental (`$table->id()`; las claves de negocio van en columnas `UNIQUE`) y el prefijo del paquete lógico en snake_case** —igual que el framework usa `commander_*`—: `kilkana_posts`, `kilkana_layouts` (paquete `Kilkana`), `shop_products` (paquete `Shop`). La BD ya aísla por par (cliente, paquete), así que el prefijo no incluye el cliente; separa las tablas de negocio de la base Laravel de Core (`users`, `cache`, `jobs`...) que convive en la misma BD. **Orden de columnas (regla sagrada): primero la PK, después TODAS las FKs, luego las columnas de negocio por relevancia, y los `timestamps()` siempre al final.**
 
 `core:migrate` (sin args) corre base + Commander en la BD `commander`; el provisioning corre `core:migrate --client=<cliente> --package=<X>` (base + negocio) en la BD del paquete. Regla: `--client` + `--package` juntos ⟹ tenant (BD `{cliente}_{paquete}`); sin ninguno ⟹ commander.
 

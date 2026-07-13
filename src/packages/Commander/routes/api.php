@@ -51,19 +51,19 @@ Route::middleware(['api'])->group(function () {
 
         // Package registry + package provisionado 1:1. index sincroniza desde disco + enriquece con planes.
         Route::get('packages', [CommanderPackagesController::class, 'index']);
-        Route::post('packages/{package}/suspend', [CommanderPackagesController::class, 'suspend']);
-        Route::post('packages/{package}/grace', [CommanderPackagesController::class, 'grace']);
-        Route::post('packages/{package}/resume', [CommanderPackagesController::class, 'resume']);
-        Route::post('packages/{package}/change-plan', [CommanderPackagesController::class, 'changePlan']);
-        Route::get('packages/{package}/usage', [CommanderPackagesController::class, 'usage']);
-        Route::get('packages/{package}/logs', [CommanderPackagesController::class, 'logs']);
-        Route::get('packages/{package}/insights', [CommanderPackagesController::class, 'insights']);
-        Route::get('packages/{package}', [CommanderPackagesController::class, 'show']);
-        Route::patch('packages/{package}', [CommanderPackagesController::class, 'update']);
-        Route::delete('packages/{package}', [CommanderPackagesController::class, 'destroy']);
+        Route::post('packages/{package}/suspend', [CommanderPackagesController::class, 'suspend'])->whereNumber('package');
+        Route::post('packages/{package}/grace', [CommanderPackagesController::class, 'grace'])->whereNumber('package');
+        Route::post('packages/{package}/resume', [CommanderPackagesController::class, 'resume'])->whereNumber('package');
+        Route::post('packages/{package}/change-plan', [CommanderPackagesController::class, 'changePlan'])->whereNumber('package');
+        Route::get('packages/{package}/usage', [CommanderPackagesController::class, 'usage'])->whereNumber('package');
+        Route::get('packages/{package}/logs', [CommanderPackagesController::class, 'logs'])->whereNumber('package');
+        Route::get('packages/{package}/insights', [CommanderPackagesController::class, 'insights'])->whereNumber('package');
+        Route::get('packages/{package}', [CommanderPackagesController::class, 'show'])->whereNumber('package');
+        Route::patch('packages/{package}', [CommanderPackagesController::class, 'update'])->whereNumber('package');
+        Route::delete('packages/{package}', [CommanderPackagesController::class, 'destroy'])->whereNumber('package');
 
         // Operator profile + platform preferences (singleton). default_grace_hours feeds the real grace.
-        Route::get('settings', [CommanderSettingsController::class, 'show']);
-        Route::put('settings', [CommanderSettingsController::class, 'update']);
+        Route::get('settings', [CommanderSettingsController::class, 'show'])->middleware('can:show settings');
+        Route::put('settings', [CommanderSettingsController::class, 'update'])->middleware('can:update settings');
     });
 });

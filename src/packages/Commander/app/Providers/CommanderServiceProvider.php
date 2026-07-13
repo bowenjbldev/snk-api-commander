@@ -9,6 +9,7 @@ use Packages\Commander\Console\Commands\CommanderRefreshCommand;
 use Packages\Commander\Console\Commands\CommanderQuotaMeasureCommand;
 use Packages\Commander\Console\Commands\CommanderStatusCommand;
 use Packages\Commander\Console\Commands\CommanderUsageRollupCommand;
+use Packages\Commander\Console\Commands\CommanderSecureTenantsCommand;
 use Packages\Commander\Contracts\CommanderPackageGitSource;
 use Packages\Commander\Git\CommanderLocalGitSource;
 
@@ -34,6 +35,7 @@ class CommanderServiceProvider extends ServiceProvider
                 CommanderUsageRollupCommand::class,
                 CommanderQuotaMeasureCommand::class,
                 CommanderGitSyncCommand::class,
+                CommanderSecureTenantsCommand::class,
             ]);
 
             // KPIs del dashboard + snapshots de uso frescos (cron corre schedule:run).

@@ -6,9 +6,9 @@ use Carbon\CarbonImmutable;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Packages\Commander\Jobs\CommanderProvisionPackageJob;
 use Packages\Commander\Models\CommanderClientModel;
 use Packages\Commander\Models\CommanderPlanModel;
 use Packages\Commander\Models\CommanderQuotaModel;
@@ -19,9 +19,8 @@ use Packages\Commander\Models\CommanderPackageModel;
 
 /**
  * Client-first provisioning, EN UN PASO e in-process: registra CLIENTE (nuevo o existente) + PLAN,
- * crea la instancia (fila commander_packages = subdominio activo), su suscripcion y cuotas, migra
- * las tablas del package sobre su BD propia y siembra su admin. El codigo del package ya viaja por
- * git; aqui solo se da de alta la instancia.
+ * prepara la instancia, su suscripcion y cuotas; migra y siembra su BD propia; y solo entonces la
+ * activa con provisioned_at. El codigo del package ya viaja por git; aqui solo se da de alta.
  */
 #[Group('Provisioning')]
 class CommanderProvisioningController extends CoreBaseApiController
@@ -49,7 +48,7 @@ class CommanderProvisioningController extends CoreBaseApiController
             // … or a new client object (required unless client_id given). client.slug = handle legible;
             // el id (bigint) lo asigna la BD.
             'client' => 'nullable|array',
-            'client.slug' => 'required_without:client_id|string|max:64',
+            'client.slug' => ['required_without:client_id', 'string', 'max:64', 'regex:/\A[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?\z/'],
             'client.name' => 'required_without:client_id|string|max:255',
             'client.email' => 'required_without:client_id|email|max:255',
             'client.company' => 'nullable|string|max:255',
@@ -90,24 +89,24 @@ class CommanderProvisioningController extends CoreBaseApiController
             return response()->json(['error' => "Package code '{$clientStudly}/{$package}' is not deployed."], 422);
         }
 
-        // Conflicto: ese cliente YA tiene una instancia viva de este package (client_id, slug).
+        // Conflicto: ese cliente ya tiene esta instancia viva o preparandose.
         if (! empty($data['client_id'])
             && CommanderPackageModel::query()
-                ->whereNotNull('provisioned_at')
                 ->where('client_id', $data['client_id'])
                 ->where('slug', $slug)
                 ->exists()) {
-            return response()->json(['error' => "Client already has package '{$slug}' provisioned."], 409);
+            return response()->json(['error' => "Client already has package '{$slug}' registered."], 409);
         }
 
         if (! empty($data['client']) && CommanderClientModel::where('slug', $data['client']['slug'])->exists()) {
             return response()->json(['error' => "Client '{$data['client']['slug']}' already exists."], 422);
         }
 
-        $commanderPackage = DB::connection('commander')->transaction(function () use ($data, $plan, $package, $slug, $database) {
+        $provisioning = DB::connection('commander')->transaction(function () use ($data, $plan, $package, $slug, $database) {
             $now = CarbonImmutable::now();
 
             $clientId = $data['client_id'] ?? null;
+            $createdClientId = null;
             if ($clientId === null) {
                 $c = $data['client'];
                 $client = CommanderClientModel::create(array_merge(
@@ -118,16 +117,18 @@ class CommanderProvisioningController extends CoreBaseApiController
                     ])),
                 ));
                 $clientId = $client->id; // bigint asignado por la BD
+                $createdClientId = $clientId;
             }
 
-            // Instancia viva 1:1 por (cliente, package). El de-provision soft conserva la fila; re-provisionar
-            // reusa la del par (client_id, slug). provisioned_at != null la enciende (la resuelve el middleware).
-            $commanderPackage = CommanderPackageModel::firstOrNew(['client_id' => $clientId, 'slug' => $slug]);
+            // La UNIQUE(client_id, slug) serializa intentos concurrentes del mismo alta.
+            $commanderPackage = new CommanderPackageModel();
             $commanderPackage->name = $package;
             $commanderPackage->label = $commanderPackage->label ?? $package;
             $commanderPackage->listing_status = $commanderPackage->listing_status ?? 'active';
             $commanderPackage->forceFill([
                 'database' => $database,
+                'database_username' => null,
+                'database_password' => null,
                 'client_id' => $clientId,
                 'slug' => $slug,
                 'status' => 'active',
@@ -138,9 +139,14 @@ class CommanderProvisioningController extends CoreBaseApiController
                 'requests_24h' => 0,
                 'quota_health' => 0,
                 'last_seen' => null,
-                'provisioned_at' => $now,
+                // El resolutor ignora esta fila hasta que BD, migraciones y seed terminen bien.
+                'provisioned_at' => null,
             ]);
             $commanderPackage->save();
+            $commanderPackage->forceFill([
+                'database_username' => 'tenant_'.$commanderPackage->id,
+                'database_password' => Str::random(48),
+            ])->save();
 
             // Primer término de subscripción (vigente: ended_at null). package_id es la relación
             // autoritativa; plan_id traza el catálogo; plan/price_monthly son snapshots congelados.
@@ -170,24 +176,25 @@ class CommanderProvisioningController extends CoreBaseApiController
                 ]);
             }
 
-            return $commanderPackage;
+            return [
+                'package' => $commanderPackage,
+                'subscription_id' => $subscription->id,
+                'created_client_id' => $createdClientId,
+            ];
         });
 
-        // Crea la BD propia del package y migra/siembra ahi (DDL fuera de la transaccion commander):
-        // base Laravel del tenant + tablas de negocio + admin. Aislamiento fisico por BD.
-        // (sqlite no tiene CREATE DATABASE ni multi-schema: en tests solo se valida la parte commander.)
-        if (DB::connection('commander')->getDriverName() !== 'sqlite') {
-            DB::connection('commander')->statement(
-                "CREATE DATABASE IF NOT EXISTS `{$database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-            );
+        /** @var CommanderPackageModel $commanderPackage */
+        $commanderPackage = $provisioning['package'];
 
-            // --client + --package => TENANT anidado; la BD se deriva snake(client)_snake(package).
-            Artisan::call('core:migrate', ['--client' => $clientSlug, '--package' => $package, '--force' => true]);
-            Artisan::call('core:seed', ['--client' => $clientSlug, '--package' => $package, '--force' => true]);
-        }
+        CommanderProvisionPackageJob::dispatch(
+            $commanderPackage->id,
+            $clientSlug,
+            $package,
+            $provisioning['created_client_id'],
+        );
 
         return response()->json([
             'package' => $commanderPackage->fresh()->load(['client', 'subscription', 'quotas']),
-        ], 201);
+        ], 202);
     }
 }

@@ -51,7 +51,11 @@ class CoreResolvePackageFromHostMiddleware
         // Bajo PHP-FPM cada request es share-nothing -> el cambio vive solo en este request.
         // El token de un tenant ni existe en la BD de otro -> 401 automático, sin check explícito.
         if (! empty($package->database)) {
-            config(['database.connections.tenant.database' => $package->database]);
+            config([
+                'database.connections.tenant.database' => $package->database,
+                'database.connections.tenant.username' => $package->database_username,
+                'database.connections.tenant.password' => $package->database_password,
+            ]);
             DB::purge('tenant');
             DB::setDefaultConnection('tenant');
         }

@@ -14,6 +14,14 @@ class CoreDatabaseSeeder extends Seeder
 
     public function run(): void
     {
+        $password = config('core.auth.admin_password');
+        if (! is_string($password) || $password === '') {
+            if (app()->environment('production')) {
+                throw new \RuntimeException('CORE_ADMIN_PASSWORD is required when seeding in production.');
+            }
+            $password = 'secret1234';
+        }
+
         // Create roles
         $admin = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'sanctum']);
 
@@ -38,11 +46,11 @@ class CoreDatabaseSeeder extends Seeder
 
         // Admin de ESTA BD (la del package o la del operador). Aislamiento por BD, sin package_id.
         $user = CoreUserModel::firstOrCreate(
-            ['email' => 'admin@snake.com'],
+            ['email' => config('core.auth.admin_email', 'admin@snake.com')],
             [
                 'name' => 'Admin User',
                 'full_name' => 'Admin User',
-                'password' => 'secret1234',
+                'password' => $password,
             ]
         );
 

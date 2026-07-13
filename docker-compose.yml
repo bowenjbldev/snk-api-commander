@@ -16,15 +16,20 @@ services:
       # `git log --git-dir=/var/www/.git` acotado al path del package. No necesita work-tree.
       - ./.git:/var/www/.git:ro
       - /var/www/src/bootstrap/cache
+    environment:
+      DB_USERNAME: ${COMMANDER_DB_USERNAME:-commander_app}
+      DB_PASSWORD: ${COMMANDER_DB_PASSWORD:-commander-local-secret}
     depends_on:
       db:
         condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
     networks:
       app-network:
         aliases:
           - api-app
 
-  # Laravel scheduler: dispara los comandos programados (commander:* y folio:*).
+  # Laravel scheduler: dispara los comandos programados (commander:* y kilkana:*).
   # schedule:work corre en foreground y evalúa el schedule cada minuto — el
   # equivalente Docker del cron `schedule:run`. Reusa la imagen del app pero
   # salta su entrypoint (migraciones/permisos ya los hace app); restart cubre
@@ -38,11 +43,43 @@ services:
       - ./src:/var/www/src
       - ./.git:/var/www/.git:ro
       - /var/www/src/bootstrap/cache
+    environment:
+      DB_USERNAME: ${COMMANDER_DB_USERNAME:-commander_app}
+      DB_PASSWORD: ${COMMANDER_DB_PASSWORD:-commander-local-secret}
     depends_on:
       app:
         condition: service_started
       db:
         condition: service_healthy
+    networks:
+      - app-network
+
+  # Unico proceso con credenciales capaces de crear/eliminar bases y usuarios.
+  provisioner:
+    image: snk-api-commander-app
+    restart: unless-stopped
+    working_dir: /var/www/src
+    entrypoint: ["sh", "-c"]
+    command: ["php artisan commander:secure-tenants && exec php artisan queue:work --queue=provisioning --tries=1 --timeout=600"]
+    volumes:
+      - ./src:/var/www/src
+      - /var/www/src/bootstrap/cache
+    environment:
+      DB_USERNAME: ${COMMANDER_DB_USERNAME:-commander_app}
+      DB_PASSWORD: ${COMMANDER_DB_PASSWORD:-commander-local-secret}
+      PROVISIONER_DB_HOST: db
+      PROVISIONER_DB_PORT: 3306
+      PROVISIONER_DB_DATABASE: commander
+      PROVISIONER_DB_USERNAME: root
+      PROVISIONER_DB_PASSWORD: ${PROVISIONER_DB_PASSWORD:-}
+      CORE_ADMIN_EMAIL: ${CORE_ADMIN_EMAIL:-admin@snake.com}
+      CORE_ADMIN_PASSWORD: ${CORE_ADMIN_PASSWORD:-secret1234}
+      KILKANA_DEMO_READER_PASSWORD: ${KILKANA_DEMO_READER_PASSWORD:-password}
+    depends_on:
+      app:
+        condition: service_started
+      db-init:
+        condition: service_completed_successfully
     networks:
       - app-network
 
@@ -99,6 +136,8 @@ services:
       # los packages y poder CREATE/DROP DATABASE al provisionar. En init crea la BD commander.
       MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "yes"
       MARIADB_DATABASE: commander
+      MARIADB_USER: ${COMMANDER_DB_USERNAME:-commander_app}
+      MARIADB_PASSWORD: ${COMMANDER_DB_PASSWORD:-commander-local-secret}
     ports:
       - "${DB_PORT:-3306}:3306"
     healthcheck:
@@ -108,6 +147,22 @@ services:
       retries: 10
     volumes:
       - db_data:/var/lib/mysql
+    networks:
+      - app-network
+
+  # Compatibilidad con volúmenes existentes: asegura el usuario no privilegiado de Commander.
+  db-init:
+    image: mariadb:latest
+    restart: "no"
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        mariadb --ssl=0 -h db -uroot -e "CREATE USER IF NOT EXISTS '${COMMANDER_DB_USERNAME:-commander_app}'@'%' IDENTIFIED BY '${COMMANDER_DB_PASSWORD:-commander-local-secret}';
+        ALTER USER '${COMMANDER_DB_USERNAME:-commander_app}'@'%' IDENTIFIED BY '${COMMANDER_DB_PASSWORD:-commander-local-secret}';
+        GRANT ALL PRIVILEGES ON commander.* TO '${COMMANDER_DB_USERNAME:-commander_app}'@'%';"
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
       - app-network
 

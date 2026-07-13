@@ -53,7 +53,11 @@ class CoreMigrateCommand extends Command
             }
 
             $connection = 'tenant';
-            config(['database.connections.tenant.database' => CorePackageSelectorSupport::databaseName($client, $package)]);
+            config([
+                'database.connections.tenant.database' => CorePackageSelectorSupport::databaseName($client, $package),
+                'database.connections.tenant.username' => config('database.connections.provisioner.username'),
+                'database.connections.tenant.password' => config('database.connections.provisioner.password'),
+            ]);
             DB::purge('tenant');
 
             $paths = [
@@ -75,19 +79,19 @@ class CoreMigrateCommand extends Command
             if ($this->option('step')) {
                 $args['--step'] = (int) $this->option('step');
             }
-            Artisan::call('migrate:rollback', $args, $this->output);
-
-            return self::SUCCESS;
+            return Artisan::call('migrate:rollback', $args, $this->output);
         }
 
         if ($this->option('fresh')) {
-            Artisan::call('migrate:fresh', $args, $this->output);
-
-            return self::SUCCESS;
+            return Artisan::call('migrate:fresh', $args, $this->output);
         }
 
         $this->info("Running migrations on [{$connection}]" . ($package ? " for [{$client}/{$package}]" : '') . '...');
-        Artisan::call('migrate', $args, $this->output);
+        $status = Artisan::call('migrate', $args, $this->output);
+
+        if ($status !== self::SUCCESS) {
+            return $status;
+        }
 
         if ($this->option('seed')) {
             $seedArgs = ['--force' => (bool) $this->option('force')];
@@ -95,9 +99,9 @@ class CoreMigrateCommand extends Command
                 $seedArgs['--client'] = $client;
                 $seedArgs['--package'] = $package;
             }
-            Artisan::call('core:seed', $seedArgs, $this->output);
+            return Artisan::call('core:seed', $seedArgs, $this->output);
         }
 
-        return self::SUCCESS;
+        return $status;
     }
 }

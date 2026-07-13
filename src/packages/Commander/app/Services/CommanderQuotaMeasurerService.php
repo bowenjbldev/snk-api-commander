@@ -65,7 +65,11 @@ class CommanderQuotaMeasurerService
             // Apunta la conexion 'tenant' a la BD del package para medir lo LOCAL (users, tamaño BD).
             // requests_day y las escrituras de commander_quotas siguen yendo a 'commander'.
             if (! empty($package?->database)) {
-                config(['database.connections.tenant.database' => $package->database]);
+                config([
+                    'database.connections.tenant.database' => $package->database,
+                    'database.connections.tenant.username' => $package->database_username,
+                    'database.connections.tenant.password' => $package->database_password,
+                ]);
                 DB::purge('tenant');
             }
 

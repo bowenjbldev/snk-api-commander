@@ -12,6 +12,8 @@ use Packages\Core\Database\Seeders\CoreDatabaseSeeder;
 use Packages\Commander\Models\CommanderPackageModel;
 use Packages\Core\Models\CoreUserModel;
 use Tests\CommanderTestCase;
+use Illuminate\Support\Facades\Queue;
+use Packages\Commander\Jobs\CommanderDeprovisionPackageJob;
 
 class CommanderApiTest extends CommanderTestCase
 {
@@ -28,6 +30,36 @@ class CommanderApiTest extends CommanderTestCase
     public function test_registry_requires_authentication(): void
     {
         $this->getJson('/api/v1/packages')->assertStatus(401);
+    }
+
+    public function test_settings_require_explicit_permission(): void
+    {
+        $this->seed(CoreDatabaseSeeder::class);
+        $this->seed(CommanderDatabaseSeeder::class);
+        $user = CoreUserModel::create([
+            'email' => 'limited@snake.com', 'name' => 'Limited', 'full_name' => 'Limited', 'password' => 'secret1234',
+        ]);
+
+        $this->actingAs($user, 'sanctum')->getJson('/api/v1/settings')->assertForbidden();
+        $this->actingAs($user, 'sanctum')->putJson('/api/v1/settings', ['operator_name' => 'Hijacked'])->assertForbidden();
+    }
+
+    public function test_login_ignores_client_controlled_token_policy(): void
+    {
+        $this->admin();
+
+        $response = $this->postJson('/api/v1/auth/login', [
+            'email' => 'admin@snake.com',
+            'password' => 'secret1234',
+            'name' => 'attacker',
+            'abilities' => ['*'],
+            'expires_at' => now()->addYears(10)->toIso8601String(),
+        ])->assertOk();
+
+        $token = CoreUserModel::firstOrFail()->tokens()->findOrFail($response->json('token_id'));
+        $this->assertSame('login', $token->name);
+        $this->assertSame(['api'], $token->abilities);
+        $this->assertTrue($token->expires_at->isBefore(now()->addMinutes(1441)));
     }
 
     public function test_registry_starts_with_no_provisioned_package_then_lists_created_records(): void
@@ -75,7 +107,7 @@ class CommanderApiTest extends CommanderTestCase
             ]);
         }
 
-        $res = $this->actingAs($admin, 'sanctum')->getJson('/api/v1/packages/TrackingApi');
+        $res = $this->actingAs($admin, 'sanctum')->getJson("/api/v1/packages/{$package->id}");
         $res->assertOk();
         $body = $res->json();
 
@@ -103,18 +135,25 @@ class CommanderApiTest extends CommanderTestCase
             'slug' => 'shop', 'database' => 'c_shop',
             'client_id' => $client->id, 'status' => 'active', 'provisioned_at' => now(),
         ]);
+        $otherClient = CommanderClientModel::create(['slug' => 'd', 'name' => 'D', 'email' => 'd@d.test', 'status' => 'active']);
+        $otherPackage = CommanderPackageModel::create([
+            'name' => 'Shop', 'label' => 'Shop', 'listing_status' => 'active',
+            'slug' => 'shop', 'database' => 'd_shop',
+            'client_id' => $otherClient->id, 'status' => 'active', 'provisioned_at' => now(),
+        ]);
 
-        // Suspend → writes the commander_packages row directly (addressed by name); response is the flat row.
+        // Suspend → writes the commander_packages row directly (addressed by PK); response is the flat row.
         $this->actingAs($admin, 'sanctum')
-            ->postJson('/api/v1/packages/Shop/suspend', ['reason' => 'payment_overdue', 'message' => 'pay up'])
+            ->postJson("/api/v1/packages/{$package->id}/suspend", ['reason' => 'payment_overdue', 'message' => 'pay up'])
             ->assertOk()
             ->assertJsonPath('status', 'suspended')
             ->assertJsonPath('reason', 'payment_overdue');
         $this->assertSame('suspended', $package->fresh()->getRawOriginal('status'));
+        $this->assertSame('active', $otherPackage->fresh()->getRawOriginal('status'));
 
         // Resume → back to active.
         $this->actingAs($admin, 'sanctum')
-            ->postJson('/api/v1/packages/Shop/resume')
+            ->postJson("/api/v1/packages/{$package->id}/resume")
             ->assertOk()
             ->assertJsonPath('status', 'active');
         $this->assertSame('active', $package->fresh()->getRawOriginal('status'));
@@ -123,6 +162,7 @@ class CommanderApiTest extends CommanderTestCase
     public function test_deprovision_is_soft_and_clears_operational_rows(): void
     {
         $admin = $this->admin();
+        Queue::fake();
 
         $client = CommanderClientModel::create(['slug' => 'c', 'name' => 'C', 'email' => 'c@c.test', 'status' => 'active']);
         $package = CommanderPackageModel::create([
@@ -149,7 +189,10 @@ class CommanderApiTest extends CommanderTestCase
 
         // De-provision SOFT: en MariaDB hace DROP DATABASE; borra metering + cuotas y ANULA las columnas
         // operativas, pero conserva la fila (catalogo) y el historial de billing (cierra el término).
-        $this->actingAs($admin, 'sanctum')->deleteJson('/api/v1/packages/Shop')->assertOk();
+        $this->actingAs($admin, 'sanctum')->deleteJson("/api/v1/packages/{$package->id}")->assertStatus(202);
+        Queue::assertPushed(CommanderDeprovisionPackageJob::class, fn ($job) => $job->packageId === $package->id);
+
+        (new CommanderDeprovisionPackageJob($package->id))->handle();
 
         $fresh = CommanderPackageModel::find($package->id);
         $this->assertNotNull($fresh);                 // la fila persiste (catalogo)

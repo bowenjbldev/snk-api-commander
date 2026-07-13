@@ -153,6 +153,22 @@ return [
             'engine' => null,
         ],
 
+        // Solo existe en el worker de provisioning; el proceso HTTP no recibe estas credenciales.
+        'provisioner' => [
+            'driver' => env('PROVISIONER_DB_DRIVER', env('COMMANDER_DB_DRIVER', 'mysql')),
+            'host' => env('PROVISIONER_DB_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('PROVISIONER_DB_PORT', env('DB_PORT', '3306')),
+            'database' => env('PROVISIONER_DB_DATABASE', 'commander'),
+            'username' => env('PROVISIONER_DB_USERNAME'),
+            'password' => env('PROVISIONER_DB_PASSWORD'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+        ],
+
     ],
 
     /*

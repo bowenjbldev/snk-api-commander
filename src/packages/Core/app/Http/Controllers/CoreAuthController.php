@@ -8,10 +8,8 @@ use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\Response;
 use Packages\Core\Models\CoreUserModel;
-use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Hash;
 
 #[Group('Auth')]
@@ -28,38 +26,28 @@ class CoreAuthController extends Controller
     #[Response(422, 'Validation')]
     public function login(Request $request): JsonResponse
     {
-        $data = $request->all();
-
-        $email = $data['email'] ?? null;
-        $password = $data['password'] ?? null;
-
-        if ($email === null || $password === null) {
-            return response()->json(['error' => 'Email and password are required'], 422);
-        }
+        $data = $request->validate([
+            'email' => 'required|email|max:255',
+            'password' => 'required|string|max:255',
+        ]);
 
         // Aislamiento por BD: el login corre contra la BD del subdominio (conexion ya conmutada por
         // CoreResolvePackageFromHostMiddleware) o la commander (operador). Solo busca por email.
         /** @var CoreUserModel|null $user */
-        $user = CoreUserModel::query()->where('email', $email)->first();
+        $user = CoreUserModel::query()->where('email', $data['email'])->first();
 
         $hash = $user?->password;
 
-        if ($user === null || $hash === null || $hash === '' || !Hash::check($password, (string) $hash)) {
+        if ($user === null || $hash === null || $hash === '' || !Hash::check($data['password'], (string) $hash)) {
             return response()->json(['error' => 'Invalid credentials'], 401);
         }
 
-        $name = $data['name'] ?? 'login';
-        $abilities = Arr::wrap($data['abilities'] ?? '*');
-        $token = $user->createToken($name, $abilities === ['*'] ? ['*'] : $abilities);
-
-        if (!empty($data['expires_at'])) {
-            try {
-                $token->accessToken->expires_at = Carbon::parse($data['expires_at']);
-                $token->accessToken->save();
-            } catch (\Throwable $e) {
-                return response()->json(['error' => 'Invalid expires_at'], 422);
-            }
-        }
+        // Nombre, capacidades y caducidad son politica del servidor, nunca entrada del cliente.
+        $token = $user->createToken(
+            'login',
+            ['api'],
+            now()->addMinutes((int) config('core.auth.token_expiration_minutes', 1440)),
+        );
 
         return response()->json([
             'token' => $token->plainTextToken,

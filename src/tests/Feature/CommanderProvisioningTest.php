@@ -9,6 +9,8 @@ use Packages\Commander\Models\CommanderPlanModel;
 use Packages\Core\Database\Seeders\CoreDatabaseSeeder;
 use Packages\Commander\Models\CommanderPackageModel;
 use Packages\Core\Models\CoreUserModel;
+use Illuminate\Support\Facades\Queue;
+use Packages\Commander\Jobs\CommanderProvisionPackageJob;
 use Tests\CommanderTestCase;
 
 class CommanderProvisioningTest extends CommanderTestCase
@@ -59,6 +61,7 @@ class CommanderProvisioningTest extends CommanderTestCase
     {
         $admin = $this->admin();
         $plan = $this->plan();
+        Queue::fake();
 
         $res = $this->actingAs($admin, 'sanctum')->postJson('/api/v1/provisioning', [
             'plan_id' => $plan->id,
@@ -70,8 +73,8 @@ class CommanderProvisioningTest extends CommanderTestCase
             ],
         ]);
 
-        $res->assertStatus(201);
-        // One-step: live immediately. The live instance (commander_packages) is returned flat under `package`.
+        $res->assertStatus(202);
+        // La API registra el alta, pero el worker es quien la vuelve enrutable.
         $res->assertJsonPath('package.status', 'active');
         $res->assertJsonPath('package.name', 'Demo');
         $res->assertJsonPath('package.slug', 'demo');           // slug del package (path)
@@ -82,7 +85,13 @@ class CommanderProvisioningTest extends CommanderTestCase
         $this->assertNotNull($cp);
         $this->assertSame('active', $cp->getRawOriginal('status'));
         $this->assertSame('acme_demo', $cp->database); // BD propia: {client}_{package}
-        $this->assertNotNull($cp->provisioned_at); // marcada como instancia viva
+        $this->assertNull($cp->provisioned_at);
+        $res->assertJsonMissingPath('package.database_username');
+        $res->assertJsonMissingPath('package.database_password');
+        Queue::assertPushed(CommanderProvisionPackageJob::class, fn ($job) => $job->packageId === $cp->id);
+
+        (new CommanderProvisionPackageJob($cp->id, 'acme', 'Demo', $cp->client_id))->handle();
+        $this->assertNotNull($cp->fresh()->provisioned_at);
 
         // Client created with full billing; el subdominio ES su slug.
         $client = CommanderClientModel::where('slug', 'acme')->first();

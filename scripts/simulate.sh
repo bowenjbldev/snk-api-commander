@@ -180,6 +180,16 @@ pkg_ids() { # pkg_ids <client-slug> <package-slug>
     WHERE c.slug='$1' AND p.slug='$2' AND p.provisioned_at IS NOT NULL LIMIT 1;" 2>/dev/null
 }
 
+wait_pkg_ids() { # espera hasta 60 s a que el worker active el package
+  local ids i
+  for i in $(seq 1 60); do
+    ids="$(pkg_ids "$1" "$2")"
+    [ -n "$ids" ] && { echo "$ids"; return 0; }
+    sleep 1
+  done
+  return 1
+}
+
 stage_clean() {
   hr; echo "STAGE 1/5 — limpiar BD (drop tenants + fresh commander + seed)"; hr
   local row cli cname name
@@ -229,6 +239,7 @@ stage_provision() {
     if [ -n "$err" ]; then
       printf '    %-7s %-4s -> FALLO: %s\n' "$cli" "$name" "$err"
     else
+      wait_pkg_ids "$cli" "$(jval "$resp" package.slug)" >/dev/null || { echo "    $cli/$name: timeout de provisioning"; continue; }
       printf '    %-7s %-4s url=%s.%s/api/v1/%s  BD=%s  cuota_req/dia=%s -> OK\n' \
         "$cli" "$name" "$cli" "$BASE_DOMAIN" "$(jval "$resp" package.slug)" "$(jval "$resp" package.database)" "$qreq"
     fi

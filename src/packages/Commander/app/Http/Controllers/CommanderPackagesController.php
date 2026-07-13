@@ -18,6 +18,7 @@ use Packages\Commander\Models\CommanderQuotaModel;
 use Packages\Commander\Models\CommanderRequestLogModel;
 use Packages\Commander\Models\CommanderSubscriptionModel;
 use Packages\Commander\Models\CommanderUsageRollupModel;
+use Packages\Commander\Jobs\CommanderDeprovisionPackageJob;
 use Packages\Commander\Services\CommanderPackageRegistryService;
 use Packages\Core\Enums\CorePackageStatusEnum;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
@@ -28,7 +29,7 @@ use Packages\Core\Services\CorePackageStateService;
  * disco. index() sincroniza desde disco y enriquece cada fila con on_disk + conteo de planes; la fila
  * lleva catalogo (label/description/listing_status) y —si esta provisionada— lo operativo (subdomain,
  * cliente, estado runtime, KPIs) + relaciones. Las acciones operativas (estado, cambio de plan,
- * usage, logs, de-provision) exigen una fila provisionada y se direccionan por `name`.
+ * usage, logs, de-provision) exigen una fila provisionada y se direccionan por su PK numerica.
  */
 #[Group('Packages')]
 class CommanderPackagesController extends CoreBaseApiController
@@ -86,8 +87,7 @@ class CommanderPackagesController extends CoreBaseApiController
 
         $record = CommanderPackageModel::query()
             ->with(['client', 'subscription', 'quotas'])
-            ->where('name', $package)
-            ->first();
+            ->find($package);
 
         if ($record === null) {
             return response()->json(['error' => 'Record not found'], 404);
@@ -101,10 +101,7 @@ class CommanderPackagesController extends CoreBaseApiController
         ]));
     }
 
-    /**
-     * La PK es numerica (id), pero la ruta `packages/{package}` direcciona por `name` (StudlyCase) —
-     * la clave de negocio compartida con commander_plans.
-     */
+    /** La ruta `packages/{package}` se direcciona por la PK numerica. */
     protected function findModel($id, bool $applyWith = false): ?Model
     {
         $query = CommanderPackageModel::query();
@@ -113,7 +110,7 @@ class CommanderPackagesController extends CoreBaseApiController
             $query = $this->applyWith($query);
         }
 
-        return $query->where('name', $id)->first();
+        return $query->find($id);
     }
 
     /** Suspend (402) the provisioned package: write its commander_packages row directly. */
@@ -525,46 +522,11 @@ class CommanderPackagesController extends CoreBaseApiController
             return response()->json(['error' => 'Package not provisioned'], 404);
         }
 
-        $database = $packageRow->database;
-        $packageId = $packageRow->id;
+        // Corta el trafico antes de delegar el DDL al worker privilegiado.
+        $packageRow->forceFill(['provisioned_at' => null])->save();
+        CommanderDeprovisionPackageJob::dispatch($packageRow->id);
 
-        DB::connection('commander')->transaction(function () use ($packageRow, $packageId) {
-            // Datos operativos/metering de la instancia muerta (no son historial de billing).
-            CommanderRequestLogModel::query()->where('package_id', $packageId)->delete();
-            CommanderQuotaModel::query()->where('package_id', $packageId)->delete();
-            CommanderUsageRollupModel::query()->where('package_id', $packageId)->delete();
-
-            // Cierra el término de subscripción vigente; el historial (términos cerrados) se conserva.
-            CommanderSubscriptionModel::query()
-                ->where('package_id', $packageId)
-                ->whereNull('ended_at')
-                ->update(['ended_at' => CarbonImmutable::now()]);
-
-            // Soft: anula lo operativo (incluida la identidad client_id/slug, que libera el par), conserva
-            // el catalogo (name/label) + el historial de billing (subscriptions/invoices via package_id).
-            $packageRow->forceFill([
-                'slug' => null,
-                'database' => null,
-                'client_id' => null,
-                'subscription_id' => null,
-                'status' => 'active',
-                'reason' => null,
-                'message' => null,
-                'grace_until' => null,
-                'changed_at' => CarbonImmutable::now(),
-                'requests_24h' => 0,
-                'quota_health' => 0,
-                'last_seen' => null,
-                'provisioned_at' => null,
-            ])->save();
-        });
-
-        // DROP DATABASE fuera de la transaccion (DDL). sqlite no aplica.
-        if (! empty($database) && DB::connection('commander')->getDriverName() !== 'sqlite') {
-            DB::connection('commander')->statement("DROP DATABASE IF EXISTS `{$database}`");
-        }
-
-        return response()->json(['message' => 'Package de-provisioned.']);
+        return response()->json(['message' => 'Package de-provisioning queued.'], 202);
     }
 
     /** La fila del package SOLO si esta provisionada (tiene instancia viva). */
@@ -577,8 +539,7 @@ class CommanderPackagesController extends CoreBaseApiController
         return CommanderPackageModel::query()
             ->provisioned()
             ->with(['client', 'subscription', 'quotas'])
-            ->where('name', $package)
-            ->first();
+            ->find($package);
     }
 
     private function recordActivity(string $kind, CommanderPackageModel $packageRow, ?string $reason, ?string $message): void

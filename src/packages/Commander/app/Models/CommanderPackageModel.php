@@ -22,6 +22,8 @@ class CommanderPackageModel extends Model
 
     protected $guarded = [];
 
+    protected $hidden = ['database_username', 'database_password'];
+
     protected function casts(): array
     {
         return [
@@ -33,6 +35,7 @@ class CommanderPackageModel extends Model
             'changed_at' => 'datetime',
             'last_seen' => 'datetime',
             'provisioned_at' => 'datetime',
+            'database_password' => 'encrypted',
             'requests_24h' => 'integer',
             'quota_health' => 'float',
         ];

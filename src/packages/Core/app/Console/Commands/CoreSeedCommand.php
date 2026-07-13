@@ -41,7 +41,11 @@ class CoreSeedCommand extends Command
             }
 
             $connection = 'tenant';
-            config(['database.connections.tenant.database' => CorePackageSelectorSupport::databaseName($client, $package)]);
+            config([
+                'database.connections.tenant.database' => CorePackageSelectorSupport::databaseName($client, $package),
+                'database.connections.tenant.username' => config('database.connections.provisioner.username'),
+                'database.connections.tenant.password' => config('database.connections.provisioner.password'),
+            ]);
             DB::purge('tenant');
             $target = "{$clientStudly}\\{$packageStudly}"; // namespace del módulo: Acme\Shop
         } else {
@@ -53,18 +57,16 @@ class CoreSeedCommand extends Command
 
         if ($this->option('class')) {
             $this->info("Running seeder [{$this->option('class')}]...");
-            Artisan::call('db:seed', $args + ['--class' => $this->option('class')], $this->output);
-
-            return self::SUCCESS;
+            return Artisan::call('db:seed', $args + ['--class' => $this->option('class')], $this->output);
         }
 
         CorePackagesDatabaseSeeder::$targetPackage = $target;
 
         $this->info("Running seeders for [{$target}] on [{$connection}]...");
-        Artisan::call('db:seed', $args, $this->output);
-
-        CorePackagesDatabaseSeeder::$targetPackage = null;
-
-        return self::SUCCESS;
+        try {
+            return Artisan::call('db:seed', $args, $this->output);
+        } finally {
+            CorePackagesDatabaseSeeder::$targetPackage = null;
+        }
     }
 }

@@ -184,9 +184,9 @@ class CommanderControlCenterTest extends CommanderTestCase
             'slug' => 'cmd-basic', 'package' => 'Commander', 'name' => 'Basic', 'price_monthly' => 10,
         ])->assertStatus(422)->assertJsonValidationErrors('package');
 
-        // 'Shop' SÍ existe bajo un cliente (packages/Acme/Shop) -> pasa el guard de package desplegado.
+        // 'Kilkana' existe bajo el cliente Snk -> pasa el guard de package desplegado.
         $this->actingAs($admin, 'sanctum')->postJson('/api/v1/plans', [
-            'slug' => 'shop-basic', 'package' => 'Shop', 'name' => 'Basic', 'price_monthly' => 10,
+            'slug' => 'kilkana-basic', 'package' => 'Kilkana', 'name' => 'Basic', 'price_monthly' => 10,
         ])->assertStatus(201);
     }
 
@@ -213,14 +213,14 @@ class CommanderControlCenterTest extends CommanderTestCase
     public function test_package_metadata_persists(): void
     {
         $admin = $this->admin();
-        CommanderPackageModel::create(['name' => 'Shop', 'label' => 'Shop', 'listing_status' => 'active']);
+        $row = CommanderPackageModel::create(['name' => 'Shop', 'label' => 'Shop', 'listing_status' => 'active']);
 
         // Los metadatos de catalogo (label/description/listing_status) se editan sobre la fila unica.
-        $this->actingAs($admin, 'sanctum')->patchJson('/api/v1/packages/Shop', [
+        $this->actingAs($admin, 'sanctum')->patchJson("/api/v1/packages/{$row->id}", [
             'label' => 'Tienda', 'description' => 'Mi tienda online', 'listing_status' => 'inactive',
         ])->assertOk()->assertJsonPath('label', 'Tienda')->assertJsonPath('listing_status', 'inactive');
 
-        $row = CommanderPackageModel::where('name', 'Shop')->first();
+        $row->refresh();
         $this->assertSame('Tienda', $row->label);
         $this->assertSame('inactive', $row->listing_status);
     }
@@ -256,7 +256,7 @@ class CommanderControlCenterTest extends CommanderTestCase
         $current = $this->currentTerm($pkg, $basic, true);
 
         $this->actingAs($admin, 'sanctum')
-            ->postJson('/api/v1/packages/Shop/change-plan', ['plan_id' => $pro->id])
+            ->postJson("/api/v1/packages/{$pkg->id}/change-plan", ['plan_id' => $pro->id])
             ->assertOk()
             ->assertJsonPath('subscription.plan', 'Pro');
 
@@ -285,7 +285,7 @@ class CommanderControlCenterTest extends CommanderTestCase
         $other = $this->planFor('Blog', 'Pro', 100);
 
         $this->actingAs($admin, 'sanctum')
-            ->postJson('/api/v1/packages/Shop/change-plan', ['plan_id' => $other->id])
+            ->postJson("/api/v1/packages/{$pkg->id}/change-plan", ['plan_id' => $other->id])
             ->assertStatus(422);
     }
 
@@ -297,7 +297,7 @@ class CommanderControlCenterTest extends CommanderTestCase
         $inactive = $this->planFor('Shop', 'Old', 100, 'inactive');
 
         $this->actingAs($admin, 'sanctum')
-            ->postJson('/api/v1/packages/Shop/change-plan', ['plan_id' => $inactive->id])
+            ->postJson("/api/v1/packages/{$pkg->id}/change-plan", ['plan_id' => $inactive->id])
             ->assertStatus(422);
     }
 
@@ -309,7 +309,7 @@ class CommanderControlCenterTest extends CommanderTestCase
         $this->currentTerm($pkg, $basic);
 
         $this->actingAs($admin, 'sanctum')
-            ->postJson('/api/v1/packages/Shop/change-plan', ['plan_id' => $basic->id])
+            ->postJson("/api/v1/packages/{$pkg->id}/change-plan", ['plan_id' => $basic->id])
             ->assertStatus(422);
     }
 
@@ -317,11 +317,11 @@ class CommanderControlCenterTest extends CommanderTestCase
     {
         $admin = $this->admin();
         // Fila solo-catálogo (sin provisioned_at): no es instancia viva.
-        CommanderPackageModel::create(['name' => 'Ghost', 'label' => 'Ghost', 'listing_status' => 'active']);
+        $pkg = CommanderPackageModel::create(['name' => 'Ghost', 'label' => 'Ghost', 'listing_status' => 'active']);
         $plan = $this->planFor('Ghost', 'Pro', 100);
 
         $this->actingAs($admin, 'sanctum')
-            ->postJson('/api/v1/packages/Ghost/change-plan', ['plan_id' => $plan->id])
+            ->postJson("/api/v1/packages/{$pkg->id}/change-plan", ['plan_id' => $plan->id])
             ->assertStatus(404);
     }
 
@@ -336,7 +336,7 @@ class CommanderControlCenterTest extends CommanderTestCase
         ]);
 
         $this->actingAs($user, 'sanctum')
-            ->postJson('/api/v1/packages/Shop/change-plan', ['plan_id' => $plan->id])
+            ->postJson("/api/v1/packages/{$pkg->id}/change-plan", ['plan_id' => $plan->id])
             ->assertStatus(403);
     }
 }

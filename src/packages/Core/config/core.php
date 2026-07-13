@@ -28,6 +28,12 @@ return [
 
     'commander' => (bool) env('CORE_COMMANDER', true),
 
+    'auth' => [
+        'token_expiration_minutes' => (int) env('CORE_TOKEN_EXPIRATION_MINUTES', 1440),
+        'admin_email' => env('CORE_ADMIN_EMAIL', 'admin@snake.com'),
+        'admin_password' => env('CORE_ADMIN_PASSWORD'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Package State (kill-switch)
