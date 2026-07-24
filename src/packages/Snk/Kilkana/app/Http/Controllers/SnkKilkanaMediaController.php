@@ -160,7 +160,7 @@ class SnkKilkanaMediaController extends CoreBaseApiController
         $data = $request->validate([
             'ids' => 'required|array|min:1',
             'ids.*' => 'integer',
-            'action' => 'required|in:trash,restore,tag,collect',
+            'action' => 'required|in:trash,restore,tag,untag,collect,uncollect',
             'tag_ids' => 'sometimes|array',
             'tag_ids.*' => 'integer',
             'collection_ids' => 'sometimes|array',
@@ -185,9 +185,21 @@ class SnkKilkanaMediaController extends CoreBaseApiController
                     $media->tags()->syncWithoutDetaching($data['tag_ids'] ?? []);
                 }
                 break;
+            // detach, no sync: quita solo las etiquetas nombradas y deja intactas las demás
+            // que tenga cada medio.
+            case 'untag':
+                foreach (SnkKilkanaMediaModel::query()->whereIn('id', $ids)->get() as $media) {
+                    $media->tags()->detach($data['tag_ids'] ?? []);
+                }
+                break;
             case 'collect':
                 foreach (SnkKilkanaMediaModel::query()->whereIn('id', $ids)->get() as $media) {
                     $media->collections()->syncWithoutDetaching($data['collection_ids'] ?? []);
+                }
+                break;
+            case 'uncollect':
+                foreach (SnkKilkanaMediaModel::query()->whereIn('id', $ids)->get() as $media) {
+                    $media->collections()->detach($data['collection_ids'] ?? []);
                 }
                 break;
         }
