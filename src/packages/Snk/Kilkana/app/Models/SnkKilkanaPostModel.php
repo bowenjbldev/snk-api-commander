@@ -18,6 +18,11 @@ class SnkKilkanaPostModel extends Model
 
     protected $with = ['category', 'author', 'coverMedia', 'tags', 'metaRows'];
 
+    // Una subconsulta por listado en vez de N contadores: el panel muestra cuántos
+    // comentarios lleva cada artículo. Total, no solo aprobados: para moderar hay que ver
+    // que hay algo que moderar.
+    protected $withCount = ['comments'];
+
     protected $hidden = ['category_id', 'author_id', 'cover_media_id', 'coverMedia', 'metaRows'];
 
     protected $appends = ['cover', 'meta'];
@@ -58,6 +63,11 @@ class SnkKilkanaPostModel extends Model
     public function metaRows(): HasMany
     {
         return $this->hasMany(SnkKilkanaPostMetaModel::class, 'post_id');
+    }
+
+    public function comments(): HasMany
+    {
+        return $this->hasMany(SnkKilkanaCommentModel::class, 'post_id');
     }
 
     public function views(): HasMany

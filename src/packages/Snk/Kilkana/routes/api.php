@@ -37,6 +37,8 @@ Route::middleware(['api'])->group(function () {
 });
 
 Route::middleware(['api', 'auth:sanctum'])->group(function () {
+    // Antes del apiResource: si no, `show` se traga «bulk» como id de post.
+    Route::post('posts/bulk', [SnkKilkanaPostsController::class, 'bulk']);
     Route::apiResource('posts', SnkKilkanaPostsController::class);
     Route::get('posts/{post}/revisions', [SnkKilkanaPostsController::class, 'revisions']);
     Route::post('posts/{post}/revisions/{revision}/restore', [SnkKilkanaPostsController::class, 'restore']);

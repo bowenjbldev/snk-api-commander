@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Storage;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCategoryModel;
+use Packages\Snk\Kilkana\Models\SnkKilkanaCommentModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaLayoutModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaMediaCollectionModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaMediaModel;
@@ -42,8 +43,50 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         $this->seedPermissions();
         $this->seedCategories();
         $this->seedPosts();
+        $this->seedComments();
         $this->seedLayouts();
         $this->seedSettings();
+    }
+
+    /**
+     * Comentarios de demo. Sin ellos el contador del panel es siempre 0 y no hay nada que
+     * moderar en /admin/comments, así que la funcionalidad no se puede ni ver ni probar.
+     *
+     * Determinista a propósito —reparto por posición, no al azar—: dos siembras dan la
+     * misma base. Idempotente por (post, autor, texto), como el resto del seeder.
+     */
+    private function seedComments(): void
+    {
+        $author = CoreUserModel::query()->where('email', 'reader@snk.test')->first()
+            ?? CoreUserModel::query()->orderBy('id')->first();
+        if (! $author) {
+            return;
+        }
+
+        $bodies = [
+            'Gran cobertura, gracias por el contexto histórico.',
+            'Faltan las cifras de la fuente original, ¿las tenéis?',
+            'Lo he compartido con mi equipo, muy útil.',
+            'No estoy de acuerdo con la conclusión, pero se agradece el dato.',
+            'Seguid así, es el tipo de periodismo que hace falta.',
+        ];
+
+        // Solo publicados: un borrador no ha tenido lectores que comenten.
+        $posts = SnkKilkanaPostModel::query()->where('status', 'published')->orderBy('id')->get();
+        foreach ($posts as $i => $post) {
+            // 0, 1, 2 o 3 comentarios según la posición: la tabla enseña la columna con
+            // variedad real en vez de todo a uno.
+            for ($n = 0; $n < $i % 4; $n++) {
+                SnkKilkanaCommentModel::firstOrCreate([
+                    'post_id' => $post->id,
+                    'user_id' => $author->id,
+                    'body' => $bodies[($i + $n) % count($bodies)],
+                ], [
+                    // Uno de cada tres queda pendiente: la moderación tiene cola que enseñar.
+                    'status' => ($i + $n) % 3 === 0 ? 'pending' : 'approved',
+                ]);
+            }
+        }
     }
 
     /** Composición de arranque (snapshot del builder): un fresh ya no deja la portada en blanco. */

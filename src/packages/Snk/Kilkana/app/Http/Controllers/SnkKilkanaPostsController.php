@@ -152,6 +152,50 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         return response()->json($post->fresh());
     }
 
+    /**
+     * Acción masiva sobre varios artículos: cambio de estado o borrado.
+     *
+     * Un endpoint y no N peticiones desde el panel: publicar veinte eran veinte PUT, cada
+     * uno con su carrera y su fallo parcial. `publish` sella `published_at` si el artículo
+     * no lo tenía —un publicado sin fecha se ordena mal en la portada— y limpia
+     * `scheduled_for`, que ya no significa nada una vez publicado.
+     */
+    public function bulk(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer',
+            'action' => 'required|in:publish,draft,delete',
+        ]);
+
+        $permission = $data['action'] === 'delete' ? $this->destroyPermission : $this->updatePermission;
+        if ($response = $this->requirePermission($permission)) {
+            return $response;
+        }
+
+        $query = SnkKilkanaPostModel::query()->whereIn('id', $data['ids']);
+        if ($data['action'] === 'delete') {
+            $count = $query->count();
+            $query->delete();
+
+            return response()->json(['ok' => true, 'count' => $count]);
+        }
+
+        $count = 0;
+        foreach ($query->get() as $post) {
+            $post->status = $data['action'] === 'publish' ? 'published' : 'draft';
+            if ($data['action'] === 'publish') {
+                $post->published_at = $post->published_at ?? now();
+                $post->scheduled_for = null;
+            }
+            $post->updated_by = auth()->id();
+            $post->save();
+            $count++;
+        }
+
+        return response()->json(['ok' => true, 'count' => $count]);
+    }
+
     /** Historial de versiones de un post (más reciente primero). */
     public function revisions($id): JsonResponse
     {
