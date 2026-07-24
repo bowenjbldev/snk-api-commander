@@ -64,4 +64,37 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
 
         return response()->json($comment, 201);
     }
+
+    /**
+     * Moderación en masa desde el panel; mismo contrato que `posts/bulk`.
+     * Borrar arrastra el hilo: parent_id es cascadeOnDelete.
+     */
+    public function bulk(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer',
+            'action' => 'required|in:approve,pending,spam,delete',
+        ]);
+
+        $permission = $data['action'] === 'delete' ? $this->destroyPermission : $this->updatePermission;
+        if ($response = $this->requirePermission($permission)) {
+            return $response;
+        }
+
+        $query = SnkKilkanaCommentModel::query()->whereIn('id', $data['ids']);
+
+        if ($data['action'] === 'delete') {
+            $count = $query->count();
+            $query->delete();
+
+            return response()->json(['ok' => true, 'count' => $count]);
+        }
+
+        $count = $query->update([
+            'status' => $data['action'] === 'approve' ? 'approved' : $data['action'],
+        ]);
+
+        return response()->json(['ok' => true, 'count' => $count]);
+    }
 }

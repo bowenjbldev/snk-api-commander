@@ -56,6 +56,8 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::put('media-{taxonomy}/{id}', [SnkKilkanaMediaTaxonomiesController::class, 'update'])->whereIn('taxonomy', ['tags', 'collections']);
     Route::delete('media-{taxonomy}/{id}', [SnkKilkanaMediaTaxonomiesController::class, 'destroy'])->whereIn('taxonomy', ['tags', 'collections']);
     Route::apiResource('tags', SnkKilkanaTagsController::class);
+    // Antes del apiResource, como en posts: si no, `show` se traga «bulk» como id.
+    Route::post('comments/bulk', [SnkKilkanaCommentsController::class, 'bulk']);
     Route::apiResource('comments', SnkKilkanaCommentsController::class);
 
     Route::apiResource('subscribers', SnkKilkanaSubscribersController::class)->only(['index', 'show', 'store', 'update', 'destroy']);
