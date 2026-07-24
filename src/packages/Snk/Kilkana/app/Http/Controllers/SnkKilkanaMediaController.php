@@ -392,6 +392,8 @@ class SnkKilkanaMediaController extends CoreBaseApiController
         return [
             'all' => SnkKilkanaMediaModel::query()->count(),
             'review' => SnkKilkanaMediaModel::query()->where('rights_status', 'unknown')->count(),
+            // «Sin usar» es una vista como review o trash, no un filtro: lleva su contador.
+            'unused' => SnkKilkanaMediaModel::query()->whereDoesntHave('coveredPosts')->count(),
             'missing_alt' => SnkKilkanaMediaModel::query()->where(fn (Builder $q) => $q->whereNull('alt')->orWhere('alt', ''))->count(),
             'expiring' => SnkKilkanaMediaModel::query()->whereNotNull('rights_expires_at')->whereDate('rights_expires_at', '<=', $soon)->count(),
             'trash' => SnkKilkanaMediaModel::onlyTrashed()->count(),
