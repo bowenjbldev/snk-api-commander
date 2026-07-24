@@ -1,2 +1,6 @@
 * text=auto eol=lf
 *.sh text eol=lf
+
+# Fixtures binarios (imágenes demo del seeder): nunca normalizar saltos de línea.
+*.jpg binary
+*.png binary

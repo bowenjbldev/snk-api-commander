@@ -3,11 +3,16 @@
 namespace Packages\Snk\Kilkana\Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Http\File;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaLayoutModel;
+use Packages\Snk\Kilkana\Models\SnkKilkanaMediaCollectionModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaMediaModel;
+use Packages\Snk\Kilkana\Models\SnkKilkanaMediaTagModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaSettingModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaTagModel;
@@ -103,11 +108,12 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     private function seedPosts(): void
     {
         $posts = json_decode((string) file_get_contents(__DIR__.'/data/posts.json'), true);
-        foreach ($posts as $post) {
+        foreach ($posts as $i => $post) {
             $category = SnkKilkanaCategoryModel::query()->where('slug', $post['cat'])->first();
             $author = SnkKilkanaAuthorModel::firstOrCreate(['name' => trim($post['author'])]);
+            // El fixture de imagen es posicional: posts.json[N] ↔ data/media/unsplash-N.jpg.
             $media = ! empty($post['image'])
-                ? SnkKilkanaMediaModel::firstOrCreateByUrl($post['image'])
+                ? $this->seedCoverMedia($post, $category, $i + 1)
                 : null;
 
             $row = SnkKilkanaPostModel::firstOrCreate(['slug' => $post['slug']], [
@@ -128,5 +134,65 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 ->map(fn (string $name) => SnkKilkanaTagModel::firstOrCreate(['name' => $name])->id);
             $row->tags()->syncWithoutDetaching($tagIds);
         }
+    }
+
+    /**
+     * Portada como fichero propio del tenant, no como URL remota: copia el JPG del
+     * fixture (data/media/unsplash-N.jpg) al disco del tenant con la misma convención
+     * que la subida real (SnkKilkanaMediaController::upload) y crea la fila con los
+     * metadatos completos que pide la biblioteca. La URL de Unsplash de posts.json
+     * queda como `source_url` (la procedencia), no como origen de servicio.
+     *
+     * Dedup por `content_hash`, igual que la subida: re-sembrar no duplica.
+     * Sin fixture, cae a la fila con URL remota para no romper la siembra.
+     */
+    private function seedCoverMedia(array $post, ?SnkKilkanaCategoryModel $category, int $n): SnkKilkanaMediaModel
+    {
+        $fixture = __DIR__.'/data/media/unsplash-'.$n.'.jpg';
+        if (! is_file($fixture)) {
+            return SnkKilkanaMediaModel::firstOrCreateByUrl($post['image']);
+        }
+
+        $name = 'unsplash-'.$n.'.jpg';
+        $path = 'media/'.DB::connection()->getDatabaseName().'/'.$name;
+        // putFileAs es idempotente por nombre: re-sembrar reescribe el mismo fichero.
+        Storage::disk('public')->putFileAs(dirname($path), new File($fixture), $name);
+
+        [$width, $height] = @getimagesize($fixture) ?: [null, null];
+        $media = SnkKilkanaMediaModel::firstOrCreate(
+            ['content_hash' => hash_file('sha256', $fixture)],
+            [
+                'url' => '/storage/'.$path,
+                'original_name' => $name,
+                'path' => $path,
+                'disk' => 'public',
+                'mime' => 'image/jpeg',
+                'width' => $width,
+                'height' => $height,
+                'size_bytes' => filesize($fixture),
+                'title' => $post['title'],
+                'alt' => $post['title'],
+                'caption' => $post['excerpt'],
+                'description' => 'Editorial cover for: '.$post['title'],
+                'credit' => 'Unsplash',
+                'source_url' => $post['image'],
+                'rights_status' => 'licensed',
+                'license' => 'Unsplash License',
+            ]
+        );
+
+        // ponytail: repite la regla de kilkana:enrich-media, pero aquí el post ya está
+        // en la mano (sin re-consultar). Enrich sigue siendo el reparador de media
+        // subida más tarde sin metadatos; no se orquesta un comando desde un seeder.
+        $media->tags()->syncWithoutDetaching(
+            collect($post['tags'] ?? [])->map(fn (string $tag) => SnkKilkanaMediaTagModel::firstOrCreate(['name' => $tag])->id)
+        );
+        if ($category) {
+            $media->collections()->syncWithoutDetaching(
+                [SnkKilkanaMediaCollectionModel::firstOrCreate(['name' => $category->name])->id]
+            );
+        }
+
+        return $media;
     }
 }

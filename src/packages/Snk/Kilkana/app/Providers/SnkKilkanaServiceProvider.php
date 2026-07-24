@@ -4,6 +4,7 @@ namespace Packages\Snk\Kilkana\Providers;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\ServiceProvider;
+use Packages\Snk\Kilkana\Console\Commands\SnkKilkanaEnrichMediaCommand;
 use Packages\Snk\Kilkana\Console\Commands\SnkKilkanaPublishScheduledCommand;
 
 class SnkKilkanaServiceProvider extends ServiceProvider
@@ -16,7 +17,10 @@ class SnkKilkanaServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if ($this->app->runningInConsole()) {
-            $this->commands([SnkKilkanaPublishScheduledCommand::class]);
+            $this->commands([
+                SnkKilkanaPublishScheduledCommand::class,
+                SnkKilkanaEnrichMediaCommand::class,
+            ]);
 
             // Scheduler editorial (cron corre schedule:run, como los del Commander).
             $this->app->booted(function (): void {

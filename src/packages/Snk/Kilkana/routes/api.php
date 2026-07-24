@@ -7,6 +7,7 @@ use Packages\Snk\Kilkana\Http\Controllers\SnkKilkanaCategoriesController;
 use Packages\Snk\Kilkana\Http\Controllers\SnkKilkanaCommentsController;
 use Packages\Snk\Kilkana\Http\Controllers\SnkKilkanaLayoutsController;
 use Packages\Snk\Kilkana\Http\Controllers\SnkKilkanaMediaController;
+use Packages\Snk\Kilkana\Http\Controllers\SnkKilkanaMediaTaxonomiesController;
 use Packages\Snk\Kilkana\Http\Controllers\SnkKilkanaTagsController;
 use Packages\Snk\Kilkana\Http\Controllers\SnkKilkanaPostsController;
 use Packages\Snk\Kilkana\Http\Controllers\SnkKilkanaPublicController;
@@ -42,7 +43,16 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::apiResource('categories', SnkKilkanaCategoriesController::class);
     Route::apiResource('authors', SnkKilkanaAuthorsController::class);
     Route::post('media/upload', [SnkKilkanaMediaController::class, 'upload']);
+    Route::post('media/bulk', [SnkKilkanaMediaController::class, 'bulk']);
+    Route::post('media/{id}/restore', [SnkKilkanaMediaController::class, 'restore']);
+    Route::delete('media/{id}/force', [SnkKilkanaMediaController::class, 'forceDestroy']);
+    Route::post('media/{id}/replace', [SnkKilkanaMediaController::class, 'replace']);
     Route::apiResource('media', SnkKilkanaMediaController::class);
+    // Taxonomías de medios: tags y colecciones comparten controlador; el segmento {taxonomy} decide el modelo.
+    Route::get('media-{taxonomy}', [SnkKilkanaMediaTaxonomiesController::class, 'index'])->whereIn('taxonomy', ['tags', 'collections']);
+    Route::post('media-{taxonomy}', [SnkKilkanaMediaTaxonomiesController::class, 'store'])->whereIn('taxonomy', ['tags', 'collections']);
+    Route::put('media-{taxonomy}/{id}', [SnkKilkanaMediaTaxonomiesController::class, 'update'])->whereIn('taxonomy', ['tags', 'collections']);
+    Route::delete('media-{taxonomy}/{id}', [SnkKilkanaMediaTaxonomiesController::class, 'destroy'])->whereIn('taxonomy', ['tags', 'collections']);
     Route::apiResource('tags', SnkKilkanaTagsController::class);
     Route::apiResource('comments', SnkKilkanaCommentsController::class);
 
