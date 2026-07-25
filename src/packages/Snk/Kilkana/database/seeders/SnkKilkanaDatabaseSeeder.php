@@ -57,18 +57,31 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      */
     private function seedComments(): void
     {
-        $author = CoreUserModel::query()->where('email', 'reader@snk.test')->first()
-            ?? CoreUserModel::query()->orderBy('id')->first();
-        if (! $author) {
+        $readers = $this->seedReaders();
+        if ($readers === []) {
             return;
         }
 
+        // Voces distintas, no una plantilla repetida: la cola de moderación solo se puede
+        // juzgar si los textos se parecen a los de verdad (agradecen, discrepan, corrigen).
         $bodies = [
             'Gran cobertura, gracias por el contexto histórico.',
             'Faltan las cifras de la fuente original, ¿las tenéis?',
             'Lo he compartido con mi equipo, muy útil.',
             'No estoy de acuerdo con la conclusión, pero se agradece el dato.',
             'Seguid así, es el tipo de periodismo que hace falta.',
+            'Yo vivo en el barrio y la situación es bastante peor de lo que se cuenta aquí.',
+            'El titular promete más de lo que luego desarrolla el texto.',
+            '¿Vais a hacer seguimiento del tema dentro de unos meses?',
+            'Enhorabuena por el trabajo de campo, se nota que hay calle detrás.',
+            'Falta la versión de la otra parte, así queda cojo.',
+            'La foto de portada no corresponde con lo que se describe en el tercer párrafo.',
+            'Llevo años suscrito y este es de los mejores reportajes que os he leído.',
+        ];
+        // El spam existe en la vida real y esa pestaña estaba siempre a cero.
+        $spam = [
+            'GANA DINERO DESDE CASA >>> clic aquí, plazas limitadas!!!',
+            'Compra seguidores baratos en www.ejemplo-no-real.test/promo',
         ];
 
         // Solo publicados: un borrador no ha tenido lectores que comenten.
@@ -77,16 +90,117 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             // 0, 1, 2 o 3 comentarios según la posición: la tabla enseña la columna con
             // variedad real en vez de todo a uno.
             for ($n = 0; $n < $i % 4; $n++) {
-                SnkKilkanaCommentModel::firstOrCreate([
+                $slot = $i + $n;
+                $reader = $readers[$slot % count($readers)];
+                $esSpam = $slot % 11 === 5;
+                $comment = SnkKilkanaCommentModel::firstOrCreate([
                     'post_id' => $post->id,
-                    'user_id' => $author->id,
-                    'body' => $bodies[($i + $n) % count($bodies)],
+                    'user_id' => $reader->id,
+                    'body' => $esSpam ? $spam[$slot % count($spam)] : $bodies[$slot % count($bodies)],
                 ], [
                     // Uno de cada tres queda pendiente: la moderación tiene cola que enseñar.
-                    'status' => ($i + $n) % 3 === 0 ? 'pending' : 'approved',
+                    'status' => $esSpam ? 'spam' : ($slot % 3 === 0 ? 'pending' : 'approved'),
+                    // Repartidos por las últimas cuatro semanas: sin esto entran todos a la
+                    // vez y el filtro de periodo del panel no distingue nada.
+                    'created_at' => now()->subHours(($slot * 7) % 672),
+                    'updated_at' => now()->subHours(($slot * 7) % 672),
                 ]);
+
+                // Una respuesta cada pocos hilos: la conversación anidada también hay que
+                // poder verla (el panel la indenta y la API la borra en cascada).
+                if ($n === 0 && $i % 5 === 3) {
+                    $otro = $readers[($slot + 1) % count($readers)];
+                    SnkKilkanaCommentModel::firstOrCreate([
+                        'post_id' => $post->id,
+                        'user_id' => $otro->id,
+                        'parent_id' => $comment->id,
+                        'body' => 'Justo lo que iba a comentar. Añado que la última parte contradice lo que publicasteis en mayo.',
+                    ], [
+                        'status' => 'approved',
+                        'created_at' => now()->subHours(max(0, (($slot * 7) % 672) - 3)),
+                        'updated_at' => now()->subHours(max(0, (($slot * 7) % 672) - 3)),
+                    ]);
+                }
             }
         }
+    }
+
+    /**
+     * Lectores registrados de demo con perfil completo (nombre, nombre legal, empresa,
+     * teléfono y avatar). Sin esto la moderación es una columna de «Demo Reader» repetido:
+     * no se ve si la tabla aguanta nombres largos, correos distintos ni avatares.
+     *
+     * @return list<CoreUserModel>
+     */
+    private function seedReaders(): array
+    {
+        $password = config('snk.kilkana.kilkana.demo_reader_password');
+        if ((! is_string($password) || $password === '') && app()->environment(['local', 'testing'])) {
+            $password = 'password';
+        }
+        if (! is_string($password) || $password === '') {
+            return [];
+        }
+
+        // El hue pinta el avatar generado; van repartidos por la rueda para que la columna
+        // no salga monocroma.
+        $people = [
+            ['name' => 'Marta Ruiz', 'email' => 'marta.ruiz@snk.test', 'full_name' => 'Marta Ruiz Alonso', 'company' => 'Ayuntamiento de Gijón', 'phone' => '+34 985 112 233', 'hue' => 20],
+            ['name' => 'Aitor Etxeberria', 'email' => 'aitor.etxeberria@snk.test', 'full_name' => 'Aitor Etxeberria Lasa', 'company' => 'Cooperativa Elkar', 'phone' => '+34 943 445 566', 'hue' => 150],
+            ['name' => 'Nuria Sanchís', 'email' => 'nuria.sanchis@snk.test', 'full_name' => 'Nuria Sanchís Ferrer', 'company' => 'Universitat de València', 'phone' => '+34 963 778 899', 'hue' => 275],
+            ['name' => 'Diego Ferreiro', 'email' => 'diego.ferreiro@snk.test', 'full_name' => 'Diego Ferreiro Nogueira', 'company' => 'Portos de Galicia', 'phone' => '+34 981 334 455', 'hue' => 200],
+            ['name' => 'Lucía Ibarra', 'email' => 'lucia.ibarra@snk.test', 'full_name' => 'Lucía Ibarra Montes', 'company' => 'Fundación Lectura Viva', 'phone' => '+34 917 223 344', 'hue' => 330],
+            ['name' => 'Samuel Okonkwo', 'email' => 'samuel.okonkwo@snk.test', 'full_name' => 'Samuel Okonkwo Ebele', 'company' => 'Clínica San Rafael', 'phone' => '+34 954 667 788', 'hue' => 45],
+            ['name' => 'Hélène Dubois', 'email' => 'helene.dubois@snk.test', 'full_name' => 'Hélène Dubois Renard', 'company' => 'Institut Français', 'phone' => '+33 1 44 55 66 77', 'hue' => 250],
+            ['name' => 'Pau Comas', 'email' => 'pau.comas@snk.test', 'full_name' => 'Pau Comas Vidal', 'company' => 'Mercat de Sant Antoni', 'phone' => '+34 934 556 677', 'hue' => 95],
+        ];
+
+        $role = Role::findOrCreate('reader', 'sanctum');
+        $readers = [];
+        foreach ($people as $i => $person) {
+            $user = CoreUserModel::firstOrCreate(
+                ['email' => $person['email']],
+                [
+                    // Sin Hash::make: el cast 'hashed' del modelo ya lo hace.
+                    'password' => $password,
+                    'name' => $person['name'],
+                    'full_name' => $person['full_name'],
+                    'company' => $person['company'],
+                    'phone' => $person['phone'],
+                ]
+            );
+            // Fuera del create: así una siembra sobre una base que ya tenía al usuario
+            // también le pone el avatar, en vez de dejarlo a medias.
+            $user->forceFill(['avatar' => $this->seedAvatar($person['name'], $person['hue'], $i + 1)])->save();
+            $user->assignRole($role);
+            $readers[] = $user;
+        }
+
+        return $readers;
+    }
+
+    /**
+     * Avatar como fichero propio del tenant: un SVG de monograma generado aquí mismo. Se
+     * evita a propósito un servicio remoto de caras (pravatar y compañía): la demo tiene que
+     * funcionar sin red y sin mandar nada a terceros.
+     */
+    private function seedAvatar(string $name, int $hue, int $n): string
+    {
+        $initials = collect(preg_split('/\s+/', trim($name)) ?: [])
+            ->take(2)
+            ->map(fn (string $word) => mb_strtoupper(mb_substr($word, 0, 1)))
+            ->implode('');
+
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96" role="img" aria-label="'.$initials.'">'
+            .'<rect width="96" height="96" rx="48" fill="hsl('.$hue.' 62% 88%)"/>'
+            .'<text x="48" y="62" text-anchor="middle" font-family="system-ui, sans-serif" font-size="38" font-weight="600" fill="hsl('.$hue.' 55% 28%)">'.$initials.'</text>'
+            .'</svg>';
+
+        $path = 'avatars/'.DB::connection()->getDatabaseName().'/reader-'.$n.'.svg';
+        // put es idempotente por ruta: re-sembrar reescribe el mismo fichero.
+        Storage::disk('public')->put($path, $svg);
+
+        return '/storage/'.$path;
     }
 
     /** Composición de arranque (snapshot del builder): un fresh ya no deja la portada en blanco. */
@@ -136,6 +250,13 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             // Sin Hash::make: el cast 'hashed' del modelo ya lo hace (doble hash = login roto).
             ['name' => 'Demo Reader', 'password' => $readerPassword]
         );
+        // La cuenta con la que se prueba el login público también se ve en la moderación:
+        // sin perfil ni avatar era la única fila a medias de la tabla.
+        $demo->forceFill([
+            'full_name' => $demo->full_name ?: 'Demo Reader',
+            'company' => $demo->company ?: 'Cuenta de demostración',
+            'avatar' => $this->seedAvatar('Demo Reader', 210, 0),
+        ])->save();
         $demo->assignRole($reader);
     }
 

@@ -25,6 +25,7 @@ class CoreUserModel extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'avatar',
         'full_name',
         'company',
         'phone',
