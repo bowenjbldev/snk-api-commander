@@ -2,10 +2,12 @@
 
 namespace Packages\Snk\Kilkana\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class SnkKilkanaMediaModel extends Model
 {
@@ -57,14 +59,56 @@ class SnkKilkanaMediaModel extends Model
     }
 
     /** Posts que usan esta pieza como portada — base del usage_count y del filtro "sin usar". */
+    /**
+     * Las TRES formas de estar en uso. Aqui se declaran todas, y de aqui salen el contador y
+     * la vista «sin usar»: si manana aparece una cuarta clave foranea hacia un medio, entra
+     * en esta lista y las dos cosas se enteran solas.
+     *
+     * Se contaba solo la portada, y las otras dos existian igual. Consecuencia: la imagen
+     * social de un articulo publicado y el retrato de una firma salian como «sin usar» con
+     * el contador a cero — la biblioteca ofrecia para limpiar justo las fotos que si estaban
+     * publicadas. Las FK son SET NULL, asi que borrarlas no rompia la base: hacia algo peor,
+     * dejaba al articulo sin imagen social y al periodista sin cara, sin un solo error.
+     */
+    public const USOS = ['coveredPosts', 'socialPosts', 'avatarAuthors'];
+
+    /** Posts que la usan de portada. */
     public function coveredPosts(): HasMany
     {
         return $this->hasMany(SnkKilkanaPostModel::class, 'cover_media_id');
     }
 
-    /** covered_posts_count si el controlador lo cargó (withCount); si no, cuenta al vuelo. */
+    /** Posts que la usan como imagen para redes. */
+    public function socialPosts(): HasMany
+    {
+        return $this->hasMany(SnkKilkanaPostModel::class, 'og_image_id');
+    }
+
+    /** Firmas que la usan de retrato. */
+    public function avatarAuthors(): HasMany
+    {
+        return $this->hasMany(SnkKilkanaAuthorModel::class, 'avatar_media_id');
+    }
+
+    /** Un medio al que no apunta nadie. Un solo sitio define «sin usar». */
+    public function scopeUnused(Builder $query): Builder
+    {
+        foreach (self::USOS as $uso) {
+            $query->whereDoesntHave($uso);
+        }
+
+        return $query;
+    }
+
+    /** Los `*_count` si el controlador los cargo (withCount); si no, se cuentan al vuelo. */
     public function getUsageCountAttribute(): int
     {
-        return (int) ($this->attributes['covered_posts_count'] ?? $this->coveredPosts()->count());
+        $total = 0;
+        foreach (self::USOS as $uso) {
+            $columna = Str::snake($uso).'_count';
+            $total += (int) ($this->attributes[$columna] ?? $this->{$uso}()->count());
+        }
+
+        return $total;
     }
 }

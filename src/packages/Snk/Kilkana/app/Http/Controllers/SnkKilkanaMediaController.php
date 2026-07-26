@@ -321,7 +321,7 @@ class SnkKilkanaMediaController extends CoreBaseApiController
     {
         $query = SnkKilkanaMediaModel::query()
             ->with(['tags', 'collections'])
-            ->withCount('coveredPosts');
+            ->withCount(SnkKilkanaMediaModel::USOS);
 
         $status = $request->string('status')->toString();
         if ($status === 'trash') {
@@ -329,7 +329,7 @@ class SnkKilkanaMediaController extends CoreBaseApiController
         } elseif ($status === 'review') {
             $query->where('rights_status', 'unknown');
         } elseif ($status === 'unused') {
-            $query->whereDoesntHave('coveredPosts');
+            $query->unused();
         }
 
         if ($q = $request->string('q')->trim()->toString()) {
@@ -405,9 +405,11 @@ class SnkKilkanaMediaController extends CoreBaseApiController
             'all' => SnkKilkanaMediaModel::query()->count(),
             'review' => SnkKilkanaMediaModel::query()->where('rights_status', 'unknown')->count(),
             // «Sin usar» es una vista como review o trash, no un filtro: lleva su contador.
-            'unused' => SnkKilkanaMediaModel::query()->whereDoesntHave('coveredPosts')->count(),
+            'unused' => SnkKilkanaMediaModel::query()->unused()->count(),
             'missing_alt' => SnkKilkanaMediaModel::query()->where(fn (Builder $q) => $q->whereNull('alt')->orWhere('alt', ''))->count(),
-            'expiring' => SnkKilkanaMediaModel::query()->whereNotNull('rights_expires_at')->whereDate('rights_expires_at', '<=', $soon)->count(),
+            // Sin `whereDate`: envolver la columna en una función impide que la base use su
+            // índice. `rights_expires_at` ya es DATE, así que se compara en crudo.
+            'expiring' => SnkKilkanaMediaModel::query()->whereNotNull('rights_expires_at')->where('rights_expires_at', '<=', $soon)->count(),
             'trash' => SnkKilkanaMediaModel::onlyTrashed()->count(),
         ];
     }
@@ -415,6 +417,6 @@ class SnkKilkanaMediaController extends CoreBaseApiController
     /** Recarga con relaciones + conteo para que la respuesta cuadre con el contrato del index. */
     private function serialize(SnkKilkanaMediaModel $media): SnkKilkanaMediaModel
     {
-        return $media->fresh(['tags', 'collections'])->loadCount('coveredPosts');
+        return $media->fresh(['tags', 'collections'])->loadCount(SnkKilkanaMediaModel::USOS);
     }
 }

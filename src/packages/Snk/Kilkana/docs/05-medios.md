@@ -139,6 +139,55 @@ encargo.
 
 ---
 
+## Un medio está en uso de TRES formas
+
+A `kilkana_media` apuntan tres claves foráneas, y las tres cuentan:
+
+| Quién | Columna | Para qué |
+|---|---|---|
+| Artículo | `cover_media_id` | portada |
+| Artículo | `og_image_id` | imagen para redes |
+| Firma | `avatar_media_id` | retrato |
+
+Las tres son `SET NULL`: borrar un medio no borra lo que lo usaba, le quita la foto.
+
+Eso es justo lo que hace importante contarlas todas. Se contaba solo la portada, así que la
+imagen social de un artículo publicado y el retrato de un periodista aparecían **como «sin
+usar», con el contador a cero** — y esa es la vista con la que se hace limpieza. La
+biblioteca ofrecía para borrar precisamente las fotos que sí estaban publicadas, y como la
+clave es `SET NULL`, borrarlas no daba ningún error: el artículo se quedaba sin imagen
+social y el periodista sin cara, en silencio.
+
+Si algún día aparece una cuarta referencia a un medio, tiene que entrar en esa cuenta. Un
+medio «sin usar» que en realidad se está publicando es peor que no tener la vista.
+
+---
+
+## Índices: los que se usan de verdad
+
+| Índice | Lo que sostiene |
+|---|---|
+| `(deleted_at, created_at)` | **toda** lectura de la biblioteca |
+| `rights_expires_at` | qué derechos caducan pronto |
+| `url_hash` · `content_hash` | los dos dedup |
+
+El primero existe porque el borrado lógico añade `deleted_at IS NULL` a cada consulta sin
+que se vea en el código, y el listado ordena por fecha de alta. Sin él, cada carga de la
+biblioteca recorría la tabla entera y ordenaba a mano; con él, la base resuelve filtro y
+orden con el propio índice.
+
+El segundo fue `(rights_status, rights_expires_at)`, y no servía para lo único que consulta
+la caducidad: un filtro por fecha que no toca el estado. En un índice compuesto solo se
+puede aprovechar el prefijo por la izquierda, así que con el estado delante la fecha no se
+alcanzaba. El estado sí se filtra por su cuenta, pero tiene cuatro valores contados y ahí un
+índice no aporta.
+
+> Detalle que anula un índice sin avisar: envolver la columna en una función —`whereDate`,
+> `DATE(...)`, `LOWER(...)`— impide que la base lo use. Como `rights_expires_at` ya es de
+> tipo fecha, se compara en crudo.
+
+---
+
 ## Lo que se edita aquí tiene que LLEGAR al público
 
 Un medio guarda `alt`, `caption`, `credit` y el punto focal precisamente para que se
