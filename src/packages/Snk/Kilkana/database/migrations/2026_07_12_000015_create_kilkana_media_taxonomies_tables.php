@@ -4,10 +4,6 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-/**
- * Taxonomías de la biblioteca de medios: etiquetas y colecciones, cada una con su pivote.
- * Son de MEDIOS, no de artículos — `kilkana_tags` es otra cosa y vive en su migración.
- */
 return new class extends Migration
 {
     public function up(): void
@@ -41,7 +37,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        // Orden inverso: los pivotes antes que las tablas a las que apuntan.
         Schema::dropIfExists('kilkana_media_collection_media');
         Schema::dropIfExists('kilkana_media_media_tag');
         Schema::dropIfExists('kilkana_media_collections');

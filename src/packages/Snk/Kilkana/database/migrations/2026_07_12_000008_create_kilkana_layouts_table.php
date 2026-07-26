@@ -10,9 +10,9 @@ return new class extends Migration
     {
         Schema::create('kilkana_layouts', function (Blueprint $table) {
             $table->id();
-            $table->string('layout', 16)->unique(); // 'portada' | 'seccion'
+            $table->string('layout', 16)->unique();
             $table->json('schema');
-            $table->unsignedInteger('version')->default(1); // concurrencia optimista
+            $table->unsignedInteger('version')->default(1);
             $table->timestamps();
         });
     }

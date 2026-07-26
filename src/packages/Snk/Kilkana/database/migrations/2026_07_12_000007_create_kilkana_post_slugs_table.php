@@ -8,11 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Historial de slugs (1:N): la URL vieja responde 301 al slug actual.
         Schema::create('kilkana_post_slugs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('post_id')->constrained('kilkana_posts')->cascadeOnDelete();
-            $table->string('slug')->unique(); // un slug viejo apunta a UN post
+            $table->string('path')->unique();
             $table->timestamps();
         });
     }

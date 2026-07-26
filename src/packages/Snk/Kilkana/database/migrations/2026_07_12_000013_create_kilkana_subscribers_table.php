@@ -8,13 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Lista del boletín del tenant. Alta pública (pending), verificación y
-        // baja llegarán con el canal de email; la lista ya es del periódico.
         Schema::create('kilkana_subscribers', function (Blueprint $table) {
             $table->id();
             $table->string('email')->unique();
-            $table->string('status', 16)->default('pending'); // pending|confirmed|unsubscribed
-            $table->timestamp('verified_at')->nullable();
+            $table->string('status', 16)->default('pending');
             $table->timestamps();
         });
     }

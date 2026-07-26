@@ -5,8 +5,6 @@ namespace Packages\Snk\Kilkana\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Packages\Commander\Models\CommanderPackageModel;
-use Packages\Snk\Kilkana\Models\SnkKilkanaMediaCollectionModel;
-use Packages\Snk\Kilkana\Models\SnkKilkanaMediaTagModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaPostModel;
 
 class SnkKilkanaEnrichMediaCommand extends Command
@@ -14,6 +12,16 @@ class SnkKilkanaEnrichMediaCommand extends Command
     protected $signature = 'kilkana:enrich-media';
 
     protected $description = 'Fill media metadata from the editorial posts that use it';
+
+    /**
+     * Rellena lo que el artículo SÍ sabe del fichero: título, alt, pie, crédito y derechos.
+     *
+     * Ya no toca etiquetas ni colecciones. Copiaba los tags del post y el nombre de su
+     * sección, y como corre sobre TODOS los tenants aprovisionados, bastaba una ejecución
+     * para dejar la fototeca de cada periódico con el vocabulario editorial dentro. Un tag
+     * de medio describe el fichero —«retrato», «apaisado», «archivo»—, no el tema de la
+     * noticia; eso lo pone quien mira la foto, y ningún comando puede adivinarlo.
+     */
 
     public function handle(): int
     {
@@ -47,12 +55,6 @@ class SnkKilkanaEnrichMediaCommand extends Command
                         if ($media->rights_status === 'unknown' && str_contains((string) $media->source_url, 'unsplash.com')) $changes['rights_status'] = 'licensed';
                         if (!$media->license && str_contains((string) $media->source_url, 'unsplash.com')) $changes['license'] = 'Unsplash License';
                         if ($changes) { $media->update($changes); $mediaCount++; }
-
-                        $tagIds = $post->tags->map(fn ($tag) => SnkKilkanaMediaTagModel::firstOrCreate(['name' => $tag->name])->id);
-                        if ($tagIds->isNotEmpty()) $media->tags()->syncWithoutDetaching($tagIds);
-                        if ($post->category) $media->collections()->syncWithoutDetaching([
-                            SnkKilkanaMediaCollectionModel::firstOrCreate(['name' => $post->category->name])->id,
-                        ]);
                     }
                 } catch (\Throwable $e) {
                     $failures++;

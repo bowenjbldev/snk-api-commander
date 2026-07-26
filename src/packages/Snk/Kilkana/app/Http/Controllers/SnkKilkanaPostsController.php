@@ -3,13 +3,14 @@
 namespace Packages\Snk\Kilkana\Http\Controllers;
 
 use Dedoc\Scramble\Attributes\Group;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
-use Packages\Snk\Kilkana\Models\SnkKilkanaAuthorModel;
+use Packages\Snk\Kilkana\Enums\SnkKilkanaContentTierEnum;
+use Packages\Snk\Kilkana\Enums\SnkKilkanaPostStatusEnum;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaMediaModel;
-use Packages\Snk\Kilkana\Models\SnkKilkanaPostMetaModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaPostRevisionModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaPostSlugModel;
@@ -18,14 +19,79 @@ use Packages\Snk\Kilkana\Support\SnkKilkanaRichText;
 
 /**
  * CRUD de artículos con BD normalizada. La escritura acepta texto libre del editor
- * (category=slug existente, author=nombre, image=url, tags=nombres) y el server
- * resuelve/crea las relaciones; la lectura sale anidada (category/author/cover/tags/meta,
+ * (category=slug existente, image=url, tags=nombres) y el server resuelve/crea las
+ * relaciones; la FIRMA no, que viaja como `author_id` de una fila existente porque se
+ * gobierna en su propia pantalla. La lectura sale anidada (category/author/cover/tags/meta,
  * serialización del modelo). Solo claves de meta conocidas pasan la validación.
  */
 #[Group('Posts')]
 class SnkKilkanaPostsController extends CoreBaseApiController
 {
     protected string $modelClass = SnkKilkanaPostModel::class;
+
+    /**
+     * Vistas reales agregadas también en el PANEL, no solo en la salida pública.
+     *
+     * Tres ventanas: hoy, últimos siete días y total histórico. Aquí hubo una columna
+     * `posts.reads` que nada incrementaba y que el panel pintaba como si fuera audiencia;
+     * `views_total` es la misma pregunta contestada con los datos de verdad. Mismos alias que
+     * `SnkKilkanaPublicController::posts()`, para que quien lea vea un único contrato.
+     */
+    protected function newQuery()
+    {
+        $query = SnkKilkanaPostModel::query()
+            ->withSum(['views as views_day' => fn ($q) => $q->where('date', now()->toDateString())], 'views')
+            ->withSum(['views as views_week' => fn ($q) => $q->where('date', '>=', now()->subDays(6)->toDateString())], 'views')
+            ->withSum('views as views_total', 'views');
+
+        return $this->scopeToOwner($query);
+    }
+
+    /**
+     * Sin `edit others posts`, para ti solo existe lo que has escrito.
+     *
+     * Mira `created_by`, NO la firma: en una redacción quien teclea y quien firma pueden
+     * ser distintos —una pieza de agencia firmada por «Redacción», un becario que escribe
+     * bajo la firma de su sección—, y el permiso va con quien la escribió.
+     */
+    private function scopeToOwner($query)
+    {
+        if (! auth()->user()?->can('edit others posts')) {
+            $query->where('created_by', auth()->id());
+        }
+
+        return $query;
+    }
+
+    /** Una pieza ajena no existe: 404, no 403 — el id es correlativo y un 403 confirmaría cuántas hay. */
+    protected function findModel($id, bool $applyWith = false): ?Model
+    {
+        $post = parent::findModel($id, $applyWith);
+        if ($post === null || auth()->user()?->can('edit others posts')) {
+            return $post;
+        }
+
+        return (int) $post->created_by === (int) auth()->id() ? $post : null;
+    }
+
+    /**
+     * El muro entre escribir y publicar: quien firma no decide cuándo sale.
+     *
+     * `draft` y `review` los mueve cualquiera que pueda editar la pieza; pasarla a
+     * publicada o programada exige `publish posts`.
+     */
+    private function deniesPublish(?string $status): bool
+    {
+        $estado = SnkKilkanaPostStatusEnum::tryFrom((string) $status);
+
+        return $estado?->requiresPublishPermission() === true
+            && ! auth()->user()?->can('publish posts');
+    }
+
+    private function forbidPublish(): JsonResponse
+    {
+        return response()->json(['error' => 'Forbidden', 'permission' => 'publish posts'], 403);
+    }
 
     protected string $indexPermission = 'index posts';
 
@@ -37,52 +103,72 @@ class SnkKilkanaPostsController extends CoreBaseApiController
 
     protected string $destroyPermission = 'delete posts';
 
+    /**
+     * `status` no está en los arrays de abajo y no puede estarlo: la inicialización de una
+     * propiedad solo admite expresiones constantes, y su regla sale de un método del enum.
+     * Aquí es donde las dos listas se juntan, y donde un estado nuevo entra sin tocar nada.
+     */
+    public function __construct()
+    {
+        $this->validationRulesStore['status'] = 'required|'.SnkKilkanaPostStatusEnum::rule();
+        $this->validationRulesUpdate['status'] = 'sometimes|required|'.SnkKilkanaPostStatusEnum::rule();
+        foreach (['validationRulesStore', 'validationRulesUpdate'] as $reglas) {
+            $this->{$reglas}['content_tier'] = 'nullable|'.SnkKilkanaContentTierEnum::rule();
+        }
+    }
+
     protected array $validationRulesStore = [
         'title' => 'required|string|max:500',
         'excerpt' => 'required|string',
         'category' => 'required|string|exists:kilkana_categories,slug',
-        'author' => 'required|string|max:255',
-        'published_at' => 'required|date',
-        'reads' => 'nullable|integer|min:0',
+        'author_id' => 'required|integer|exists:kilkana_authors,id',
+        'publish_at' => 'required|date',
         'image' => 'nullable|string|max:2048',
-        'status' => 'required|in:published,draft,scheduled',
-        'body' => 'nullable|string',
         'body_blocks' => 'nullable|array',
         'body_blocks.*.id' => 'required|string|max:128',
         'body_blocks.*.type' => 'required|in:text,quote,image,gallery,video,paywall,divider',
         'body_blocks.*.config' => 'nullable|array',
         'tags' => 'nullable|array',
         'tags.*' => 'string|max:64',
-        'slug' => 'nullable|string|max:255|unique:kilkana_posts,slug',
+        // Sin `unique`: la unicidad es la pareja (url_date, slug) y la resuelve el modelo al
+        // publicar. Una regla sobre el slug suelto rechazaría el titular que vuelve otro año.
+        'slug' => 'nullable|string|max:255',
         'featured' => 'nullable|boolean',
-        'scheduled_for' => 'nullable|date',
-        'meta' => 'nullable|array:seo_title,seo_description',
-        'meta.seo_title' => 'nullable|string|max:500',
-        'meta.seo_description' => 'nullable|string',
+        'seo_title' => 'nullable|string|max:500',
+        'seo_description' => 'nullable|string',
+        'og_title' => 'nullable|string|max:500',
+        'og_description' => 'nullable|string',
+        'og_image_id' => 'nullable|integer|exists:kilkana_media,id',
+        // Absoluta a la fuerza: una canonical relativa no dice a qué dominio apunta, y esta
+        // columna existe justo para señalar a OTRO sitio.
+        'canonical_url' => 'nullable|url|max:2048',
+        'noindex' => 'nullable|boolean',
     ];
 
     protected array $validationRulesUpdate = [
         'title' => 'sometimes|required|string|max:500',
         'excerpt' => 'sometimes|required|string',
         'category' => 'sometimes|required|string|exists:kilkana_categories,slug',
-        'author' => 'sometimes|required|string|max:255',
-        'published_at' => 'sometimes|required|date',
-        'reads' => 'nullable|integer|min:0',
+        'author_id' => 'sometimes|required|integer|exists:kilkana_authors,id',
+        'publish_at' => 'sometimes|required|date',
         'image' => 'nullable|string|max:2048',
-        'status' => 'sometimes|required|in:published,draft,scheduled',
-        'body' => 'nullable|string',
         'body_blocks' => 'nullable|array',
         'body_blocks.*.id' => 'required|string|max:128',
         'body_blocks.*.type' => 'required|in:text,quote,image,gallery,video,paywall,divider',
         'body_blocks.*.config' => 'nullable|array',
         'tags' => 'nullable|array',
         'tags.*' => 'string|max:64',
-        'slug' => 'nullable|string|max:255|unique:kilkana_posts,slug,{id}',
+        'slug' => 'nullable|string|max:255',
         'featured' => 'nullable|boolean',
-        'scheduled_for' => 'nullable|date',
-        'meta' => 'nullable|array:seo_title,seo_description',
-        'meta.seo_title' => 'nullable|string|max:500',
-        'meta.seo_description' => 'nullable|string',
+        'seo_title' => 'nullable|string|max:500',
+        'seo_description' => 'nullable|string',
+        'og_title' => 'nullable|string|max:500',
+        'og_description' => 'nullable|string',
+        'og_image_id' => 'nullable|integer|exists:kilkana_media,id',
+        // Absoluta a la fuerza: una canonical relativa no dice a qué dominio apunta, y esta
+        // columna existe justo para señalar a OTRO sitio.
+        'canonical_url' => 'nullable|url|max:2048',
+        'noindex' => 'nullable|boolean',
     ];
 
     public function store(Request $request): JsonResponse
@@ -96,6 +182,9 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             return response()->json($validator->errors(), 422);
         }
         $data = $validator->validated();
+        if ($this->deniesPublish($data['status'] ?? null)) {
+            return $this->forbidPublish();
+        }
 
         $post = SnkKilkanaPostModel::create([
             ...$this->columnsFrom($data),
@@ -116,7 +205,8 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             return response()->json(['error' => 'Missing id'], 422);
         }
 
-        $post = SnkKilkanaPostModel::query()->find($id);
+        // findModel, no query(): acota a lo tuyo cuando no puedes editar lo de otros.
+        $post = $this->findModel($id);
         if (! $post) {
             return response()->json(['error' => 'Record not found'], 404);
         }
@@ -127,6 +217,9 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             return response()->json($validator->errors(), 422);
         }
         $data = $validator->validated();
+        if ($this->deniesPublish($data['status'] ?? null)) {
+            return $this->forbidPublish();
+        }
 
         // Historial de versiones: snapshot de las columnas ANTES de aplicar el cambio.
         SnkKilkanaPostRevisionModel::create([
@@ -135,18 +228,21 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             'payload' => $post->getAttributes(),
         ]);
 
-        $previousSlug = $post->slug;
+        // La RUTA anterior, no el slug: la URL lleva fecha, y comparar solo el slug dejaría
+        // sin enterrar cualquier movimiento de la fecha.
+        $previousPath = $post->url_path;
         $post->fill($this->columnsFrom($data, $request));
         $post->updated_by = auth()->id();
         $post->save();
         $this->syncRelations($post, $data);
 
-        // Historial de slugs: la URL vieja hará 301; recuperar un slug lo saca del historial.
-        if ($previousSlug && $post->slug !== $previousSlug) {
-            SnkKilkanaPostSlugModel::updateOrCreate(['slug' => $previousSlug], ['post_id' => $post->id]);
+        // Historial: la URL vieja hará 301; recuperar una ruta la saca del historial, o
+        // quedaría a la vez como URL actual y como redirección hacia sí misma.
+        if ($previousPath && $post->url_path !== $previousPath) {
+            SnkKilkanaPostSlugModel::updateOrCreate(['path' => $previousPath], ['post_id' => $post->id]);
         }
-        if ($post->slug) {
-            SnkKilkanaPostSlugModel::query()->where('slug', $post->slug)->delete();
+        if ($post->url_path) {
+            SnkKilkanaPostSlugModel::query()->where('path', $post->url_path)->delete();
         }
 
         return response()->json($post->fresh());
@@ -156,9 +252,9 @@ class SnkKilkanaPostsController extends CoreBaseApiController
      * Acción masiva sobre varios artículos: cambio de estado o borrado.
      *
      * Un endpoint y no N peticiones desde el panel: publicar veinte eran veinte PUT, cada
-     * uno con su carrera y su fallo parcial. `publish` sella `published_at` si el artículo
-     * no lo tenía —un publicado sin fecha se ordena mal en la portada— y limpia
-     * `scheduled_for`, que ya no significa nada una vez publicado.
+     * uno con su carrera y su fallo parcial. `publish` sella `publish_at` cuando falta o
+     * cuando apunta al futuro: publicar a mano una pieza programada la saca AHORA, y dejarle
+     * la fecha prevista la ordenaría mañana en la portada, el sitemap y el feed.
      */
     public function bulk(Request $request): JsonResponse
     {
@@ -172,8 +268,12 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         if ($response = $this->requirePermission($permission)) {
             return $response;
         }
+        if ($data['action'] === 'publish' && ! auth()->user()?->can('publish posts')) {
+            return $this->forbidPublish();
+        }
 
-        $query = SnkKilkanaPostModel::query()->whereIn('id', $data['ids']);
+        // El acotado también aquí: en masa es donde más barato sale saltárselo.
+        $query = $this->scopeToOwner(SnkKilkanaPostModel::query())->whereIn('id', $data['ids']);
         if ($data['action'] === 'delete') {
             $count = $query->count();
             $query->delete();
@@ -183,10 +283,13 @@ class SnkKilkanaPostsController extends CoreBaseApiController
 
         $count = 0;
         foreach ($query->get() as $post) {
-            $post->status = $data['action'] === 'publish' ? 'published' : 'draft';
+            $post->status = $data['action'] === 'publish'
+                ? SnkKilkanaPostStatusEnum::Published
+                : SnkKilkanaPostStatusEnum::Draft;
             if ($data['action'] === 'publish') {
-                $post->published_at = $post->published_at ?? now();
-                $post->scheduled_for = null;
+                if ($post->publish_at === null || $post->publish_at->isFuture()) {
+                    $post->publish_at = now();
+                }
             }
             $post->updated_by = auth()->id();
             $post->save();
@@ -201,6 +304,12 @@ class SnkKilkanaPostsController extends CoreBaseApiController
     {
         if ($response = $this->requirePermission($this->showPermission)) {
             return $response;
+        }
+
+        // El historial cuenta el contenido entero de la pieza: se mira con las mismas
+        // llaves que la pieza.
+        if ($this->findModel($id) === null) {
+            return response()->json(['error' => 'Record not found'], 404);
         }
 
         return response()->json(
@@ -219,10 +328,14 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             return $response;
         }
 
-        $post = SnkKilkanaPostModel::query()->find($id);
+        $post = $this->findModel($id);
         $revision = SnkKilkanaPostRevisionModel::query()->whereKey($revisionId)->where('post_id', $id)->first();
         if (! $post || ! $revision) {
             return response()->json(['error' => 'Record not found'], 404);
+        }
+        // Restaurar una versión publicada es publicar: la puerta de atrás del muro.
+        if ($this->deniesPublish($revision->payload['status'] ?? null)) {
+            return $this->forbidPublish();
         }
 
         SnkKilkanaPostRevisionModel::create([
@@ -245,7 +358,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
     private function columnsFrom(array $data, ?Request $request = null): array
     {
         $columns = collect($data)
-            ->except(['category', 'author', 'image', 'tags', 'meta'])
+            ->except(['category', 'image', 'tags'])
             ->all();
 
         if (array_key_exists('category', $data)) {
@@ -253,10 +366,12 @@ class SnkKilkanaPostsController extends CoreBaseApiController
                 ->where('slug', $data['category'])
                 ->value('id');
         }
-        if (array_key_exists('author', $data)) {
-            $name = trim($data['author']);
-            $columns['author_id'] = SnkKilkanaAuthorModel::firstOrCreate(['name' => $name])->id;
-        }
+        // La firma llega ya resuelta —`author_id` pasa tal cual, como una columna más—: la
+        // elige el editor de una lista gobernada y quien la identifica es su cuenta. Antes
+        // esto era `firstOrCreate(['name' => …])`, así que cada variante escrita del nombre
+        // —«J. Bowen» / «Jorge Bowen»— abría una firma nueva, con su página pública, y
+        // partía la hemeroteca en dos. Aquí ya no se crea ninguna: `exists` deja el 422 a
+        // la vista en vez de inventar una firma en silencio.
         // image: presente y null limpia la portada; ausente no la toca (PUT parcial).
         $imageSent = $request ? $request->exists('image') : array_key_exists('image', $data);
         if ($imageSent) {
@@ -266,10 +381,8 @@ class SnkKilkanaPostsController extends CoreBaseApiController
                 : null;
         }
 
-        // Saneado del HTML rico en la frontera de escritura (defensa en profundidad + SSR fiable).
-        if (array_key_exists('body', $columns)) {
-            $columns['body'] = SnkKilkanaRichText::clean($columns['body']);
-        }
+        // Saneado del HTML rico en la frontera de escritura (defensa en profundidad + SSR
+        // fiable). Solo bloques: `body` ya no existe como columna ni como entrada aceptada.
         if (array_key_exists('body_blocks', $columns)) {
             $columns['body_blocks'] = SnkKilkanaRichText::cleanBlocks($columns['body_blocks']);
         }
@@ -277,7 +390,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         return $columns;
     }
 
-    /** Tags (sync por nombre) y meta (upsert de claves validadas) tras guardar columnas. */
+    /** Tags: sync por nombre tras guardar las columnas. */
     private function syncRelations(SnkKilkanaPostModel $post, array $data): void
     {
         if (array_key_exists('tags', $data)) {
@@ -287,19 +400,6 @@ class SnkKilkanaPostsController extends CoreBaseApiController
                 ->unique()
                 ->map(fn (string $name) => SnkKilkanaTagModel::firstOrCreate(['name' => $name])->id);
             $post->tags()->sync($ids);
-        }
-
-        if (array_key_exists('meta', $data)) {
-            foreach ($data['meta'] ?? [] as $key => $value) {
-                if ($value === null || $value === '') {
-                    SnkKilkanaPostMetaModel::query()->where('post_id', $post->id)->where('meta_key', $key)->delete();
-                } else {
-                    SnkKilkanaPostMetaModel::updateOrCreate(
-                        ['post_id' => $post->id, 'meta_key' => $key],
-                        ['meta_value' => $value],
-                    );
-                }
-            }
         }
     }
 }

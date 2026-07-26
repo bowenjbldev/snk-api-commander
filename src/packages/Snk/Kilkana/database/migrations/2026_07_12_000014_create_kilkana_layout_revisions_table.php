@@ -8,8 +8,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Historial de documentos del builder: snapshot ANTES de cada PUT.
-        // Deshacer un «Use composition» destructivo deja de ser imposible.
         Schema::create('kilkana_layout_revisions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('layout_id')->constrained('kilkana_layouts')->cascadeOnDelete();

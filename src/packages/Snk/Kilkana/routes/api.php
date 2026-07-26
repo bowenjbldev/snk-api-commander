@@ -29,8 +29,20 @@ Route::middleware(['api'])->group(function () {
 Route::middleware(['api'])->group(function () {
     Route::get('public/posts', [SnkKilkanaPublicController::class, 'posts']);
     Route::get('public/categories', [SnkKilkanaPublicController::class, 'categories']);
-    Route::get('public/posts/{slug}', [SnkKilkanaPublicController::class, 'post']);
-    Route::get('public/posts/{slug}/comments', [SnkKilkanaPublicController::class, 'comments']);
+    // Perfil de una firma: lo necesita /author/{slug}, que existe aunque no tenga publicados.
+    Route::get('public/authors/{slug}', [SnkKilkanaPublicController::class, 'author']);
+    // Un artículo se direcciona por FECHA + slug: el slug solo es único dentro de su día,
+    // así que los cuatro segmentos son la clave, no un adorno. Las tres rutas comparten la
+    // misma forma para que no convivan dos maneras de nombrar la misma pieza.
+    Route::get('public/posts/{year}/{month}/{day}/{slug}', [SnkKilkanaPublicController::class, 'post'])
+        ->whereNumber(['year', 'month', 'day']);
+    Route::get('public/posts/{year}/{month}/{day}/{slug}/comments', [SnkKilkanaPublicController::class, 'comments'])
+        ->whereNumber(['year', 'month', 'day']);
+    // Alta de comentario sin cuenta: entra como `pending` y la publica la moderación.
+    // Mismo throttle que `subscribe`: es el otro POST anónimo del paquete.
+    Route::post('public/posts/{year}/{month}/{day}/{slug}/comments', [SnkKilkanaPublicController::class, 'storeComment'])
+        ->whereNumber(['year', 'month', 'day'])
+        ->middleware('throttle:10,1');
     Route::get('public/layouts/{layout}', [SnkKilkanaPublicController::class, 'layout'])->whereIn('layout', ['front', 'section']);
     Route::get('public/site', [SnkKilkanaPublicController::class, 'site']);
     Route::post('public/subscribe', [SnkKilkanaPublicController::class, 'subscribe'])->middleware('throttle:10,1');

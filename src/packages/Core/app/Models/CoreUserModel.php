@@ -22,10 +22,18 @@ class CoreUserModel extends Authenticatable
      *
      * @var list<string>
      */
+    /**
+     * `full_name`, `company` y `phone` NO son columnas de Core: las anade cada package con su
+     * propia migracion (ver `create_core_base_schema`). Siguen aqui porque son el perfil que
+     * aceptan las reglas de `CoreUsersController`, y quien use ese controlador tiene que
+     * haberlas creado.
+     *
+     * Sin `avatar`: ningun contrato de Core lo valida ni lo sirve, y la foto que se publica
+     * es cosa del package — en Kilkana, la biblioteca de medios.
+     */
     protected $fillable = [
         'name',
         'email',
-        'avatar',
         'full_name',
         'company',
         'phone',

@@ -4,7 +4,7 @@
 		"title": "Climate summit reaches a historic agreement after 14 hours of negotiation",
 		"excerpt": "The 196 signatory countries commit to tripling renewable energy by 2030 and to phasing out coal \"in a just and orderly way.\"",
 		"author": "Pedro Aranda",
-		"published_at": "2026-06-28T18:00:00.000Z",
+		"publish_at": "2026-06-28T18:00:00.000Z",
 		"reads": 18420,
 		"image": "https://images.unsplash.com/photo-1552799446-159ba9523315?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -59,15 +59,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "economy",
 		"title": "The Central Bank cuts rates for the first time in two years",
 		"excerpt": "The 25-basis-point cut aims to revive lending as consumption slows.",
 		"author": "Lucía Ferrer",
-		"published_at": "2026-06-28T17:00:00.000Z",
+		"publish_at": "2026-06-28T17:00:00.000Z",
 		"reads": 12950,
 		"image": "https://images.unsplash.com/photo-1579621970795-87facc2f976d?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -122,15 +121,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "heritage",
 		"title": "Remains of the ancient Roman port unearthed in Seville",
 		"excerpt": "The site, found during construction work, rewrites the trading history of Roman Baetica.",
 		"author": "Marta Gil",
-		"published_at": "2026-06-28T16:00:00.000Z",
+		"publish_at": "2026-06-28T16:00:00.000Z",
 		"reads": 7340,
 		"image": "https://images.unsplash.com/photo-1622082679766-c5912d9416eb?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -158,6 +156,13 @@
 				}
 			},
 			{
+				"id": "p03-paywall",
+				"type": "paywall",
+				"config": {
+					"note": "Sigue leyendo con tu suscripción"
+				}
+			},
+			{
 				"id": "p03-i",
 				"type": "image",
 				"config": {
@@ -176,15 +181,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "society",
 		"title": "Festival season kicks off with record attendance",
 		"excerpt": "More than three million tickets sold confirm the culturel sector's recovery.",
 		"author": "Iván Soto",
-		"published_at": "2026-06-28T15:00:00.000Z",
+		"publish_at": "2026-06-28T15:00:00.000Z",
 		"reads": 9610,
 		"image": "https://images.unsplash.com/photo-1582711012124-a56cf82307a0?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -239,15 +243,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "international",
 		"title": "WHO sets a new record in childhood vaccination coverage",
 		"excerpt": "89% of children received their basic doses last year, according to the annual report.",
 		"author": "Clara Méndez",
-		"published_at": "2026-06-28T14:00:00.000Z",
+		"publish_at": "2026-06-28T14:00:00.000Z",
 		"reads": 15880,
 		"image": "https://images.unsplash.com/photo-1612277795421-9bc7706a4a34?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -293,15 +296,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "football",
 		"title": "Epic last-minute comeback seals promotion",
 		"excerpt": "Vargas' goal in the 93rd minute sparks celebration in a stand that had waited a decade for the moment.",
 		"author": "Diego Cano",
-		"published_at": "2026-06-28T13:00:00.000Z",
+		"publish_at": "2026-06-28T13:00:00.000Z",
 		"reads": 28730,
 		"image": "https://images.unsplash.com/photo-1489944440615-453fc2b6a9a9?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -356,15 +358,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "ai",
 		"title": "A local startup unveils the first low-power neural chip",
 		"excerpt": "It promises to boost the efficiency of edge AI devices tenfold.",
 		"author": "Nora Ibáñez",
-		"published_at": "2026-06-28T12:00:00.000Z",
+		"publish_at": "2026-06-28T12:00:00.000Z",
 		"reads": 11200,
 		"image": "https://images.unsplash.com/photo-1592659762303-90081d34b277?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -419,15 +420,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "politics",
 		"title": "Congress passes the housing law reform",
 		"excerpt": "The measure caps rent increases in high-pressure areas and expands public housing.",
 		"author": "Pedro Aranda",
-		"published_at": "2026-06-28T10:00:00.000Z",
+		"publish_at": "2026-06-28T10:00:00.000Z",
 		"reads": 8450,
 		"image": "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -473,15 +473,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "economy",
 		"title": "Inflation eases to 2.4% and nears the target",
 		"excerpt": "Fresh food and energy lead the slowdown in prices this quarter.",
 		"author": "Lucía Ferrer",
-		"published_at": "2026-06-28T09:00:00.000Z",
+		"publish_at": "2026-06-28T09:00:00.000Z",
 		"reads": 6120,
 		"image": "https://images.unsplash.com/photo-1741520965035-263d8a2fc652?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -527,15 +526,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "culture",
 		"title": "A retrospective brings together the painter's complete work for the first time",
 		"excerpt": "The show spans five decades of an essential, long-overlooked artist.",
 		"author": "Marta Gil",
-		"published_at": "2026-06-27T20:00:00.000Z",
+		"publish_at": "2026-06-27T20:00:00.000Z",
 		"reads": 4980,
 		"image": "https://images.unsplash.com/photo-1578926375605-eaf7559b1458?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -590,15 +588,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "society",
 		"title": "The new bike lane connects the six central districts",
 		"excerpt": "The 42-kilometer network opens after two years of construction and neighborhood debate.",
 		"author": "Iván Soto",
-		"published_at": "2026-06-27T20:00:00.000Z",
+		"publish_at": "2026-06-27T20:00:00.000Z",
 		"reads": 5430,
 		"image": "https://images.unsplash.com/photo-1541625602330-2277a4c46182?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -644,15 +641,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "international",
 		"title": "Peace talks resume after months of deadlock",
 		"excerpt": "Both delegations accept a temporary ceasefire as a gesture of goodwill.",
 		"author": "Clara Méndez",
-		"published_at": "2026-06-27T20:00:00.000Z",
+		"publish_at": "2026-06-27T20:00:00.000Z",
 		"reads": 13270,
 		"image": "https://images.unsplash.com/photo-1689859438394-2b59a858e31c?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -707,15 +703,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "football",
 		"title": "The women's national team routs its rival and qualifies with authority",
 		"excerpt": "Three first-half goals settle a match that was never in doubt.",
 		"author": "Diego Cano",
-		"published_at": "2026-06-27T20:00:00.000Z",
+		"publish_at": "2026-06-27T20:00:00.000Z",
 		"reads": 17640,
 		"image": "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -761,15 +756,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "networks",
 		"title": "The digital outage exposes the fragility of the cloud",
 		"excerpt": "A six-hour failure hits thousands of services and reopens the debate over dependence.",
 		"author": "Nora Ibáñez",
-		"published_at": "2026-06-27T20:00:00.000Z",
+		"publish_at": "2026-06-27T20:00:00.000Z",
 		"reads": 9890,
 		"image": "https://images.unsplash.com/photo-1580106815433-a5b1d1d53d85?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -824,15 +818,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "politics",
 		"title": "A bare-minimum budget deal amid tension",
 		"excerpt": "Social spending is preserved but infrastructure investment is postponed.",
 		"author": "Sara Lores",
-		"published_at": "2026-06-26T20:00:00.000Z",
+		"publish_at": "2026-06-26T20:00:00.000Z",
 		"reads": 3760,
 		"image": "https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -878,15 +871,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "economy",
 		"title": "Tourism breaks its all-time revenue record",
 		"excerpt": "Average spending per visitor rises 8% despite a slight drop in overnight stays.",
 		"author": "Lucía Ferrer",
-		"published_at": "2026-06-26T20:00:00.000Z",
+		"publish_at": "2026-06-26T20:00:00.000Z",
 		"reads": 4310,
 		"image": "https://images.unsplash.com/photo-1539635278303-d4002c07eae3?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -932,15 +924,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "heritage",
 		"title": "The last great master of the artisan craft dies at 91",
 		"excerpt": "He leaves behind a school of disciples who keep a centuries-old technique alive.",
 		"author": "Marta Gil",
-		"published_at": "2026-06-26T20:00:00.000Z",
+		"publish_at": "2026-06-26T20:00:00.000Z",
 		"reads": 6700,
 		"image": "https://images.unsplash.com/photo-1660796334912-8ce8e9c2cff0?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -995,15 +986,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "education",
 		"title": "A study links irregular sleep to school performance",
 		"excerpt": "Researchers call for a later start to the secondary school day.",
 		"author": "Iván Soto",
-		"published_at": "2026-06-26T20:00:00.000Z",
+		"publish_at": "2026-06-26T20:00:00.000Z",
 		"reads": 5210,
 		"image": "https://images.unsplash.com/photo-1531353826977-0941b4779a1c?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -1049,15 +1039,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "international",
 		"title": "A tight election opens the door to unprecedented alliances",
 		"excerpt": "The count drags on and no party reaches a majority on its own.",
 		"author": "Clara Méndez",
-		"published_at": "2026-06-25T20:00:00.000Z",
+		"publish_at": "2026-06-25T20:00:00.000Z",
 		"reads": 10450,
 		"image": "https://images.unsplash.com/photo-1494172961521-33799ddd43a5?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -1103,15 +1092,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "sports",
 		"title": "The veteran announces his retirement at the end of the season",
 		"excerpt": "He closes a twenty-year career with two continental titles and an untarnished legacy.",
 		"author": "Diego Cano",
-		"published_at": "2026-06-25T20:00:00.000Z",
+		"publish_at": "2026-06-25T20:00:00.000Z",
 		"reads": 21300,
 		"image": "https://images.unsplash.com/photo-1530549387789-4c1017266635?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -1166,15 +1154,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "technology",
 		"title": "Augmented reality reaches the classroom in a pilot program",
 		"excerpt": "Fifty schools test interactive materials in science and geography.",
 		"author": "Nora Ibáñez",
-		"published_at": "2026-06-25T20:00:00.000Z",
+		"publish_at": "2026-06-25T20:00:00.000Z",
 		"reads": 3980,
 		"image": "https://images.unsplash.com/photo-1738308508484-2a5226b4208d?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -1220,15 +1207,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "society",
 		"title": "Volunteers replant the hillside razed by the wildfire",
 		"excerpt": "The grassroots effort plants twenty thousand trees in a single day.",
 		"author": "Iván Soto",
-		"published_at": "2026-06-24T20:00:00.000Z",
+		"publish_at": "2026-06-24T20:00:00.000Z",
 		"reads": 4620,
 		"image": "https://images.unsplash.com/photo-1448375240586-882707db888b?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -1283,15 +1269,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "cinema",
 		"title": "The independent film festival reveals its lineup",
 		"excerpt": "Forty premieres and a strand devoted to social documentary define this edition.",
 		"author": "Marta Gil",
-		"published_at": "2026-06-24T20:00:00.000Z",
+		"publish_at": "2026-06-24T20:00:00.000Z",
 		"reads": 3540,
 		"image": "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -1337,15 +1322,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "labour",
 		"title": "Small businesses lead job creation this quarter",
 		"excerpt": "Small retail and hospitality account for most of the new contracts.",
 		"author": "Sara Lores",
-		"published_at": "2026-06-23T20:00:00.000Z",
+		"publish_at": "2026-06-23T20:00:00.000Z",
 		"reads": 2890,
 		"image": "https://images.unsplash.com/photo-1556742393-d75f468bfcb0?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -1400,15 +1384,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "international",
 		"title": "The G20 summit ends without a deal on poor countries' debt",
 		"excerpt": "The major economies push debt relief to a new technical round next autumn.",
 		"author": "Clara Méndez",
-		"published_at": "2026-06-22T20:00:00.000Z",
+		"publish_at": "2026-06-22T20:00:00.000Z",
 		"reads": 8930,
 		"image": "https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -1463,15 +1446,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "politics",
 		"title": "The Constitutional Court unanimously upholds the transparency law",
 		"excerpt": "The ruling clears the last appeal and requires senior officials to publish their agendas.",
 		"author": "Sara Lores",
-		"published_at": "2026-06-22T20:00:00.000Z",
+		"publish_at": "2026-06-22T20:00:00.000Z",
 		"reads": 5240,
 		"image": "https://images.unsplash.com/photo-1623008946073-ad1c850ad0dd?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -1526,15 +1508,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "technology",
 		"title": "The first level-4 self-driving cars will be tested on city streets",
 		"excerpt": "The pilot starts with a fleet of thirty vehicles and a safety driver on board.",
 		"author": "Nora Ibáñez",
-		"published_at": "2026-06-21T20:00:00.000Z",
+		"publish_at": "2026-06-21T20:00:00.000Z",
 		"reads": 12680,
 		"image": "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -1589,15 +1570,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "sports",
 		"title": "The marathon breaks its participation record with twenty thousand runners",
 		"excerpt": "Organizers close registration in record time and weigh raising the cap for next year.",
 		"author": "Diego Cano",
-		"published_at": "2026-06-21T20:00:00.000Z",
+		"publish_at": "2026-06-21T20:00:00.000Z",
 		"reads": 9450,
 		"image": "https://images.unsplash.com/photo-1613936360976-8f35cf0e5461?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -1652,15 +1632,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "labour",
 		"title": "The minimum wage rises 5% after a deal between unions and employers",
 		"excerpt": "The agreement, sealed in the early hours, benefits two and a half million workers.",
 		"author": "Lucía Ferrer",
-		"published_at": "2026-06-20T20:00:00.000Z",
+		"publish_at": "2026-06-20T20:00:00.000Z",
 		"reads": 14320,
 		"image": "https://images.unsplash.com/photo-1669951584605-4deba095a87f?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -1715,15 +1694,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "books",
 		"title": "The national library digitizes half a million historical documents",
 		"excerpt": "The open archive includes manuscripts, maps and press from the last four centuries.",
 		"author": "Marta Gil",
-		"published_at": "2026-06-20T20:00:00.000Z",
+		"publish_at": "2026-06-20T20:00:00.000Z",
 		"reads": 4110,
 		"image": "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -1778,15 +1756,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "international",
 		"title": "A migration agreement reshapes the bloc's external borders",
 		"excerpt": "A distribution of applications and a shared reception fund anchor the new pact.",
 		"author": "Clara Méndez",
-		"published_at": "2026-06-19T20:00:00.000Z",
+		"publish_at": "2026-06-19T20:00:00.000Z",
 		"reads": 10770,
 		"image": "https://images.unsplash.com/photo-1587290538095-53583b6753e5?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -1841,15 +1818,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "technology",
 		"title": "Quantum computing reaches its first verifiable commercial milestone",
 		"excerpt": "A company demonstrates a real advantage on a logistics problem the industry was watching closely.",
 		"author": "Nora Ibáñez",
-		"published_at": "2026-06-19T20:00:00.000Z",
+		"publish_at": "2026-06-19T20:00:00.000Z",
 		"reads": 7860,
 		"image": "https://images.unsplash.com/photo-1708011271954-c0d2b3155ded?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -1904,15 +1880,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "society",
 		"title": "Birth rate rebounds for the first time in a decade, institute says",
 		"excerpt": "Experts attribute the shift to childcare support and subsidized housing.",
 		"author": "Iván Soto",
-		"published_at": "2026-06-18T20:00:00.000Z",
+		"publish_at": "2026-06-18T20:00:00.000Z",
 		"reads": 6050,
 		"image": "https://images.unsplash.com/photo-1510154221590-ff63e90a136f?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -1967,15 +1942,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "housing",
 		"title": "The city council approves the largest public housing plan in twenty years",
 		"excerpt": "The investment will build eight thousand affordable homes on land now unused.",
 		"author": "Pedro Aranda",
-		"published_at": "2026-06-18T20:00:00.000Z",
+		"publish_at": "2026-06-18T20:00:00.000Z",
 		"reads": 4780,
 		"image": "https://images.unsplash.com/photo-1587582423116-ec07293f0395?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -2030,15 +2004,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "politics",
 		"title": "The opposition forces an inquiry into emergency contracts",
 		"excerpt": "The bureau accepts the request after weeks of deadlock and sets a schedule of hearings.",
 		"author": "Sara Lores",
-		"published_at": "2026-06-17T20:00:00.000Z",
+		"publish_at": "2026-06-17T20:00:00.000Z",
 		"reads": 7120,
 		"image": "https://images.unsplash.com/photo-1486299267070-83823f5448dd?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -2093,15 +2066,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "economy",
 		"title": "Public debt falls below 100% of GDP for the first time since the pandemic",
 		"excerpt": "Growth and inflation do more for the ratio than spending cuts, analysts warn.",
 		"author": "Lucía Ferrer",
-		"published_at": "2026-06-17T20:00:00.000Z",
+		"publish_at": "2026-06-17T20:00:00.000Z",
 		"reads": 5980,
 		"image": "https://images.unsplash.com/photo-1556740714-a8395b3bf30f?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -2139,15 +2111,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "international",
 		"title": "The EU approves the green tariff on steel imports",
 		"excerpt": "The border adjustment mechanism takes effect in January and strains ties with three trade partners.",
 		"author": "Clara Méndez",
-		"published_at": "2026-06-16T20:00:00.000Z",
+		"publish_at": "2026-06-16T20:00:00.000Z",
 		"reads": 8340,
 		"image": "https://images.unsplash.com/photo-1697698532634-ea59b636ccea?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -2202,15 +2173,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "cycling",
 		"title": "The local cycling team unveils its bid to take on the grand tours",
 		"excerpt": "A doubled budget, eight signings and a declared bet on the velodrome's youth academy.",
 		"author": "Diego Cano",
-		"published_at": "2026-06-16T20:00:00.000Z",
+		"publish_at": "2026-06-16T20:00:00.000Z",
 		"reads": 6470,
 		"image": "https://images.unsplash.com/photo-1534787238916-9ba6764efd4f?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -2257,15 +2227,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "technology",
 		"title": "The public supercomputer opens its queues to small businesses",
 		"excerpt": "A 20% quota of computing hours is reserved for firms with fewer than fifty employees.",
 		"author": "Nora Ibáñez",
-		"published_at": "2026-06-16T20:00:00.000Z",
+		"publish_at": "2026-06-16T20:00:00.000Z",
 		"reads": 4890,
 		"image": "https://images.unsplash.com/photo-1683322499436-f4383dd59f5a?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -2303,15 +2272,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "culture",
 		"title": "The theater reopens after restoration with a season of classic comedy",
 		"excerpt": "Four years of work restore the 1892 auditorium and add a chamber hall.",
 		"author": "Marta Gil",
-		"published_at": "2026-06-15T20:00:00.000Z",
+		"publish_at": "2026-06-15T20:00:00.000Z",
 		"reads": 3720,
 		"image": "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -2349,15 +2317,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "society",
 		"title": "Food banks warn of a critical summer",
 		"excerpt": "Donations fall 18% while the number of families served grows for the third month running.",
 		"author": "Iván Soto",
-		"published_at": "2026-06-15T20:00:00.000Z",
+		"publish_at": "2026-06-15T20:00:00.000Z",
 		"reads": 6890,
 		"image": "https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -2404,15 +2371,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "politics",
 		"title": "The Senate returns the coastal law with amendments from three groups",
 		"excerpt": "The text goes back to Congress with changes to boundary lines and the concessions regime.",
 		"author": "Pedro Aranda",
-		"published_at": "2026-06-14T20:00:00.000Z",
+		"publish_at": "2026-06-14T20:00:00.000Z",
 		"reads": 3450,
 		"image": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -2450,15 +2416,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "housing",
 		"title": "Housing marks its eighth straight quarter of price rises",
 		"excerpt": "The average price climbs 6.2% year on year, with high-pressure cities leading.",
 		"author": "Lucía Ferrer",
-		"published_at": "2026-06-14T20:00:00.000Z",
+		"publish_at": "2026-06-14T20:00:00.000Z",
 		"reads": 11240,
 		"image": "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -2496,15 +2461,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "international",
 		"title": "The thaw opens a new Arctic trade route and a diplomatic dispute",
 		"excerpt": "Three powers claim passage rights over a corridor that cuts eleven days off Asian freight.",
 		"author": "Clara Méndez",
-		"published_at": "2026-06-13T20:00:00.000Z",
+		"publish_at": "2026-06-13T20:00:00.000Z",
 		"reads": 9560,
 		"image": "https://images.unsplash.com/photo-1493328967571-819121ed5085?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -2559,15 +2523,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "football",
 		"title": "The academy takes charge again: five debutants in the first team",
 		"excerpt": "The club turns necessity into a plan and renews its head of youth development.",
 		"author": "Diego Cano",
-		"published_at": "2026-06-13T20:00:00.000Z",
+		"publish_at": "2026-06-13T20:00:00.000Z",
 		"reads": 5230,
 		"image": "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -2614,15 +2577,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "networks",
 		"title": "Telecoms switch on the 6G pilot network in three cities",
 		"excerpt": "The trial, limited to industrial parks, will measure latency for robotics and connected vehicles.",
 		"author": "Nora Ibáñez",
-		"published_at": "2026-06-12T20:00:00.000Z",
+		"publish_at": "2026-06-12T20:00:00.000Z",
 		"reads": 7810,
 		"image": "https://images.unsplash.com/photo-1602738394809-92b112ae96c5?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -2660,15 +2622,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "books",
 		"title": "The book fair closes with record sales and a debate over fixed pricing",
 		"excerpt": "Booksellers cheer the figures and call to protect the maximum discount against the platforms.",
 		"author": "Marta Gil",
-		"published_at": "2026-06-12T20:00:00.000Z",
+		"publish_at": "2026-06-12T20:00:00.000Z",
 		"reads": 4560,
 		"image": "https://images.unsplash.com/photo-1694730750153-8b66cf3dd014?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -2706,15 +2667,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "education",
 		"title": "The neighborhood that organized to drive the heatwave out of the classrooms",
 		"excerpt": "Awnings, fans and a neighbor-run watering shift cool the schoolyard by four degrees.",
 		"author": "Iván Soto",
-		"published_at": "2026-06-11T20:00:00.000Z",
+		"publish_at": "2026-06-11T20:00:00.000Z",
 		"reads": 8120,
 		"image": "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -2761,15 +2721,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "politics",
 		"title": "The Ombudsman calls for reform of the immigration rules",
 		"excerpt": "The annual report documents appointment delays of over a year and proposes a fast-track procedure.",
 		"author": "Sara Lores",
-		"published_at": "2026-06-11T20:00:00.000Z",
+		"publish_at": "2026-06-11T20:00:00.000Z",
 		"reads": 4210,
 		"image": "https://images.unsplash.com/photo-1549637642-90187f64f420?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -2807,15 +2766,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "economy",
 		"title": "Farming records its first profitable harvest in five years",
 		"excerpt": "Spring rain and farm-gate prices give respite to a sector coming off three years of losses.",
 		"author": "Lucía Ferrer",
-		"published_at": "2026-06-10T20:00:00.000Z",
+		"publish_at": "2026-06-10T20:00:00.000Z",
 		"reads": 3980,
 		"image": "https://images.unsplash.com/photo-1471268762677-cb5179779bfe?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -2853,15 +2811,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "international",
 		"title": "The humanitarian mission manages to open the southern corridor",
 		"excerpt": "The first forty aid trucks cross after six weeks of negotiation.",
 		"author": "Clara Méndez",
-		"published_at": "2026-06-10T20:00:00.000Z",
+		"publish_at": "2026-06-10T20:00:00.000Z",
 		"reads": 12470,
 		"image": "https://images.unsplash.com/photo-1559225306-3f60aa7b39a3?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -2908,15 +2865,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "basketball",
 		"title": "Local basketball will play in Europe twenty years later",
 		"excerpt": "A final-day win seals a berth the city celebrated into the early hours.",
 		"author": "Diego Cano",
-		"published_at": "2026-06-09T20:00:00.000Z",
+		"publish_at": "2026-06-09T20:00:00.000Z",
 		"reads": 9840,
 		"image": "https://images.unsplash.com/photo-1627627256672-027a4613d028?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -2954,15 +2910,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "ai",
 		"title": "The AI law takes effect with the industry divided",
 		"excerpt": "High-risk systems will have eighteen months to be audited; startups ask for a single point of contact.",
 		"author": "Nora Ibáñez",
-		"published_at": "2026-06-09T20:00:00.000Z",
+		"publish_at": "2026-06-09T20:00:00.000Z",
 		"reads": 10380,
 		"image": "https://images.unsplash.com/photo-1527430253228-e93688616381?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -3017,15 +2972,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "heritage",
 		"title": "The museum returns the claimed pieces and opens a restitution protocol",
 		"excerpt": "The handover, sealed with a joint ceremony, makes the institution a European reference in the postcolonial debate.",
 		"author": "Marta Gil",
-		"published_at": "2026-06-08T20:00:00.000Z",
+		"publish_at": "2026-06-08T20:00:00.000Z",
 		"reads": 5670,
 		"image": "https://images.unsplash.com/photo-1606819717115-9159c900370b?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -3072,15 +3026,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "society",
 		"title": "Pets can now ride the subway at any hour",
 		"excerpt": "The rules scrap the restricted window after a year of trials with no notable incidents.",
 		"author": "Iván Soto",
-		"published_at": "2026-06-08T20:00:00.000Z",
+		"publish_at": "2026-06-08T20:00:00.000Z",
 		"reads": 7350,
 		"image": "https://images.unsplash.com/photo-1519313825-713a373f2bce?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -3118,15 +3071,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "politics",
 		"title": "The map of the youth vote that worries every party",
 		"excerpt": "A five-point breakdown of a generation that decides late, votes differently and stays loyal to no one.",
 		"author": "Sara Lores",
-		"published_at": "2026-06-07T20:00:00.000Z",
+		"publish_at": "2026-06-07T20:00:00.000Z",
 		"reads": 0,
 		"image": "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "draft",
@@ -3164,15 +3116,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "economy",
 		"title": "European funds spent finally top 70%",
 		"excerpt": "The latest tranche is concentrated in small-business digitization and the EV charging network.",
 		"author": "Lucía Ferrer",
-		"published_at": "2026-06-07T20:00:00.000Z",
+		"publish_at": "2026-06-07T20:00:00.000Z",
 		"reads": 4630,
 		"image": "https://images.unsplash.com/photo-1593941707874-ef25b8b4a92b?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -3210,15 +3161,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "international",
 		"title": "The observatory confirms the warmest year on record in the southern hemisphere",
 		"excerpt": "Ocean anomalies double the decade's average and bring the cyclone season forward.",
 		"author": "Clara Méndez",
-		"published_at": "2026-06-06T20:00:00.000Z",
+		"publish_at": "2026-06-06T20:00:00.000Z",
 		"reads": 6920,
 		"image": "https://images.unsplash.com/photo-1509326066092-14b2e882fe86?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -3256,15 +3206,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "football",
 		"title": "The historic rival returns to the women's derby with a sellout guaranteed",
 		"excerpt": "Tickets sell out in five hours and the club weighs opening the overflow stand.",
 		"author": "Diego Cano",
-		"published_at": "2026-06-06T20:00:00.000Z",
+		"publish_at": "2026-06-06T20:00:00.000Z",
 		"reads": 8570,
 		"image": "https://images.unsplash.com/photo-1522778526097-ce0a22ceb253?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "published",
@@ -3311,15 +3260,14 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": null
+		"featured": false
 	},
 	{
 		"cat": "technology",
 		"title": "What changes for your phone with the new universal charger",
 		"excerpt": "A practical guide: which devices are left out, what happens to old cables and what to look for when buying.",
 		"author": "Nora Ibáñez",
-		"published_at": "2026-06-05T20:00:00.000Z",
+		"publish_at": "2026-07-15T09:00",
 		"reads": 0,
 		"image": "https://images.unsplash.com/photo-1625276254563-f0fbbf66a5e7?w=800&h=450&fit=crop&crop=entropy&auto=format&q=70",
 		"status": "scheduled",
@@ -3357,7 +3305,6 @@
 				}
 			}
 		],
-		"featured": false,
-		"scheduled_for": "2026-07-15T09:00"
+		"featured": false
 	}
 ]

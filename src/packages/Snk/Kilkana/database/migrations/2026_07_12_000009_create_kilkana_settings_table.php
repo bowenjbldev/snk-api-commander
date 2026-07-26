@@ -9,9 +9,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('kilkana_settings', function (Blueprint $table) {
-            $table->id(); // singleton: fila 1
-            $table->json('settings')->nullable(); // {theme, theme_overrides, tenant, onboarded}
-            $table->unsignedInteger('version')->default(1); // concurrencia optimista (409), como kilkana_layouts
+            $table->id();
+            $table->json('settings')->nullable();
+            $table->unsignedInteger('version')->default(1);
             $table->timestamps();
         });
     }

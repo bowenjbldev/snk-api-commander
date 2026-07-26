@@ -10,12 +10,11 @@ return new class extends Migration
     {
         Schema::create('kilkana_categories', function (Blueprint $table) {
             $table->id();
-            // Secciones jerárquicas (Sports → Football); borrar el padre promociona hijas a raíz.
             $table->foreignId('parent_id')->nullable()->constrained('kilkana_categories')->nullOnDelete();
-            $table->string('slug', 64)->unique(); // 'politics', 'sports'... la URL de la sección
+            $table->string('slug', 64)->unique();
             $table->string('name');
-            $table->text('description')->nullable(); // la página pública de sección la usa (SEO)
-            $table->unsignedSmallInteger('position')->default(0); // orden del nav
+            $table->text('description')->nullable();
+            $table->unsignedSmallInteger('position')->default(0);
             $table->timestamps();
         });
     }

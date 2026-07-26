@@ -19,17 +19,19 @@ return new class extends Migration
 
         // Aislamiento FISICO por BD: cada package tiene su propia tabla users en su propia BD,
         // y la commander tiene la del operador. Sin package_id (lo reemplaza la separacion de BD).
+        // EXACTAMENTE la de Laravel, sin una columna de mas. Lo que necesite cada package
+        // —nombre completo, organizacion, telefono, foto— lo anade EL, con su propia
+        // migracion en su propio path: `packages/Commander/…` para el operador y
+        // `packages/<Cliente>/<Package>/…` para un tenant. Aqui vivian esas cuatro columnas
+        // y obligaban a todos a cargar con el perfil de uno.
+        //
+        // Contrato: quien monte `CoreUsersController` necesita `full_name`, `company` y
+        // `phone`, porque sus reglas los aceptan. Quien no las anada, que no use ese
+        // controlador.
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('full_name', 255)->nullable();
-            $table->string('company', 255)->nullable();
-            $table->string('phone', 50)->nullable();
             $table->string('email')->unique();
-            // URL de la foto de perfil, no el fichero: puede venir del disco del tenant
-            // (/storage/avatars/…) o de un proveedor externo. Nullable porque la UI
-            // siempre tiene que poder caer al monograma de iniciales.
-            $table->string('avatar', 2048)->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();

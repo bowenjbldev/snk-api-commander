@@ -5,6 +5,7 @@ namespace Packages\Snk\Kilkana\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Packages\Commander\Models\CommanderPackageModel;
+use Packages\Snk\Kilkana\Enums\SnkKilkanaPostStatusEnum;
 use Packages\Snk\Kilkana\Models\SnkKilkanaPostModel;
 
 /**
@@ -47,18 +48,19 @@ class SnkKilkanaPublishScheduledCommand extends Command
                     DB::purge('tenant');
                     DB::setDefaultConnection('tenant');
 
-                    // published_at = la fecha programada (no now): el orden editorial es el previsto.
+                    // Publicar es SOLO cambiar de estado: la fecha ya está puesta y es la
+                    // prevista. Cuando la fecha prevista y la de publicación eran dos
+                    // columnas, aquí había que copiar una en otra y vaciar la primera, y ese
+                    // traspaso llegó a publicar piezas con la fecha en que se redactaron
+                    // —descolocando portada, sitemap y feed—. Sin dos columnas no hay
+                    // traspaso que equivocar.
                     $due = SnkKilkanaPostModel::query()
-                        ->where('status', 'scheduled')
-                        ->whereNotNull('scheduled_for')
-                        ->where('scheduled_for', '<=', now())
+                        ->where('status', SnkKilkanaPostStatusEnum::Scheduled)
+                        ->whereNotNull('publish_at')
+                        ->where('publish_at', '<=', now())
                         ->get();
                     foreach ($due as $post) {
-                        $post->update([
-                            'status' => 'published',
-                            'published_at' => $post->published_at ?? $post->scheduled_for,
-                            'scheduled_for' => null,
-                        ]);
+                        $post->update(['status' => SnkKilkanaPostStatusEnum::Published]);
                     }
 
                     if ($due->isNotEmpty()) {
