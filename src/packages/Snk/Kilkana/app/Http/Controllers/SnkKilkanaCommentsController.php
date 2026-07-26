@@ -7,6 +7,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCommentModel;
+use Packages\Snk\Kilkana\Services\SnkKilkanaCommentService;
 
 /**
  * Comentarios de lectores registrados. `store` lo usa cualquier usuario con
@@ -17,6 +18,8 @@ use Packages\Snk\Kilkana\Models\SnkKilkanaCommentModel;
 #[Group('Comments')]
 class SnkKilkanaCommentsController extends CoreBaseApiController
 {
+    public function __construct(private readonly SnkKilkanaCommentService $comments) {}
+
     protected string $modelClass = SnkKilkanaCommentModel::class;
 
     protected string $indexPermission = 'index comments';
@@ -48,19 +51,10 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
             'body' => 'required|string|max:5000',
         ]);
 
-        // Una respuesta cuelga de un comentario del MISMO artículo.
-        if (! empty($data['parent_id'])) {
-            $parentPost = SnkKilkanaCommentModel::query()->whereKey($data['parent_id'])->value('post_id');
-            if ((int) $parentPost !== (int) $data['post_id']) {
-                return response()->json(['error' => 'Parent comment belongs to another post'], 422);
-            }
+        $comment = $this->comments->create($data, (int) auth()->id());
+        if ($comment === null) {
+            return response()->json(['error' => 'Parent comment belongs to another post'], 422);
         }
-
-        $comment = SnkKilkanaCommentModel::create([
-            ...$data,
-            'user_id' => auth()->id(),
-            'status' => 'pending',
-        ]);
 
         return response()->json($comment, 201);
     }
@@ -82,19 +76,9 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
             return $response;
         }
 
-        $query = SnkKilkanaCommentModel::query()->whereIn('id', $data['ids']);
-
-        if ($data['action'] === 'delete') {
-            $count = $query->count();
-            $query->delete();
-
-            return response()->json(['ok' => true, 'count' => $count]);
-        }
-
-        $count = $query->update([
-            'status' => $data['action'] === 'approve' ? 'approved' : $data['action'],
+        return response()->json([
+            'ok' => true,
+            'count' => $this->comments->bulk($data['ids'], $data['action']),
         ]);
-
-        return response()->json(['ok' => true, 'count' => $count]);
     }
 }

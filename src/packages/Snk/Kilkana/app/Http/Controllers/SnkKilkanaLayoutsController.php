@@ -6,8 +6,7 @@ use App\Http\Controllers\Controller;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Packages\Snk\Kilkana\Models\SnkKilkanaLayoutModel;
-use Packages\Snk\Kilkana\Models\SnkKilkanaLayoutRevisionModel;
+use Packages\Snk\Kilkana\Services\SnkKilkanaLayoutService;
 
 /**
  * Documentos LayoutSchema del builder (portada/seccion), uno por fila, con concurrencia
@@ -18,16 +17,11 @@ use Packages\Snk\Kilkana\Models\SnkKilkanaLayoutRevisionModel;
 #[Group('Layouts')]
 class SnkKilkanaLayoutsController extends Controller
 {
-    private const DEFAULT_SCHEMA = ['version' => 1, 'sections' => []];
+    public function __construct(private readonly SnkKilkanaLayoutService $layouts) {}
 
     public function show(string $layout): JsonResponse
     {
-        $row = SnkKilkanaLayoutModel::firstOrCreate(
-            ['layout' => $layout],
-            ['schema' => self::DEFAULT_SCHEMA, 'version' => 1],
-        );
-
-        return response()->json($this->payload($row));
+        return response()->json($this->layouts->payload($this->layouts->get($layout)));
     }
 
     public function update(Request $request, string $layout): JsonResponse
@@ -39,77 +33,36 @@ class SnkKilkanaLayoutsController extends Controller
             'version' => 'required|integer',
         ]);
 
-        $row = SnkKilkanaLayoutModel::firstOrCreate(
-            ['layout' => $layout],
-            ['schema' => self::DEFAULT_SCHEMA, 'version' => 1],
+        $result = $this->layouts->update(
+            $layout,
+            $data['schema'],
+            (int) $data['version'],
+            auth()->id(),
         );
-
-        if ((int) $data['version'] !== (int) $row->version) {
+        if ($result['conflict']) {
             return response()->json([
                 'error' => 'version_conflict',
-                'current' => $this->payload($row),
+                'current' => $this->layouts->payload($result['row']),
             ], 409);
         }
 
-        // Historial: snapshot del documento ANTES de pisarlo (deshace «Use composition»).
-        SnkKilkanaLayoutRevisionModel::create([
-            'layout_id' => $row->id,
-            'user_id' => auth()->id(),
-            'schema' => $row->schema,
-        ]);
-
-        $row->schema = $data['schema'];
-        $row->version = $row->version + 1;
-        $row->save();
-
-        return response()->json($this->payload($row));
+        return response()->json($this->layouts->payload($result['row']));
     }
 
     /** Historial del documento (más reciente primero). */
     public function revisions(string $layout): JsonResponse
     {
-        $layoutId = SnkKilkanaLayoutModel::query()->where('layout', $layout)->value('id');
-
-        return response()->json(
-            SnkKilkanaLayoutRevisionModel::query()
-                ->where('layout_id', $layoutId ?? 0)
-                ->with('user:id,name')
-                ->orderByDesc('created_at')
-                ->get()
-        );
+        return response()->json($this->layouts->revisions($layout));
     }
 
     /** Restaura una revisión del documento (el estado actual se snapshotea antes). */
     public function restore(string $layout, $revisionId): JsonResponse
     {
-        $row = SnkKilkanaLayoutModel::query()->where('layout', $layout)->first();
-        $revision = $row
-            ? SnkKilkanaLayoutRevisionModel::query()->whereKey($revisionId)->where('layout_id', $row->id)->first()
-            : null;
-        if (! $row || ! $revision) {
+        $row = $this->layouts->restore($layout, $revisionId, auth()->id());
+        if ($row === null) {
             return response()->json(['error' => 'Record not found'], 404);
         }
 
-        SnkKilkanaLayoutRevisionModel::create([
-            'layout_id' => $row->id,
-            'user_id' => auth()->id(),
-            'schema' => $row->schema,
-        ]);
-
-        $row->schema = $revision->schema;
-        $row->version = $row->version + 1;
-        $row->save();
-
-        return response()->json($this->payload($row));
-    }
-
-    private function payload(SnkKilkanaLayoutModel $row): array
-    {
-        return [
-            'layout' => $row->layout,
-            'schema' => $row->schema,
-            'version' => $row->version,
-            'updated_at' => $row->updated_at,
-        ];
+        return response()->json($this->layouts->payload($row));
     }
 }

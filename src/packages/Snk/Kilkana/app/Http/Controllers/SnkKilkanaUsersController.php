@@ -2,16 +2,15 @@
 
 namespace Packages\Snk\Kilkana\Http\Controllers;
 
-use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 use Packages\Core\Http\Controllers\CoreUsersController;
-use Packages\Core\Models\CoreUserModel;
-use Packages\Snk\Kilkana\Models\SnkKilkanaAuthorModel;
+use Packages\Snk\Kilkana\Services\SnkKilkanaBylineService;
 
 class SnkKilkanaUsersController extends CoreUsersController
 {
+    public function __construct(private readonly SnkKilkanaBylineService $bylines) {}
+
     /**
      * El listado dice qué ROL tiene cada cuenta.
      *
@@ -69,46 +68,10 @@ class SnkKilkanaUsersController extends CoreUsersController
      */
     private function flagPendingByline(JsonResponse $response, int $userId): JsonResponse
     {
-        if (! $this->ensureByline($userId)) {
+        if (! $this->bylines->ensureForUser($userId)) {
             return $response;
         }
 
         return $response->setData($response->getData(true) + ['byline_pending' => true]);
-    }
-
-    /**
-     * Si la cuenta puede escribir, tiene firma.
-     *
-     * Una firma ES una cuenta, así que dar de alta a un periodista y NO darle firma dejaba
-     * la mitad del trabajo hecho: podía escribir pero no firmar, y tenía que atribuirse a
-     * un compañero. La condición es el permiso, no una lista de roles: un rol nuevo que
-     * pueda escribir entra solo.
-     *
-     * No hay operación inversa. Bajar de rol NO borra la firma: su hemeroteca sigue
-     * publicada y `posts.author_id` es RESTRICT — retirar una firma es una decisión
-     * editorial, y se toma en su pantalla.
-     *
-     * @return bool true si la cuenta DEBÍA tener firma y se ha quedado sin ella. No es lo
-     *              mismo que no tenerla: quien modera comentarios no la necesita.
-     */
-    private function ensureByline(int $userId): bool
-    {
-        $user = CoreUserModel::query()->find($userId);
-        if ($user === null || ! $user->getAllPermissions()->pluck('name')->contains('create posts')) {
-            return false;
-        }
-
-        try {
-            // Sin nombre: firma con el de su cuenta hasta que alguien le ponga un alias. La
-            // URL sale de `deriveSlug`, que se para antes que inventar un sufijo.
-            SnkKilkanaAuthorModel::firstOrCreate(['user_id' => $user->id]);
-
-            return false;
-        } catch (ValidationException|QueryException) {
-            // Las URLs derivables están ocupadas (o dos altas idénticas a la vez se pisaron
-            // contra el UNIQUE). Guardar la CUENTA no puede fallar por esto: queda sin firma
-            // y sale en el selector de «Nueva firma», que es donde se elige una URL.
-            return true;
-        }
     }
 }
