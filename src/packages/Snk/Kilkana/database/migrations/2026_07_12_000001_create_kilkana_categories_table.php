@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('kilkana_categories', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('parent_id')->nullable()->constrained('kilkana_categories')->nullOnDelete();
+            $table->foreignId('parent_id')->nullable()->constrained('kilkana_categories')->restrictOnDelete();
             $table->string('slug', 64)->unique();
             $table->string('name');
             $table->text('description')->nullable();
