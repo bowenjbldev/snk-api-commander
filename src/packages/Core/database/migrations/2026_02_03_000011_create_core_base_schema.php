@@ -26,6 +26,10 @@ return new class extends Migration
             $table->string('company', 255)->nullable();
             $table->string('phone', 50)->nullable();
             $table->string('email')->unique();
+            // URL de la foto de perfil, no el fichero: puede venir del disco del tenant
+            // (/storage/avatars/…) o de un proveedor externo. Nullable porque la UI
+            // siempre tiene que poder caer al monograma de iniciales.
+            $table->string('avatar', 2048)->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();

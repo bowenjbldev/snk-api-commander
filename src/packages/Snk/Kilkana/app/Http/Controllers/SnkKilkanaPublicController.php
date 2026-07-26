@@ -38,8 +38,13 @@ class SnkKilkanaPublicController extends Controller
             ->withSum(['views as views_day' => fn ($q) => $q->where('date', now()->toDateString())], 'views')
             ->withSum(['views as views_week' => fn ($q) => $q->where('date', '>=', now()->subDays(6)->toDateString())], 'views')
             ->orderByDesc('published_at');
+        // Una sección incluye a sus DESCENDIENTES: quien pulsa «Deportes» espera el
+        // fútbol. Dos niveles, que es lo que admite la taxonomía (una sección con hijas
+        // no puede tener madre), así que basta mirar la categoría del post y su madre.
         if (! empty($data['cat'])) {
-            $query->whereHas('category', fn ($q) => $q->where('slug', $data['cat']));
+            $query->whereHas('category', fn ($q) => $q
+                ->where('slug', $data['cat'])
+                ->orWhereHas('parent', fn ($p) => $p->where('slug', $data['cat'])));
         }
         // Buscador del sitio: FULLTEXT sobre título y entradilla.
         if (! empty($data['q'])) {

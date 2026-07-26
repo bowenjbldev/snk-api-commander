@@ -24,7 +24,6 @@ class SnkKilkanaCategoriesController extends CoreBaseApiController
     protected array $validationRulesStore = [
         'name' => 'required|string|max:255',
         'slug' => 'nullable|string|max:64|unique:kilkana_categories,slug',
-        'hue' => 'nullable|integer|min:0|max:360',
         'parent_id' => 'nullable|integer|exists:kilkana_categories,id',
         'description' => 'nullable|string',
         'position' => 'nullable|integer|min:0|max:65535',
@@ -33,7 +32,6 @@ class SnkKilkanaCategoriesController extends CoreBaseApiController
     protected array $validationRulesUpdate = [
         'name' => 'sometimes|required|string|max:255',
         'slug' => 'nullable|string|max:64|unique:kilkana_categories,slug,{id}',
-        'hue' => 'nullable|integer|min:0|max:360',
         // not_in:{id}: una sección no puede ser su propio padre (ciclos profundos: pendiente si llega UI de árbol)
         'parent_id' => 'nullable|integer|exists:kilkana_categories,id|not_in:{id}',
         'description' => 'nullable|string',

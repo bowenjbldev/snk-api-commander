@@ -126,7 +126,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "culture",
+		"cat": "heritage",
 		"title": "Remains of the ancient Roman port unearthed in Seville",
 		"excerpt": "The site, found during construction work, rewrites the trading history of Roman Baetica.",
 		"author": "Marta Gil",
@@ -297,7 +297,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "sports",
+		"cat": "football",
 		"title": "Epic last-minute comeback seals promotion",
 		"excerpt": "Vargas' goal in the 93rd minute sparks celebration in a stand that had waited a decade for the moment.",
 		"author": "Diego Cano",
@@ -360,7 +360,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "technology",
+		"cat": "ai",
 		"title": "A local startup unveils the first low-power neural chip",
 		"excerpt": "It promises to boost the efficiency of edge AI devices tenfold.",
 		"author": "Nora Ibáñez",
@@ -711,7 +711,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "sports",
+		"cat": "football",
 		"title": "The women's national team routs its rival and qualifies with authority",
 		"excerpt": "Three first-half goals settle a match that was never in doubt.",
 		"author": "Diego Cano",
@@ -765,7 +765,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "technology",
+		"cat": "networks",
 		"title": "The digital outage exposes the fragility of the cloud",
 		"excerpt": "A six-hour failure hits thousands of services and reopens the debate over dependence.",
 		"author": "Nora Ibáñez",
@@ -936,7 +936,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "culture",
+		"cat": "heritage",
 		"title": "The last great master of the artisan craft dies at 91",
 		"excerpt": "He leaves behind a school of disciples who keep a centuries-old technique alive.",
 		"author": "Marta Gil",
@@ -999,7 +999,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "society",
+		"cat": "education",
 		"title": "A study links irregular sleep to school performance",
 		"excerpt": "Researchers call for a later start to the secondary school day.",
 		"author": "Iván Soto",
@@ -1287,7 +1287,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "culture",
+		"cat": "cinema",
 		"title": "The independent film festival reveals its lineup",
 		"excerpt": "Forty premieres and a strand devoted to social documentary define this edition.",
 		"author": "Marta Gil",
@@ -1341,7 +1341,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "economy",
+		"cat": "labour",
 		"title": "Small businesses lead job creation this quarter",
 		"excerpt": "Small retail and hospitality account for most of the new contracts.",
 		"author": "Sara Lores",
@@ -1656,7 +1656,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "economy",
+		"cat": "labour",
 		"title": "The minimum wage rises 5% after a deal between unions and employers",
 		"excerpt": "The agreement, sealed in the early hours, benefits two and a half million workers.",
 		"author": "Lucía Ferrer",
@@ -1719,7 +1719,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "culture",
+		"cat": "books",
 		"title": "The national library digitizes half a million historical documents",
 		"excerpt": "The open archive includes manuscripts, maps and press from the last four centuries.",
 		"author": "Marta Gil",
@@ -1971,7 +1971,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "politics",
+		"cat": "housing",
 		"title": "The city council approves the largest public housing plan in twenty years",
 		"excerpt": "The investment will build eight thousand affordable homes on land now unused.",
 		"author": "Pedro Aranda",
@@ -2206,7 +2206,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "sports",
+		"cat": "cycling",
 		"title": "The local cycling team unveils its bid to take on the grand tours",
 		"excerpt": "A doubled budget, eight signings and a declared bet on the velodrome's youth academy.",
 		"author": "Diego Cano",
@@ -2454,7 +2454,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "economy",
+		"cat": "housing",
 		"title": "Housing marks its eighth straight quarter of price rises",
 		"excerpt": "The average price climbs 6.2% year on year, with high-pressure cities leading.",
 		"author": "Lucía Ferrer",
@@ -2563,7 +2563,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "sports",
+		"cat": "football",
 		"title": "The academy takes charge again: five debutants in the first team",
 		"excerpt": "The club turns necessity into a plan and renews its head of youth development.",
 		"author": "Diego Cano",
@@ -2618,7 +2618,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "technology",
+		"cat": "networks",
 		"title": "Telecoms switch on the 6G pilot network in three cities",
 		"excerpt": "The trial, limited to industrial parks, will measure latency for robotics and connected vehicles.",
 		"author": "Nora Ibáñez",
@@ -2664,7 +2664,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "culture",
+		"cat": "books",
 		"title": "The book fair closes with record sales and a debate over fixed pricing",
 		"excerpt": "Booksellers cheer the figures and call to protect the maximum discount against the platforms.",
 		"author": "Marta Gil",
@@ -2710,7 +2710,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "society",
+		"cat": "education",
 		"title": "The neighborhood that organized to drive the heatwave out of the classrooms",
 		"excerpt": "Awnings, fans and a neighbor-run watering shift cool the schoolyard by four degrees.",
 		"author": "Iván Soto",
@@ -2912,7 +2912,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "sports",
+		"cat": "basketball",
 		"title": "Local basketball will play in Europe twenty years later",
 		"excerpt": "A final-day win seals a berth the city celebrated into the early hours.",
 		"author": "Diego Cano",
@@ -2958,7 +2958,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "technology",
+		"cat": "ai",
 		"title": "The AI law takes effect with the industry divided",
 		"excerpt": "High-risk systems will have eighteen months to be audited; startups ask for a single point of contact.",
 		"author": "Nora Ibáñez",
@@ -3021,7 +3021,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "culture",
+		"cat": "heritage",
 		"title": "The museum returns the claimed pieces and opens a restitution protocol",
 		"excerpt": "The handover, sealed with a joint ceremony, makes the institution a European reference in the postcolonial debate.",
 		"author": "Marta Gil",
@@ -3260,7 +3260,7 @@
 		"scheduled_for": null
 	},
 	{
-		"cat": "sports",
+		"cat": "football",
 		"title": "The historic rival returns to the women's derby with a sellout guaranteed",
 		"excerpt": "Tickets sell out in five hours and the club weighs opening the overflow stand.",
 		"author": "Diego Cano",

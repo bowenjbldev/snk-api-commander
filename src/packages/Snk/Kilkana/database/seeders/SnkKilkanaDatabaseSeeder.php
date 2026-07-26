@@ -21,21 +21,49 @@ use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 /**
- * Permisos de los recursos del CMS + taxonomía base (7 categorías con su hue) + los 60
+ * Permisos de los recursos del CMS + taxonomía base (7 mesas + 12 subsecciones) + los 60
  * artículos demo de kilkana (data/posts.json) resolviendo strings → relaciones
  * (autor, media de portada, tags). firstOrCreate: re-sembrar no duplica ni pisa.
  */
 class SnkKilkanaDatabaseSeeder extends Seeder
 {
-    /** Fuente de verdad de la taxonomía (el hue pinta el gradiente sin foto en el frontend). */
+    /**
+     * Taxonomía del periódico. Dos niveles: las mesas de redacción y sus subsecciones.
+     *
+     * El orden de declaración manda: una hija tiene que ir DESPUÉS de su madre, porque
+     * `seedCategories` resuelve `parent_id` con los ids ya creados. `position` se numera
+     * por nivel, así que las hermanas se ordenan entre ellas y no contra el resto.
+     *
+     * `motor` nace sin artículos a propósito: una sección recién abierta es un estado
+     * real, y es el que ejercita el bloque vacío del builder y la página de sección sin
+     * contenido.
+     */
     private const CATEGORIES = [
-        'politics' => ['name' => 'Politics', 'hue' => 25, 'description' => 'Government, parliament, elections and public policy.'],
-        'economy' => ['name' => 'Economy', 'hue' => 250, 'description' => 'Markets, business, employment and personal finance.'],
-        'culture' => ['name' => 'Culture', 'hue' => 310, 'description' => 'Books, film, music, arts and heritage.'],
-        'society' => ['name' => 'Society', 'hue' => 150, 'description' => 'Education, health, housing and everyday life.'],
-        'sports' => ['name' => 'Sports', 'hue' => 50, 'description' => 'Results, matches and the stories behind the game.'],
-        'technology' => ['name' => 'Technology', 'hue' => 195, 'description' => 'Science, innovation and the digital world.'],
-        'international' => ['name' => 'International', 'hue' => 275, 'description' => 'World news and global affairs.'],
+        'politics' => ['name' => 'Politics', 'description' => 'Government, parliament, elections and public policy.'],
+
+        'economy' => ['name' => 'Economy', 'description' => 'Markets, business, employment and personal finance.'],
+        'housing' => ['name' => 'Housing', 'parent' => 'economy', 'description' => 'Prices, rent, mortgages and public housing policy.'],
+        'labour' => ['name' => 'Labour', 'parent' => 'economy', 'description' => 'Jobs, wages, collective bargaining and working conditions.'],
+
+        'culture' => ['name' => 'Culture', 'description' => 'Books, film, music, arts and heritage.'],
+        'cinema' => ['name' => 'Cinema', 'parent' => 'culture', 'description' => 'Premieres, festivals and the people behind the camera.'],
+        'books' => ['name' => 'Books', 'parent' => 'culture', 'description' => 'Publishing, libraries, reading and the book trade.'],
+        'heritage' => ['name' => 'Heritage', 'parent' => 'culture', 'description' => 'Archaeology, museums, restoration and cultural property.'],
+
+        'society' => ['name' => 'Society', 'description' => 'Education, health, housing and everyday life.'],
+        'education' => ['name' => 'Education', 'parent' => 'society', 'description' => 'Schools, universities, teaching and student life.'],
+
+        'sports' => ['name' => 'Sports', 'description' => 'Results, matches and the stories behind the game.'],
+        'football' => ['name' => 'Football', 'parent' => 'sports', 'description' => 'Leagues, cups and the national teams.'],
+        'basketball' => ['name' => 'Basketball', 'parent' => 'sports', 'description' => 'Domestic league, European competition and the youth ranks.'],
+        'cycling' => ['name' => 'Cycling', 'parent' => 'sports', 'description' => 'Grand tours, classics and the local teams.'],
+        'motor' => ['name' => 'Motor', 'parent' => 'sports', 'description' => 'Rallies, circuits and the motorcycling calendar.'],
+
+        'technology' => ['name' => 'Technology', 'description' => 'Science, innovation and the digital world.'],
+        'ai' => ['name' => 'Artificial intelligence', 'parent' => 'technology', 'description' => 'Models, regulation and how AI reaches everyday work.'],
+        'networks' => ['name' => 'Networks', 'parent' => 'technology', 'description' => 'Connectivity, infrastructure and the outages that expose it.'],
+
+        'international' => ['name' => 'International', 'description' => 'World news and global affairs.'],
     ];
 
     public function run(): void
@@ -262,10 +290,21 @@ class SnkKilkanaDatabaseSeeder extends Seeder
 
     private function seedCategories(): void
     {
-        $position = 0;
+        $ids = [];
+        $position = [];
         foreach (self::CATEGORIES as $slug => $attrs) {
-            // position = orden de declaración (el orden del nav público)
-            SnkKilkanaCategoryModel::firstOrCreate(['slug' => $slug], [...$attrs, 'position' => $position++]);
+            $parent = $attrs['parent'] ?? null;
+            // Numeración por nivel: las raíces ordenan el nav, y las hijas se ordenan
+            // entre hermanas. Un contador global dejaría huecos sin sentido en cada rama.
+            $branch = $parent ?? '';
+            $position[$branch] = ($position[$branch] ?? -1) + 1;
+
+            $ids[$slug] = SnkKilkanaCategoryModel::firstOrCreate(['slug' => $slug], [
+                'name' => $attrs['name'],
+                'description' => $attrs['description'],
+                'parent_id' => $parent ? ($ids[$parent] ?? null) : null,
+                'position' => $position[$branch],
+            ])->id;
         }
     }
 

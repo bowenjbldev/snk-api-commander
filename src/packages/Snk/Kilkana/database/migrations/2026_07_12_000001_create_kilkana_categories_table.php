@@ -14,7 +14,6 @@ return new class extends Migration
             $table->foreignId('parent_id')->nullable()->constrained('kilkana_categories')->nullOnDelete();
             $table->string('slug', 64)->unique(); // 'politics', 'sports'... la URL de la sección
             $table->string('name');
-            $table->smallInteger('hue')->default(220); // gradiente de PostThumb sin foto
             $table->text('description')->nullable(); // la página pública de sección la usa (SEO)
             $table->unsignedSmallInteger('position')->default(0); // orden del nav
             $table->timestamps();

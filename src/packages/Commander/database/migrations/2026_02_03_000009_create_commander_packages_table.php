@@ -32,6 +32,11 @@ return new class extends Migration {
             // pueden tener su propio "Shop" (packages/Acme/Shop, packages/Initech/Shop).
             $table->string('name', 100);
             $table->string('database', 64)->nullable(); // BD del package: snake(client.slug)_snake(slug)
+            // Credenciales con las que el provisioning conecta a ESA BD. La contraseña va
+            // en `text` porque se guarda cifrada, y nullable porque un package registrado
+            // pero aún sin aprovisionar todavía no las tiene.
+            $table->string('database_username', 64)->nullable();
+            $table->text('database_password')->nullable();
 
             // ── Catalogo (registro): existe siempre, sincronizado desde disco; metadatos del operador ──
             $table->string('label')->nullable();
