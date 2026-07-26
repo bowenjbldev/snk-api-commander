@@ -3,14 +3,11 @@
 namespace Packages\Snk\Kilkana\Http\Controllers;
 
 use Dedoc\Scramble\Attributes\Group;
-use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Snk\Kilkana\Models\SnkKilkanaMediaModel;
+use Packages\Snk\Kilkana\Services\SnkKilkanaMediaService;
 
 /**
  * Biblioteca de medios estilo WordPress: subida al disco del tenant con dedup por
@@ -21,6 +18,8 @@ use Packages\Snk\Kilkana\Models\SnkKilkanaMediaModel;
 #[Group('Media')]
 class SnkKilkanaMediaController extends CoreBaseApiController
 {
+    public function __construct(private readonly SnkKilkanaMediaService $media) {}
+
     protected string $modelClass = SnkKilkanaMediaModel::class;
 
     protected string $indexPermission = 'index media';
@@ -44,21 +43,7 @@ class SnkKilkanaMediaController extends CoreBaseApiController
             return $response;
         }
 
-        $request = request();
-        $perPage = max(1, min((int) $request->integer('per_page', 24), 100));
-
-        $page = $this->filtered($request)->paginate($perPage);
-
-        return response()->json([
-            'data' => $page->items(),
-            'meta' => [
-                'current_page' => $page->currentPage(),
-                'last_page' => $page->lastPage(),
-                'per_page' => $page->perPage(),
-                'total' => $page->total(),
-            ],
-            'facets' => $this->facets(),
-        ]);
+        return response()->json($this->media->index(request()));
     }
 
     public function update(Request $request, $id = null): JsonResponse
@@ -67,7 +52,7 @@ class SnkKilkanaMediaController extends CoreBaseApiController
             return $response;
         }
 
-        $media = SnkKilkanaMediaModel::query()->find($id);
+        $media = $this->media->find($id);
         if (! $media) {
             return response()->json(['error' => 'Record not found'], 404);
         }
@@ -90,18 +75,7 @@ class SnkKilkanaMediaController extends CoreBaseApiController
             'collection_ids.*' => 'integer',
         ]);
 
-        $columns = collect($data)->except(['tag_ids', 'collection_ids'])->all();
-        if ($columns) {
-            $media->update($columns);
-        }
-        if (array_key_exists('tag_ids', $data)) {
-            $media->tags()->sync($data['tag_ids']);
-        }
-        if (array_key_exists('collection_ids', $data)) {
-            $media->collections()->sync($data['collection_ids']);
-        }
-
-        return response()->json($this->serialize($media));
+        return response()->json($this->media->update($media, $data));
     }
 
     public function destroy($id = null): JsonResponse
@@ -110,11 +84,11 @@ class SnkKilkanaMediaController extends CoreBaseApiController
             return $response;
         }
 
-        $media = SnkKilkanaMediaModel::query()->find($id);
+        $media = $this->media->find($id);
         if (! $media) {
             return response()->json(['error' => 'Record not found'], 404);
         }
-        $media->delete(); // soft delete → papelera
+        $this->media->trash($media);
 
         return response()->json(['id' => (string) $id]);
     }
@@ -126,13 +100,12 @@ class SnkKilkanaMediaController extends CoreBaseApiController
             return $response;
         }
 
-        $media = SnkKilkanaMediaModel::onlyTrashed()->find($id);
+        $media = $this->media->findTrashed($id);
         if (! $media) {
             return response()->json(['error' => 'Record not found'], 404);
         }
-        $media->restore();
 
-        return response()->json($this->serialize($media));
+        return response()->json($this->media->restore($media));
     }
 
     /** Borrado permanente: elimina el fichero del disco (si es propio) y la fila. */
@@ -142,14 +115,11 @@ class SnkKilkanaMediaController extends CoreBaseApiController
             return $response;
         }
 
-        $media = SnkKilkanaMediaModel::withTrashed()->find($id);
+        $media = $this->media->findWithTrashed($id);
         if (! $media) {
             return response()->json(['error' => 'Record not found'], 404);
         }
-        if ($media->disk && $media->path) {
-            Storage::disk($media->disk)->delete($media->path);
-        }
-        $media->forceDelete();
+        $this->media->forceDestroy($media);
 
         return response()->json(['id' => (string) $id]);
     }
@@ -172,39 +142,14 @@ class SnkKilkanaMediaController extends CoreBaseApiController
             return $response;
         }
 
-        $ids = $data['ids'];
-        switch ($data['action']) {
-            case 'trash':
-                SnkKilkanaMediaModel::query()->whereIn('id', $ids)->delete();
-                break;
-            case 'restore':
-                SnkKilkanaMediaModel::onlyTrashed()->whereIn('id', $ids)->restore();
-                break;
-            case 'tag':
-                foreach (SnkKilkanaMediaModel::query()->whereIn('id', $ids)->get() as $media) {
-                    $media->tags()->syncWithoutDetaching($data['tag_ids'] ?? []);
-                }
-                break;
-            // detach, no sync: quita solo las etiquetas nombradas y deja intactas las demás
-            // que tenga cada medio.
-            case 'untag':
-                foreach (SnkKilkanaMediaModel::query()->whereIn('id', $ids)->get() as $media) {
-                    $media->tags()->detach($data['tag_ids'] ?? []);
-                }
-                break;
-            case 'collect':
-                foreach (SnkKilkanaMediaModel::query()->whereIn('id', $ids)->get() as $media) {
-                    $media->collections()->syncWithoutDetaching($data['collection_ids'] ?? []);
-                }
-                break;
-            case 'uncollect':
-                foreach (SnkKilkanaMediaModel::query()->whereIn('id', $ids)->get() as $media) {
-                    $media->collections()->detach($data['collection_ids'] ?? []);
-                }
-                break;
-        }
+        $this->media->bulk(
+            $data['ids'],
+            $data['action'],
+            $data['tag_ids'] ?? [],
+            $data['collection_ids'] ?? [],
+        );
 
-        return response()->json(['ok' => true, 'count' => count($ids)]);
+        return response()->json(['ok' => true, 'count' => count($data['ids'])]);
     }
 
     /**
@@ -226,34 +171,11 @@ class SnkKilkanaMediaController extends CoreBaseApiController
             'duration' => 'nullable|integer|min:0',
         ]);
 
-        $file = $data['file'];
-        $hash = hash_file('sha256', $file->getRealPath());
+        $result = $this->media->upload($data, (int) auth()->id());
 
-        $existing = SnkKilkanaMediaModel::withTrashed()->where('content_hash', $hash)->first();
-        if ($existing) {
-            return response()->json(['error' => 'Duplicate', 'media' => $this->serialize($existing)], 409);
-        }
-
-        $dir = 'media/'.DB::connection()->getDatabaseName();
-        $path = $file->store($dir, 'public');
-        [$width, $height] = $this->dimensions($file->getRealPath(), $data);
-
-        $media = SnkKilkanaMediaModel::create([
-            'url' => '/storage/'.$path,
-            'original_name' => $file->getClientOriginalName(),
-            'title' => pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
-            'mime' => $file->getMimeType(),
-            'width' => $width,
-            'height' => $height,
-            'duration' => $data['duration'] ?? null,
-            'size_bytes' => $file->getSize(),
-            'content_hash' => $hash,
-            'disk' => 'public',
-            'path' => $path,
-            'uploaded_by' => auth()->id(),
-        ]);
-
-        return response()->json($this->serialize($media), 201);
+        return $result['duplicate']
+            ? response()->json(['error' => 'Duplicate', 'media' => $result['media']], 409)
+            : response()->json($result['media'], 201);
     }
 
     /** Reemplaza el binario conservando los metadatos editoriales y el id. */
@@ -263,7 +185,7 @@ class SnkKilkanaMediaController extends CoreBaseApiController
             return $response;
         }
 
-        $media = SnkKilkanaMediaModel::query()->find($id);
+        $media = $this->media->find($id);
         if (! $media) {
             return response()->json(['error' => 'Record not found'], 404);
         }
@@ -275,148 +197,10 @@ class SnkKilkanaMediaController extends CoreBaseApiController
             'duration' => 'nullable|integer|min:0',
         ]);
 
-        $file = $data['file'];
-        $hash = hash_file('sha256', $file->getRealPath());
+        $result = $this->media->replace($media, $data);
 
-        $clash = SnkKilkanaMediaModel::withTrashed()->where('content_hash', $hash)->where('id', '!=', $media->id)->first();
-        if ($clash) {
-            return response()->json(['error' => 'Duplicate', 'media' => $this->serialize($clash)], 409);
-        }
-
-        if ($media->disk && $media->path) {
-            Storage::disk($media->disk)->delete($media->path);
-        }
-        $dir = 'media/'.DB::connection()->getDatabaseName();
-        $path = $file->store($dir, 'public');
-        [$width, $height] = $this->dimensions($file->getRealPath(), $data);
-
-        $media->update([
-            'url' => '/storage/'.$path,
-            'mime' => $file->getMimeType(),
-            'width' => $width,
-            'height' => $height,
-            'duration' => $data['duration'] ?? null,
-            'size_bytes' => $file->getSize(),
-            'content_hash' => $hash,
-            'disk' => 'public',
-            'path' => $path,
-        ]);
-
-        return response()->json($this->serialize($media));
-    }
-
-    /** Dimensiones: getimagesize del servidor (imágenes) o las que manda el cliente. */
-    private function dimensions(string $realPath, array $data): array
-    {
-        $size = @getimagesize($realPath);
-        if ($size) {
-            return [$size[0], $size[1]];
-        }
-
-        return [$data['width'] ?? null, $data['height'] ?? null];
-    }
-
-    /** Query base con relaciones, conteo de uso y todos los filtros del frontend. */
-    private function filtered(Request $request): Builder
-    {
-        $query = SnkKilkanaMediaModel::query()
-            ->with(['tags', 'collections'])
-            ->withCount(SnkKilkanaMediaModel::USOS);
-
-        $status = $request->string('status')->toString();
-        if ($status === 'trash') {
-            $query->onlyTrashed();
-        } elseif ($status === 'review') {
-            $query->where('rights_status', 'unknown');
-        } elseif ($status === 'unused') {
-            $query->unused();
-        }
-
-        if ($q = $request->string('q')->trim()->toString()) {
-            $query->where(function (Builder $sub) use ($q) {
-                foreach (['title', 'original_name', 'alt', 'caption', 'credit', 'description'] as $column) {
-                    $sub->orWhere($column, 'like', "%{$q}%");
-                }
-            });
-        }
-
-        if ($kind = $request->string('kind')->toString()) {
-            $this->whereKind($query, $kind);
-        }
-
-        if ($tagId = $request->integer('tag_id')) {
-            $query->whereHas('tags', fn (Builder $sub) => $sub->where('kilkana_media_tags.id', $tagId));
-        }
-        if ($collectionId = $request->integer('collection_id')) {
-            $query->whereHas('collections', fn (Builder $sub) => $sub->where('kilkana_media_collections.id', $collectionId));
-        }
-
-        if ($orientation = $request->string('orientation')->toString()) {
-            $query->whereNotNull('width')->whereNotNull('height');
-            if ($orientation === 'landscape') {
-                $query->whereColumn('width', '>', 'height');
-            } elseif ($orientation === 'portrait') {
-                $query->whereColumn('height', '>', 'width');
-            } elseif ($orientation === 'square') {
-                $query->whereColumn('width', '=', 'height');
-            }
-        }
-
-        if ($from = $request->string('from')->toString()) {
-            $query->whereDate('created_at', '>=', $from);
-        }
-        if ($to = $request->string('to')->toString()) {
-            $query->whereDate('created_at', '<=', $to);
-        }
-        if ($uploadedBy = $request->integer('uploaded_by')) {
-            $query->where('uploaded_by', $uploadedBy);
-        }
-
-        return match ($request->string('sort')->toString()) {
-            'oldest' => $query->orderBy('created_at'),
-            'name' => $query->orderBy('title'),
-            'largest' => $query->orderByDesc('size_bytes'),
-            default => $query->orderByDesc('created_at'),
-        };
-    }
-
-    private function whereKind(Builder $query, string $kind): void
-    {
-        match ($kind) {
-            'image' => $query->where('mime', 'like', 'image/%'),
-            'video' => $query->where('mime', 'like', 'video/%'),
-            'audio' => $query->where('mime', 'like', 'audio/%'),
-            'document' => $query->where(fn (Builder $sub) => $sub
-                ->whereNull('mime')
-                ->orWhere(fn (Builder $inner) => $inner
-                    ->where('mime', 'not like', 'image/%')
-                    ->where('mime', 'not like', 'video/%')
-                    ->where('mime', 'not like', 'audio/%'))),
-            default => null,
-        };
-    }
-
-    /** Contadores globales de las pestañas (no dependen de los filtros activos). */
-    private function facets(): array
-    {
-        $soon = Carbon::today()->addDays(30)->toDateString();
-
-        return [
-            'all' => SnkKilkanaMediaModel::query()->count(),
-            'review' => SnkKilkanaMediaModel::query()->where('rights_status', 'unknown')->count(),
-            // «Sin usar» es una vista como review o trash, no un filtro: lleva su contador.
-            'unused' => SnkKilkanaMediaModel::query()->unused()->count(),
-            'missing_alt' => SnkKilkanaMediaModel::query()->where(fn (Builder $q) => $q->whereNull('alt')->orWhere('alt', ''))->count(),
-            // Sin `whereDate`: envolver la columna en una función impide que la base use su
-            // índice. `rights_expires_at` ya es DATE, así que se compara en crudo.
-            'expiring' => SnkKilkanaMediaModel::query()->whereNotNull('rights_expires_at')->where('rights_expires_at', '<=', $soon)->count(),
-            'trash' => SnkKilkanaMediaModel::onlyTrashed()->count(),
-        ];
-    }
-
-    /** Recarga con relaciones + conteo para que la respuesta cuadre con el contrato del index. */
-    private function serialize(SnkKilkanaMediaModel $media): SnkKilkanaMediaModel
-    {
-        return $media->fresh(['tags', 'collections'])->loadCount(SnkKilkanaMediaModel::USOS);
+        return $result['duplicate']
+            ? response()->json(['error' => 'Duplicate', 'media' => $result['media']], 409)
+            : response()->json($result['media']);
     }
 }

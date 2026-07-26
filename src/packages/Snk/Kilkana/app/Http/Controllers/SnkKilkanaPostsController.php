@@ -9,13 +9,8 @@ use Illuminate\Http\Request;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Snk\Kilkana\Enums\SnkKilkanaContentTierEnum;
 use Packages\Snk\Kilkana\Enums\SnkKilkanaPostStatusEnum;
-use Packages\Snk\Kilkana\Models\SnkKilkanaCategoryModel;
-use Packages\Snk\Kilkana\Models\SnkKilkanaMediaModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaPostModel;
-use Packages\Snk\Kilkana\Models\SnkKilkanaPostRevisionModel;
-use Packages\Snk\Kilkana\Models\SnkKilkanaPostSlugModel;
-use Packages\Snk\Kilkana\Models\SnkKilkanaTagModel;
-use Packages\Snk\Kilkana\Support\SnkKilkanaRichText;
+use Packages\Snk\Kilkana\Services\SnkKilkanaPostService;
 
 /**
  * CRUD de artículos con BD normalizada. La escritura acepta texto libre del editor
@@ -39,39 +34,18 @@ class SnkKilkanaPostsController extends CoreBaseApiController
      */
     protected function newQuery()
     {
-        $query = SnkKilkanaPostModel::query()
-            ->withSum(['views as views_day' => fn ($q) => $q->where('date', now()->toDateString())], 'views')
-            ->withSum(['views as views_week' => fn ($q) => $q->where('date', '>=', now()->subDays(6)->toDateString())], 'views')
-            ->withSum('views as views_total', 'views');
-
-        return $this->scopeToOwner($query);
-    }
-
-    /**
-     * Sin `edit others posts`, para ti solo existe lo que has escrito.
-     *
-     * Mira `created_by`, NO la firma: en una redacción quien teclea y quien firma pueden
-     * ser distintos —una pieza de agencia firmada por «Redacción», un becario que escribe
-     * bajo la firma de su sección—, y el permiso va con quien la escribió.
-     */
-    private function scopeToOwner($query)
-    {
-        if (! auth()->user()?->can('edit others posts')) {
-            $query->where('created_by', auth()->id());
-        }
-
-        return $query;
+        return $this->posts->query((int) auth()->id(), $this->canEditOthers());
     }
 
     /** Una pieza ajena no existe: 404, no 403 — el id es correlativo y un 403 confirmaría cuántas hay. */
     protected function findModel($id, bool $applyWith = false): ?Model
     {
-        $post = parent::findModel($id, $applyWith);
-        if ($post === null || auth()->user()?->can('edit others posts')) {
-            return $post;
-        }
+        return $this->posts->find($id, (int) auth()->id(), $this->canEditOthers());
+    }
 
-        return (int) $post->created_by === (int) auth()->id() ? $post : null;
+    private function canEditOthers(): bool
+    {
+        return auth()->user()?->can('edit others posts') === true;
     }
 
     /**
@@ -108,7 +82,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
      * propiedad solo admite expresiones constantes, y su regla sale de un método del enum.
      * Aquí es donde las dos listas se juntan, y donde un estado nuevo entra sin tocar nada.
      */
-    public function __construct()
+    public function __construct(private readonly SnkKilkanaPostService $posts)
     {
         $this->validationRulesStore['status'] = 'required|'.SnkKilkanaPostStatusEnum::rule();
         $this->validationRulesUpdate['status'] = 'sometimes|required|'.SnkKilkanaPostStatusEnum::rule();
@@ -186,14 +160,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             return $this->forbidPublish();
         }
 
-        $post = SnkKilkanaPostModel::create([
-            ...$this->columnsFrom($data),
-            'created_by' => auth()->id(),
-            'updated_by' => auth()->id(),
-        ]);
-        $this->syncRelations($post, $data);
-
-        return response()->json($post->fresh(), 201);
+        return response()->json($this->posts->create($data, (int) auth()->id()), 201);
     }
 
     public function update(Request $request, $id = null): JsonResponse
@@ -221,31 +188,12 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             return $this->forbidPublish();
         }
 
-        // Historial de versiones: snapshot de las columnas ANTES de aplicar el cambio.
-        SnkKilkanaPostRevisionModel::create([
-            'post_id' => $post->id,
-            'user_id' => auth()->id(),
-            'payload' => $post->getAttributes(),
-        ]);
-
-        // La RUTA anterior, no el slug: la URL lleva fecha, y comparar solo el slug dejaría
-        // sin enterrar cualquier movimiento de la fecha.
-        $previousPath = $post->url_path;
-        $post->fill($this->columnsFrom($data, $request));
-        $post->updated_by = auth()->id();
-        $post->save();
-        $this->syncRelations($post, $data);
-
-        // Historial: la URL vieja hará 301; recuperar una ruta la saca del historial, o
-        // quedaría a la vez como URL actual y como redirección hacia sí misma.
-        if ($previousPath && $post->url_path !== $previousPath) {
-            SnkKilkanaPostSlugModel::updateOrCreate(['path' => $previousPath], ['post_id' => $post->id]);
-        }
-        if ($post->url_path) {
-            SnkKilkanaPostSlugModel::query()->where('path', $post->url_path)->delete();
-        }
-
-        return response()->json($post->fresh());
+        return response()->json($this->posts->update(
+            $post,
+            $data,
+            (int) auth()->id(),
+            $request->exists('image'),
+        ));
     }
 
     /**
@@ -272,31 +220,15 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             return $this->forbidPublish();
         }
 
-        // El acotado también aquí: en masa es donde más barato sale saltárselo.
-        $query = $this->scopeToOwner(SnkKilkanaPostModel::query())->whereIn('id', $data['ids']);
-        if ($data['action'] === 'delete') {
-            $count = $query->count();
-            $query->delete();
-
-            return response()->json(['ok' => true, 'count' => $count]);
-        }
-
-        $count = 0;
-        foreach ($query->get() as $post) {
-            $post->status = $data['action'] === 'publish'
-                ? SnkKilkanaPostStatusEnum::Published
-                : SnkKilkanaPostStatusEnum::Draft;
-            if ($data['action'] === 'publish') {
-                if ($post->publish_at === null || $post->publish_at->isFuture()) {
-                    $post->publish_at = now();
-                }
-            }
-            $post->updated_by = auth()->id();
-            $post->save();
-            $count++;
-        }
-
-        return response()->json(['ok' => true, 'count' => $count]);
+        return response()->json([
+            'ok' => true,
+            'count' => $this->posts->bulk(
+                $data['ids'],
+                $data['action'],
+                (int) auth()->id(),
+                $this->canEditOthers(),
+            ),
+        ]);
     }
 
     /** Historial de versiones de un post (más reciente primero). */
@@ -312,13 +244,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             return response()->json(['error' => 'Record not found'], 404);
         }
 
-        return response()->json(
-            SnkKilkanaPostRevisionModel::query()
-                ->where('post_id', $id)
-                ->with('user:id,name')
-                ->orderByDesc('created_at')
-                ->get()
-        );
+        return response()->json($this->posts->revisions((int) $id));
     }
 
     /** Restaura una revisión: el estado actual se snapshotea antes (restore reversible). */
@@ -329,7 +255,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         }
 
         $post = $this->findModel($id);
-        $revision = SnkKilkanaPostRevisionModel::query()->whereKey($revisionId)->where('post_id', $id)->first();
+        $revision = $this->posts->revision((int) $id, $revisionId);
         if (! $post || ! $revision) {
             return response()->json(['error' => 'Record not found'], 404);
         }
@@ -338,68 +264,6 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             return $this->forbidPublish();
         }
 
-        SnkKilkanaPostRevisionModel::create([
-            'post_id' => $post->id,
-            'user_id' => auth()->id(),
-            'payload' => $post->getAttributes(),
-        ]);
-
-        $columns = collect($revision->payload)
-            ->except(['id', 'created_at', 'updated_at', 'created_by', 'updated_by'])
-            ->all();
-        $post->fill($columns);
-        $post->updated_by = auth()->id();
-        $post->save();
-
-        return response()->json($post->fresh());
-    }
-
-    /** Payload del editor → columnas: resuelve category/author/image a FKs; el resto pasa tal cual. */
-    private function columnsFrom(array $data, ?Request $request = null): array
-    {
-        $columns = collect($data)
-            ->except(['category', 'image', 'tags'])
-            ->all();
-
-        if (array_key_exists('category', $data)) {
-            $columns['category_id'] = SnkKilkanaCategoryModel::query()
-                ->where('slug', $data['category'])
-                ->value('id');
-        }
-        // La firma llega ya resuelta —`author_id` pasa tal cual, como una columna más—: la
-        // elige el editor de una lista gobernada y quien la identifica es su cuenta. Antes
-        // esto era `firstOrCreate(['name' => …])`, así que cada variante escrita del nombre
-        // —«J. Bowen» / «Jorge Bowen»— abría una firma nueva, con su página pública, y
-        // partía la hemeroteca en dos. Aquí ya no se crea ninguna: `exists` deja el 422 a
-        // la vista en vez de inventar una firma en silencio.
-        // image: presente y null limpia la portada; ausente no la toca (PUT parcial).
-        $imageSent = $request ? $request->exists('image') : array_key_exists('image', $data);
-        if ($imageSent) {
-            $url = $data['image'] ?? null;
-            $columns['cover_media_id'] = $url
-                ? SnkKilkanaMediaModel::firstOrCreateByUrl($url)->id
-                : null;
-        }
-
-        // Saneado del HTML rico en la frontera de escritura (defensa en profundidad + SSR
-        // fiable). Solo bloques: `body` ya no existe como columna ni como entrada aceptada.
-        if (array_key_exists('body_blocks', $columns)) {
-            $columns['body_blocks'] = SnkKilkanaRichText::cleanBlocks($columns['body_blocks']);
-        }
-
-        return $columns;
-    }
-
-    /** Tags: sync por nombre tras guardar las columnas. */
-    private function syncRelations(SnkKilkanaPostModel $post, array $data): void
-    {
-        if (array_key_exists('tags', $data)) {
-            $ids = collect($data['tags'] ?? [])
-                ->map(fn (string $name) => trim($name))
-                ->filter()
-                ->unique()
-                ->map(fn (string $name) => SnkKilkanaTagModel::firstOrCreate(['name' => $name])->id);
-            $post->tags()->sync($ids);
-        }
+        return response()->json($this->posts->restore($post, $revision, (int) auth()->id()));
     }
 }
