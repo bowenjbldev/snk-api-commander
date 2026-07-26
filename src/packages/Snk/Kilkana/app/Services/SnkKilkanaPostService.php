@@ -101,6 +101,30 @@ class SnkKilkanaPostService
         return $count;
     }
 
+    /**
+     * Publica lo programado cuya hora ya paso. Lo llama el scheduler, por tenant.
+     *
+     * Publicar es SOLO cambiar de estado: la fecha ya esta puesta y es la prevista. Cuando la
+     * fecha prevista y la de publicacion eran dos columnas, aqui habia que copiar una en otra
+     * y vaciar la primera, y ese traspaso llego a publicar piezas con la fecha en que se
+     * redactaron —descolocando portada, sitemap y feed—. Sin dos columnas no hay traspaso que
+     * equivocar.
+     */
+    public function publishDue(): int
+    {
+        $due = SnkKilkanaPostModel::query()
+            ->where('status', SnkKilkanaPostStatusEnum::Scheduled)
+            ->whereNotNull('publish_at')
+            ->where('publish_at', '<=', now())
+            ->get();
+
+        foreach ($due as $post) {
+            $post->update(['status' => SnkKilkanaPostStatusEnum::Published]);
+        }
+
+        return $due->count();
+    }
+
     public function revisions(int $postId)
     {
         return SnkKilkanaPostRevisionModel::query()

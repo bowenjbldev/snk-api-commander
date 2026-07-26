@@ -6,6 +6,7 @@ use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
+use Packages\Snk\Kilkana\Enums\SnkKilkanaMediaRightsEnum;
 use Packages\Snk\Kilkana\Models\SnkKilkanaMediaModel;
 use Packages\Snk\Kilkana\Services\SnkKilkanaMediaService;
 
@@ -64,7 +65,7 @@ class SnkKilkanaMediaController extends CoreBaseApiController
             'description' => 'sometimes|nullable|string',
             'credit' => 'sometimes|nullable|string|max:500',
             'source_url' => 'sometimes|nullable|string|max:2048',
-            'rights_status' => 'sometimes|string|in:unknown,owned,licensed,creative_commons,public_domain',
+            'rights_status' => 'sometimes|string|'.SnkKilkanaMediaRightsEnum::rule(),
             'license' => 'sometimes|nullable|string|max:500',
             'rights_expires_at' => 'sometimes|nullable|date',
             'focal_x' => 'sometimes|numeric|between:0,1',

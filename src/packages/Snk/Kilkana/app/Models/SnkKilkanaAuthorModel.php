@@ -16,7 +16,7 @@ class SnkKilkanaAuthorModel extends Model
 
     protected $guarded = [];
 
-    protected $casts = ['socials' => 'array'];
+    protected $casts = ['socials' => 'array', 'noindex' => 'boolean'];
 
     /**
      * La cuenta viaja SIEMPRE, porque el nombre que se publica sale de ella.

@@ -7,7 +7,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Packages\Snk\Kilkana\Enums\SnkKilkanaMediaRightsEnum;
 use Packages\Snk\Kilkana\Models\SnkKilkanaMediaModel;
+use Packages\Snk\Kilkana\Models\SnkKilkanaPostModel;
 
 class SnkKilkanaMediaService
 {
@@ -197,7 +199,7 @@ class SnkKilkanaMediaService
         if ($status === 'trash') {
             $query->onlyTrashed();
         } elseif ($status === 'review') {
-            $query->where('rights_status', 'unknown');
+            $query->where('rights_status', SnkKilkanaMediaRightsEnum::Unknown);
         } elseif ($status === 'unused') {
             $query->unused();
         }
@@ -270,7 +272,7 @@ class SnkKilkanaMediaService
 
         return [
             'all' => SnkKilkanaMediaModel::query()->count(),
-            'review' => SnkKilkanaMediaModel::query()->where('rights_status', 'unknown')->count(),
+            'review' => SnkKilkanaMediaModel::query()->where('rights_status', SnkKilkanaMediaRightsEnum::Unknown)->count(),
             'unused' => SnkKilkanaMediaModel::query()->unused()->count(),
             'missing_alt' => SnkKilkanaMediaModel::query()
                 ->where(fn (Builder $query) => $query->whereNull('alt')->orWhere('alt', ''))
@@ -283,6 +285,57 @@ class SnkKilkanaMediaService
                 ->count(),
             'trash' => SnkKilkanaMediaModel::onlyTrashed()->count(),
         ];
+    }
+
+    /**
+     * Rellena lo que el articulo SI sabe de su portada: titulo, alt, pie, derechos y licencia.
+     *
+     * Solo rellena huecos —nunca pisa lo que alguien escribio a mano— y no toca etiquetas ni
+     * colecciones. Llego a copiar los tags del post y el nombre de su seccion, y como corre
+     * sobre todos los tenants bastaba una ejecucion para dejar cada fototeca con el
+     * vocabulario editorial dentro: un tag de medio describe el FICHERO —«retrato»,
+     * «apaisado», «archivo»—, no el tema de la noticia.
+     */
+    public function enrichFromPosts(): int
+    {
+        $enriched = 0;
+
+        foreach (SnkKilkanaPostModel::query()->with('coverMedia')->get() as $post) {
+            $media = $post->coverMedia;
+            if (! $media) {
+                continue;
+            }
+
+            $deUnsplash = str_contains((string) $media->source_url, 'unsplash.com');
+            $changes = [];
+
+            // El nombre que trae el fichero descargado no es un titulo: `photo-1a2b3c`.
+            if (! $media->title || preg_match('/^(photo|unsplash)-[a-z0-9-]+$/i', $media->title)) {
+                $changes['title'] = $post->title;
+            }
+            if (! $media->alt) {
+                $changes['alt'] = $post->title;
+            }
+            if (! $media->caption) {
+                $changes['caption'] = $post->excerpt;
+            }
+            if (! $media->description) {
+                $changes['description'] = "Editorial cover for: {$post->title}";
+            }
+            if ($deUnsplash && $media->rights_status->needsReview()) {
+                $changes['rights_status'] = SnkKilkanaMediaRightsEnum::Licensed;
+            }
+            if ($deUnsplash && ! $media->license) {
+                $changes['license'] = 'Unsplash License';
+            }
+
+            if ($changes) {
+                $media->update($changes);
+                $enriched++;
+            }
+        }
+
+        return $enriched;
     }
 
     public function serialize(SnkKilkanaMediaModel $media): SnkKilkanaMediaModel

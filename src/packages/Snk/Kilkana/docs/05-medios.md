@@ -51,7 +51,7 @@ hace que la página salte mientras carga.
 | Columna | Tipo | Nulo | Qué es |
 |---|---|---|---|
 | `source_url` | varchar(2048) | sí | De dónde salió. Procedencia, no origen de servicio. |
-| `rights_status` | varchar(32) | no · def. `unknown` | Situación legal del medio. |
+| `rights_status` | enum | no · def. `unknown` | Situación legal del medio: `unknown` · `owned` · `licensed` · `creative_commons` · `public_domain`. |
 | `license` | varchar(500) | sí | Licencia concreta. |
 | `rights_expires_at` | date | sí | Cuándo caduca el derecho de uso. Nulo = no caduca. |
 

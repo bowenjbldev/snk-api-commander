@@ -2,6 +2,8 @@
 
 namespace Packages\Snk\Kilkana\Enums;
 
+use Packages\Snk\Kilkana\Enums\Concerns\SnkKilkanaEnumValuesSupport;
+
 /**
  * Los estados por los que pasa un articulo, y la UNICA definicion de cuales son.
  *
@@ -19,6 +21,8 @@ namespace Packages\Snk\Kilkana\Enums;
  */
 enum SnkKilkanaPostStatusEnum: string
 {
+    use SnkKilkanaEnumValuesSupport;
+
     /** Se esta escribiendo. Sin URL publica. */
     case Draft = 'draft';
 
@@ -41,23 +45,6 @@ enum SnkKilkanaPostStatusEnum: string
 
     /** Publicado. El unico con `url_date`, y por tanto el unico con URL publica. */
     case Published = 'published';
-
-    /**
-     * Los valores en crudo. Los consume la migracion para declarar la columna, de modo que
-     * la lista de la base y la del codigo no pueden discrepar.
-     *
-     * @return list<string>
-     */
-    public static function values(): array
-    {
-        return array_column(self::cases(), 'value');
-    }
-
-    /** Regla de validacion de la API, derivada: `in:draft,review,scheduled,published`. */
-    public static function rule(): string
-    {
-        return 'in:'.implode(',', self::values());
-    }
 
     /**
      * Si llegar a este estado exige el permiso `publish posts`.

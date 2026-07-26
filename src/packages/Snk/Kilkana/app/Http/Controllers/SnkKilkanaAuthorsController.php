@@ -35,6 +35,9 @@ class SnkKilkanaAuthorsController extends CoreBaseApiController
         // Nulo aquí sí: es la señal de «derívalo tú», y lo hace el modelo al crear.
         'slug' => 'nullable|string|max:255|unique:kilkana_authors,slug',
         'bio' => 'nullable|string',
+        'seo_title' => 'nullable|string|max:500',
+        'seo_description' => 'nullable|string',
+        'noindex' => 'sometimes|boolean',
         'avatar_media_id' => 'nullable|integer|exists:kilkana_media,id',
         // Las dos acaban en un `href` de la ficha pública, así que el esquema se acota aquí:
         // sin esto pasaba `javascript:` y `data:text/html,<script>…`, y el endpoint público
@@ -57,6 +60,9 @@ class SnkKilkanaAuthorsController extends CoreBaseApiController
         // siempre; se puede cambiar, no vaciar.
         'slug' => 'sometimes|required|string|max:255|unique:kilkana_authors,slug,{id}',
         'bio' => 'nullable|string',
+        'seo_title' => 'nullable|string|max:500',
+        'seo_description' => 'nullable|string',
+        'noindex' => 'sometimes|boolean',
         'avatar_media_id' => 'nullable|integer|exists:kilkana_media,id',
         'website' => 'nullable|url:http,https|max:2048',
         'socials' => 'nullable|array',

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use Packages\Snk\Kilkana\Enums\SnkKilkanaMediaRightsEnum;
 
 class SnkKilkanaMediaModel extends Model
 {
@@ -31,6 +32,7 @@ class SnkKilkanaMediaModel extends Model
         'focal_x' => 'float',
         'focal_y' => 'float',
         'rights_expires_at' => 'date:Y-m-d',
+        'rights_status' => SnkKilkanaMediaRightsEnum::class,
     ];
 
     protected static function booted(): void

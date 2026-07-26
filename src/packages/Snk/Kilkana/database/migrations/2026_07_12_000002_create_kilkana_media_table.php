@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Packages\Snk\Kilkana\Enums\SnkKilkanaMediaRightsEnum;
 
 return new class extends Migration
 {
@@ -10,7 +11,6 @@ return new class extends Migration
     {
         Schema::create('kilkana_media', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('uploaded_by')->nullable()->constrained('users')->nullOnDelete();
             $table->string('url', 2048);
             $table->char('url_hash', 40)->unique();
             $table->char('content_hash', 64)->nullable()->unique();
@@ -31,12 +31,14 @@ return new class extends Migration
 
             $table->string('credit', 500)->nullable();
             $table->string('source_url', 2048)->nullable();
-            $table->string('rights_status', 32)->default('unknown');
+            $table->enum('rights_status', SnkKilkanaMediaRightsEnum::values())->default(SnkKilkanaMediaRightsEnum::Unknown->value);
             $table->string('license', 500)->nullable();
             $table->date('rights_expires_at')->nullable();
 
             $table->decimal('focal_x', 5, 4)->default(0.5);
             $table->decimal('focal_y', 5, 4)->default(0.5);
+
+            $table->foreignId('uploaded_by')->nullable()->constrained('users')->nullOnDelete();
 
             $table->softDeletes();
             $table->timestamps();

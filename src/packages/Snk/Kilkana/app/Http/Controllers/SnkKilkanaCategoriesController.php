@@ -29,6 +29,9 @@ class SnkKilkanaCategoriesController extends CoreBaseApiController
         'slug' => 'nullable|string|max:64|unique:kilkana_categories,slug',
         'parent_id' => 'nullable|integer|exists:kilkana_categories,id',
         'description' => 'nullable|string',
+        'seo_title' => 'nullable|string|max:500',
+        'seo_description' => 'nullable|string',
+        'noindex' => 'sometimes|boolean',
         'position' => 'nullable|integer|min:0|max:65535',
     ];
 
@@ -40,6 +43,9 @@ class SnkKilkanaCategoriesController extends CoreBaseApiController
         // seeder y a la consola, que no pasan por aqui.
         'parent_id' => 'nullable|integer|exists:kilkana_categories,id|not_in:{id}',
         'description' => 'nullable|string',
+        'seo_title' => 'nullable|string|max:500',
+        'seo_description' => 'nullable|string',
+        'noindex' => 'sometimes|boolean',
         'position' => 'nullable|integer|min:0|max:65535',
     ];
 

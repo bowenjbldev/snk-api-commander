@@ -128,6 +128,12 @@ El día que el esquema se congele y una migración sea historia inmutable, ejecu
 reproducirá la lista de **hoy**, no la que había cuando se escribió. Al llegar ahí, hay que
 fijar los valores a mano en la migración vieja.
 
+Las dos derivaciones que salen de la enumeración —la lista para la migración y la regla `in:`
+de la API— son idénticas en todos los estados, así que viven una sola vez en un trait
+compartido (`Enums\Concerns`). Lo que **no** entra ahí es lo que cada estado significa
+—«¿esto exige permiso de publicación?», «¿esto lo ve un lector anónimo?»—: eso es propio de
+cada enumeración.
+
 > Todavía en `varchar(16)`: `kilkana_comments.status` y `kilkana_subscribers.status`. Les
 > aplica lo de arriba cuando se toquen — hoy sus valores válidos solo los comprueba el código
 > que escribe, así que un `UPDATE` a mano puede meter un estado que nadie sepa interpretar.

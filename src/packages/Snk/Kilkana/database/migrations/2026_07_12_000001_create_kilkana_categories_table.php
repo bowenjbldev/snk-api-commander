@@ -11,10 +11,13 @@ return new class extends Migration
         Schema::create('kilkana_categories', function (Blueprint $table) {
             $table->id();
             $table->foreignId('parent_id')->nullable()->constrained('kilkana_categories')->restrictOnDelete();
-            $table->string('slug', 64)->unique();
             $table->string('name');
+            $table->string('slug', 64)->unique();
+            $table->string('seo_title', 500)->nullable();
+            $table->text('seo_description')->nullable();
             $table->text('description')->nullable();
             $table->unsignedSmallInteger('position')->default(0);
+            $table->boolean('noindex')->default(false);
             $table->timestamps();
         });
     }

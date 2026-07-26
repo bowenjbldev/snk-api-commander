@@ -18,7 +18,10 @@ publica su ficha y qué se cuenta de él.
 | `alias` | varchar(255) | sí | Seudónimo. **Nulo = firma con el nombre de su cuenta.** |
 | `job_title` | varchar(255) | sí | Cargo que se publica: «Redactora de Economía», «Corresponsal en Bruselas». |
 | `slug` | varchar(255) | no · **único** | Segmento de la URL pública de su ficha. |
-| `bio` | text | sí | Biografía breve. |
+| `seo_title` | varchar(500) | sí | Titular para buscadores. **Nulo = se usa el nombre publicado.** |
+| `seo_description` | text | sí | Descripción para buscadores, unos 155 caracteres. **Nulo = se usa `bio`.** |
+| `bio` | text | sí | Biografía breve, visible en la ficha. |
+| `noindex` | boolean | no · def. `false` | Pide a los buscadores que no indexen su ficha. |
 | `website` | varchar(2048) | sí | Web personal. |
 | `socials` | longtext (JSON) | sí | Objeto `{red: url}`, con claves libres: `{"x": "https://…", "linkedin": "https://…"}`. |
 | `created_at` · `updated_at` | timestamp | sí | Alta y última modificación. |

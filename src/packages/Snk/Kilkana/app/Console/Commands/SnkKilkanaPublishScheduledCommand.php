@@ -3,16 +3,15 @@
 namespace Packages\Snk\Kilkana\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
-use Packages\Commander\Models\CommanderPackageModel;
-use Packages\Snk\Kilkana\Enums\SnkKilkanaPostStatusEnum;
-use Packages\Snk\Kilkana\Models\SnkKilkanaPostModel;
+use Packages\Snk\Kilkana\Services\SnkKilkanaPostService;
+use Packages\Snk\Kilkana\Services\SnkKilkanaTenantRunnerService;
 
 /**
- * Scheduler editorial: publica los posts `scheduled` cuya fecha venció, en CADA
- * instancia provisionada de Kilkana (mismo patrón de conmutación de conexión que
- * CoreResolvePackageFromHostMiddleware, pero iterando el registro del Commander).
- * Corre por cron vía schedule:run (registrado en SnkKilkanaServiceProvider).
+ * Scheduler editorial: publica los posts `scheduled` cuya fecha vencio, en cada instancia
+ * provisionada de Kilkana. Corre por cron via schedule:run (registrado en el provider).
+ *
+ * Aqui solo queda lo que es de consola: rotulo, salida y codigo de salida. Que se publica lo
+ * decide `SnkKilkanaPostService::publishDue`, y donde corre `SnkKilkanaTenantRunnerService`.
  */
 class SnkKilkanaPublishScheduledCommand extends Command
 {
@@ -20,70 +19,29 @@ class SnkKilkanaPublishScheduledCommand extends Command
 
     protected $description = 'Publish scheduled Kilkana posts whose time has come, across all provisioned tenants';
 
+    public function __construct(
+        private readonly SnkKilkanaTenantRunnerService $tenants,
+        private readonly SnkKilkanaPostService $posts,
+    ) {
+        parent::__construct();
+    }
+
     public function handle(): int
     {
-        // El registro vive en la BD commander (conexión propia del modelo):
-        // funciona se conmute lo que se conmute después.
-        $instances = CommanderPackageModel::query()
-            ->provisioned()
-            ->where('slug', 'kilkana')
-            ->whereNotNull('database')
-            ->get(['id', 'database', 'database_username', 'database_password']);
+        $run = $this->tenants->each(fn () => $this->posts->publishDue());
 
-        $default = DB::getDefaultConnection();
-        $tenantDatabase = config('database.connections.tenant.database');
-        $tenantUsername = config('database.connections.tenant.username');
-        $tenantPassword = config('database.connections.tenant.password');
-        $total = 0;
-        $failures = 0;
-
-        try {
-            foreach ($instances as $instance) {
-                try {
-                    config([
-                        'database.connections.tenant.database' => $instance->database,
-                        'database.connections.tenant.username' => $instance->database_username,
-                        'database.connections.tenant.password' => $instance->database_password,
-                    ]);
-                    DB::purge('tenant');
-                    DB::setDefaultConnection('tenant');
-
-                    // Publicar es SOLO cambiar de estado: la fecha ya está puesta y es la
-                    // prevista. Cuando la fecha prevista y la de publicación eran dos
-                    // columnas, aquí había que copiar una en otra y vaciar la primera, y ese
-                    // traspaso llegó a publicar piezas con la fecha en que se redactaron
-                    // —descolocando portada, sitemap y feed—. Sin dos columnas no hay
-                    // traspaso que equivocar.
-                    $due = SnkKilkanaPostModel::query()
-                        ->where('status', SnkKilkanaPostStatusEnum::Scheduled)
-                        ->whereNotNull('publish_at')
-                        ->where('publish_at', '<=', now())
-                        ->get();
-                    foreach ($due as $post) {
-                        $post->update(['status' => SnkKilkanaPostStatusEnum::Published]);
-                    }
-
-                    if ($due->isNotEmpty()) {
-                        $this->info("[{$instance->database}] published {$due->count()} post(s)");
-                    }
-                    $total += $due->count();
-                } catch (\Throwable $e) {
-                    $failures++;
-                    report($e);
-                    $this->error("[{$instance->database}] {$e->getMessage()}");
-                }
+        foreach ($run['results'] as $database => $published) {
+            if ($published) {
+                $this->info("[{$database}] published {$published} post(s)");
             }
-        } finally {
-            DB::purge('tenant');
-            config([
-                'database.connections.tenant.database' => $tenantDatabase,
-                'database.connections.tenant.username' => $tenantUsername,
-                'database.connections.tenant.password' => $tenantPassword,
-            ]);
-            DB::setDefaultConnection($default);
+        }
+        foreach ($run['errors'] as $database => $message) {
+            $this->error("[{$database}] {$message}");
         }
 
-        $this->info("Done: {$total} post(s) published across {$instances->count()} tenant(s); {$failures} failed.");
+        $total = array_sum($run['results']);
+        $failures = count($run['errors']);
+        $this->info("Done: {$total} post(s) published across {$run['tenants']} tenant(s); {$failures} failed.");
 
         return $failures === 0 ? self::SUCCESS : self::FAILURE;
     }

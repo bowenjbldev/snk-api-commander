@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Packages\Core\Models\CoreUserModel;
+use Packages\Snk\Kilkana\Enums\SnkKilkanaMediaRightsEnum;
 use Packages\Snk\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCommentModel;
@@ -868,7 +869,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 'description' => 'Editorial cover for: '.$post['title'],
                 'credit' => 'Unsplash',
                 'source_url' => $post['image'],
-                'rights_status' => 'licensed',
+                'rights_status' => SnkKilkanaMediaRightsEnum::Licensed,
                 'license' => 'Unsplash License',
             ]
         );

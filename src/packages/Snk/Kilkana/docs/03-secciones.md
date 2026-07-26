@@ -13,10 +13,13 @@ Un árbol de **exactamente dos niveles**: secciones madre (Deportes, Economía) 
 |---|---|---|---|
 | `id` | bigint unsigned | no | Clave primaria. Es lo que referencia `kilkana_posts.category_id`. |
 | `parent_id` | bigint unsigned | sí | Sección madre. **Nulo = es una sección raíz.** |
-| `slug` | varchar(64) | no · **único** | Segmento de la URL pública de la sección. Único en todo el periódico, también entre niveles. |
 | `name` | varchar(255) | no | Nombre visible. |
-| `description` | text | sí | Descripción de qué cubre. |
+| `slug` | varchar(64) | no · **único** | Segmento de la URL pública de la sección. Único en todo el periódico, también entre niveles. |
+| `seo_title` | varchar(500) | sí | Titular para buscadores. **Nulo = se usa `name`.** |
+| `seo_description` | text | sí | Descripción para buscadores, unos 155 caracteres. **Nulo = se usa `description`.** |
+| `description` | text | sí | Descripción visible en la página de la sección. |
 | `position` | smallint unsigned | no | Orden dentro de su nivel. Las hermanas se ordenan entre ellas, no contra el resto del árbol. |
+| `noindex` | boolean | no · def. `false` | Pide a los buscadores que no la indexen. La sección sigue existiendo y navegable. |
 | `created_at` · `updated_at` | timestamp | sí | Alta y última modificación. |
 
 ## Relaciones
@@ -82,26 +85,26 @@ sitemap y nadie llega a ella. La jerarquía tiene que ser visible en alguna part
 de hijas bajo el título de la madre, un rastro de migas en el artículo— o el árbol solo
 existe en esta tabla.
 
-## Dos huecos, anotados y sin decidir
+## La sección se presenta a los buscadores por su cuenta
 
-Ninguno es un fallo: son cosas que la tabla **no tiene** y que conviene mirar con calma. Se
-dejan escritas para que la próxima persona no tenga que redescubrirlas.
+**La página de una sección es de las que más posicionan** en un periódico: «Deportes»
+compite por el nombre del deporte, no por una noticia concreta. Por eso tiene tres columnas
+propias, con la misma forma que las de un artículo:
 
-### Una sección es una página pública sin metadatos
+- `seo_title` y `seo_description` cuando el nombre y el texto visible no sirven tal cual.
+- `noindex` para una mesa que existe y se navega pero no quiere salir en el buscador.
 
-Todo lo que tiene para presentarse es `name` y `description`. Un artículo, en cambio, lleva
-ocho columnas para eso: titular y descripción de buscador, titular y descripción de redes,
-imagen social, canónica, nivel de acceso y `noindex`.
+Los dos primeros resuelven de paso una confusión que arrastraba `description`: hacía de texto
+visible **y** de descripción para buscadores, y son dos escrituras distintas —una tiene que
+leerse bien debajo del título, la otra caber en unos 155 caracteres y contener lo que alguien
+teclea—. Ahora `description` es lo visible y `seo_description` lo otro; nulo significa
+«usa el visible», así que quien no toque nada sigue teniendo lo de antes.
 
-La asimetría se nota porque **la página de una sección es de las que más posicionan** en un
-periódico: «Deportes» compite por el nombre del deporte, no por una noticia concreta. Hoy no
-puede tener un titular de buscador distinto de su nombre, ni imagen social propia, ni salir
-del índice sin borrarla.
+Lo que **no** tiene es imagen social ni canónica propia. Una sección compartida en redes sale
+sin foto. Se deja fuera a propósito hasta que alguien la pida: son dos columnas más y una
+decisión de producto, no un descuido.
 
-Hay además una pequeña confusión dentro de `description`: hace de texto visible en la página
-**y** de descripción para buscadores. Son dos escrituras distintas —una tiene que leerse
-bien debajo del título, la otra caber en unos 155 caracteres y contener lo que alguien
-teclea— y comparten columna.
+## Un hueco, anotado y sin decidir
 
 ### No se puede preparar una sección sin publicarla
 

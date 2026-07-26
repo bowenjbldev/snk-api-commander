@@ -2,6 +2,8 @@
 
 namespace Packages\Snk\Kilkana\Enums;
 
+use Packages\Snk\Kilkana\Enums\Concerns\SnkKilkanaEnumValuesSupport;
+
 /**
  * Cuanto de una pieza puede leer quien no paga.
  *
@@ -17,6 +19,8 @@ namespace Packages\Snk\Kilkana\Enums;
  */
 enum SnkKilkanaContentTierEnum: string
 {
+    use SnkKilkanaEnumValuesSupport;
+
     /** Abierta. Nadie tiene que pagar ni registrarse. */
     case Free = 'free';
 
@@ -25,22 +29,6 @@ enum SnkKilkanaContentTierEnum: string
 
     /** Cerrada: se corta por el bloque `paywall` del cuerpo. */
     case Locked = 'locked';
-
-    /**
-     * Los valores en crudo, para que la migracion declare la columna con esta misma lista.
-     *
-     * @return list<string>
-     */
-    public static function values(): array
-    {
-        return array_column(self::cases(), 'value');
-    }
-
-    /** Regla de validacion de la API, derivada. */
-    public static function rule(): string
-    {
-        return 'in:'.implode(',', self::values());
-    }
 
     /** Lo que va a `isAccessibleForFree` del structured data. */
     public function isAccessibleForFree(): bool

@@ -28,6 +28,8 @@ class SnkKilkanaCategoryModel extends Model
 
     protected $hidden = ['parent'];
 
+    protected $casts = ['noindex' => 'boolean'];
+
     protected $appends = ['parent_slug', 'parent_name'];
 
     public function getParentSlugAttribute(): ?string
