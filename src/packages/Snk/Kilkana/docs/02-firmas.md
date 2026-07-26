@@ -87,6 +87,26 @@ autor. `users.company` es la organización de la cuenta y se queda dentro. Son d
 distintos aunque suenen parecido — la mesa de redacción llegó a guardarse en `company`, y
 eso dejaba un dato editorial en la columna administrativa.
 
+## `website` y `socials` son enlaces que se publican
+
+Las dos columnas acaban en un enlace de la ficha pública, así que lo que se guarde ahí lo
+va a pulsar un lector. Quien escriba en esta tabla tiene que acotar el **esquema** a `http`
+y `https`: la base guarda cualquier cadena, y `javascript:…` o `data:text/html,…` son
+direcciones válidas para un navegador que ejecutan código en la página del periódico.
+
+No es una restricción de la base porque no puede serlo —no hay forma de escribir «esto es
+una URL de verdad» en la columna—, así que vive en la validación de la API.
+
+## `website` y `socials` son enlaces que se publican
+
+Las dos columnas acaban en un enlace de la ficha pública, así que lo que se guarde ahí lo
+va a pulsar un lector. Quien escriba en esta tabla tiene que acotar el **esquema** a `http`
+y `https`: la base guarda cualquier cadena, y `javascript:…` o `data:text/html,…` son
+direcciones válidas para un navegador que ejecutan código en la página del periódico.
+
+No es una restricción de la base porque no puede serlo —no hay forma de escribir «esto es
+una URL de verdad» en la columna—, así que vive en la validación de la API.
+
 ## El correo no sale de aquí
 
 `kilkana_authors` no guarda correo. Quien sirva una ficha al público debe recortar a lo

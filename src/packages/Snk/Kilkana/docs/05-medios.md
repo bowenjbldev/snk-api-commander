@@ -55,8 +55,9 @@ hace que la página salte mientras carga.
 | `license` | varchar(500) | sí | Licencia concreta. |
 | `rights_expires_at` | date | sí | Cuándo caduca el derecho de uso. Nulo = no caduca. |
 
-Hay índice sobre `(rights_status, rights_expires_at)`: la pregunta «qué se me caduca» tiene
-que poder responderse antes de que caduque, no después.
+Hay índice sobre `rights_expires_at`: la pregunta «qué se me caduca» tiene que poder
+responderse antes de que caduque, no después. Solo la fecha, y más abajo se explica por qué
+llevar el estado delante lo dejaba inservible.
 
 ### Encuadre y borrado
 

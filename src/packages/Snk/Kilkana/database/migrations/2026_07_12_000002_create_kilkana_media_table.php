@@ -41,15 +41,7 @@ return new class extends Migration
             $table->softDeletes();
             $table->timestamps();
 
-            // La consulta que SIEMPRE se hace: `SoftDeletes` mete `deleted_at IS NULL` en
-            // cada lectura de la biblioteca, y el listado ordena por fecha de alta. Sin este
-            // indice el plan era `type: ALL` mas `filesort` — irrelevante con 60 filas y caro
-            // en una fototeca de decenas de miles, que es lo que tiene un periodico.
             $table->index(['deleted_at', 'created_at']);
-            // Solo la fecha. Estaba como `(rights_status, rights_expires_at)`, y la unica
-            // consulta que mira la caducidad filtra por fecha sin tocar el estado: con el
-            // estado delante, el indice no le servia. El estado si se filtra solo, pero tiene
-            // cuatro valores contados y ahi un indice no aporta.
             $table->index('rights_expires_at');
         });
     }

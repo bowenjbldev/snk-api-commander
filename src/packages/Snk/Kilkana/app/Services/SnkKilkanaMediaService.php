@@ -191,7 +191,7 @@ class SnkKilkanaMediaService
     {
         $query = SnkKilkanaMediaModel::query()
             ->with(['tags', 'collections'])
-            ->withCount('coveredPosts');
+            ->withCount(SnkKilkanaMediaModel::USOS);
 
         $status = $request->string('status')->toString();
         if ($status === 'trash') {
@@ -199,7 +199,7 @@ class SnkKilkanaMediaService
         } elseif ($status === 'review') {
             $query->where('rights_status', 'unknown');
         } elseif ($status === 'unused') {
-            $query->whereDoesntHave('coveredPosts');
+            $query->unused();
         }
 
         if ($search = $request->string('q')->trim()->toString()) {
@@ -271,13 +271,15 @@ class SnkKilkanaMediaService
         return [
             'all' => SnkKilkanaMediaModel::query()->count(),
             'review' => SnkKilkanaMediaModel::query()->where('rights_status', 'unknown')->count(),
-            'unused' => SnkKilkanaMediaModel::query()->whereDoesntHave('coveredPosts')->count(),
+            'unused' => SnkKilkanaMediaModel::query()->unused()->count(),
             'missing_alt' => SnkKilkanaMediaModel::query()
                 ->where(fn (Builder $query) => $query->whereNull('alt')->orWhere('alt', ''))
                 ->count(),
             'expiring' => SnkKilkanaMediaModel::query()
                 ->whereNotNull('rights_expires_at')
-                ->whereDate('rights_expires_at', '<=', $soon)
+                // Sin `whereDate`: envolver la columna en una función impide usar el índice,
+                // y la columna ya es de tipo fecha.
+                ->where('rights_expires_at', '<=', $soon)
                 ->count(),
             'trash' => SnkKilkanaMediaModel::onlyTrashed()->count(),
         ];
@@ -285,6 +287,6 @@ class SnkKilkanaMediaService
 
     public function serialize(SnkKilkanaMediaModel $media): SnkKilkanaMediaModel
     {
-        return $media->fresh(['tags', 'collections'])->loadCount('coveredPosts');
+        return $media->fresh(['tags', 'collections'])->loadCount(SnkKilkanaMediaModel::USOS);
     }
 }
