@@ -61,6 +61,29 @@ Sin relaciones: kilkana_settings · kilkana_subscribers
 **Claves.** `id` es siempre `bigint unsigned` autoincremental. Las claves foráneas se
 llaman `<tabla_en_singular>_id` y apuntan al `id` de esa tabla.
 
+**Una tabla, una migración, y cada hija detrás de su padre.** El nombre del archivo dice
+exactamente qué tabla crea —en singular, sin `_tables`— y el número la coloca justo después
+de aquella de la que depende:
+
+```
+000001 categories          000008 authors             000014 tags
+000002 category_slugs      000009 author_slugs        000015 post_tag
+000003 media               000010 posts               000016 layouts
+000004 media_tags          000011 post_slugs          000017 layout_revisions
+000005 media_collections   000012 post_revisions      000018 settings
+000006 media_media_tag     000013 post_views          000019 comments
+000007 media_collection_media                         000020 subscribers
+```
+
+Así el directorio **se lee como el mapa de relaciones**: quien abra la carpeta ve de un
+vistazo que una sección arrastra su historial de URLs y que un medio arrastra dos taxonomías
+con sus dos pivotes. Agrupar varias tablas en un archivo escondía justo eso —hubo uno que
+creaba cuatro— y obligaba a abrirlo para saber qué había dentro.
+
+El orden es además el de las dependencias: una tabla no puede crearse antes que aquella a la
+que apunta su clave foránea, así que agrupar por parentesco y respetar las claves son la
+misma cosa.
+
 **Orden de las columnas.** El orden **no afecta al rendimiento**: es documentación. Manda en
 `SELECT *`, en `DESCRIBE`, en los volcados y en los diffs, así que una tabla se lee de arriba
 abajo como se lee una ficha. Al crear una tabla nueva, este es el orden:
