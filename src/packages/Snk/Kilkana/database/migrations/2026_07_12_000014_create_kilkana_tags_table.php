@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Packages\Snk\Kilkana\Models\SnkKilkanaTagModel;
 
 return new class extends Migration
 {
@@ -10,8 +11,8 @@ return new class extends Migration
     {
         Schema::create('kilkana_tags', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->unique();
-            $table->string('slug')->unique();
+            $table->string('name', SnkKilkanaTagModel::NAME_MAX)->unique();
+            $table->string('slug', SnkKilkanaTagModel::SLUG_MAX)->unique();
             $table->timestamps();
         });
     }

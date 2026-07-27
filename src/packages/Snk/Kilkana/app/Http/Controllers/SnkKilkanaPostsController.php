@@ -10,6 +10,7 @@ use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Snk\Kilkana\Enums\SnkKilkanaContentTierEnum;
 use Packages\Snk\Kilkana\Enums\SnkKilkanaPostStatusEnum;
 use Packages\Snk\Kilkana\Models\SnkKilkanaPostModel;
+use Packages\Snk\Kilkana\Models\SnkKilkanaTagModel;
 use Packages\Snk\Kilkana\Services\SnkKilkanaPostService;
 
 /**
@@ -103,7 +104,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         'body_blocks.*.type' => 'required|in:text,quote,image,gallery,video,paywall,divider',
         'body_blocks.*.config' => 'nullable|array',
         'tags' => 'nullable|array',
-        'tags.*' => 'string|max:64',
+        'tags.*' => 'string|max:'.SnkKilkanaTagModel::NAME_MAX,
         // Sin `unique`: la unicidad es la pareja (url_date, slug) y la resuelve el modelo al
         // publicar. Una regla sobre el slug suelto rechazaría el titular que vuelve otro año.
         'slug' => 'nullable|string|max:'.SnkKilkanaPostModel::SLUG_MAX,
@@ -131,7 +132,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         'body_blocks.*.type' => 'required|in:text,quote,image,gallery,video,paywall,divider',
         'body_blocks.*.config' => 'nullable|array',
         'tags' => 'nullable|array',
-        'tags.*' => 'string|max:64',
+        'tags.*' => 'string|max:'.SnkKilkanaTagModel::NAME_MAX,
         'slug' => 'nullable|string|max:'.SnkKilkanaPostModel::SLUG_MAX,
         'featured' => 'nullable|boolean',
         'seo_title' => 'nullable|string|max:500',

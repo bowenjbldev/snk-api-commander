@@ -16,6 +16,17 @@ class SnkKilkanaTagModel extends Model
     protected $hidden = ['pivot'];
 
     /**
+     * De aqui salen los anchos de las dos columnas y los topes de la validacion.
+     *
+     * Eran `varchar(255)` mientras las cuatro reglas de la API decian 64: la columna prometia
+     * cuatro veces lo que nadie podia escribir. 64 sobra para un tema —«cambio climatico» son
+     * 16— y es lo que hace que el slug quepa siempre en su columna.
+     */
+    public const NAME_MAX = 64;
+
+    public const SLUG_MAX = 64;
+
+    /**
      * El slug de una etiqueta: lo que la identifica y la unica forma que tendria en una URL.
      *
      * Un nombre que no deja ni una letra latina —«###», solo emoji— daria cadena vacia, y
@@ -24,7 +35,9 @@ class SnkKilkanaTagModel extends Model
      */
     public static function slugFor(string $name): string
     {
-        return Str::slug($name) ?: 'tag-'.substr(sha1($name), 0, 8);
+        $slug = rtrim(mb_substr(Str::slug($name), 0, self::SLUG_MAX), '-');
+
+        return $slug ?: 'tag-'.substr(sha1($name), 0, 8);
     }
 
     /**

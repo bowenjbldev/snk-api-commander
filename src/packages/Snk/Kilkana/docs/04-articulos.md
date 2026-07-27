@@ -416,6 +416,46 @@ claves foráneas en CASCADE: borrar un artículo o una etiqueta limpia el pivote
 Las etiquetas son de **tema** («elecciones», «sequía»), transversales a las secciones. Se
 crean sobre la marcha al escribir una que no existe.
 
+### El slug no es una URL: nadie sirve `/tag/…`, y es una decisión
+
+Conviene decirlo antes de que alguien lea «slug» y dé por hecho que hay página detrás. **No
+la hay, y el estado por defecto debería ser que no la haya.** Medido sobre el juego de datos:
+
+```
+151 etiquetas para 59 artículos publicados
+
+  1 artículo  →  129 etiquetas   (85 %)
+  2 artículos →   16
+  3 artículos →    5
+  4 artículos →    1
+```
+
+Una página por etiqueta serían **129 páginas con un solo artículo dentro**. Cada una compite
+con el artículo que contiene y las 129 juntas se comen presupuesto de rastreo sin aportar
+nada — contenido delgado de manual, que es por lo que los archivos de etiqueta de WordPress
+salen con `noindex` de fábrica.
+
+Y hay algo peor que la delgadez: **estas etiquetas nacen tecleando**. No son un vocabulario
+decidido, son lo que escribió quien redactó la pieza, así que publicar una URL por cada una
+publica también los sinónimos y las erratas de la redacción. Las secciones —19, con jerarquía
+y descripción— ya cubren el eje de «páginas de tema», y lo cubren bien.
+
+Lo que las secciones **no** cubren es el hilo de un asunto que las atraviesa y tiene recorrido:
+«cumbre del clima», «elecciones 2026». Ahí una página que lo recoge todo sí vale. Pero eso son
+cinco o seis al año y **las elige alguien**, así que la forma correcta no es «las etiquetas
+tienen URL» sino «una etiqueta se puede promover a tema» — la misma figura que `status` en una
+sección: se recibe URL pública cuando alguien lo decide, no por existir.
+
+El coste de esa promoción, para cuando se pida:
+
+```
+kilkana_tags        + status (draft · live), seo_title, seo_description, noindex
+kilkana_tag_slugs   porque quien tiene URL pública tiene historial
+```
+
+Lo último no es opcional: es la regla de esta base, y es el coste que no se ve al decir
+«pongamos páginas de etiqueta».
+
 ### Lo que identifica a una etiqueta es su slug
 
 Las dos columnas son únicas, pero **no protegen lo mismo**, y la que manda es `slug`.

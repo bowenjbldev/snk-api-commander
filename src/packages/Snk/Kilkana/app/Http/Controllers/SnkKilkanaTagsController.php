@@ -22,12 +22,12 @@ class SnkKilkanaTagsController extends CoreBaseApiController
     protected string $destroyPermission = 'delete tags';
 
     protected array $validationRulesStore = [
-        'name' => 'required|string|max:64',
-        'slug' => 'nullable|string|max:64|unique:kilkana_tags,slug',
+        'name' => 'required|string|max:'.SnkKilkanaTagModel::NAME_MAX,
+        'slug' => 'nullable|string|max:'.SnkKilkanaTagModel::SLUG_MAX.'|unique:kilkana_tags,slug',
     ];
 
     protected array $validationRulesUpdate = [
-        'name' => 'sometimes|required|string|max:64',
-        'slug' => 'nullable|string|max:64|unique:kilkana_tags,slug,{id}',
+        'name' => 'sometimes|required|string|max:'.SnkKilkanaTagModel::NAME_MAX,
+        'slug' => 'nullable|string|max:'.SnkKilkanaTagModel::SLUG_MAX.'|unique:kilkana_tags,slug,{id}',
     ];
 }
