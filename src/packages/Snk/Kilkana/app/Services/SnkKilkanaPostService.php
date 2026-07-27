@@ -80,20 +80,7 @@ class SnkKilkanaPostService
             $post->updated_by = $userId;
             $post->save();
             $this->syncRelations($post, $data);
-
-            if ($previousPath && $post->url_path !== $previousPath) {
-                SnkKilkanaPostSlugModel::updateOrCreate(['path' => $previousPath], ['post_id' => $post->id]);
-            }
-            // Solo SU historial. Sin acotar por artículo, adoptar una URL que otro había
-            // dejado borraba la redirección de aquel: sus lectores acababan en esta pieza.
-            // Que el modelo ya no deje adoptarla no quita el cinturón: si el dato viejo trae
-            // una fila así, esto no la toca.
-            if ($post->url_path) {
-                SnkKilkanaPostSlugModel::query()
-                    ->where('path', $post->url_path)
-                    ->where('post_id', $post->id)
-                    ->delete();
-            }
+            $this->shiftUrlHistory($post, $previousPath);
 
             return $post->fresh();
         });
@@ -188,15 +175,48 @@ class SnkKilkanaPostService
                 'payload' => $post->getAttributes(),
             ]);
 
+            // Restaurar también mueve la URL: la versión recuperada trae su titular y por
+            // tanto su slug. Sin esta contabilidad se PERDÍA la dirección que la pieza tuvo
+            // entre el renombrado y la restauración —404 seco para quien la compartiera— y la
+            // recuperada quedaba marcada como retirada, o sea redirigiendo hacia sí misma.
+            $previousPath = $post->url_path;
+
             $columns = collect($revision->payload)
                 ->except(['id', 'created_at', 'updated_at', 'created_by', 'updated_by'])
                 ->all();
             $post->fill($columns);
             $post->updated_by = $userId;
             $post->save();
+            $this->shiftUrlHistory($post, $previousPath);
 
             return $post->fresh();
         });
+    }
+
+    /**
+     * La ruta que el artículo deja entra en el historial; la que toma sale de él.
+     *
+     * Lo hacen por igual el guardado y la restauración: las dos pueden mover la URL, y una
+     * que se mueve sin dejar redirección es un enlace roto en cada sitio donde estuviera
+     * compartida.
+     *
+     * El borrado va acotado **por artículo**: sin eso, adoptar una URL que otro había dejado
+     * borraba la redirección de aquel y sus lectores acababan en esta pieza. Que el modelo ya
+     * no deje adoptarla no quita el cinturón — si el dato viejo trae una fila así, esto no la
+     * toca.
+     */
+    private function shiftUrlHistory(SnkKilkanaPostModel $post, ?string $previousPath): void
+    {
+        if ($previousPath && $post->url_path !== $previousPath) {
+            SnkKilkanaPostSlugModel::updateOrCreate(['path' => $previousPath], ['post_id' => $post->id]);
+        }
+
+        if ($post->url_path) {
+            SnkKilkanaPostSlugModel::query()
+                ->where('path', $post->url_path)
+                ->where('post_id', $post->id)
+                ->delete();
+        }
     }
 
     private function scopeToOwner(Builder $query, int $userId, bool $canEditOthers): Builder
