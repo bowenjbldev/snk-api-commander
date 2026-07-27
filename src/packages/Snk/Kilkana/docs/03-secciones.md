@@ -17,6 +17,7 @@ Un árbol de **exactamente dos niveles**: secciones madre (Deportes, Economía) 
 | `slug` | varchar(64) | no · **único** | Segmento de la URL pública de la sección. Único en todo el periódico, también entre niveles. |
 | `seo_title` | varchar(500) | sí | Titular para buscadores. **Nulo = se usa `name`.** |
 | `seo_description` | text | sí | Descripción para buscadores, unos 155 caracteres. **Nulo = se usa `description`.** |
+| `status` | enum | no · def. `draft` | Si existe para el lector: `draft` (en preparación) · `live` (lanzada). |
 | `description` | text | sí | Descripción visible en la página de la sección. |
 | `position` | smallint unsigned | no | Orden dentro de su nivel. Las hermanas se ordenan entre ellas, no contra el resto del árbol. |
 | `noindex` | boolean | no · def. `false` | Pide a los buscadores que no la indexen. La sección sigue existiendo y navegable. |
@@ -104,19 +105,30 @@ Lo que **no** tiene es imagen social ni canónica propia. Una sección compartid
 sin foto. Se deja fuera a propósito hasta que alguien la pida: son dos columnas más y una
 decisión de producto, no un descuido.
 
-## Un hueco, anotado y sin decidir
+## Una mesa se prepara antes de abrirla
 
-### No se puede preparar una sección sin publicarla
+`status` es lo que permite representar el trabajo real de una redacción: se crea la sección,
+se le van asignando piezas, y se lanza cuando hay con qué abrirla. Antes no cabía —o existía
+y salía ya en la navegación, o no existía—.
 
-O existe y sale en la navegación, o no existe. Abrir una mesa nueva —crearla, irle asignando
-piezas, lanzarla cuando haya suficiente— no tiene forma de representarse.
+Una sección **nace en `draft`** y de ahí no sale sola. Mientras lo esté:
 
-Ojo con no confundirlo con el caso de `motor`, que en el fixture nace **sin artículos a
-propósito**: eso es una sección viva y vacía, un estado real y distinto del que falta.
+- No aparece en el catálogo público, así que no se navega ni se enlaza.
+- Admite borradores, que es justo para lo que sirve.
+- **No admite piezas publicadas**: intentar publicar en ella responde 422.
 
-La forma evidente es una bandera. Lo que hay que decidir es cuál de las dos significa: que
-se vea pero no se anuncie a los buscadores —como el `noindex` de un artículo— o que no
-aparezca siquiera en la navegación.
+Y la vuelta también está cerrada: **no se devuelve a preparación una sección con publicados**,
+porque se llegaría al mismo sitio por la puerta de atrás —lanzarla, publicar, retirarla— y
+esas piezas quedarían colgando de una mesa que el lector no puede abrir, con su rótulo
+enlazando a una página que ya no existe. El error dice cuántas hay que mover o despublicar.
+
+Tres cosas parecidas que conviene no confundir:
+
+| | Significa |
+|---|---|
+| `status = draft` | Todavía **no se ve**. |
+| `noindex` | **Se ve**, pero no se anuncia a los buscadores. |
+| Sección `live` y vacía | Abierta y sin piezas aún — `motor` en el juego de datos. Estado legítimo. |
 
 ## `kilkana_category_slugs` — las URLs que dejó atrás
 
@@ -136,11 +148,14 @@ Funciona igual que la de artículos y la de firmas: al renombrar, la ruta que la
 entra en el historial y la que adopta sale de él si era suya. **Una URL retirada no vuelve a
 estar libre**, así que otra sección no puede adoptarla — recibe un 422.
 
-> Pendiente del lado de la lectura: la resolución de una sección retirada necesita un punto
-> de entrada por slug. Hoy la salida pública pide el catálogo entero (`public/categories`) y
-> busca la suya en memoria, así que una URL retirada no encuentra a dónde ir. La escritura ya
-> es correcta: el dato se está guardando desde el primer renombrado, que es lo que no se puede
-> recuperar después.
+La resolución entra por el punto de entrada por slug: pedir una sección devuelve la sección,
+o la ruta actual si la pedida es una que dejó atrás, o nada. Igual que un artículo o una
+firma.
+
+**La redirección exige que la sección siga lanzada.** Una URL retirada cuya dueña volvió a
+preparación no manda tráfico a ninguna parte — mismo criterio que en un artículo, donde el
+301 exige que la pieza siga publicada. Una mesa que no existe para el lector tampoco la
+recibe por detrás.
 
 ## `slug` es único en todo el periódico
 

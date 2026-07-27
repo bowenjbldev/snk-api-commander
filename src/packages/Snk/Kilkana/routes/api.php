@@ -30,6 +30,9 @@ Route::middleware(['api'])->group(function () {
 Route::middleware(['api'])->group(function () {
     Route::get('public/posts', [SnkKilkanaPublicController::class, 'posts']);
     Route::get('public/categories', [SnkKilkanaPublicController::class, 'categories']);
+    // Una sección por slug: lo necesita quien resuelve `/{seccion}`, y es por donde entra la
+    // redirección cuando esa URL es una que la sección dejó atrás.
+    Route::get('public/categories/{slug}', [SnkKilkanaPublicController::class, 'category']);
     // Perfil de una firma: lo necesita /author/{slug}, que existe aunque no tenga publicados.
     Route::get('public/authors/{slug}', [SnkKilkanaPublicController::class, 'author']);
     // Un artículo se direcciona por FECHA + slug: el slug solo es único dentro de su día,

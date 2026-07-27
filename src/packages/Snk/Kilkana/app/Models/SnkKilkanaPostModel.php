@@ -202,6 +202,25 @@ class SnkKilkanaPostModel extends Model
                 $post->slug = self::capSlug((string) $post->slug);
             }
 
+            // No sale a la calle una pieza cuya mesa todavía no existe para el lector.
+            //
+            // Sin esto, publicar en una sección en preparación dejaba el artículo en portada
+            // con un kicker enlazando a una página que no se puede abrir. Se comprueba solo
+            // cuando cambia algo que importa —el estado o la sección—, no en cada guardado.
+            if ($post->status->requiresPublishPermission()
+                && ($post->isDirty('status') || $post->isDirty('category_id'))) {
+                $seccionViva = SnkKilkanaCategoryModel::query()
+                    ->whereKey($post->category_id)
+                    ->live()
+                    ->exists();
+
+                if (! $seccionViva) {
+                    throw ValidationException::withMessages([
+                        'category' => 'That section has not been launched yet; launch it or pick another.',
+                    ]);
+                }
+            }
+
             // Se SELLA al publicar y solo la primera vez. Después, corregir `publish_at`
             // —para arreglar la hora de un cierre, por ejemplo— ya no mueve la URL.
             $sellado = false;

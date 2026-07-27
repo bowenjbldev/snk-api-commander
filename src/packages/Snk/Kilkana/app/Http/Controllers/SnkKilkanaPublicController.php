@@ -43,6 +43,19 @@ class SnkKilkanaPublicController extends Controller
      * avatar ya resuelto a URL: `avatar_media_id` es un id interno que el lector no puede
      * resolver.
      */
+    /** Una sección, o la redirección si la URL pedida es una que dejó atrás. */
+    public function category(string $slug): JsonResponse
+    {
+        $category = $this->public->category($slug);
+        if (is_string($category)) {
+            return response()->json(['redirect_to' => $category]);
+        }
+
+        return $category
+            ? response()->json($category)
+            : response()->json(['error' => 'Not found'], 404);
+    }
+
     public function author(string $slug): JsonResponse
     {
         $author = $this->public->author($slug);

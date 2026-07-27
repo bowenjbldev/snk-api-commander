@@ -3,6 +3,8 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Packages\Snk\Kilkana\Enums\SnkKilkanaCategoryStatusEnum;
+use Packages\Snk\Kilkana\Models\SnkKilkanaCategoryModel;
 
 return new class extends Migration
 {
@@ -12,9 +14,10 @@ return new class extends Migration
             $table->id();
             $table->foreignId('parent_id')->nullable()->constrained('kilkana_categories')->restrictOnDelete();
             $table->string('name');
-            $table->string('slug', 64)->unique();
+            $table->string('slug', SnkKilkanaCategoryModel::SLUG_MAX)->unique();
             $table->string('seo_title', 500)->nullable();
             $table->text('seo_description')->nullable();
+            $table->enum('status', SnkKilkanaCategoryStatusEnum::values())->default(SnkKilkanaCategoryStatusEnum::Draft->value);
             $table->text('description')->nullable();
             $table->unsignedSmallInteger('position')->default(0);
             $table->boolean('noindex')->default(false);

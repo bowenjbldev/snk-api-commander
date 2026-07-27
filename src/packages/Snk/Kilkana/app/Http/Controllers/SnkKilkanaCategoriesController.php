@@ -6,12 +6,21 @@ use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
+use Packages\Snk\Kilkana\Enums\SnkKilkanaCategoryStatusEnum;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaPostModel;
 
 #[Group('Categories')]
 class SnkKilkanaCategoriesController extends CoreBaseApiController
 {
+    /** `rule()` es una llamada, y una propiedad no se puede inicializar con eso: va aquí. */
+    public function __construct()
+    {
+        foreach (['validationRulesStore', 'validationRulesUpdate'] as $reglas) {
+            $this->{$reglas}['status'] = 'sometimes|'.SnkKilkanaCategoryStatusEnum::rule();
+        }
+    }
+
     protected string $modelClass = SnkKilkanaCategoryModel::class;
 
     protected string $indexPermission = 'index categories';
@@ -26,7 +35,8 @@ class SnkKilkanaCategoriesController extends CoreBaseApiController
 
     protected array $validationRulesStore = [
         'name' => 'required|string|max:255',
-        'slug' => 'nullable|string|max:64|unique:kilkana_categories,slug',
+        // Nulo aquí sí: es la señal de «derívalo del nombre», y lo hace el modelo.
+        'slug' => 'nullable|string|max:'.SnkKilkanaCategoryModel::SLUG_MAX.'|unique:kilkana_categories,slug',
         'parent_id' => 'nullable|integer|exists:kilkana_categories,id',
         'description' => 'nullable|string',
         'seo_title' => 'nullable|string|max:500',
@@ -37,7 +47,10 @@ class SnkKilkanaCategoriesController extends CoreBaseApiController
 
     protected array $validationRulesUpdate = [
         'name' => 'sometimes|required|string|max:255',
-        'slug' => 'nullable|string|max:64|unique:kilkana_categories,slug,{id}',
+        // Aquí NO puede ser nulo: la columna no lo admite y el derivador solo corre al crear,
+        // así que un `slug: null` en una edición era un 500. Una sección viva tiene URL
+        // siempre; se puede cambiar, no vaciar.
+        'slug' => 'sometimes|required|string|max:'.SnkKilkanaCategoryModel::SLUG_MAX.'|unique:kilkana_categories,slug,{id}',
         // Primera linea contra el ciclo trivial. La forma del arbol —dos niveles y sin
         // ciclos— la impone `SnkKilkanaCategoryModel::guardTree`, que tambien cubre al
         // seeder y a la consola, que no pasan por aqui.

@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Packages\Core\Models\CoreUserModel;
+use Packages\Snk\Kilkana\Enums\SnkKilkanaCategoryStatusEnum;
 use Packages\Snk\Kilkana\Enums\SnkKilkanaMediaRightsEnum;
 use Packages\Snk\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCategoryModel;
@@ -717,6 +718,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 'description' => $attrs['description'],
                 'parent_id' => $parent ? ($ids[$parent] ?? null) : null,
                 'position' => $position[$branch],
+                // El periódico de muestra está abierto: sus mesas ya se lanzaron.
+                'status' => SnkKilkanaCategoryStatusEnum::Live,
             ])->id;
         }
     }

@@ -5,6 +5,7 @@ namespace Packages\Snk\Kilkana\Services;
 use Packages\Snk\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaAuthorSlugModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCategoryModel;
+use Packages\Snk\Kilkana\Models\SnkKilkanaCategorySlugModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCommentModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaLayoutModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaPostModel;
@@ -42,9 +43,38 @@ class SnkKilkanaPublicService
         return $query->limit($filters['count'] ?? 50)->get();
     }
 
+    /** Solo las lanzadas: una sección en preparación no existe para el lector. */
     public function categories()
     {
-        return SnkKilkanaCategoryModel::query()->orderBy('position')->orderBy('id')->get();
+        return SnkKilkanaCategoryModel::query()->live()->orderBy('position')->orderBy('id')->get();
+    }
+
+    /**
+     * Una sección por su slug, o el slug de ahora si la URL pedida es una que dejó atrás.
+     *
+     * Devuelve cadena para redirigir, igual que `post()` y `author()`. Existe para eso: sin
+     * una entrada por slug, el historial de URLs de una sección se guardaba y no había dónde
+     * consultarlo, así que renombrar «Technology» rompía sus enlaces igual que antes.
+     *
+     * La redirección exige que la sección siga lanzada, por el mismo motivo que la de un
+     * artículo exige que siga publicado: una mesa retirada no recibe tráfico por detrás.
+     */
+    public function category(string $slug): SnkKilkanaCategoryModel|string|null
+    {
+        $category = SnkKilkanaCategoryModel::query()->live()->where('slug', $slug)->first();
+        if ($category) {
+            return $category;
+        }
+
+        $retirada = SnkKilkanaCategorySlugModel::query()->where('path', $slug)->first();
+        if (! $retirada) {
+            return null;
+        }
+
+        return SnkKilkanaCategoryModel::query()
+            ->whereKey($retirada->category_id)
+            ->live()
+            ->value('slug');
     }
 
     /**

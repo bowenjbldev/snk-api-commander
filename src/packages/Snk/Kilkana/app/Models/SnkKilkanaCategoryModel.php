@@ -6,7 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\ValidationException;
+use Packages\Snk\Kilkana\Enums\SnkKilkanaCategoryStatusEnum;
 use Packages\Snk\Kilkana\Models\Concerns\SnkKilkanaRetiredSlugsSupport;
 
 class SnkKilkanaCategoryModel extends Model
@@ -31,7 +33,28 @@ class SnkKilkanaCategoryModel extends Model
 
     protected $hidden = ['parent'];
 
-    protected $casts = ['noindex' => 'boolean'];
+    protected $casts = [
+        'noindex' => 'boolean',
+        'status' => SnkKilkanaCategoryStatusEnum::class,
+    ];
+
+    /**
+     * Los mismos valores por defecto que la columna, pero del lado de PHP.
+     *
+     * Sin esto los pone la base y la instancia recién creada no los conoce: la respuesta del
+     * alta salía sin `status` ni `noindex`, y quien la pintara no sabía si la sección acababa
+     * de nacer en preparación o si el campo no existía.
+     */
+    protected $attributes = [
+        'status' => SnkKilkanaCategoryStatusEnum::Draft->value,
+        'noindex' => false,
+    ];
+
+    /** Las que existen para el lector. Un solo sitio define «sección pública». */
+    public function scopeLive(Builder $query): Builder
+    {
+        return $query->where('status', SnkKilkanaCategoryStatusEnum::Live);
+    }
 
     protected $appends = ['parent_slug', 'parent_name'];
 
@@ -74,13 +97,71 @@ class SnkKilkanaCategoryModel extends Model
         return $this->hasMany(self::class, 'parent_id')->orderBy('position');
     }
 
+    /**
+     * Tope del slug, y de aquí sale el ancho de la columna.
+     *
+     * 64 basta de sobra para un segmento de URL de una sección —«internacional» son 14— y es
+     * lo que impide que un nombre largo derive un slug que no cabe. `name` valida hasta 255,
+     * así que sin tope un nombre de 85 caracteres tumbaba el alta con un `1406 Data too long`.
+     */
+    public const SLUG_MAX = 64;
+
+    /** Recorta sin dejar el guion colgando, que daría `mi-seccion-` de URL. */
+    private static function capSlug(string $slug): string
+    {
+        return rtrim(mb_substr($slug, 0, self::SLUG_MAX), '-');
+    }
+
     protected static function booted(): void
     {
         static::creating(function (self $category) {
-            $category->slug = $category->slug ?: Str::slug($category->name);
+            $category->slug = $category->slug
+                ? self::capSlug((string) $category->slug)
+                : self::capSlug(Str::slug((string) $category->name));
+
+            // `slugTaken` mira las vivas Y las retiradas: una URL que redirige no está libre.
+            // Sin esto, crear una sección con un nombre que ya existía devolvía el 1062 con
+            // el nombre del índice dentro en vez de decir qué pasaba.
+            if (! $category->slug || self::slugTaken($category->slug)) {
+                throw ValidationException::withMessages([
+                    'slug' => 'That section URL is already in use, now or by a redirect; choose another.',
+                ]);
+            }
         });
 
-        static::saving(fn (self $category) => self::guardTree($category));
+        static::saving(function (self $category) {
+            self::guardTree($category);
+            self::guardStatus($category);
+        });
+    }
+
+    /**
+     * No se devuelve a preparacion una seccion que ya tiene piezas publicadas.
+     *
+     * Es la otra mitad del muro que impide publicar en una seccion sin lanzar: sin esto se
+     * llega al mismo sitio por la puerta de atras —lanzar la mesa, publicar en ella, y
+     * despues retirarla— y esas piezas quedan colgando de una seccion que el lector no puede
+     * abrir, con su kicker enlazando a una pagina que ya no existe.
+     */
+    private static function guardStatus(self $category): void
+    {
+        if (! $category->exists || ! $category->isDirty('status')) {
+            return;
+        }
+        if ($category->status === SnkKilkanaCategoryStatusEnum::Live) {
+            return;
+        }
+
+        $publicadas = SnkKilkanaPostModel::query()
+            ->where('category_id', $category->id)
+            ->published()
+            ->count();
+
+        if ($publicadas > 0) {
+            throw ValidationException::withMessages([
+                'status' => "This section has {$publicadas} published article(s); move or unpublish them first.",
+            ]);
+        }
     }
 
     /**
