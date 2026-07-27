@@ -5,33 +5,37 @@ namespace Packages\Snk\Kilkana\Services;
 use Illuminate\Support\Facades\DB;
 use Packages\Snk\Kilkana\Models\SnkKilkanaSettingModel;
 
+/**
+ * Los ajustes del periodico: una sola fila, con columnas de verdad.
+ *
+ * Fue una bolsa JSON, y la bolsa cobraba el precio de la flexibilidad sin darla: el
+ * controlador ya enumera cada clave que acepta, asi que nunca hubo claves arbitrarias. A
+ * cambio se perdian los tipos —`onboarded` guardado como lo que fuera— y habia que fusionar a
+ * mano, con un caso especial para `tenant` que alguien tenia que acordarse de replicar en el
+ * siguiente ajuste anidado. El dia que se olvidara, una actualizacion parcial habria borrado
+ * las claves hermanas en silencio.
+ *
+ * El JSON que ve la app NO cambia: sigue llegando `tenant` anidado. Lo que cambia es que
+ * debajo hay columnas, y el mapeo plano ↔ anidado esta escrito aqui en vez de deducirse.
+ */
 class SnkKilkanaSettingService
 {
     private const SINGLETON_ID = 1;
 
-    private const DEFAULTS = [
-        'theme' => null,
-        'theme_overrides' => [],
-        'tenant' => ['name' => null, 'tagline' => null, 'city' => null],
-        'onboarded' => false,
-    ];
+    /** Los tres campos de la identidad, planos en la base y anidados en la API. */
+    private const TENANT = ['name', 'tagline', 'city'];
 
     public function get(): SnkKilkanaSettingModel
     {
-        return SnkKilkanaSettingModel::firstOrCreate(
-            ['id' => self::SINGLETON_ID],
-            ['settings' => self::DEFAULTS],
-        );
+        return SnkKilkanaSettingModel::firstOrCreate(['id' => self::SINGLETON_ID]);
     }
 
     /**
-     * Guarda si nadie se ha adelantado. Misma forma que la composición, y por el mismo motivo.
+     * Guarda si nadie se ha adelantado. Misma forma que la composicion, y por el mismo motivo.
      *
-     * Comprobar la version fuera de la transacción no detecta nada: dos personas guardando los
-     * ajustes a la vez leen la misma, las dos pasan la comprobación y la segunda pisa a la
-     * primera con un 200 en la mano. Aquí duele además de otra manera —los ajustes se mezclan
-     * sobre lo que ya había, así que una escritura perdida se lleva por delante claves que ni
-     * siquiera se estaban tocando—.
+     * Comprobar la version fuera de la transaccion no detecta nada: dos personas guardando los
+     * ajustes a la vez leen la misma, las dos pasan la comprobacion y la segunda pisa a la
+     * primera con un 200 en la mano.
      *
      * `get()` va fuera porque crea la fila la primera vez, y no se bloquea lo que no existe.
      *
@@ -51,12 +55,7 @@ class SnkKilkanaSettingService
                 return ['row' => $row, 'conflict' => true];
             }
 
-            unset($data['version']);
-            $settings = $row->settings ?? [];
-            if (array_key_exists('tenant', $data) && is_array($data['tenant'])) {
-                $data['tenant'] = array_merge($settings['tenant'] ?? [], $data['tenant']);
-            }
-            $row->settings = array_merge($settings, $data);
+            $row->fill($this->columnsFrom($data));
             $row->version = (int) $row->version + 1;
             $row->save();
 
@@ -66,10 +65,36 @@ class SnkKilkanaSettingService
 
     public function payload(SnkKilkanaSettingModel $row): array
     {
-        $settings = array_merge(self::DEFAULTS, $row->settings ?? []);
-        $settings['tenant'] = array_merge(self::DEFAULTS['tenant'], $settings['tenant'] ?? []);
-        $settings['version'] = (int) $row->version;
+        return [
+            'theme' => $row->theme,
+            'theme_overrides' => $row->theme_overrides ?? [],
+            'tenant' => [
+                'name' => $row->tenant_name,
+                'tagline' => $row->tenant_tagline,
+                'city' => $row->tenant_city,
+            ],
+            'onboarded' => (bool) $row->onboarded,
+            'version' => (int) $row->version,
+        ];
+    }
 
-        return $settings;
+    /**
+     * Del JSON anidado de la API a las columnas planas.
+     *
+     * Solo llega lo que venia: un guardado parcial toca sus campos y deja los demas donde
+     * estaban. Eso antes exigia fusionar a mano; ahora es lo que hace `fill` por su cuenta.
+     */
+    private function columnsFrom(array $data): array
+    {
+        $columnas = collect($data)->only(['theme', 'theme_overrides', 'onboarded'])->all();
+
+        $tenant = is_array($data['tenant'] ?? null) ? $data['tenant'] : [];
+        foreach (self::TENANT as $campo) {
+            if (array_key_exists($campo, $tenant)) {
+                $columnas["tenant_{$campo}"] = $tenant[$campo];
+            }
+        }
+
+        return $columnas;
     }
 }

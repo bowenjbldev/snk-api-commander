@@ -2,9 +2,9 @@
  "theme": "standard",
  "theme_overrides": [],
  "tenant": {
-  "name": null,
-  "tagline": null,
-  "city": null
+  "name": "The Beacon",
+  "tagline": "The news, told slowly · Digital edition",
+  "city": "Springfield"
  },
  "onboarded": true
 }

@@ -79,30 +79,46 @@ Aquí importa especialmente, porque hay operaciones que **reemplazan la composic
 | Columna | Tipo | Nulo | Qué es |
 |---|---|---|---|
 | `id` | bigint unsigned | no | Clave primaria. **Siempre 1.** |
-| `settings` | longtext (JSON) | sí | Todos los ajustes. |
+| `theme` | varchar(64) | sí | La piel visual elegida. |
+| `tenant_name` | varchar(255) | sí | Cómo se llama el periódico. |
+| `tenant_tagline` | varchar(255) | sí | Su lema. |
+| `tenant_city` | varchar(255) | sí | Su ciudad. |
+| `theme_overrides` | longtext (JSON) | sí | Ajustes locales sobre esa piel. |
+| `onboarded` | boolean | no · def. `false` | Si ya pasó la puesta en marcha inicial. |
 | `version` | int unsigned | no · def. 1 | Igual que en `kilkana_layouts`. |
 | `created_at` · `updated_at` | timestamp | sí | Alta y última modificación. |
 
 **Una sola fila**, con `id = 1`. No hay restricción que lo obligue: es una convención, y una
 segunda fila sería ignorada en el mejor de los casos.
 
-`settings` agrupa tres cosas:
+Los tres campos de `tenant_*` son la **identidad publicable**, y salen de aquí a la cabecera
+del periódico. Con `tenant_name` nulo, quien la pinte tendrá que inventarse un valor por
+defecto — y entonces el nombre del periódico vive en el cliente, que es justo lo contrario de
+lo que un producto multi-inquilino necesita.
 
-```json
-{
-  "tenant":          { "name": "…", "tagline": "…", "city": "…" },
-  "theme":           "identificador de la piel visual",
-  "theme_overrides": { "…": "ajustes locales sobre esa piel" },
-  "onboarded":       true
-}
-```
+La API los sirve **anidados** (`tenant: {name, tagline, city}`) aunque debajo sean columnas
+planas: es la forma que ya consumía la salida pública, y el mapeo entre las dos vive en un
+solo sitio.
 
-- **`tenant`** es la identidad publicable: cómo se llama el periódico, su lema y su ciudad.
-  Con `name` nulo, quien pinte la cabecera tendrá que usar un valor por defecto.
-- **`theme`** elige la piel visual.
-- **`theme_overrides`** la ajusta sin dejar de ser esa piel. Debe normalizarse por tipo y
-  por rango antes de guardarse: un valor fuera de banda puede dejar texto ilegible.
-- **`onboarded`** marca si el periódico ya pasó por su puesta en marcha inicial.
+### Por qué columnas y no una bolsa JSON
+
+Esto **fue** una columna `settings` con todo dentro. La bolsa cobraba el precio de la
+flexibilidad sin darla: quien escribe ya enumera cada clave que acepta, así que nunca hubo
+claves arbitrarias. A cambio se perdían los tipos —`onboarded` guardado como lo que cayera— y
+había que fusionar a mano para que un guardado parcial no borrara lo que no venía, con un caso
+especial para `tenant` que alguien tenía que acordarse de replicar en el siguiente ajuste
+anidado. El día que se olvidara, guardar la ciudad habría borrado el nombre en silencio.
+
+Con columnas eso desaparece: se escribe lo que llega y lo demás se queda donde estaba.
+
+**`theme_overrides` sigue siendo JSON, y esa es la diferencia entre usar JSON y esconderse en
+él**: es un mapa de variante → token → valor, abierto por definición y opaco para la base. Su
+forma la normaliza quien escribe, por tipo y por rango — un valor fuera de banda puede dejar
+texto ilegible sobre su fondo.
+
+> La tabla hermana `commander_settings` sigue siendo una bolsa JSON. La divergencia es
+> consciente: aquellos son ajustes de infraestructura del operador, y estos los toca una
+> redacción desde una pantalla y salen al público.
 
 La lista no está cerrada por la base: `settings` es un JSON libre y admite claves nuevas sin
 migración. Eso es cómodo y tiene su precio — nada impide que una clave con el nombre mal

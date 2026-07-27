@@ -264,12 +264,16 @@ class SnkKilkanaPublicService
 
     public function site(): array
     {
-        $settings = SnkKilkanaSettingModel::query()->find(1)?->settings ?? [];
+        $ajustes = SnkKilkanaSettingModel::query()->find(1);
 
         return [
-            'tenant' => $settings['tenant'] ?? null,
-            'theme' => $settings['theme'] ?? null,
-            'theme_overrides' => $settings['theme_overrides'] ?? [],
+            'tenant' => $ajustes ? [
+                'name' => $ajustes->tenant_name,
+                'tagline' => $ajustes->tenant_tagline,
+                'city' => $ajustes->tenant_city,
+            ] : null,
+            'theme' => $ajustes?->theme,
+            'theme_overrides' => $ajustes?->theme_overrides ?? [],
         ];
     }
 

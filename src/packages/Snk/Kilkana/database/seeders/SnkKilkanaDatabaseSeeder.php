@@ -566,7 +566,18 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     private function seedSettings(): void
     {
         $settings = json_decode((string) file_get_contents(__DIR__.'/data/settings.json'), true);
-        SnkKilkanaSettingModel::firstOrCreate(['id' => 1], ['settings' => $settings]);
+        $tenant = $settings['tenant'] ?? [];
+
+        // El fichero sigue guardando la forma que ve la API —`tenant` anidado—, porque es un
+        // snapshot de lo que devuelve el endpoint. Aquí se aplana a columnas.
+        SnkKilkanaSettingModel::firstOrCreate(['id' => 1], [
+            'theme' => $settings['theme'] ?? null,
+            'theme_overrides' => $settings['theme_overrides'] ?? [],
+            'tenant_name' => $tenant['name'] ?? null,
+            'tenant_tagline' => $tenant['tagline'] ?? null,
+            'tenant_city' => $tenant['city'] ?? null,
+            'onboarded' => (bool) ($settings['onboarded'] ?? false),
+        ]);
     }
 
     /**
