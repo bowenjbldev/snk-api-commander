@@ -36,6 +36,12 @@ publica su ficha y qué se cuenta de él.
 `RESTRICT` en `user_id` porque borrar la cuenta dejaría su hemeroteca sin autor. Retirar
 una firma es una decisión editorial y se toma antes, a mano.
 
+Los dos `RESTRICT` que rodean a una firma —el suyo hacia la cuenta y el de
+`kilkana_posts.author_id` hacia ella— **dicen qué los impide** en vez de dejar que salte el
+error de la base: borrar una firma con artículos responde cuántos son, y borrar una cuenta que
+firma responde qué firma es. Lo accionable no es el mismo dato en los dos casos: en el primero
+hay que mover un número de piezas, en el segundo hay que retirar una firma concreta.
+
 ---
 
 ## El nombre publicado NO está en esta tabla

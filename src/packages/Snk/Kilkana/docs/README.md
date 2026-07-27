@@ -123,6 +123,18 @@ los dos «son URLs» sería agrupar por tipo en vez de por lo que significan.
 > es lo que las vuelve a unir; si una tabla nueva depende de una pareja así, conviene que su
 > índice sea lo primero que se lea después de las columnas.
 
+**Marcas de tiempo, siempre.** Toda tabla lleva `created_at` y `updated_at`, por convención y
+sin pedir justificación. No se retiran porque hoy una tabla no se actualice nunca: saber
+cuándo apareció una fila y cuándo se tocó por última vez es barato, y el día que alguien
+edite algo que hoy solo se crea, el dato ya está.
+
+Dos excepciones, y las dos por el mismo motivo: `kilkana_post_revisions` y
+`kilkana_layout_revisions` llevan **solo `created_at`**. Una revisión es una foto de un
+instante anterior, y modificarla sería falsificar el historial — ahí `updated_at` no es que
+sobre, es que invitaría a pensar que la foto se puede retocar. Es una afirmación sobre lo que
+la fila **es**, no sobre lo que el código hace hoy con ella; sin esa afirmación, la columna se
+queda.
+
 **Fechas.** `created_at` y `updated_at` son `timestamp` nulos en toda tabla que los tenga;
 se rellenan solos al insertar y actualizar. Los `timestamp` guardan fecha y hora
 (`2026-06-28 20:00:00`), los `date` solo fecha (`2026-06-28`). Un `timestamp` nulo no

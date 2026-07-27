@@ -70,10 +70,12 @@ class SnkKilkanaMediaController extends CoreBaseApiController
             'rights_expires_at' => 'sometimes|nullable|date',
             'focal_x' => 'sometimes|numeric|between:0,1',
             'focal_y' => 'sometimes|numeric|between:0,1',
+            // `exists` y no solo `integer`: el sync mete la fila en el pivote, así que un id
+            // inventado chocaba contra la clave foránea y salía como 500.
             'tag_ids' => 'sometimes|array',
-            'tag_ids.*' => 'integer',
+            'tag_ids.*' => 'integer|exists:kilkana_media_tags,id',
             'collection_ids' => 'sometimes|array',
-            'collection_ids.*' => 'integer',
+            'collection_ids.*' => 'integer|exists:kilkana_media_collections,id',
         ]);
 
         return response()->json($this->media->update($media, $data));
@@ -130,12 +132,17 @@ class SnkKilkanaMediaController extends CoreBaseApiController
     {
         $data = $request->validate([
             'ids' => 'required|array|min:1',
-            'ids.*' => 'integer',
+            // Sin `exists` no reventaba nada, pero la respuesta mentía: contaba los ids
+            // pedidos, no los tocados, así que un id inventado devolvía «hecho» sin hacerlo.
+            // La regla no filtra por borrado lógico, así que `restore` sigue funcionando.
+            'ids.*' => 'integer|exists:kilkana_media,id',
             'action' => 'required|in:trash,restore,tag,untag,collect,uncollect',
+            // `exists` y no solo `integer`: el sync mete la fila en el pivote, así que un id
+            // inventado chocaba contra la clave foránea y salía como 500.
             'tag_ids' => 'sometimes|array',
-            'tag_ids.*' => 'integer',
+            'tag_ids.*' => 'integer|exists:kilkana_media_tags,id',
             'collection_ids' => 'sometimes|array',
-            'collection_ids.*' => 'integer',
+            'collection_ids.*' => 'integer|exists:kilkana_media_collections,id',
         ]);
 
         $permission = in_array($data['action'], ['trash', 'restore'], true) ? $this->destroyPermission : $this->updatePermission;

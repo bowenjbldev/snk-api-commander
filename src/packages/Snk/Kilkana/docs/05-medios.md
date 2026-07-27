@@ -76,6 +76,17 @@ consulta de la biblioteca debe filtrar `deleted_at IS NULL` salvo que quiera ver
 
 ---
 
+## Una fila no se crea a mano
+
+Un medio **entra subiéndolo o reemplazándolo**, nunca por un alta genérica. No es una
+restricción arbitraria: `content_hash`, `path`, `disk` y las dimensiones se **calculan del
+fichero**, y una fila escrita a mano puede declarar lo que le apetezca en cualquiera de esas
+columnas.
+
+Las dos que más importan son `disk` y `path`, porque son las que se usan para **borrar el
+fichero del disco** al vaciar la papelera y al reemplazar. Una fila que los traiga inventados
+apunta el borrado a donde diga esa fila.
+
 ## Dos huellas, dos preguntas distintas
 
 | | Responde a |
@@ -97,6 +108,15 @@ Dos pivotes, ambos con único compuesto y CASCADE por los dos lados:
 
 - `kilkana_media_media_tag` — `media_id` + `media_tag_id`.
 - `kilkana_media_collection_media` — `media_id` + `media_collection_id`.
+
+**Borrar un término se lleva sus asociaciones y no lo impide nadie**, que es lo correcto:
+quitar «apaisado» del vocabulario *significa* desetiquetar las fotos que lo tenían. Pero
+entonces hay que poder verlo antes, así que el listado trae **cuántos medios cuelgan de cada
+término** y el borrado responde **cuántos ha soltado**. Sin ese número, borrar una etiqueta
+que no usaba nadie y desetiquetar sesenta fotos se ven exactamente igual.
+
+Es la otra cara de lo que hacen las claves `RESTRICT` de este esquema: donde la base bloquea,
+se dice qué lo impide; donde arrastra, se dice cuánto se lleva.
 
 ### No son las etiquetas de los artículos
 

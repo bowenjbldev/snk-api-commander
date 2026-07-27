@@ -3,7 +3,10 @@
 namespace Packages\Snk\Kilkana\Http\Controllers;
 
 use Dedoc\Scramble\Attributes\Group;
+use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
+use Packages\Snk\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaAuthorModel;
 
 #[Group('Authors')]
@@ -24,6 +27,36 @@ class SnkKilkanaAuthorsController extends CoreBaseApiController
     /** La foto de la firma vive en la biblioteca: `?with=avatarMedia` la trae resuelta a URL
      *  para el panel, que si no solo tendría un id que no puede pintar. */
     protected array $allowedWith = ['avatarMedia'];
+
+    /**
+     * Borrar una firma dice QUÉ lo impide, en vez de reventar con el SQL a la vista.
+     *
+     * `kilkana_posts.author_id` es RESTRICT —la hemeroteca no puede quedarse sin autor— y al
+     * saltar devolvía un 500 con el nombre de la tabla y de la restricción dentro. Quien lo
+     * recibía no distinguía «esta firma tiene artículos» de «el servidor se ha roto», y de
+     * paso se publicaba el esquema.
+     *
+     * Se cuenta antes para poder decir cuántos son: retirar una firma es una decisión
+     * editorial, y quien la toma necesita saber el tamaño de lo que va a mover.
+     */
+    public function destroy($id = null): JsonResponse
+    {
+        if ($response = $this->requirePermission($this->destroyPermission)) {
+            return $response;
+        }
+
+        $articulos = SnkKilkanaPostModel::query()->where('author_id', $id)->count();
+        if ($articulos > 0) {
+            return response()->json(['error' => 'Byline in use', 'posts' => $articulos], 409);
+        }
+
+        try {
+            return parent::destroy($id);
+        } catch (QueryException) {
+            // Entre el recuento y el borrado cabe una escritura. Nunca un 500 con SQL dentro.
+            return response()->json(['error' => 'Byline in use'], 409);
+        }
+    }
 
     protected array $validationRulesStore = [
         // El nombre NO se manda: se publica el de la cuenta. `alias` solo cuando firma con

@@ -2,57 +2,72 @@
 
 namespace Packages\Snk\Kilkana\Http\Controllers;
 
+use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Packages\Snk\Kilkana\Models\SnkKilkanaMediaCollectionModel;
-use Packages\Snk\Kilkana\Models\SnkKilkanaMediaTagModel;
+use Packages\Snk\Kilkana\Services\SnkKilkanaMediaTaxonomyService;
 
+/**
+ * Etiquetas y colecciones de la biblioteca tras un solo juego de rutas.
+ *
+ * `$taxonomy` es un parámetro de ruta y va DECLARADO, no leído de la petición. Aquí no
+ * estaba, y los parámetros sin tipo se asignan por posición: `$id` recibía «tags», así que
+ * `find('tags')` no encontraba nada y **renombrar o borrar una etiqueta respondía 404
+ * siempre**. El listado y el alta funcionaban —no llevan `{id}`—, así que la mitad rota no
+ * se veía desde fuera.
+ *
+ * Los permisos los pone el middleware `can:` de las rutas, como en composición.
+ */
+#[Group('Media taxonomies')]
 class SnkKilkanaMediaTaxonomiesController
 {
-    public function index(Request $request): JsonResponse
+    public function __construct(private readonly SnkKilkanaMediaTaxonomyService $taxonomies) {}
+
+    public function index(string $taxonomy): JsonResponse
     {
-        if ($response = $this->permit('index media')) return $response;
-        return response()->json($this->model($request)::query()->orderBy('name')->get());
+        return response()->json($this->taxonomies->all($taxonomy));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, string $taxonomy): JsonResponse
     {
-        if ($response = $this->permit('update media')) return $response;
-        $model = $this->model($request);
-        $data = $request->validate(['name' => 'required|string|max:120|unique:'.(new $model)->getTable().',name']);
-        return response()->json($model::create($data), 201);
+        $data = $request->validate([
+            'name' => 'required|string|max:120|unique:'.$this->taxonomies->table($taxonomy).',name',
+        ]);
+
+        return response()->json($this->taxonomies->create($taxonomy, $data), 201);
     }
 
-    public function update(Request $request, $id): JsonResponse
+    public function update(Request $request, string $taxonomy, $id): JsonResponse
     {
-        if ($response = $this->permit('update media')) return $response;
-        $model = $this->model($request);
-        $row = $model::find($id);
-        if (!$row) return response()->json(['error' => 'Record not found'], 404);
-        $data = $request->validate(['name' => 'required|string|max:120|unique:'.$row->getTable().',name,'.$row->id]);
-        $row->update($data);
-        return response()->json($row);
+        $row = $this->taxonomies->find($taxonomy, $id);
+        if (! $row) {
+            return response()->json(['error' => 'Record not found'], 404);
+        }
+
+        $data = $request->validate([
+            'name' => 'required|string|max:120|unique:'.$row->getTable().',name,'.$row->id,
+        ]);
+
+        return response()->json($this->taxonomies->rename($row, $data));
     }
 
-    public function destroy(Request $request, $id): JsonResponse
+    /**
+     * Borra y DICE a cuántos medios ha afectado.
+     *
+     * El pivote se va por CASCADE sin preguntar. Que la respuesta lo cuente es lo que
+     * distingue «he borrado una etiqueta que no usaba nadie» de «acabo de desetiquetar
+     * cincuenta fotos», que desde fuera se veían igual.
+     */
+    public function destroy(string $taxonomy, $id): JsonResponse
     {
-        if ($response = $this->permit('update media')) return $response;
-        $model = $this->model($request);
-        $row = $model::find($id);
-        if (!$row) return response()->json(['error' => 'Record not found'], 404);
-        $row->delete();
-        return response()->json(['id' => (string) $id]);
-    }
+        $row = $this->taxonomies->find($taxonomy, $id);
+        if (! $row) {
+            return response()->json(['error' => 'Record not found'], 404);
+        }
 
-    private function model(Request $request): string
-    {
-        return $request->route('taxonomy') === 'tags' ? SnkKilkanaMediaTagModel::class : SnkKilkanaMediaCollectionModel::class;
-    }
-
-    private function permit(string $permission): ?JsonResponse
-    {
-        $user = auth()->user();
-        if (!$user) return response()->json(['error' => 'Unauthorized'], 401);
-        return $user->can($permission) ? null : response()->json(['error' => 'Forbidden'], 403);
+        return response()->json([
+            'id' => (string) $id,
+            'detached' => $this->taxonomies->remove($row),
+        ]);
     }
 }

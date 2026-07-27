@@ -4,7 +4,9 @@ namespace Packages\Snk\Kilkana\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Database\QueryException;
 use Packages\Core\Http\Controllers\CoreUsersController;
+use Packages\Snk\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Snk\Kilkana\Services\SnkKilkanaBylineService;
 
 class SnkKilkanaUsersController extends CoreUsersController
@@ -56,6 +58,36 @@ class SnkKilkanaUsersController extends CoreUsersController
         }
 
         return $response;
+    }
+
+    /**
+     * Borrar una cuenta dice QUÉ lo impide.
+     *
+     * `kilkana_authors.user_id` es RESTRICT: la identidad de una firma es su cuenta, así que
+     * borrarla dejaría la hemeroteca firmada por nadie. Saltaba como 500 con el SQL dentro.
+     *
+     * El orden importa: primero se retira la firma —decisión editorial, y ahí es donde se ve
+     * cuántos artículos arrastra—, y solo después se da de baja la cuenta.
+     */
+    public function destroy($id = null): JsonResponse
+    {
+        if ($response = $this->requirePermission($this->destroyPermission)) {
+            return $response;
+        }
+
+        $firma = SnkKilkanaAuthorModel::query()->where('user_id', $id)->first(['id', 'slug']);
+        if ($firma) {
+            return response()->json([
+                'error' => 'Account still signs',
+                'byline' => ['id' => $firma->id, 'slug' => $firma->slug],
+            ], 409);
+        }
+
+        try {
+            return parent::destroy($id);
+        } catch (QueryException) {
+            return response()->json(['error' => 'Account still signs'], 409);
+        }
     }
 
     /**

@@ -65,12 +65,16 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::post('media/{id}/restore', [SnkKilkanaMediaController::class, 'restore']);
     Route::delete('media/{id}/force', [SnkKilkanaMediaController::class, 'forceDestroy']);
     Route::post('media/{id}/replace', [SnkKilkanaMediaController::class, 'replace']);
-    Route::apiResource('media', SnkKilkanaMediaController::class);
+    // Sin `store`: un medio ENTRA por `upload` o por `replace`, que calculan hash, ruta y
+    // dimensiones. El alta genérica no validaba nada —el controlador no declara reglas, así
+    // que el base metía `$request->all()` en el modelo— y dejaba escribir `disk` y `path`,
+    // que son justo lo que `Storage::delete` consume al vaciar la papelera.
+    Route::apiResource('media', SnkKilkanaMediaController::class)->except('store');
     // Taxonomías de medios: tags y colecciones comparten controlador; el segmento {taxonomy} decide el modelo.
-    Route::get('media-{taxonomy}', [SnkKilkanaMediaTaxonomiesController::class, 'index'])->whereIn('taxonomy', ['tags', 'collections']);
-    Route::post('media-{taxonomy}', [SnkKilkanaMediaTaxonomiesController::class, 'store'])->whereIn('taxonomy', ['tags', 'collections']);
-    Route::put('media-{taxonomy}/{id}', [SnkKilkanaMediaTaxonomiesController::class, 'update'])->whereIn('taxonomy', ['tags', 'collections']);
-    Route::delete('media-{taxonomy}/{id}', [SnkKilkanaMediaTaxonomiesController::class, 'destroy'])->whereIn('taxonomy', ['tags', 'collections']);
+    Route::get('media-{taxonomy}', [SnkKilkanaMediaTaxonomiesController::class, 'index'])->whereIn('taxonomy', ['tags', 'collections'])->middleware('can:index media');
+    Route::post('media-{taxonomy}', [SnkKilkanaMediaTaxonomiesController::class, 'store'])->whereIn('taxonomy', ['tags', 'collections'])->middleware('can:update media');
+    Route::put('media-{taxonomy}/{id}', [SnkKilkanaMediaTaxonomiesController::class, 'update'])->whereIn('taxonomy', ['tags', 'collections'])->middleware('can:update media');
+    Route::delete('media-{taxonomy}/{id}', [SnkKilkanaMediaTaxonomiesController::class, 'destroy'])->whereIn('taxonomy', ['tags', 'collections'])->middleware('can:update media');
     Route::apiResource('tags', SnkKilkanaTagsController::class);
     // Antes del apiResource, como en posts: si no, `show` se traga «bulk» como id.
     Route::post('comments/bulk', [SnkKilkanaCommentsController::class, 'bulk']);
