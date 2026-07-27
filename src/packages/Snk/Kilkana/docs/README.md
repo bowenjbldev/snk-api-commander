@@ -244,6 +244,30 @@ envolverse (escribe el nuevo · apunta la fila · borra el viejo, para que un fa
 en disco y nunca una referencia rota); y **la publicación programada**, que va pieza a pieza
 para que una rota no impida salir a las demás ese minuto — vuelve a intentarlo al siguiente.
 
+**Asignación masiva.** Los modelos declaran `$guarded = []`, o sea que cualquier columna es
+escribible desde una petición. **Eso solo es seguro mientras su controlador declare reglas de
+validación**: sin reglas, el controlador base mete la petición entera en el modelo, y entonces
+se puede escribir cualquier columna de la tabla. Pasó en el alta de medios, donde dejaba
+inventar `disk` y `path` — justo lo que se usa para borrar ficheros del disco.
+
+Es una dependencia implícita entre un modelo y su controlador que no se ve leyendo ninguno de
+los dos. Controlador nuevo sobre un modelo con `$guarded = []` = reglas declaradas, o la ruta
+no debería existir. Un modelo con `$fillable` no tiene esa dependencia y es la alternativa
+cuando la lista de columnas escribibles es corta y estable.
+
+**Historiales acotados.** `kilkana_post_revisions` y `kilkana_layout_revisions` conservan las
+**50 últimas de cada dueño** y las viejas caen al insertar, dentro de la misma transacción. No
+hay barrido periódico: la tabla está acotada por construcción.
+
+Son las dos que más crecen del esquema, y por algo que no se ve en las columnas: cada fila
+copia el objeto **entero** —el cuerpo del artículo, la composición de la portada— y se escribe
+una por guardado. En la portada eso es una por autoguardado, que salta cada 800 ms de pausa,
+así que una sesión componiendo deja decenas de copias de 4 KB.
+
+> El tope acota el espacio, no el ruido. Una ráfaga de autoguardados gasta el historial entero
+> en una sola sesión, así que «deshacer a lo de ayer» puede no existir aunque 50 suene
+> generoso. Agrupar una ráfaga en una sola revisión es otra decisión y está sin tomar.
+
 **Datos estructurados.** Varias columnas guardan JSON dentro de un `longtext`. La base no
 valida su forma; cada documento describe qué estructura espera.
 

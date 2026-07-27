@@ -11,8 +11,8 @@ return new class extends Migration
         Schema::create('kilkana_post_revisions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('post_id')->constrained('kilkana_posts')->cascadeOnDelete();
-            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->json('payload');
+            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('created_at')->useCurrent();
             $table->index(['post_id', 'created_at']);
         });

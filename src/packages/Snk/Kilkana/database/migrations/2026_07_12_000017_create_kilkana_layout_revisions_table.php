@@ -11,8 +11,8 @@ return new class extends Migration
         Schema::create('kilkana_layout_revisions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('layout_id')->constrained('kilkana_layouts')->cascadeOnDelete();
-            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->json('schema');
+            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('created_at')->useCurrent();
             $table->index(['layout_id', 'created_at']);
         });

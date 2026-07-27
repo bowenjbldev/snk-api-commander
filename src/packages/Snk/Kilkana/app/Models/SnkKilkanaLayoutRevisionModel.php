@@ -5,11 +5,19 @@ namespace Packages\Snk\Kilkana\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Packages\Core\Models\CoreUserModel;
+use Packages\Snk\Kilkana\Models\Concerns\SnkKilkanaPrunesRevisionsSupport;
 
 // Snapshot inmutable de un documento del builder antes de un PUT.
 class SnkKilkanaLayoutRevisionModel extends Model
 {
+    use SnkKilkanaPrunesRevisionsSupport;
+
     protected $table = 'kilkana_layout_revisions';
+
+    public static function revisionOwnerKey(): string
+    {
+        return 'layout_id';
+    }
 
     protected $guarded = [];
 
