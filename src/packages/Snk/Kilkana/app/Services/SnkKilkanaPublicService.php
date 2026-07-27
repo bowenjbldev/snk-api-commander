@@ -8,7 +8,6 @@ use Packages\Snk\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaAuthorSlugModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCategorySlugModel;
-use Packages\Snk\Kilkana\Enums\SnkKilkanaCommentStatusEnum;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCommentModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaLayoutModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaPostModel;
@@ -218,35 +217,9 @@ class SnkKilkanaPublicService
             ->approved()
             ->with('user:id,name')
             ->orderBy('created_at')
-            ->get(['id', 'post_id', 'user_id', 'parent_id', 'author_name', 'body', 'created_at']);
+            ->get(['id', 'post_id', 'user_id', 'parent_id', 'body', 'created_at']);
     }
 
-    public function storeComment(int $postId, array $data): bool
-    {
-        $parentId = null;
-        if (! empty($data['parent_id'])) {
-            $parentId = SnkKilkanaCommentModel::query()
-                ->where('id', $data['parent_id'])
-                ->where('post_id', $postId)
-                ->approved()
-                ->value('id');
-            if ($parentId === null) {
-                return false;
-            }
-        }
-
-        SnkKilkanaCommentModel::create([
-            'post_id' => $postId,
-            'user_id' => null,
-            'parent_id' => $parentId,
-            'author_name' => $data['author_name'],
-            'author_email' => strtolower($data['author_email']),
-            'body' => $data['body'],
-            'status' => SnkKilkanaCommentStatusEnum::Pending,
-        ]);
-
-        return true;
-    }
 
     public function layout(string $layout): array
     {

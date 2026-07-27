@@ -14,8 +14,6 @@ return new class extends Migration
             $table->foreignId('parent_id')->nullable()->constrained('kilkana_comments')->cascadeOnDelete();
             $table->foreignId('post_id')->constrained('kilkana_posts')->cascadeOnDelete();
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->string('author_name', 80)->nullable();
-            $table->string('author_email', 190)->nullable();
             $table->enum('status', SnkKilkanaCommentStatusEnum::values())->default(SnkKilkanaCommentStatusEnum::Pending->value);
             $table->text('body');
             $table->timestamps();

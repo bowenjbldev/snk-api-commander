@@ -36,14 +36,6 @@ class SnkKilkanaPublicController extends Controller
     }
 
     /**
-     * Perfil público de una firma, por slug. La ficha ya viaja anidada en cada post, pero
-     * la PÁGINA de autor la necesita suelta: existe aunque la firma no tenga publicados.
-     *
-     * Se sirve recortada a lo que se pinta —nada de `user_id` ni timestamps— y con el
-     * avatar ya resuelto a URL: `avatar_media_id` es un id interno que el lector no puede
-     * resolver.
-     */
-    /**
      * El lector dice que ha abierto o leído una pieza.
      *
      * Lo manda el navegador y no el render del servidor, que es lo que hace el número
@@ -75,6 +67,14 @@ class SnkKilkanaPublicController extends Controller
             : response()->json(['error' => 'Not found'], 404);
     }
 
+    /**
+     * Perfil público de una firma, por slug. La ficha ya viaja anidada en cada post, pero
+     * la PÁGINA de autor la necesita suelta: existe aunque la firma no tenga publicados.
+     *
+     * Se sirve recortada a lo que se pinta —nada de `user_id` ni timestamps— y con el
+     * avatar ya resuelto a URL: `avatar_media_id` es un id interno que el lector no puede
+     * resolver.
+     */
     public function author(string $slug): JsonResponse
     {
         $author = $this->public->author($slug);
@@ -111,36 +111,6 @@ class SnkKilkanaPublicController extends Controller
             : response()->json($comments);
     }
 
-    /**
-     * Alta pública de un comentario. Entra SIEMPRE como `pending`: lo que se publica lo
-     * decide la moderación en /admin/comments, no quien escribe.
-     *
-     * Existe porque el formulario de la web llamaba al recurso protegido del panel: para
-     * comentar en el periódico hacía falta una cuenta del CMS, y si el token caducaba el
-     * lector acababa en /admin/login con su texto perdido.
-     */
-    public function storeComment(Request $request, string $year, string $month, string $day, string $slug): JsonResponse
-    {
-        $postId = $this->public->publishedId($year, $month, $day, $slug);
-        if ($postId === null) {
-            return response()->json(['error' => 'Not found'], 404);
-        }
-
-        $data = $request->validate([
-            'author_name' => 'required|string|min:2|max:80',
-            'author_email' => 'required|email|max:190',
-            'body' => 'required|string|min:2|max:4000',
-            'parent_id' => 'nullable|integer',
-        ]);
-
-        if (! $this->public->storeComment($postId, $data)) {
-            return response()->json(['error' => 'Invalid parent'], 422);
-        }
-
-        // 202 y nada del comentario: no está publicado todavía y devolverlo invitaría a
-        // pintarlo en el hilo como si lo estuviera.
-        return response()->json(['ok' => true, 'status' => 'pending'], 202);
-    }
 
     public function layout(string $layout): JsonResponse
     {

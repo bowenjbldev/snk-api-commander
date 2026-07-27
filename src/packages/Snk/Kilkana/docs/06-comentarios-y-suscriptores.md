@@ -11,25 +11,32 @@ Las dos tablas donde escribe el público.
 | `id` | bigint unsigned | no | Clave primaria. |
 | `parent_id` | bigint unsigned | sí | Comentario al que responde. Nulo = de primer nivel. **CASCADE.** |
 | `post_id` | bigint unsigned | no | Artículo comentado. **CASCADE.** |
-| `user_id` | bigint unsigned | sí | Cuenta, si quien comenta tiene una. **SET NULL.** |
-| `author_name` | varchar(80) | sí | Nombre de quien comenta **sin cuenta**. |
-| `author_email` | varchar(190) | sí | Su correo. **No sale en ninguna respuesta.** |
+| `user_id` | bigint unsigned | sí | Quién lo escribió. Nulo = **su cuenta se dio de baja**. **SET NULL.** |
 | `status` | enum | no · def. `pending` | `pending` · `approved` · `spam`. |
 | `body` | text | no | El texto. |
 | `created_at` · `updated_at` | timestamp | sí | Alta y última modificación. |
 
 Índice sobre `(post_id, status)`: la consulta natural es «los aprobados de este artículo».
 
-### Dos formas de firmar un comentario, excluyentes
+### Comentar exige cuenta
 
-| | `user_id` | `author_name` / `author_email` |
-|---|---|---|
-| Con cuenta | el identificador | nulos |
-| Sin cuenta | nulo | rellenos |
+No hay vía anónima: no existe endpoint público de alta, y el nombre que se ve sale siempre de
+la cuenta que lo escribió. Por eso la tabla no guarda ni nombre ni correo propios — los tenía,
+y eran el rastro de cuando se podía comentar sin registrarse.
 
-El nombre visible sale de un sitio o del otro. **La base no obliga a que haya uno de los
-dos**: nada impide insertar un comentario sin cuenta y sin nombre, que quedaría sin firma.
-Lo impone quien escribe.
+Es una decisión de producto, y su coste es real: **habrá muchos menos comentarios**. Lo que
+compra es que la identidad identifique de verdad. El correo del anónimo era autodeclarado y
+sin verificar, así que no distinguía a nadie —un mismo troll escribía uno distinto cada vez— y
+tampoco se podía usar para avisarle de una respuesta, porque escribir a una dirección que
+alguien tecleó sin demostrar que es suya es hacer spam. Se cargaba con el peso legal de un
+dato personal a cambio de ninguna garantía.
+
+Con cuenta, bloquear a quien molesta es bloquear una cuenta y no jugar al topo, y avisar de
+las respuestas funciona porque la dirección está confirmada al registrarse.
+
+> Si algún día un periódico quiere abrir la puerta —un local vive de la participación y el
+> registro es un muro para su lector—, eso es un **ajuste por periódico**
+> (`accounts · anonymous · closed`), no una vuelta atrás del esquema: `user_id` ya es nulable.
 
 ### El hilo se arma con `parent_id`
 
@@ -63,33 +70,24 @@ persona.
 Era además el **único sitio del esquema** donde borrar un usuario destruía contenido — sus
 artículos, sus revisiones y sus subidas quedan huérfanos y sobreviven.
 
-Con `SET NULL` el comentario se queda sin cuenta y el hilo intacto; quien lo pinte dirá
-«cuenta eliminada». Es también la práctica estándar de privacidad: ante una baja se
-**anonimiza**, no se destruye. Si algún día hace falta borrado real por petición del
-interesado, eso es una acción deliberada y explícita, no el efecto colateral de dar de baja a
-alguien.
+Con `SET NULL` el comentario se queda sin cuenta y el hilo intacto. Es también la práctica
+estándar de privacidad: ante una baja se **anonimiza**, no se destruye. Si algún día hace
+falta borrado real por petición del interesado, eso es una acción deliberada y explícita, no
+el efecto colateral de dar de baja a alguien.
 
-### El correo de un anónimo no sale de la tabla
-
-Se pide al comentar sin cuenta, y **hoy no lo lee nadie**: no hay aviso de respuesta ni
-comprobación antispam que lo use. Salía en el listado de moderación por el simple hecho de
-estar en la tabla, y ya no.
-
-Queda una decisión pendiente, y es de producto, no de esquema: **o se le da un uso —avisar a
-quien comentó de que le han respondido es el clásico— o se deja de pedir**. Un dato personal
-que se guarda para siempre sin usarse no tiene defensa.
-Un hilo se reescribe sin que nadie se entere.
-
-No es fácil de mejorar tal como está el esquema: `author_name` es nulo en los comentarios
-con cuenta, así que cambiarlo a `SET NULL` dejaría comentarios sin ninguna firma. Conservar
-el hilo exigiría copiar el nombre al comentar, aceptando que esa copia envejece si la
-persona se renombra.
+Por eso `user_id` es **nulable aunque comentar exija cuenta**: el nulo no significa «anónimo»,
+significa «su cuenta ya no está». Quien pinte el hilo dirá «cuenta eliminada». La API nunca
+acepta un nulo; solo lo produce una baja.
 
 ### Un comentario nace `pending`
 
-Lo que se publica lo decide la moderación, no quien escribe. Un alta pública no debería
-devolver el comentario creado: devolverlo invita a pintarlo en el hilo como si ya estuviera
-aprobado.
+Lo que se publica lo decide la moderación, no quien escribe. Ni siquiera con cuenta: el
+registro dice quién habla, no que lo que diga salga solo.
+
+**Esa es la protección real, no la identidad.** El riesgo de una sección de comentarios no es
+el spam masivo —para eso está el registro— sino el vecino que acusa a otro con nombre y
+apellidos, y eso lo firma igual alguien registrado. Lo que lo evita es que nadie publique sin
+que un humano lo lea.
 
 ---
 

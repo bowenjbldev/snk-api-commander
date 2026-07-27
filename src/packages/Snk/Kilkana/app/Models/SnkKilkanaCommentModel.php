@@ -16,15 +16,6 @@ class SnkKilkanaCommentModel extends Model
 
     protected $guarded = [];
 
-    /**
-     * El correo de un lector anónimo no sale en ninguna respuesta.
-     *
-     * Se pide al comentar y no lo lee nadie —ni para avisar de una respuesta ni para
-     * reconocer spam—, pero salía en el listado de moderación por el simple hecho de estar en
-     * la tabla. Un dato personal que se enseña sin usarse no tiene defensa posible.
-     */
-    protected $hidden = ['author_email'];
-
     protected $casts = ['status' => SnkKilkanaCommentStatusEnum::class];
 
     /** Lo que ve un lector. Un solo sitio decide qué está publicado. */

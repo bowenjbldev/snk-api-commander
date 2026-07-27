@@ -47,11 +47,6 @@ Route::middleware(['api'])->group(function () {
         ->middleware('throttle:60,1');
     Route::get('public/posts/{year}/{month}/{day}/{slug}/comments', [SnkKilkanaPublicController::class, 'comments'])
         ->whereNumber(['year', 'month', 'day']);
-    // Alta de comentario sin cuenta: entra como `pending` y la publica la moderación.
-    // Mismo throttle que `subscribe`: es el otro POST anónimo del paquete.
-    Route::post('public/posts/{year}/{month}/{day}/{slug}/comments', [SnkKilkanaPublicController::class, 'storeComment'])
-        ->whereNumber(['year', 'month', 'day'])
-        ->middleware('throttle:10,1');
     Route::get('public/layouts/{layout}', [SnkKilkanaPublicController::class, 'layout'])->whereIn('layout', SnkKilkanaLayoutEnum::values());
     Route::get('public/site', [SnkKilkanaPublicController::class, 'site']);
     Route::post('public/subscribe', [SnkKilkanaPublicController::class, 'subscribe'])->middleware('throttle:10,1');

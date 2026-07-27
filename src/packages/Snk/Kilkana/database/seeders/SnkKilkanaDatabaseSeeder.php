@@ -437,17 +437,6 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             'Compra seguidores baratos en www.ejemplo-no-real.test/promo',
         ];
 
-        // Invitados: el caso MAYORITARIO en un periódico. Comentan desde la web pública
-        // sin cuenta en el CMS (user_id null + author_name/author_email), así que la
-        // moderación tiene que saber pintar un autor que no es un usuario del panel.
-        $guests = [
-            ['name' => 'Marisa Ferrán', 'email' => 'marisa.ferran@ejemplo-no-real.test'],
-            ['name' => 'Andrés Otero', 'email' => 'a.otero@ejemplo-no-real.test'],
-            ['name' => 'Nuria Bel', 'email' => 'nuria.bel@ejemplo-no-real.test'],
-            ['name' => 'Ignasi Roca', 'email' => 'iroca@ejemplo-no-real.test'],
-            ['name' => 'Lucía Prats', 'email' => 'lucia.prats@ejemplo-no-real.test'],
-        ];
-
         // Solo publicados: un borrador no ha tenido lectores que comenten.
         $posts = SnkKilkanaPostModel::query()->published()->orderBy('id')->get();
         foreach ($posts as $i => $post) {
@@ -457,15 +446,11 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 $slot = $i + $n;
                 $reader = $readers[$slot % count($readers)];
                 $esSpam = $slot % 11 === 5;
-                // Dos de cada tres vienen de la web pública, sin cuenta. El spam siempre:
-                // nadie se registra en el CMS para colar publicidad.
-                $esInvitado = $esSpam || $slot % 3 !== 0;
-                $guest = $guests[$slot % count($guests)];
-                $autor = $esInvitado
-                    ? ['user_id' => null, 'author_name' => $guest['name'], 'author_email' => $guest['email']]
-                    : ['user_id' => $reader->id];
+                // Todo comentario viene de una cuenta: comentar exige registrarse. El spam
+                // también, y eso es justo el filtro — colar publicidad cuesta darse de alta,
+                // y quien lo haga se queda sin cuenta a la primera.
                 $comment = SnkKilkanaCommentModel::firstOrCreate([
-                    ...$autor,
+                    'user_id' => $reader->id,
                     'post_id' => $post->id,
                     'body' => $esSpam ? $spam[$slot % count($spam)] : $bodies[$slot % count($bodies)],
                 ], [
@@ -482,13 +467,11 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 // Una respuesta cada pocos hilos: la conversación anidada también hay que
                 // poder verla (el panel la indenta y la API la borra en cascada).
                 if ($n === 0 && $i % 5 === 3) {
-                    // La respuesta también de invitado: es como se responde en la web.
-                    $otro = $guests[($slot + 1) % count($guests)];
+                    // Otra persona, para que el hilo enseñe una conversación y no un monólogo.
+                    $otro = $readers[($slot + 1) % count($readers)];
                     SnkKilkanaCommentModel::firstOrCreate([
                         'post_id' => $post->id,
-                        'user_id' => null,
-                        'author_name' => $otro['name'],
-                        'author_email' => $otro['email'],
+                        'user_id' => $otro->id,
                         'parent_id' => $comment->id,
                         'body' => 'Justo lo que iba a comentar. Añado que la última parte contradice lo que publicasteis en mayo.',
                     ], [
