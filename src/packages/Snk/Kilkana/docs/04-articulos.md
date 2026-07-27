@@ -311,7 +311,19 @@ modifica, solo se crea.
 | `id` | bigint unsigned | no | Clave primaria. |
 | `post_id` | bigint unsigned | no | Artículo. **CASCADE.** |
 | `date` | date | no | Día contado. |
-| `views` | int unsigned | no | Lecturas de ese artículo ese día. |
+| `opens` | int unsigned | no | Veces que se abrió. |
+| `engaged` | int unsigned | no | Veces que se **leyó**: alguien pasó el umbral de lectura. |
+| `readers` | int unsigned | no | Personas distintas que leyeron ese día. |
+| `ref_search` · `ref_social` · `ref_direct` · `ref_internal` · `ref_other` | int unsigned | no | De dónde llegaron las aperturas. |
+
+`date` está en medio de la tabla y no al final con las marcas de tiempo, saltándose la
+convención a propósito: aquí **no marca cuándo se escribió la fila, es parte de su
+identidad** —la mitad del único `(post_id, date)`—. Es una dimensión, no una marca.
+
+Y esta tabla no lleva `created_at` ni `updated_at`, que es la tercera excepción de la base a
+«siempre marcas de tiempo». El motivo es de coste: el incremento de un contador es la
+escritura más frecuente del sistema, y con marcas cada lectura del periódico escribiría
+además `updated_at`.
 
 Dos índices, y cada uno responde una pregunta distinta:
 
@@ -322,6 +334,44 @@ Dos índices, y cada uno responde una pregunta distinta:
 
 Agregada por día, no fila por visita: «lo más leído de hoy» y «de la semana» son sumas
 sobre un rango de fechas, y la tabla no crece con el tráfico sino con el catálogo.
+
+### Abrir y leer no son lo mismo
+
+Es la distinción que hace honesto el número. Con un solo contador, quien entra y se va a los
+dos segundos vale igual que quien lee entero — y entonces «lo más leído» ordena por el titular
+que mejor engaña, no por lo que la gente lee.
+
+```
+engaged / opens     cuántos de los que entran se quedan
+engaged / readers   si la pieza se relee o se lee una vez y se olvida
+```
+
+Los agregados que consume el periódico suman **`engaged`**, no `opens`.
+
+### Quién cuenta, y por qué no el servidor
+
+Lo cuenta el **navegador del lector**, con un aviso al abrir y otro al pasar el umbral. No lo
+cuenta el render, y eso no es un detalle de implementación: la salida pública está cacheada,
+así que contar en el render cuenta renders. Una pieza que arrasa se renderiza una vez por
+minuto pase lo que pase, de modo que **el error crecía con el éxito**. Contando desde el
+cliente, además, los robots dejan de aparecer solos: no ejecutan JavaScript.
+
+`readers` sale de deduplicar por visitante, y el visitante es un hash con sal que lleva la
+**fecha dentro**: el de hoy y el de mañana no se pueden emparejar ni queriendo. No se
+almacena. Sirve para no contar dos veces y para nada más, así que esta medición no rastrea a
+nadie y no necesita consentimiento.
+
+Eso también fija lo que esta tabla **no** puede contestar: retención —si el lector de ayer
+vuelve hoy—, porque exigiría reconocer a la misma persona entre días. Esa pregunta se
+responde donde hay una cuenta identificada, no con visitantes anónimos.
+
+### La procedencia la decide el servidor
+
+Los cinco cubos salen de la cabecera `Referer`, clasificada en el servidor. Si la mandara el
+cliente, sería un número que cualquiera puede escribir.
+
+`ref_direct` es **sin procedencia**, y `ref_other` es otro sitio que enlaza. Juntarlos
+borraría justo el dato que dice quién te cita.
 
 ### Tres ventanas, y ninguna se deriva de las otras
 

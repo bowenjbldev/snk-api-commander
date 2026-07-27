@@ -820,13 +820,25 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 if ($fecha->greaterThan($hoy)) {
                     break; // el futuro no tiene lecturas
                 }
-                $vistas = intdiv($total * $pesos[$edad], $suma);
-                if ($vistas <= 0) {
+                $lecturas = intdiv($total * $pesos[$edad], $suma);
+                if ($lecturas <= 0) {
                     continue;
                 }
+                // Proporciones fijas y creíbles, sin azar: dos siembras dan lo mismo. 62% de
+                // los que abren se quedan a leer, y de cada cinco lecturas cuatro son de
+                // gente distinta. El reparto de procedencia es el típico de un digital: el
+                // buscador manda, las redes pican, y la casa se lee sola.
+                $aperturas = (int) round($lecturas / 0.62);
+                $reparto = ['ref_search' => 45, 'ref_social' => 25, 'ref_internal' => 20, 'ref_direct' => 7, 'ref_other' => 3];
+
                 SnkKilkanaPostViewModel::updateOrCreate(
                     ['post_id' => $post->id, 'date' => $fecha->toDateString()],
-                    ['views' => $vistas],
+                    [
+                        'opens' => $aperturas,
+                        'engaged' => $lecturas,
+                        'readers' => (int) round($lecturas * 0.78),
+                        ...collect($reparto)->map(fn (int $pct) => intdiv($aperturas * $pct, 100))->all(),
+                    ],
                 );
             }
         }

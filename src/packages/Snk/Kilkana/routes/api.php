@@ -40,6 +40,11 @@ Route::middleware(['api'])->group(function () {
     // misma forma para que no convivan dos maneras de nombrar la misma pieza.
     Route::get('public/posts/{year}/{month}/{day}/{slug}', [SnkKilkanaPublicController::class, 'post'])
         ->whereNumber(['year', 'month', 'day']);
+    // Audiencia: la manda el navegador, no el render. Throttle porque es un POST anónimo que
+    // incrementa un contador, o sea aporreable por definición.
+    Route::post('public/posts/{year}/{month}/{day}/{slug}/view', [SnkKilkanaPublicController::class, 'view'])
+        ->whereNumber(['year', 'month', 'day'])
+        ->middleware('throttle:60,1');
     Route::get('public/posts/{year}/{month}/{day}/{slug}/comments', [SnkKilkanaPublicController::class, 'comments'])
         ->whereNumber(['year', 'month', 'day']);
     // Alta de comentario sin cuenta: entra como `pending` y la publica la moderación.

@@ -2,6 +2,8 @@
 
 namespace Packages\Snk\Kilkana\Services;
 
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Packages\Snk\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaAuthorSlugModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCategoryModel;
@@ -23,9 +25,11 @@ class SnkKilkanaPublicService
         $query = SnkKilkanaPostModel::query()
             ->with(self::AUTHOR_PUBLIC)
             ->published()
-            ->withSum(['views as views_day' => fn ($q) => $q->where('date', now()->toDateString())], 'views')
-            ->withSum(['views as views_week' => fn ($q) => $q->where('date', '>=', now()->subDays(6)->toDateString())], 'views')
-            ->withSum('views as views_total', 'views')
+            // Se suma `engaged`, no `opens`: «lo más leído» tiene que ordenarse por lo que la
+            // gente lee, no por lo que consigue que pulsen.
+            ->withSum(['views as views_day' => fn ($q) => $q->where('date', now()->toDateString())], 'engaged')
+            ->withSum(['views as views_week' => fn ($q) => $q->where('date', '>=', now()->subDays(6)->toDateString())], 'engaged')
+            ->withSum('views as views_total', 'engaged')
             ->orderByDesc('publish_at');
 
         if (! empty($filters['cat'])) {
@@ -41,6 +45,66 @@ class SnkKilkanaPublicService
         }
 
         return $query->limit($filters['count'] ?? 50)->get();
+    }
+
+    /**
+     * Registra que alguien abrió o leyó una pieza. Falso si esa URL no es de nadie publicado.
+     *
+     * Dos hechos, dos llamadas: `open` al abrir y `read` al pasar el umbral de lectura. El
+     * cociente entre ambos es lo que distingue un titular que funciona de uno que engaña, y
+     * con un solo contador no se puede calcular.
+     *
+     * La procedencia se clasifica **del lado del servidor**, leyendo la cabecera `Referer`:
+     * si la mandara el cliente sería un número que cualquiera puede escribir.
+     *
+     * `readers` solo sube la primera lectura de ese visitante ese día. El visitante es un
+     * hash con sal y con la FECHA dentro, así que el de hoy y el de mañana no se pueden
+     * emparejar: sirve para no contar dos veces y para nada más. No se almacena —vive en
+     * caché hasta medianoche—, así que esto no rastrea a nadie ni necesita consentimiento.
+     */
+    public function recordView(string $year, string $month, string $day, string $slug, string $event, Request $request): bool
+    {
+        $postId = $this->publishedAt($year, $month, $day, $slug)->value('id');
+        if (! $postId) {
+            return false;
+        }
+
+        if ($event === 'open') {
+            SnkKilkanaPostViewModel::record($postId, 'opens', $this->referrerCounter($request));
+
+            return true;
+        }
+
+        $visitante = sha1($request->ip().$request->userAgent().config('app.key').now()->toDateString());
+        $primera = Cache::add("kilkana:reader:{$postId}:{$visitante}", true, now()->endOfDay());
+
+        SnkKilkanaPostViewModel::record($postId, 'engaged', ...($primera ? ['readers'] : []));
+
+        return true;
+    }
+
+    /** De dónde llegó, en los cinco cubos que usa cualquier analítica. */
+    private function referrerCounter(Request $request): string
+    {
+        $referer = (string) $request->headers->get('referer');
+        if ($referer === '') {
+            return 'ref_direct';
+        }
+
+        $host = (string) parse_url($referer, PHP_URL_HOST);
+        if ($host === '' || $host === $request->getHost()) {
+            return 'ref_internal';
+        }
+        if (preg_match('/(^|\.)(google|bing|duckduckgo|yahoo|ecosia|qwant|baidu|yandex)\./i', $host)) {
+            return 'ref_search';
+        }
+        if (preg_match('/(^|\.)(facebook|instagram|twitter|x|t)\.co|(^|\.)(linkedin|reddit|telegram|whatsapp|bsky|mastodon|threads)\./i', $host)) {
+            return 'ref_social';
+        }
+
+        // Otro medio que enlaza. No es directo —directo es SIN procedencia— y confundirlos
+        // borraría justo el dato que dice quién te cita.
+        return 'ref_other';
     }
 
     /** Solo las lanzadas: una sección en preparación no existe para el lector. */

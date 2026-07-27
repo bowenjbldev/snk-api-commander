@@ -43,6 +43,25 @@ class SnkKilkanaPublicController extends Controller
      * avatar ya resuelto a URL: `avatar_media_id` es un id interno que el lector no puede
      * resolver.
      */
+    /**
+     * El lector dice que ha abierto o leído una pieza.
+     *
+     * Lo manda el navegador y no el render del servidor, que es lo que hace el número
+     * honesto: la salida pública está cacheada, así que contar en el render cuenta renders
+     * —una vez por minuto por muy leída que sea la pieza— y de paso cuenta a los robots, que
+     * no ejecutan JavaScript y por eso aquí no aparecen.
+     *
+     * Responde 202: se ha aceptado el aviso, no se ha creado nada que el cliente pueda pedir.
+     */
+    public function view(Request $request, string $year, string $month, string $day, string $slug): JsonResponse
+    {
+        $data = $request->validate(['event' => 'required|in:open,read']);
+
+        return $this->public->recordView($year, $month, $day, $slug, $data['event'], $request)
+            ? response()->json(['ok' => true], 202)
+            : response()->json(['error' => 'Not found'], 404);
+    }
+
     /** Una sección, o la redirección si la URL pedida es una que dejó atrás. */
     public function category(string $slug): JsonResponse
     {
