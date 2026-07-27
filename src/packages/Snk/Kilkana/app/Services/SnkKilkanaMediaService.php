@@ -45,18 +45,21 @@ class SnkKilkanaMediaService
         return SnkKilkanaMediaModel::withTrashed()->find($id);
     }
 
+    /** Columnas y las dos taxonomias son una sola edicion del inspector: van juntas o no van. */
     public function update(SnkKilkanaMediaModel $media, array $data): SnkKilkanaMediaModel
     {
-        $columns = collect($data)->except(['tag_ids', 'collection_ids'])->all();
-        if ($columns) {
-            $media->update($columns);
-        }
-        if (array_key_exists('tag_ids', $data)) {
-            $media->tags()->sync($data['tag_ids']);
-        }
-        if (array_key_exists('collection_ids', $data)) {
-            $media->collections()->sync($data['collection_ids']);
-        }
+        DB::transaction(function () use ($media, $data) {
+            $columns = collect($data)->except(['tag_ids', 'collection_ids'])->all();
+            if ($columns) {
+                $media->update($columns);
+            }
+            if (array_key_exists('tag_ids', $data)) {
+                $media->tags()->sync($data['tag_ids']);
+            }
+            if (array_key_exists('collection_ids', $data)) {
+                $media->collections()->sync($data['collection_ids']);
+            }
+        });
 
         return $this->serialize($media);
     }
@@ -81,7 +84,13 @@ class SnkKilkanaMediaService
         $media->forceDelete();
     }
 
+    /** Marcar diez fotos y etiquetarlas es UNA accion: no puede quedarse en las cuatro primeras. */
     public function bulk(array $ids, string $action, array $tagIds = [], array $collectionIds = []): void
+    {
+        DB::transaction(fn () => $this->applyBulk($ids, $action, $tagIds, $collectionIds));
+    }
+
+    private function applyBulk(array $ids, string $action, array $tagIds, array $collectionIds): void
     {
         switch ($action) {
             case 'trash':
@@ -160,9 +169,18 @@ class SnkKilkanaMediaService
             return ['media' => $this->serialize($clash), 'duplicate' => true];
         }
 
-        if ($media->disk && $media->path) {
-            Storage::disk($media->disk)->delete($media->path);
-        }
+        // ORDEN, no transaccion: una transaccion de base de datos no deshace un `unlink`.
+        //
+        // Esto borraba el fichero viejo ANTES de escribir el nuevo, asi que un fallo al
+        // guardar —disco lleno, permisos, fichero corrupto— dejaba la fila apuntando a algo
+        // que ya no existia: la foto desaparecia del periodico sin que nada fallara despues.
+        //
+        // Ahora se escribe el nuevo, la fila pasa a apuntarlo, y SOLO entonces se borra el
+        // viejo. Si algo revienta por el camino, lo peor que queda es un fichero huerfano en
+        // disco, que es basura y no una perdida.
+        $anteriorDisk = $media->disk;
+        $anteriorPath = $media->path;
+
         $dir = 'media/'.DB::connection()->getDatabaseName();
         $path = $file->store($dir, 'public');
         [$width, $height] = $this->dimensions($file->getRealPath(), $data);
@@ -178,6 +196,12 @@ class SnkKilkanaMediaService
             'disk' => 'public',
             'path' => $path,
         ]);
+
+        // Ya no lo referencia nadie. La comparacion cubre el caso de que el nombre generado
+        // coincidiera con el anterior: borrarlo seria borrar el que se acaba de escribir.
+        if ($anteriorDisk && $anteriorPath && $anteriorPath !== $path) {
+            Storage::disk($anteriorDisk)->delete($anteriorPath);
+        }
 
         return ['media' => $this->serialize($media), 'duplicate' => false];
     }

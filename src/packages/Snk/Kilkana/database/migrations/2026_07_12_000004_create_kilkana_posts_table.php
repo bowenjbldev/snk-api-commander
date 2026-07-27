@@ -5,6 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Packages\Snk\Kilkana\Enums\SnkKilkanaContentTierEnum;
 use Packages\Snk\Kilkana\Enums\SnkKilkanaPostStatusEnum;
+use Packages\Snk\Kilkana\Models\SnkKilkanaPostModel;
 
 return new class extends Migration {
     public function up(): void
@@ -17,7 +18,7 @@ return new class extends Migration {
             $table->foreignId('og_image_id')->nullable()->constrained('kilkana_media')->nullOnDelete();
             $table->string('title', 500);
             $table->text('excerpt');
-            $table->string('slug');
+            $table->string('slug', SnkKilkanaPostModel::SLUG_MAX);
             $table->string('seo_title', 500)->nullable();
             $table->text('seo_description')->nullable();
             $table->string('og_title', 500)->nullable();

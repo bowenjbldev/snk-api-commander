@@ -106,7 +106,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         'tags.*' => 'string|max:64',
         // Sin `unique`: la unicidad es la pareja (url_date, slug) y la resuelve el modelo al
         // publicar. Una regla sobre el slug suelto rechazaría el titular que vuelve otro año.
-        'slug' => 'nullable|string|max:255',
+        'slug' => 'nullable|string|max:'.SnkKilkanaPostModel::SLUG_MAX,
         'featured' => 'nullable|boolean',
         'seo_title' => 'nullable|string|max:500',
         'seo_description' => 'nullable|string',
@@ -132,7 +132,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         'body_blocks.*.config' => 'nullable|array',
         'tags' => 'nullable|array',
         'tags.*' => 'string|max:64',
-        'slug' => 'nullable|string|max:255',
+        'slug' => 'nullable|string|max:'.SnkKilkanaPostModel::SLUG_MAX,
         'featured' => 'nullable|boolean',
         'seo_title' => 'nullable|string|max:500',
         'seo_description' => 'nullable|string',

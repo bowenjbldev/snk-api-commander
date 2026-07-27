@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Packages\Snk\Kilkana\Enums\SnkKilkanaContentTierEnum;
 use Packages\Snk\Kilkana\Enums\SnkKilkanaPostStatusEnum;
 
@@ -139,22 +140,94 @@ class SnkKilkanaPostModel extends Model
         return $date && $this->slug ? $date->format('Y/m/d').'/'.$this->slug : null;
     }
 
+    /**
+     * Tope del slug, y de aquí sale también el ancho de la columna.
+     *
+     * 200 es lo que usa WordPress en `post_name`, y deja sitio de sobra en
+     * `kilkana_post_slugs.path`, que guarda la ruta ENTERA: 200 + los 11 de la fecha = 211,
+     * lejos de sus 255.
+     *
+     * Antes no había tope y la columna eran 255. Como `title` valida hasta 500, un titular
+     * largo derivaba un slug que no cabía y el alta moría con un `1406 Data too long` —y
+     * renombrar un artículo de slug largo hacía lo mismo sobre `path`, dejando la redirección
+     * sin grabar—. El tope al derivar es lo que cierra las dos.
+     */
+    public const SLUG_MAX = 200;
+
+    /** Recorta sin dejar el guion colgando, que daría `mi-titular-` de URL. */
+    private static function capSlug(string $slug, int $max = self::SLUG_MAX): string
+    {
+        return rtrim(mb_substr($slug, 0, $max), '-');
+    }
+
+    /**
+     * Una ruta está ocupada si la tiene otro artículo **o si la conserva el historial de otro**.
+     *
+     * La segunda mitad es la que faltaba, y es la que importa: una URL retirada sigue
+     * redirigiendo, así que no está libre. Sin esta comprobación, un artículo podía adoptar la
+     * URL que otro acababa de dejar y el guardado **borraba la redirección del primero** —sus
+     * lectores pasaban a aterrizar en la pieza equivocada, con un 200 y sin aviso—.
+     *
+     * `$ignoreId` deja fuera al propio artículo, para que revertir un renombrado siga siendo
+     * posible: su propia URL vieja no puede bloquearle.
+     */
+    public static function pathTaken(string $date, string $slug, ?int $ignoreId = null): bool
+    {
+        $enArticulos = self::query()
+            ->where('url_date', $date)
+            ->where('slug', $slug)
+            ->when($ignoreId, fn (Builder $query) => $query->whereKeyNot($ignoreId))
+            ->exists();
+
+        if ($enArticulos) {
+            return true;
+        }
+
+        return SnkKilkanaPostSlugModel::query()
+            ->where('path', str_replace('-', '/', $date).'/'.$slug)
+            ->when($ignoreId, fn (Builder $query) => $query->where('post_id', '!=', $ignoreId))
+            ->exists();
+    }
+
     protected static function booted(): void
     {
         static::saving(function (self $post) {
             // Sin slug no hay URL: se deriva del titular. `articulo` cubre el titular que no
             // deja slug latino (CJK) y el borrador sin título todavía.
             if (! $post->slug) {
-                $post->slug = Str::slug((string) $post->title) ?: 'articulo';
+                $post->slug = self::capSlug(Str::slug((string) $post->title)) ?: 'articulo';
+            } else {
+                // Quien no pasa por la validación de la API —seeder, consola— también entra
+                // aquí: mejor recortado que un 500.
+                $post->slug = self::capSlug((string) $post->slug);
             }
 
             // Se SELLA al publicar y solo la primera vez. Después, corregir `publish_at`
             // —para arreglar la hora de un cierre, por ejemplo— ya no mueve la URL.
+            $sellado = false;
             if ($post->status === SnkKilkanaPostStatusEnum::Published && ! $post->url_date) {
                 // La cadena, no el atributo: el cast lo devuelve como Carbon en cuanto se lee.
                 $date = ($post->publish_at ?? now())->toDateString();
                 $post->url_date = $date;
                 $post->slug = self::freeSlug($post->slug, $date, $post->id);
+                $sellado = true;
+            }
+
+            // Mover la URL de una pieza YA sellada es un acto deliberado, y se comprueba.
+            // Antes no lo comprobaba nadie: hacia un slug ocupado reventaba con un 1062 —un
+            // 500 con el SQL dentro— y hacia uno que estuviera en el historial de otro
+            // artículo borraba su redirección. Aquí se para con un 422 que se explica, igual
+            // que al elegir a mano la URL de una firma o de una etiqueta.
+            if (! $sellado && $post->url_date && ($post->isDirty('slug') || $post->isDirty('url_date'))) {
+                $date = $post->url_date instanceof \DateTimeInterface
+                    ? $post->url_date->format('Y-m-d')
+                    : (string) $post->url_date;
+
+                if (self::pathTaken($date, (string) $post->slug, $post->id)) {
+                    throw ValidationException::withMessages([
+                        'slug' => 'That article URL is already in use, now or by a redirect; choose another.',
+                    ]);
+                }
             }
         });
     }
@@ -166,18 +239,20 @@ class SnkKilkanaPostModel extends Model
      */
     private static function freeSlug(string $slug, string $date, ?int $ignoreId): string
     {
-        $taken = fn (string $candidate) => self::query()
-            ->where('url_date', $date)
-            ->where('slug', $candidate)
-            ->when($ignoreId, fn ($q) => $q->whereKeyNot($ignoreId))
-            ->exists();
+        // Cuenta también el historial: una URL retirada sigue apuntando a su artículo, así que
+        // una pieza nueva no puede nacer encima de ella.
+        $taken = fn (string $candidate) => self::pathTaken($date, $candidate, $ignoreId);
 
         if (! $taken($slug)) {
             return $slug;
         }
-        for ($n = 2; $taken($slug.'-'.$n); $n++) {
+
+        // El sufijo también tiene que caber: se recorta la base para dejarle sitio, o un slug
+        // que llegue justo al tope se saldría de la columna al desempatarlo.
+        $base = self::capSlug($slug, self::SLUG_MAX - 4);
+        for ($n = 2; $taken($base.'-'.$n); $n++) {
         }
 
-        return $slug.'-'.$n;
+        return $base.'-'.$n;
     }
 }

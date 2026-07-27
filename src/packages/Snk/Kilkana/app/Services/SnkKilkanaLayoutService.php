@@ -2,6 +2,7 @@
 
 namespace Packages\Snk\Kilkana\Services;
 
+use Illuminate\Support\Facades\DB;
 use Packages\Snk\Kilkana\Models\SnkKilkanaLayoutModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaLayoutRevisionModel;
 
@@ -25,10 +26,15 @@ class SnkKilkanaLayoutService
             return ['row' => $row, 'conflict' => true];
         }
 
-        $this->snapshot($row, $userId);
-        $row->schema = $schema;
-        $row->version = $row->version + 1;
-        $row->save();
+        // La instantanea y el guardado son lo mismo: una portada guardada sin su copia de
+        // seguridad deja el historial con un salto, y es justo el historial lo que permite
+        // deshacer una composicion que rompio la portada.
+        DB::transaction(function () use ($row, $schema, $userId) {
+            $this->snapshot($row, $userId);
+            $row->schema = $schema;
+            $row->version = $row->version + 1;
+            $row->save();
+        });
 
         return ['row' => $row, 'conflict' => false];
     }
@@ -57,10 +63,12 @@ class SnkKilkanaLayoutService
             return null;
         }
 
-        $this->snapshot($row, $userId);
-        $row->schema = $revision->schema;
-        $row->version = $row->version + 1;
-        $row->save();
+        DB::transaction(function () use ($row, $revision, $userId) {
+            $this->snapshot($row, $userId);
+            $row->schema = $revision->schema;
+            $row->version = $row->version + 1;
+            $row->save();
+        });
 
         return $row;
     }

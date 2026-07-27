@@ -16,7 +16,7 @@ audiencia y sus etiquetas.
 | `og_image_id` | bigint unsigned | sí | Imagen para redes, cuando la portada no vale. |
 | `title` | varchar(500) | no | Titular. |
 | `excerpt` | text | no | Entradilla. |
-| `slug` | varchar(255) | no | Parte legible de la URL. Se deriva del titular si no llega. |
+| `slug` | varchar(200) | no | Parte legible de la URL. Se deriva del titular si no llega, recortando a 200. |
 | `seo_title` | varchar(500) | sí | Titular para buscadores. Nulo = se usa `title`. |
 | `seo_description` | text | sí | Descripción para buscadores. Nula = se usa `excerpt`. |
 | `og_title` | varchar(500) | sí | Titular para redes. Nulo = cae a `seo_title` y luego a `title`. |
@@ -210,6 +210,12 @@ renombrar el titular y mover la fecha.
 **Resuelve en un salto**: como guarda `post_id` y no la ruta destino, una URL vieja siempre
 apunta a la actual, aunque haya habido tres renombrados. No se forman cadenas.
 
+**El ancho de `path` depende del de `slug`**, y por eso el slug tiene tope. La ruta son los
+11 caracteres de la fecha más el slug: con el tope en 200, el máximo es 211 y estos 255
+sobran. Sin tope no salía la cuenta —el slug llegaba a 255 y la ruta a 266—, así que
+renombrar un artículo de titular largo fallaba **aquí**, al ir a grabar la redirección, con
+el artículo ya guardado. Si algún día se sube el tope del slug, esta columna sube con él.
+
 Dos reglas al renombrar:
 
 1. La ruta anterior entra en el historial.
@@ -218,6 +224,30 @@ Dos reglas al renombrar:
 
 El `único` sobre `path` significa que una URL vieja apunta a **un** artículo: si dos piezas
 pudieran reclamar la misma ruta retirada, la redirección no sería decidible.
+
+### Una URL retirada no vuelve a estar libre
+
+Esta es la regla que hace que lo anterior se sostenga: **una ruta que está en el historial
+cuenta como ocupada**, igual que si la tuviera un artículo vivo. Sigue redirigiendo, así que
+no está libre.
+
+Cuenta en los dos momentos en que se decide una URL:
+
+- **Al publicar**, el desempate mira artículos **y** historial, así que una pieza nueva no
+  nace encima de una redirección viva — le toca `-2`.
+- **Al renombrar** una pieza ya publicada, se comprueba antes de guardar y, si la ruta es de
+  otro, se responde **422**. El propio artículo queda excluido: revertir un renombrado tiene
+  que seguir siendo posible, y su URL vieja no puede bloquearle.
+
+Sin esta regla pasaban dos cosas, las dos silenciosas. Renombrar hacia un slug ya ocupado el
+mismo día reventaba contra el índice único con un error de base de datos en la respuesta. Y
+renombrar hacia una ruta que otro artículo tenía retirada **borraba su redirección**: quien
+siguiera un enlace antiguo del primero aterrizaba en el segundo, con un 200 y sin ninguna
+señal de que había cambiado de artículo.
+
+Por eso el borrado del historial va acotado **por artículo**: al adoptar una ruta solo se
+retira la propia. Es cinturón sobre tirantes —el modelo ya no deja adoptar la de otro—, pero
+protege a los datos que se crearan antes de la regla.
 
 ---
 
@@ -291,8 +321,8 @@ día, y la tabla crece con el catálogo y no con el tráfico.
 | Columna | Tipo | Nulo | Qué es |
 |---|---|---|---|
 | `id` | bigint unsigned | no | Clave primaria. |
-| `name` | varchar(255) | no · **único** | Nombre visible. Es aquí donde conviene que falle un duplicado. |
-| `slug` | varchar(255) | no · **único** | Forma para URL. |
+| `name` | varchar(255) | no · **único** | Nombre visible, tal y como se escribió la primera vez. |
+| `slug` | varchar(255) | no · **único** | Forma para URL, y **lo que identifica a la etiqueta**. |
 | `created_at` · `updated_at` | timestamp | sí | Alta y última modificación. |
 
 **`kilkana_post_tag`** — `id`, `post_id`, `tag_id`, con único `(post_id, tag_id)`. Ambas
@@ -301,10 +331,30 @@ claves foráneas en CASCADE: borrar un artículo o una etiqueta limpia el pivote
 Las etiquetas son de **tema** («elecciones», «sequía»), transversales a las secciones. Se
 crean sobre la marcha al escribir una que no existe.
 
-> Cuidado con la unicidad de `name`: las comparaciones ignoran mayúsculas y acentos, así que
-> `'Sequía'` y `'sequia'` son la misma etiqueta. Es lo que evita que la lista se llene de
-> variantes, pero también significa que la protección viene del cotejamiento de la base y no
-> de una normalización explícita: si algún día cambia, aparecerán duplicados.
+### Lo que identifica a una etiqueta es su slug
+
+Las dos columnas son únicas, pero **no protegen lo mismo**, y la que manda es `slug`.
+
+`name` es único por cotejamiento: las comparaciones ignoran mayúsculas y acentos, así que
+`'Sequía'` y `'sequia'` ya eran la misma etiqueta. Lo que no cubría era la **puntuación**:
+
+```
+«Covid-19»  y  «Covid 19»     →  dos nombres distintos, un solo slug: covid-19
+```
+
+Eso son dos filas para la base y una sola cosa para un lector, y como `slug` es único la
+segunda no cabía. Por eso quien escribe una etiqueta al vuelo —el caso normal: alguien
+teclea el tema de su artículo— **busca por slug**: si ya hay una con ese slug, se usa esa.
+Las variantes de escritura se colapsan solas.
+
+Consecuencia asumida: dos nombres realmente distintos que produzcan el mismo slug —`C++` y
+`C#`, que al quitar los símbolos quedan los dos en `c`— se colapsan también. Quien necesite
+separarlos crea la segunda a mano dándole un slug propio; ahí sí se avisa de que el slug
+está ocupado en vez de decidir por nadie.
+
+Un nombre sin ninguna letra latina (`###`, solo emoji) no deja segmento de URL: en ese caso
+el slug se deriva del propio nombre (`tag-5c5b8251`). No es bonito, pero es estable, no
+choca con nada y no impide guardar el artículo.
 
 ---
 

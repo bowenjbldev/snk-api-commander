@@ -147,6 +147,38 @@ cada enumeración.
 - `SET NULL` — la referencia se anula y la fila sobrevive. Está en la autoría: el artículo
   no desaparece porque se dé de baja a quien lo escribió.
 
+**Transacciones.** El criterio no es cuántas tablas se tocan, sino si forman **un agregado**:
+un conjunto que se guarda y se lee como una unidad y tiene una raíz. Aquí hay cuatro.
+
+| Raíz | Lo que arrastra |
+|---|---|
+| Artículo | `kilkana_posts` · `post_revisions` · `post_tag` · `post_slugs` |
+| Medio | `kilkana_media` · sus dos pivotes de taxonomía |
+| Composición | `kilkana_layouts` · `layout_revisions` |
+| Sección · Firma · Comentario · Suscriptor · Ajustes | cada una sola |
+
+De ahí salen tres reglas:
+
+1. **Una operación de negocio, una transacción**, y la abre quien conoce la operación entera.
+   Guardar un artículo escribe en cuatro tablas y es **una** transacción porque es **un**
+   agregado, no porque sean cuatro tablas. Una escritura suelta ya es atómica y no necesita
+   nada.
+2. **Un agregado por transacción.** Cuando una operación toca dos, no se envuelven juntos: se
+   guarda el principal y el otro queda como mejor-esfuerzo **con una señal visible**. Es lo que
+   pasa al dar de alta una cuenta con permiso de escritura: la cuenta se guarda aunque su firma
+   no se pueda crear, y la respuesta lo dice (`byline_pending`). Guardar un usuario no puede
+   fallar por su URL pública.
+3. **Dentro no entra nada que no sea base de datos.** Ni ficheros, ni peticiones a otros
+   servicios, ni correo. No se deshacen con un `ROLLBACK`, y mientras la transacción está
+   abierta los bloqueos de fila siguen puestos: meter dentro la subida de un fichero es tener
+   la fila bloqueada lo que tarde el disco. Los efectos van **después** de confirmar.
+
+Dos excepciones asumidas, las dos por el mismo motivo —el avance parcial vale más que el
+todo-o-nada—: **el reemplazo de un fichero** de la biblioteca, que se ordena en vez de
+envolverse (escribe el nuevo · apunta la fila · borra el viejo, para que un fallo deje basura
+en disco y nunca una referencia rota); y **la publicación programada**, que va pieza a pieza
+para que una rota no impida salir a las demás ese minuto — vuelve a intentarlo al siguiente.
+
 **Datos estructurados.** Varias columnas guardan JSON dentro de un `longtext`. La base no
 valida su forma; cada documento describe qué estructura espera.
 
