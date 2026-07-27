@@ -8,6 +8,7 @@ use Packages\Snk\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaAuthorSlugModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCategorySlugModel;
+use Packages\Snk\Kilkana\Enums\SnkKilkanaCommentStatusEnum;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCommentModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaLayoutModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaPostModel;
@@ -214,7 +215,7 @@ class SnkKilkanaPublicService
 
         return SnkKilkanaCommentModel::query()
             ->where('post_id', $postId)
-            ->where('status', 'approved')
+            ->approved()
             ->with('user:id,name')
             ->orderBy('created_at')
             ->get(['id', 'post_id', 'user_id', 'parent_id', 'author_name', 'body', 'created_at']);
@@ -227,7 +228,7 @@ class SnkKilkanaPublicService
             $parentId = SnkKilkanaCommentModel::query()
                 ->where('id', $data['parent_id'])
                 ->where('post_id', $postId)
-                ->where('status', 'approved')
+                ->approved()
                 ->value('id');
             if ($parentId === null) {
                 return false;
@@ -241,7 +242,7 @@ class SnkKilkanaPublicService
             'author_name' => $data['author_name'],
             'author_email' => strtolower($data['author_email']),
             'body' => $data['body'],
-            'status' => 'pending',
+            'status' => SnkKilkanaCommentStatusEnum::Pending,
         ]);
 
         return true;

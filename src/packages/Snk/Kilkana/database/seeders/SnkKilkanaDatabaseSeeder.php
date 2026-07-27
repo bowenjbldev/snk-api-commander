@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Snk\Kilkana\Enums\SnkKilkanaCategoryStatusEnum;
+use Packages\Snk\Kilkana\Enums\SnkKilkanaCommentStatusEnum;
 use Packages\Snk\Kilkana\Enums\SnkKilkanaMediaRightsEnum;
 use Packages\Snk\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCategoryModel;
@@ -469,7 +470,9 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                     'body' => $esSpam ? $spam[$slot % count($spam)] : $bodies[$slot % count($bodies)],
                 ], [
                     // Uno de cada tres queda pendiente: la moderación tiene cola que enseñar.
-                    'status' => $esSpam ? 'spam' : ($slot % 3 === 0 ? 'pending' : 'approved'),
+                    'status' => $esSpam
+                        ? SnkKilkanaCommentStatusEnum::Spam
+                        : ($slot % 3 === 0 ? SnkKilkanaCommentStatusEnum::Pending : SnkKilkanaCommentStatusEnum::Approved),
                     // Repartidos por las últimas cuatro semanas: sin esto entran todos a la
                     // vez y el filtro de periodo del panel no distingue nada.
                     'created_at' => now()->subHours(($slot * 7) % 672),
@@ -489,7 +492,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                         'parent_id' => $comment->id,
                         'body' => 'Justo lo que iba a comentar. Añado que la última parte contradice lo que publicasteis en mayo.',
                     ], [
-                        'status' => 'approved',
+                        'status' => SnkKilkanaCommentStatusEnum::Approved,
                         'created_at' => now()->subHours(max(0, (($slot * 7) % 672) - 3)),
                         'updated_at' => now()->subHours(max(0, (($slot * 7) % 672) - 3)),
                     ]);

@@ -2,6 +2,7 @@
 
 namespace Packages\Snk\Kilkana\Services;
 
+use Packages\Snk\Kilkana\Enums\SnkKilkanaCommentStatusEnum;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCommentModel;
 
 class SnkKilkanaCommentService
@@ -18,7 +19,7 @@ class SnkKilkanaCommentService
         return SnkKilkanaCommentModel::create([
             ...$data,
             'user_id' => $userId,
-            'status' => 'pending',
+            'status' => SnkKilkanaCommentStatusEnum::Pending,
         ]);
     }
 
@@ -33,8 +34,9 @@ class SnkKilkanaCommentService
             return $count;
         }
 
-        return $query->update([
-            'status' => $action === 'approve' ? 'approved' : $action,
-        ]);
+        // La accion `approve` no se llama igual que el estado al que lleva; las otras dos si.
+        $estado = SnkKilkanaCommentStatusEnum::from($action === 'approve' ? 'approved' : $action);
+
+        return $query->update(['status' => $estado]);
     }
 }

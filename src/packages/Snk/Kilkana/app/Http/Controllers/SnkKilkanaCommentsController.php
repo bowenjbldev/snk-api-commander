@@ -6,6 +6,7 @@ use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
+use Packages\Snk\Kilkana\Enums\SnkKilkanaCommentStatusEnum;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCommentModel;
 use Packages\Snk\Kilkana\Services\SnkKilkanaCommentService;
 
@@ -18,7 +19,11 @@ use Packages\Snk\Kilkana\Services\SnkKilkanaCommentService;
 #[Group('Comments')]
 class SnkKilkanaCommentsController extends CoreBaseApiController
 {
-    public function __construct(private readonly SnkKilkanaCommentService $comments) {}
+    /** `rule()` es una llamada, y una propiedad no se inicializa con eso: va aquí. */
+    public function __construct(private readonly SnkKilkanaCommentService $comments)
+    {
+        $this->validationRulesUpdate['status'] = 'required|'.SnkKilkanaCommentStatusEnum::rule();
+    }
 
     protected string $modelClass = SnkKilkanaCommentModel::class;
 
@@ -33,9 +38,7 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
     protected string $destroyPermission = 'delete comments';
 
     // Moderación: solo el estado; el cuerpo y la autoría no se reescriben.
-    protected array $validationRulesUpdate = [
-        'status' => 'required|in:pending,approved,spam',
-    ];
+    protected array $validationRulesUpdate = [];
 
     protected array $allowedWith = ['user', 'post', 'replies'];
 
