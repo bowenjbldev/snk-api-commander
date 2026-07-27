@@ -13,8 +13,8 @@ distinción es justo lo que necesita saber quien vaya a tocar algo.
 | | Documento | Tablas |
 |---|---|---|
 | 1 | [Cuentas y permisos](01-cuentas-y-permisos.md) | `users` · `roles` · `permissions` · los tres pivotes |
-| 2 | [Firmas](02-firmas.md) | `kilkana_authors` |
-| 3 | [Secciones](03-secciones.md) | `kilkana_categories` |
+| 2 | [Firmas](02-firmas.md) | `kilkana_authors` · `kilkana_author_slugs` |
+| 3 | [Secciones](03-secciones.md) | `kilkana_categories` · `kilkana_category_slugs` |
 | 4 | [Artículos](04-articulos.md) | `kilkana_posts` · `kilkana_post_slugs` · `kilkana_post_revisions` · `kilkana_post_views` · `kilkana_tags` · `kilkana_post_tag` |
 | 5 | [Biblioteca de medios](05-medios.md) | `kilkana_media` · `kilkana_media_tags` · `kilkana_media_collections` · sus dos pivotes |
 | 6 | [Comentarios y suscriptores](06-comentarios-y-suscriptores.md) | `kilkana_comments` · `kilkana_subscribers` |
@@ -146,6 +146,36 @@ cada enumeración.
   no significa nada por separado.
 - `SET NULL` — la referencia se anula y la fila sobrevive. Está en la autoría: el artículo
   no desaparece porque se dé de baja a quien lo escribió.
+
+**URLs públicas: quien tiene slug, tiene historial.** Una entidad que se publica en una URL
+propia —artículo, firma, sección— necesita **su tabla de rutas retiradas**, y esto es una
+regla, no una opción:
+
+| Entidad | Su historial | Ruta que guarda |
+|---|---|---|
+| `kilkana_posts` | `kilkana_post_slugs` | `2026/06/28/titular-viejo` |
+| `kilkana_authors` | `kilkana_author_slugs` | `jorge-bowen` |
+| `kilkana_categories` | `kilkana_category_slugs` | `tecnologia` |
+
+Todas tienen la misma forma: `id`, la clave foránea a su dueño en **CASCADE**, `path`
+**único**, y las marcas de tiempo. Guardan la ruta **de origen** y no la de destino: el
+destino sale de la clave foránea, y por eso una URL vieja resuelve **en un salto** aunque
+haya habido tres renombrados, sin encadenar redirecciones.
+
+**Por qué una tabla por entidad y no una compartida.** Se valoró una sola tabla polimórfica
+—una columna con el nombre del modelo, al estilo de los paquetes de Spatie—. Se descartó por
+dos motivos. Una columna polimórfica **no admite clave foránea**, así que borrar una firma
+dejaría filas apuntando a un id muerto y la regla de borrado pasaría de la base al código.
+Y el conjunto de entidades con URL es **cerrado y pequeño**: el polimorfismo resuelve el caso
+contrario, el de tipos abiertos y desconocidos. Además cada ruta tiene forma distinta —la del
+artículo lleva la fecha delante— y compartir columna las obligaría a compartir espacio de
+nombres sin necesitarlo.
+
+**Añadir una entidad publicable = añadir su tabla en la misma migración.** No después: el
+momento del renombrado es el único en que existe la ruta vieja, y si nadie la guarda ahí, se
+pierde para siempre. La regla que las tres comparten es que **una URL retirada no vuelve a
+estar libre** — sigue redirigiendo, así que ninguna otra entidad puede adoptarla, y quien lo
+intente recibe un 422.
 
 **Transacciones.** El criterio no es cuántas tablas se tocan, sino si forman **un agregado**:
 un conjunto que se guarda y se lee como una unidad y tiene una raíz. Aquí hay cuatro.

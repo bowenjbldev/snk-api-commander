@@ -118,6 +118,30 @@ La forma evidente es una bandera. Lo que hay que decidir es cuál de las dos sig
 se vea pero no se anuncie a los buscadores —como el `noindex` de un artículo— o que no
 aparezca siquiera en la navegación.
 
+## `kilkana_category_slugs` — las URLs que dejó atrás
+
+| Columna | Tipo | Nulo | Qué es |
+|---|---|---|---|
+| `id` | bigint unsigned | no | Clave primaria. |
+| `category_id` | bigint unsigned | no | Sección a la que apunta. **CASCADE.** |
+| `path` | varchar(64) | no · **único** | El slug antiguo: `technology`. |
+| `created_at` · `updated_at` | timestamp | sí | Alta y última modificación. |
+
+De las tres tablas de este tipo, esta es la que más protege: **la página de una sección es la
+que más enlaces externos acumula** en un periódico, porque compite por el nombre del tema y no
+por una noticia concreta. Renombrar «Technology» a «Tecnología» sin esto tira todos esos
+enlaces a la vez.
+
+Funciona igual que la de artículos y la de firmas: al renombrar, la ruta que la sección deja
+entra en el historial y la que adopta sale de él si era suya. **Una URL retirada no vuelve a
+estar libre**, así que otra sección no puede adoptarla — recibe un 422.
+
+> Pendiente del lado de la lectura: la resolución de una sección retirada necesita un punto
+> de entrada por slug. Hoy la salida pública pide el catálogo entero (`public/categories`) y
+> busca la suya en memoria, así que una URL retirada no encuentra a dónde ir. La escritura ya
+> es correcta: el dato se está guardando desde el primer renombrado, que es lo que no se puede
+> recuperar después.
+
 ## `slug` es único en todo el periódico
 
 También entre niveles: no puede haber una raíz `motor` y una hija `motor`. Cada sección

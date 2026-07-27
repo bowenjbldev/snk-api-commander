@@ -7,9 +7,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Packages\Snk\Kilkana\Models\Concerns\SnkKilkanaRetiredSlugsSupport;
 
 class SnkKilkanaCategoryModel extends Model
 {
+    use SnkKilkanaRetiredSlugsSupport;
+
     protected $table = 'kilkana_categories';
 
     protected $guarded = [];
@@ -48,6 +51,22 @@ class SnkKilkanaCategoryModel extends Model
     public function parent(): BelongsTo
     {
         return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    /** Las URLs que esta sección ha dejado atrás; el trait las mantiene. */
+    public function retiredSlugs(): HasMany
+    {
+        return $this->hasMany(SnkKilkanaCategorySlugModel::class, 'category_id');
+    }
+
+    public static function retiredSlugModel(): string
+    {
+        return SnkKilkanaCategorySlugModel::class;
+    }
+
+    public static function retiredSlugOwnerKey(): string
+    {
+        return 'category_id';
     }
 
     public function children(): HasMany

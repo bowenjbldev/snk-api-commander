@@ -210,6 +210,41 @@ renombrar el titular y mover la fecha.
 **Resuelve en un salto**: como guarda `post_id` y no la ruta destino, una URL vieja siempre
 apunta a la actual, aunque haya habido tres renombrados. No se forman cadenas.
 
+### Cómo funciona
+
+**Cuándo nace una fila.** Solo al cambiar la URL de un artículo **ya publicado** —el titular
+o la fecha—. Un borrador no tiene URL pública que conservar, y publicar por primera vez no
+deja nada atrás. Por eso la tabla nace vacía y sigue vacía hasta que alguien edita de verdad:
+en un juego de datos recién sembrado hay cero filas, y eso es correcto.
+
+Al renombrar pasan dos cosas, en este orden:
+
+```
+la ruta que el artículo DEJA   →  entra en el historial apuntando a él
+la ruta que el artículo TOMA   →  sale del historial, si estaba (solo la suya)
+```
+
+La segunda evita que una ruta sea a la vez la URL actual y una redirección hacia sí misma,
+que es lo que pasaría al renombrar `a → b` y arrepentirse.
+
+**Cómo se resuelve una petición.** Cuando llega `/2026/06/28/titular`, se intenta en tres
+pasos y se para en el primero que responde:
+
+1. **¿Hay un artículo publicado con esa fecha y ese slug?** Se sirve, y se cuenta la lectura.
+   Es el camino de todos los días; el historial ni se toca.
+2. **¿Está esa ruta en el historial?** Se busca su artículo y, **si sigue publicado**, se
+   responde una redirección permanente a su URL de ahora. Que se compruebe el estado importa:
+   una pieza despublicada no puede recibir tráfico por la puerta de atrás.
+3. **¿Hay exactamente un artículo publicado con ese slug, en cualquier fecha?** Se redirige a
+   él. Esto **no necesita el historial**: repara una URL con la fecha mal escrita o teclada a
+   mano. Si hay dos, no se elige por nadie.
+
+Si ninguno responde, es un 404 de verdad.
+
+El paso 3 es también la razón de que la fecha de la URL no sea decorativa: si los segmentos no
+casan con la sellada, se redirige a la buena en vez de servir el artículo. Sin eso, el mismo
+artículo viviría en infinitas URLs y cada una competiría con las demás.
+
 **El ancho de `path` depende del de `slug`**, y por eso el slug tiene tope. La ruta son los
 11 caracteres de la fecha más el slug: con el tope en 200, el máximo es 211 y estos 255
 sobran. Sin tope no salía la cuenta —el slug llegaba a 255 y la ruta a 266—, así que

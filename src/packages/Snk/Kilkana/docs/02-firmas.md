@@ -60,6 +60,10 @@ repetirse —la URL— ya lo protege `slug`.
 `slug` se fija al crear la firma y **no se recalcula**: es la URL pública, y moverla rompe
 cada enlace que apunte ahí. Cambiarlo es una acción deliberada.
 
+Y se puede cambiar, pero **no vaciar**: la columna no admite nulo y el derivador solo corre
+al crear la firma, así que no hay nadie que rellene el hueco después. Una firma que ya
+existe tiene URL siempre.
+
 Al crear una firma sin slug, se deriva bajando dos peldaños y **parándose**:
 
 ```
@@ -76,6 +80,28 @@ Esa negativa no puede tumbar el alta de una **cuenta**: cuando una cuenta con pe
 escritura no consigue firma, la cuenta se guarda igual y queda sin ella, disponible para
 que alguien le asigne una URL después. Guardar un usuario no puede fallar por su firma.
 
+### `kilkana_author_slugs` — las URLs que dejó atrás
+
+| Columna | Tipo | Nulo | Qué es |
+|---|---|---|---|
+| `id` | bigint unsigned | no | Clave primaria. |
+| `author_id` | bigint unsigned | no | Firma a la que apunta. **CASCADE.** |
+| `path` | varchar(255) | no · **único** | El slug antiguo: `pedro-aranda`. |
+| `created_at` · `updated_at` | timestamp | sí | Alta y última modificación. |
+
+Cambiar el seudónimo de alguien mueve su ficha de dirección, y los enlaces que ya existen
+fuera —de otro medio, de una red social, del currículum de esa persona— apuntan a la vieja.
+Esta tabla es lo que hace que sigan llegando.
+
+Se escribe sola al renombrar: la ruta que la firma deja entra en el historial, y la que
+adopta sale de él si era suya —o apuntaría a sí misma—. La ficha pública la consulta: si el
+slug pedido no es de nadie pero está aquí, se responde el actual para que quien pregunte
+redirija.
+
+**Una URL retirada no vuelve a estar libre.** Otra firma no puede adoptar el seudónimo que
+esta dejó: recibe un 422. Si pudiera, la redirección de la primera se perdería y sus lectores
+acabarían en la ficha de otra persona.
+
 ## Una firma colectiva es una cuenta de servicio
 
 «Redacción» o «Agencias» no son personas, y `user_id` es obligatorio. El hueco se cubre sin
@@ -89,16 +115,6 @@ sigue siendo la persona que los tecleó.
 autor. `users.company` es la organización de la cuenta y se queda dentro. Son datos
 distintos aunque suenen parecido — la mesa de redacción llegó a guardarse en `company`, y
 eso dejaba un dato editorial en la columna administrativa.
-
-## `website` y `socials` son enlaces que se publican
-
-Las dos columnas acaban en un enlace de la ficha pública, así que lo que se guarde ahí lo
-va a pulsar un lector. Quien escriba en esta tabla tiene que acotar el **esquema** a `http`
-y `https`: la base guarda cualquier cadena, y `javascript:…` o `data:text/html,…` son
-direcciones válidas para un navegador que ejecutan código en la página del periódico.
-
-No es una restricción de la base porque no puede serlo —no hay forma de escribir «esto es
-una URL de verdad» en la columna—, así que vive en la validación de la API.
 
 ## `website` y `socials` son enlaces que se publican
 

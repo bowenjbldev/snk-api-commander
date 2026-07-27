@@ -18,25 +18,43 @@ class SnkKilkanaLayoutService
         );
     }
 
-    /** @return array{row: SnkKilkanaLayoutModel, conflict: bool} */
+    /**
+     * Guarda si nadie se ha adelantado, y si se adelantó devuelve conflicto.
+     *
+     * La comprobación de version y la escritura van bajo el MISMO bloqueo de fila. Comprobar
+     * fuera de la transacción no sirve de nada: dos personas guardando la portada a la vez
+     * leían la version 3, las dos pasaban la comprobación y las dos escribían la 4 — la
+     * segunda pisaba a la primera, las dos recibían 200, y quien perdió su trabajo no se
+     * enteraba. Medido: de seis guardados simultáneos declarando la misma version, DOS
+     * respondían 200. Con el bloqueo, el segundo espera, relee la version ya incrementada y
+     * se lleva su 409.
+     *
+     * `get()` va antes y fuera a propósito: crea la fila si es la primera vez, y no se puede
+     * bloquear una fila que todavía no existe.
+     *
+     * @return array{row: SnkKilkanaLayoutModel, conflict: bool}
+     */
     public function update(string $layout, array $schema, int $version, ?int $userId): array
     {
-        $row = $this->get($layout);
-        if ($version !== (int) $row->version) {
-            return ['row' => $row, 'conflict' => true];
-        }
+        $this->get($layout);
 
-        // La instantanea y el guardado son lo mismo: una portada guardada sin su copia de
-        // seguridad deja el historial con un salto, y es justo el historial lo que permite
-        // deshacer una composicion que rompio la portada.
-        DB::transaction(function () use ($row, $schema, $userId) {
+        return DB::transaction(function () use ($layout, $schema, $version, $userId) {
+            $row = $this->locked($layout);
+
+            if ($version !== (int) $row->version) {
+                return ['row' => $row, 'conflict' => true];
+            }
+
+            // La instantanea y el guardado son lo mismo: una portada guardada sin su copia de
+            // seguridad deja el historial con un salto, y es justo el historial lo que permite
+            // deshacer una composicion que rompio la portada.
             $this->snapshot($row, $userId);
             $row->schema = $schema;
             $row->version = $row->version + 1;
             $row->save();
-        });
 
-        return ['row' => $row, 'conflict' => false];
+            return ['row' => $row, 'conflict' => false];
+        });
     }
 
     public function revisions(string $layout)
@@ -50,27 +68,37 @@ class SnkKilkanaLayoutService
             ->get();
     }
 
+    /** Restaurar también bloquea: sube la version, así que compite con un guardado normal. */
     public function restore(string $layout, $revisionId, ?int $userId): ?SnkKilkanaLayoutModel
     {
-        $row = SnkKilkanaLayoutModel::query()->where('layout', $layout)->first();
-        $revision = $row
-            ? SnkKilkanaLayoutRevisionModel::query()
-                ->whereKey($revisionId)
-                ->where('layout_id', $row->id)
-                ->first()
-            : null;
-        if (! $row || ! $revision) {
-            return null;
-        }
+        return DB::transaction(function () use ($layout, $revisionId, $userId) {
+            $row = $this->locked($layout);
+            $revision = $row
+                ? SnkKilkanaLayoutRevisionModel::query()
+                    ->whereKey($revisionId)
+                    ->where('layout_id', $row->id)
+                    ->first()
+                : null;
+            if (! $row || ! $revision) {
+                return null;
+            }
 
-        DB::transaction(function () use ($row, $revision, $userId) {
             $this->snapshot($row, $userId);
             $row->schema = $revision->schema;
             $row->version = $row->version + 1;
             $row->save();
-        });
 
-        return $row;
+            return $row;
+        });
+    }
+
+    /** La fila con el bloqueo puesto hasta que la transacción confirme. */
+    private function locked(string $layout): ?SnkKilkanaLayoutModel
+    {
+        return SnkKilkanaLayoutModel::query()
+            ->where('layout', $layout)
+            ->lockForUpdate()
+            ->first();
     }
 
     public function payload(SnkKilkanaLayoutModel $row): array

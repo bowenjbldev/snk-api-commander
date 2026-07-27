@@ -10,7 +10,7 @@ distintas del resto: no guardan contenido, guardan **configuración versionada**
 | Columna | Tipo | Nulo | Qué es |
 |---|---|---|---|
 | `id` | bigint unsigned | no | Clave primaria. |
-| `layout` | varchar(16) | no · **único** | Qué página compone. |
+| `layout` | enum | no · **único** | Qué página compone: `front` · `section`. |
 | `schema` | longtext (JSON) | no | La composición entera. |
 | `version` | int unsigned | no · def. 1 | Contador para escrituras concurrentes. |
 | `created_at` · `updated_at` | timestamp | sí | Alta y última modificación. |
@@ -43,6 +43,16 @@ guardado en medio y la escritura se rechaza en vez de pisar su trabajo.
 
 **El conflicto no debe resolverse solo.** Adoptar la versión remota en silencio pierde uno
 de los dos cambios sin que nadie lo sepa; el rechazo tiene que llegar hasta la persona.
+
+**Y la comprobación tiene que ir bajo el mismo bloqueo que la escritura**, o el contador no
+sirve para nada. Leer la versión, compararla y después guardar deja un hueco por el que cabe
+otro guardado entero: los dos leen la 3, los dos pasan la comprobación y los dos escriben la
+4. Medido sobre seis guardados simultáneos declarando la misma versión, **dos respondían 200**
+y uno de los dos perdía su trabajo sin que nada fallara. Con la fila bloqueada desde la
+lectura hasta confirmar, el segundo espera, relee la versión ya subida y recibe su conflicto.
+
+Le aplica igual a **restaurar** una revisión, que también sube la versión y por tanto compite
+con un guardado normal.
 
 ---
 

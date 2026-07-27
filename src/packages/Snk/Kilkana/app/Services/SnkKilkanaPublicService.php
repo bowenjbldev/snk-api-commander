@@ -3,6 +3,7 @@
 namespace Packages\Snk\Kilkana\Services;
 
 use Packages\Snk\Kilkana\Models\SnkKilkanaAuthorModel;
+use Packages\Snk\Kilkana\Models\SnkKilkanaAuthorSlugModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCommentModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaLayoutModel;
@@ -46,14 +47,28 @@ class SnkKilkanaPublicService
         return SnkKilkanaCategoryModel::query()->orderBy('position')->orderBy('id')->get();
     }
 
-    public function author(string $slug): ?array
+    /**
+     * La ficha de una firma, o su nuevo slug si la URL pedida es una que dejó atrás.
+     *
+     * Devuelve cadena para redirigir, igual que `post()`: quien tenga enlazada la ficha con
+     * su seudónimo antiguo llega igual.
+     */
+    public function author(string $slug): array|string|null
     {
         $author = SnkKilkanaAuthorModel::query()
             ->with('avatarMedia:id,url')
             ->where('slug', $slug)
             ->first();
 
-        return $author ? [
+        if (! $author) {
+            $retirada = SnkKilkanaAuthorSlugModel::query()->where('path', $slug)->first();
+
+            return $retirada
+                ? SnkKilkanaAuthorModel::query()->whereKey($retirada->author_id)->value('slug')
+                : null;
+        }
+
+        return [
             'id' => $author->id,
             'name' => $author->name,
             'job_title' => $author->job_title,
@@ -65,7 +80,7 @@ class SnkKilkanaPublicService
             'website' => $author->website,
             'socials' => $author->socials,
             'avatar' => $author->avatarMedia?->url,
-        ] : null;
+        ];
     }
 
     public function post(string $year, string $month, string $day, string $slug): SnkKilkanaPostModel|string|null

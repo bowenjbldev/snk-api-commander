@@ -2,6 +2,7 @@
 
 namespace Packages\Snk\Kilkana\Services;
 
+use Illuminate\Support\Facades\DB;
 use Packages\Snk\Kilkana\Models\SnkKilkanaSettingModel;
 
 class SnkKilkanaSettingService
@@ -23,24 +24,44 @@ class SnkKilkanaSettingService
         );
     }
 
-    /** @return array{row: SnkKilkanaSettingModel, conflict: bool} */
+    /**
+     * Guarda si nadie se ha adelantado. Misma forma que la composición, y por el mismo motivo.
+     *
+     * Comprobar la version fuera de la transacción no detecta nada: dos personas guardando los
+     * ajustes a la vez leen la misma, las dos pasan la comprobación y la segunda pisa a la
+     * primera con un 200 en la mano. Aquí duele además de otra manera —los ajustes se mezclan
+     * sobre lo que ya había, así que una escritura perdida se lleva por delante claves que ni
+     * siquiera se estaban tocando—.
+     *
+     * `get()` va fuera porque crea la fila la primera vez, y no se bloquea lo que no existe.
+     *
+     * @return array{row: SnkKilkanaSettingModel, conflict: bool}
+     */
     public function update(array $data): array
     {
-        $row = $this->get();
-        if (isset($data['version']) && (int) $data['version'] !== (int) $row->version) {
-            return ['row' => $row, 'conflict' => true];
-        }
+        $this->get();
 
-        unset($data['version']);
-        $settings = $row->settings ?? [];
-        if (array_key_exists('tenant', $data) && is_array($data['tenant'])) {
-            $data['tenant'] = array_merge($settings['tenant'] ?? [], $data['tenant']);
-        }
-        $row->settings = array_merge($settings, $data);
-        $row->version = (int) $row->version + 1;
-        $row->save();
+        return DB::transaction(function () use ($data) {
+            $row = SnkKilkanaSettingModel::query()
+                ->whereKey(self::SINGLETON_ID)
+                ->lockForUpdate()
+                ->first();
 
-        return ['row' => $row, 'conflict' => false];
+            if (isset($data['version']) && (int) $data['version'] !== (int) $row->version) {
+                return ['row' => $row, 'conflict' => true];
+            }
+
+            unset($data['version']);
+            $settings = $row->settings ?? [];
+            if (array_key_exists('tenant', $data) && is_array($data['tenant'])) {
+                $data['tenant'] = array_merge($settings['tenant'] ?? [], $data['tenant']);
+            }
+            $row->settings = array_merge($settings, $data);
+            $row->version = (int) $row->version + 1;
+            $row->save();
+
+            return ['row' => $row, 'conflict' => false];
+        });
     }
 
     public function payload(SnkKilkanaSettingModel $row): array

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Packages\Snk\Kilkana\Enums\SnkKilkanaLayoutEnum;
 use Packages\Snk\Kilkana\Http\Controllers\SnkKilkanaAuthController;
 use Packages\Snk\Kilkana\Http\Controllers\SnkKilkanaAuthorsController;
 use Packages\Snk\Kilkana\Http\Controllers\SnkKilkanaCategoriesController;
@@ -43,7 +44,7 @@ Route::middleware(['api'])->group(function () {
     Route::post('public/posts/{year}/{month}/{day}/{slug}/comments', [SnkKilkanaPublicController::class, 'storeComment'])
         ->whereNumber(['year', 'month', 'day'])
         ->middleware('throttle:10,1');
-    Route::get('public/layouts/{layout}', [SnkKilkanaPublicController::class, 'layout'])->whereIn('layout', ['front', 'section']);
+    Route::get('public/layouts/{layout}', [SnkKilkanaPublicController::class, 'layout'])->whereIn('layout', SnkKilkanaLayoutEnum::values());
     Route::get('public/site', [SnkKilkanaPublicController::class, 'site']);
     Route::post('public/subscribe', [SnkKilkanaPublicController::class, 'subscribe'])->middleware('throttle:10,1');
 });
@@ -74,10 +75,10 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
 
     Route::apiResource('subscribers', SnkKilkanaSubscribersController::class)->only(['index', 'show', 'store', 'update', 'destroy']);
 
-    Route::get('layouts/{layout}/revisions', [SnkKilkanaLayoutsController::class, 'revisions'])->whereIn('layout', ['front', 'section'])->middleware('can:show layouts');
-    Route::post('layouts/{layout}/revisions/{revision}/restore', [SnkKilkanaLayoutsController::class, 'restore'])->whereIn('layout', ['front', 'section'])->middleware('can:update layouts');
-    Route::get('layouts/{layout}', [SnkKilkanaLayoutsController::class, 'show'])->whereIn('layout', ['front', 'section'])->middleware('can:show layouts');
-    Route::put('layouts/{layout}', [SnkKilkanaLayoutsController::class, 'update'])->whereIn('layout', ['front', 'section'])->middleware('can:update layouts');
+    Route::get('layouts/{layout}/revisions', [SnkKilkanaLayoutsController::class, 'revisions'])->whereIn('layout', SnkKilkanaLayoutEnum::values())->middleware('can:show layouts');
+    Route::post('layouts/{layout}/revisions/{revision}/restore', [SnkKilkanaLayoutsController::class, 'restore'])->whereIn('layout', SnkKilkanaLayoutEnum::values())->middleware('can:update layouts');
+    Route::get('layouts/{layout}', [SnkKilkanaLayoutsController::class, 'show'])->whereIn('layout', SnkKilkanaLayoutEnum::values())->middleware('can:show layouts');
+    Route::put('layouts/{layout}', [SnkKilkanaLayoutsController::class, 'update'])->whereIn('layout', SnkKilkanaLayoutEnum::values())->middleware('can:update layouts');
 
     Route::get('settings', [SnkKilkanaSettingsController::class, 'show'])->middleware('can:show settings');
     Route::put('settings', [SnkKilkanaSettingsController::class, 'update'])->middleware('can:update settings');

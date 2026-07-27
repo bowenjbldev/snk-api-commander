@@ -46,6 +46,10 @@ class SnkKilkanaPublicController extends Controller
     public function author(string $slug): JsonResponse
     {
         $author = $this->public->author($slug);
+        // Cadena = la firma cambió de URL y esta es la de ahora, igual que en `post()`.
+        if (is_string($author)) {
+            return response()->json(['redirect_to' => $author]);
+        }
         if ($author === null) {
             return response()->json(['error' => 'Not found'], 404);
         }

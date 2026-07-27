@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Packages\Snk\Kilkana\Enums\SnkKilkanaLayoutEnum;
 
 return new class extends Migration
 {
@@ -10,7 +11,7 @@ return new class extends Migration
     {
         Schema::create('kilkana_layouts', function (Blueprint $table) {
             $table->id();
-            $table->string('layout', 16)->unique();
+            $table->enum('layout', SnkKilkanaLayoutEnum::values())->unique();
             $table->json('schema');
             $table->unsignedInteger('version')->default(1);
             $table->timestamps();
