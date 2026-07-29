@@ -33,6 +33,10 @@ class SnkKilkanaSettingsController extends Controller
             'tenant.name' => 'nullable|string|max:255',
             'tenant.tagline' => 'nullable|string|max:255',
             'tenant.city' => 'nullable|string|max:255',
+            // `url:http,https` y no `url` a secas: la direccion del periodico se pinta como
+            // enlace y sale en cada correo, asi que `javascript:` aqui es un agujero, igual
+            // que lo era en la web de una firma.
+            'tenant.url' => 'nullable|url:http,https|max:255',
             'onboarded' => 'nullable|boolean',
             'version' => 'nullable|integer|min:1',
         ]);

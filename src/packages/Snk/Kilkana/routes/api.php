@@ -50,6 +50,17 @@ Route::middleware(['api'])->group(function () {
     Route::get('public/layouts/{layout}', [SnkKilkanaPublicController::class, 'layout'])->whereIn('layout', SnkKilkanaLayoutEnum::values());
     Route::get('public/site', [SnkKilkanaPublicController::class, 'site']);
     Route::post('public/subscribe', [SnkKilkanaPublicController::class, 'subscribe'])->middleware('throttle:10,1');
+    // Los dos enlaces del correo. `signed` es toda la autorización que hay y toda la que puede
+    // haber: quien pulsa viene de su buzón, no de una sesión. Sin firma, recorrer ids daría de
+    // baja a media lista. Van nombradas porque `URL::signedRoute` las construye por nombre.
+    Route::get('public/subscribe/confirm/{subscriber}', [SnkKilkanaPublicController::class, 'confirmSubscription'])
+        ->name('kilkana.subscribe.confirm')
+        ->whereNumber('subscriber')
+        ->middleware(['signed', 'throttle:20,1']);
+    Route::get('public/subscribe/unsubscribe/{subscriber}', [SnkKilkanaPublicController::class, 'unsubscribe'])
+        ->name('kilkana.subscribe.unsubscribe')
+        ->whereNumber('subscriber')
+        ->middleware(['signed', 'throttle:20,1']);
 });
 
 Route::middleware(['api', 'auth:sanctum'])->group(function () {

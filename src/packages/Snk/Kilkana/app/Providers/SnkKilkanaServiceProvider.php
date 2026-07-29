@@ -16,6 +16,11 @@ class SnkKilkanaServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Las vistas del paquete son SOLO cuerpos de correo: la salida pública la pinta la app
+        // de Svelte, y el panel también. Namespace propio para que `kilkana::` no compita con
+        // las vistas de la app anfitriona.
+        $this->loadViewsFrom(__DIR__.'/../../resources/views', 'kilkana');
+
         if ($this->app->runningInConsole()) {
             $this->commands([
                 SnkKilkanaPublishScheduledCommand::class,
@@ -32,4 +37,3 @@ class SnkKilkanaServiceProvider extends ServiceProvider
         }
     }
 }
-

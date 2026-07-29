@@ -83,6 +83,7 @@ Aquí importa especialmente, porque hay operaciones que **reemplazan la composic
 | `tenant_name` | varchar(255) | sí | Cómo se llama el periódico. |
 | `tenant_tagline` | varchar(255) | sí | Su lema. |
 | `tenant_city` | varchar(255) | sí | Su ciudad. |
+| `tenant_url` | varchar(255) | sí | Su dirección pública. Validada `url:http,https`. |
 | `theme_overrides` | longtext (JSON) | sí | Ajustes locales sobre esa piel. |
 | `onboarded` | boolean | no · def. `false` | Si ya pasó la puesta en marcha inicial. |
 | `version` | int unsigned | no · def. 1 | Igual que en `kilkana_layouts`. |
@@ -91,12 +92,18 @@ Aquí importa especialmente, porque hay operaciones que **reemplazan la composic
 **Una sola fila**, con `id = 1`. No hay restricción que lo obligue: es una convención, y una
 segunda fila sería ignorada en el mejor de los casos.
 
-Los tres campos de `tenant_*` son la **identidad publicable**, y salen de aquí a la cabecera
-del periódico. Con `tenant_name` nulo, quien la pinte tendrá que inventarse un valor por
-defecto — y entonces el nombre del periódico vive en el cliente, que es justo lo contrario de
-lo que un producto multi-inquilino necesita.
+Los campos de `tenant_*` son la **identidad publicable**, y salen de aquí a la cabecera del
+periódico. Con `tenant_name` nulo, quien la pinte tendrá que inventarse un valor por defecto —
+y entonces el nombre del periódico vive en el cliente, que es justo lo contrario de lo que un
+producto multi-inquilino necesita.
 
-La API los sirve **anidados** (`tenant: {name, tagline, city}`) aunque debajo sean columnas
+`tenant_url` no está por completar la ficha: **todo correo que sale necesita enlazar a algún
+sitio**, y el enlace de un boletín no puede ser relativo. Sin ella, confirmar la suscripción y
+darse de baja no tienen a dónde devolver al lector, y responden texto plano en vez de redirigir.
+Va validada `url:http,https` y no `url` a secas: se pinta como enlace y sale en cada correo,
+así que `javascript:` aquí sería un agujero, igual que lo era en la web de una firma.
+
+La API los sirve **anidados** (`tenant: {name, tagline, city, url}`) aunque debajo sean columnas
 planas: es la forma que ya consumía la salida pública, y el mapeo entre las dos vive en un
 solo sitio.
 

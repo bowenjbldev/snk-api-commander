@@ -150,6 +150,20 @@ services:
     networks:
       - app-network
 
+  # Bandeja de salida de mentira, para ver el correo como lo ve el lector. Captura TODO lo que
+  # la app manda por SMTP y no lo deja salir, que es justo lo que se quiere en local: nadie
+  # envía un boletín de pruebas a una dirección real por accidente.
+  #
+  # Sin volumen a propósito: la bandeja es efímera. Lo que importa del correo —a quién se le
+  # mandó y en qué estado quedó— ya vive en la base.
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    networks:
+      - app-network
+
   # Compatibilidad con volúmenes existentes: asegura el usuario no privilegiado de Commander.
   db-init:
     image: mariadb:latest

@@ -4,7 +4,8 @@
  "tenant": {
   "name": "The Beacon",
   "tagline": "The news, told slowly · Digital edition",
-  "city": "Springfield"
+  "city": "Springfield",
+  "url": "http://localhost:5173"
  },
  "onboarded": true
 }

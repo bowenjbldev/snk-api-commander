@@ -4,6 +4,12 @@ namespace Packages\Snk\Kilkana\Services;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
+use Packages\Snk\Kilkana\Enums\SnkKilkanaConsentSourceEnum;
+use Packages\Snk\Kilkana\Enums\SnkKilkanaSubscriberStatusEnum;
+use Packages\Snk\Kilkana\Mail\SnkKilkanaSubscriptionConfirmMail;
 use Packages\Snk\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaAuthorSlugModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCategoryModel;
@@ -220,7 +226,6 @@ class SnkKilkanaPublicService
             ->get(['id', 'post_id', 'user_id', 'parent_id', 'body', 'created_at']);
     }
 
-
     public function layout(string $layout): array
     {
         $row = SnkKilkanaLayoutModel::query()->where('layout', $layout)->first();
@@ -231,9 +236,124 @@ class SnkKilkanaPublicService
         ];
     }
 
-    public function subscribe(string $email): void
+    public function subscribe(string $email, Request $request): void
     {
-        SnkKilkanaSubscriberModel::firstOrCreate(['email' => strtolower($email)]);
+        $consentimiento = [
+            'consent_source' => SnkKilkanaConsentSourceEnum::PublicForm,
+            'consent_at' => now(),
+        ];
+
+        // `status` explícito aunque la columna tenga default: `firstOrCreate` no relee la fila,
+        // así que el default de la base no llega al objeto y el recién creado se quedaría con
+        // `status` nulo — justo el que hay que mirar tres líneas más abajo.
+        $suscriptor = SnkKilkanaSubscriberModel::firstOrCreate(
+            ['email' => strtolower($email)],
+            $consentimiento + ['status' => SnkKilkanaSubscriberStatusEnum::Pending],
+        );
+
+        // Quien se dio de baja y vuelve a rellenar el formulario está pidiendo volver, y eso
+        // es consentimiento nuevo: se le devuelve a `pending` para que reconfirme. Sin esto
+        // `firstOrCreate` encontraba la fila, no tocaba nada y respondía 202: el alta parecía
+        // funcionar y la persona seguía dada de baja para siempre.
+        if ($suscriptor->status === SnkKilkanaSubscriberStatusEnum::Unsubscribed) {
+            $suscriptor->update($consentimiento + ['status' => SnkKilkanaSubscriberStatusEnum::Pending]);
+        }
+
+        // A quien ya está dentro no se le manda nada: no hay nada que confirmar, y devolverlo a
+        // `pending` sería una baja de facto por rellenar el formulario dos veces.
+        if ($suscriptor->status === SnkKilkanaSubscriberStatusEnum::Confirmed) {
+            return;
+        }
+
+        $this->sendConfirmation($suscriptor, $request);
+    }
+
+    /**
+     * Confirma un alta. Solo desde `pending`.
+     *
+     * Un enlace viejo de confirmación NO puede resucitar a quien luego se dio de baja: sería
+     * devolver a la lista a alguien que pidió salir, y el enlace vive en su buzón para siempre.
+     */
+    public function confirm(SnkKilkanaSubscriberModel $suscriptor, Request $request): void
+    {
+        if ($suscriptor->status !== SnkKilkanaSubscriberStatusEnum::Pending) {
+            return;
+        }
+
+        $suscriptor->update([
+            'status' => SnkKilkanaSubscriberStatusEnum::Confirmed,
+            // El clic desde el buzón es el acto que PRUEBA el consentimiento y sustituye al de
+            // rellenar el formulario, así que pisa la fecha en vez de guardar una segunda. Un
+            // solo instante y `status` diciendo de qué tipo de prueba se trata.
+            'consent_at' => now(),
+            'consent_ip' => $request->ip(),
+        ]);
+    }
+
+    /**
+     * Baja. La fila SE QUEDA: es la prueba de que pidió no recibir más, y sin ella la siguiente
+     * importación volvería a escribirle.
+     */
+    public function unsubscribe(SnkKilkanaSubscriberModel $suscriptor): void
+    {
+        if ($suscriptor->status === SnkKilkanaSubscriberStatusEnum::Unsubscribed) {
+            return;
+        }
+
+        $suscriptor->update(['status' => SnkKilkanaSubscriberStatusEnum::Unsubscribed]);
+    }
+
+    /** A dónde vuelve el lector después de pulsar. Null si el periódico no tiene URL puesta. */
+    public function subscriptionLanding(string $desenlace): ?string
+    {
+        $sitio = SnkKilkanaSettingModel::query()->find(1)?->tenant_url;
+
+        return $sitio ? rtrim($sitio, '/')."/subscribe/{$desenlace}" : null;
+    }
+
+    /**
+     * Manda la confirmación, y si el correo falla NO tumba el alta.
+     *
+     * La fila ya está guardada y la respuesta sigue siendo 202 para todos, que es lo que impide
+     * que el formulario sea un oráculo de quién está suscrito. Un SMTP caído no puede convertir
+     * eso en un 500 que además delate el fallo.
+     *
+     * Envío síncrono: con la bandeja local son milisegundos. El día que haya un proveedor de
+     * verdad esto quiere cola —y hoy el único worker consume `--queue=provisioning`.
+     */
+    private function sendConfirmation(SnkKilkanaSubscriberModel $suscriptor, Request $request): void
+    {
+        $periodico = SnkKilkanaSettingModel::query()->find(1)?->tenant_name ?: config('app.name');
+
+        try {
+            Mail::to($suscriptor->email)->send(new SnkKilkanaSubscriptionConfirmMail(
+                $periodico,
+                $this->signedSubscriberUrl('kilkana.subscribe.confirm', $suscriptor, $request),
+                $this->signedSubscriberUrl('kilkana.subscribe.unsubscribe', $suscriptor, $request),
+            ));
+        } catch (\Throwable $e) {
+            Log::error('kilkana: no se pudo enviar la confirmación de suscripción', [
+                'subscriber' => $suscriptor->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * URL firmada hacia el host del PERIÓDICO, no hacia el de la API.
+     *
+     * La firma cubre el host, y `APP_URL` es la API (`api.snake.test`) mientras que el paquete
+     * se resuelve por el host del tenant (`snk.snake.test`). Sin forzar la raíz el enlace del
+     * correo falla dos veces: ni resuelve el paquete ni valida la firma.
+     *
+     * Sin caducidad: el de baja tiene que seguir funcionando dos años después, y un mecanismo
+     * es más fácil de sostener que dos.
+     */
+    private function signedSubscriberUrl(string $ruta, SnkKilkanaSubscriberModel $suscriptor, Request $request): string
+    {
+        URL::forceRootUrl($request->getSchemeAndHttpHost());
+
+        return URL::signedRoute($ruta, ['subscriber' => $suscriptor->id]);
     }
 
     public function site(): array

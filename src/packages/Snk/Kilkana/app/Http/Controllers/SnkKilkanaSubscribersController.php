@@ -4,6 +4,7 @@ namespace Packages\Snk\Kilkana\Http\Controllers;
 
 use Dedoc\Scramble\Attributes\Group;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
+use Packages\Snk\Kilkana\Enums\SnkKilkanaSubscriberStatusEnum;
 use Packages\Snk\Kilkana\Models\SnkKilkanaSubscriberModel;
 
 /**
@@ -13,6 +14,12 @@ use Packages\Snk\Kilkana\Models\SnkKilkanaSubscriberModel;
 #[Group('Subscribers')]
 class SnkKilkanaSubscribersController extends CoreBaseApiController
 {
+    public function __construct()
+    {
+        $this->validationRulesStore['status'] = 'nullable|'.SnkKilkanaSubscriberStatusEnum::rule();
+        $this->validationRulesUpdate['status'] = 'required|'.SnkKilkanaSubscriberStatusEnum::rule();
+    }
+
     protected string $modelClass = SnkKilkanaSubscriberModel::class;
 
     protected string $indexPermission = 'index subscribers';
@@ -27,10 +34,7 @@ class SnkKilkanaSubscribersController extends CoreBaseApiController
 
     protected array $validationRulesStore = [
         'email' => 'required|email|max:255|unique:kilkana_subscribers,email',
-        'status' => 'nullable|in:pending,confirmed,unsubscribed',
     ];
 
-    protected array $validationRulesUpdate = [
-        'status' => 'required|in:pending,confirmed,unsubscribed',
-    ];
+    protected array $validationRulesUpdate = [];
 }

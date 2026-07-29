@@ -169,9 +169,9 @@ compartido (`Enums\Concerns`). Lo que **no** entra ahí es lo que cada estado si
 —«¿esto exige permiso de publicación?», «¿esto lo ve un lector anónimo?»—: eso es propio de
 cada enumeración.
 
-> Todavía en `varchar(16)`: `kilkana_comments.status` y `kilkana_subscribers.status`. Les
-> aplica lo de arriba cuando se toquen — hoy sus valores válidos solo los comprueba el código
-> que escribe, así que un `UPDATE` a mano puede meter un estado que nadie sepa interpretar.
+> Ya no queda ningún estado en `varchar`: los seis (`posts.status`, `posts.content_tier`,
+> `media.rights_status`, `categories.status`, `comments.status`, `subscribers.status`) son
+> `ENUM` con su enumeración.
 
 **Reglas de borrado.** Las claves foráneas usan tres políticas y cada una dice algo:
 
@@ -254,6 +254,20 @@ Es una dependencia implícita entre un modelo y su controlador que no se ve leye
 los dos. Controlador nuevo sobre un modelo con `$guarded = []` = reglas declaradas, o la ruta
 no debería existir. Un modelo con `$fillable` no tiene esa dependencia y es la alternativa
 cuando la lista de columnas escribibles es corta y estable.
+
+**Correo.** Sale **síncrono dentro de la petición** y su fallo se registra y se traga: lo que
+importaba —la fila— ya está guardado, así que un SMTP caído no puede convertir un alta correcta
+en un `500`. En el caso público eso además protege la respuesta uniforme que impide que el
+formulario delate quién está suscrito.
+
+Techo conocido, y es el disparador para cambiarlo: con un proveedor real esto quiere cola. Hoy
+el único worker consume `--queue=provisioning`, así que un job en la cola por defecto no lo
+recogería nadie.
+
+Todo enlace que salga en un correo se firma **contra el host del periódico**, no contra
+`APP_URL`: el paquete se resuelve por Host, y la firma cubre el host. Un `signedRoute` normal
+produce un enlace que ni resuelve el paquete ni valida la firma. En local, **Mailpit** (`:8025`)
+captura lo que se envía y no lo deja salir.
 
 **Historiales acotados.** `kilkana_post_revisions` y `kilkana_layout_revisions` conservan las
 **50 últimas de cada dueño** y las viejas caen al insertar, dentro de la misma transacción. No

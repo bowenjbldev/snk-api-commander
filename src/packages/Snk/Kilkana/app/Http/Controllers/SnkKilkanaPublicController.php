@@ -5,7 +5,10 @@ namespace Packages\Snk\Kilkana\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Packages\Snk\Kilkana\Models\SnkKilkanaSubscriberModel;
 use Packages\Snk\Kilkana\Services\SnkKilkanaPublicService;
 
 /**
@@ -111,20 +114,58 @@ class SnkKilkanaPublicController extends Controller
             : response()->json($comments);
     }
 
-
     public function layout(string $layout): JsonResponse
     {
         return response()->json($this->public->layout($layout));
     }
 
-    /** Alta pública al boletín: idempotente por email; el estado nace pending. */
+    /** Alta pública al boletín: idempotente por email; el estado nace pending y sale el correo. */
     public function subscribe(Request $request): JsonResponse
     {
         $data = $request->validate(['email' => 'required|email|max:255']);
-        $this->public->subscribe($data['email']);
+        $this->public->subscribe($data['email'], $request);
 
         // Respuesta uniforme exista o no: no revela si un email está suscrito.
         return response()->json(['ok' => true], 202);
+    }
+
+    /**
+     * Confirma la suscripción desde el enlace del correo.
+     *
+     * `GET` que cambia estado, a sabiendas: se pulsa desde un buzón, donde no hay formulario
+     * que mande un POST. La contrapartida es que un escáner corporativo de enlaces puede
+     * confirmar solo; la alternativa —página con botón— exige una pantalla que la app todavía
+     * no tiene, y hasta entonces esto no funcionaría en absoluto. La firma es lo que impide
+     * confirmar suscripciones ajenas recorriendo ids.
+     */
+    public function confirmSubscription(SnkKilkanaSubscriberModel $subscriber, Request $request): Response|RedirectResponse
+    {
+        $this->public->confirm($subscriber, $request);
+
+        return $this->subscriptionLanding('confirmed', 'Subscription confirmed. Thanks for reading.');
+    }
+
+    /** Baja desde el enlace del correo. Idempotente: pulsar dos veces aterriza igual. */
+    public function unsubscribe(SnkKilkanaSubscriberModel $subscriber): Response|RedirectResponse
+    {
+        $this->public->unsubscribe($subscriber);
+
+        return $this->subscriptionLanding('unsubscribed', 'You have been unsubscribed. You will not receive the newsletter again.');
+    }
+
+    /**
+     * Devuelve al lector al periódico. Si no hay URL configurada, texto plano.
+     *
+     * Quien pulsa está en un navegador, así que un JSON sería una respuesta a la cara; y una
+     * redirección a la nada es peor que una frase que confirma lo que acaba de pasar.
+     */
+    private function subscriptionLanding(string $desenlace, string $mensaje): Response|RedirectResponse
+    {
+        $destino = $this->public->subscriptionLanding($desenlace);
+
+        return $destino
+            ? redirect()->away($destino)
+            : response($mensaje)->header('Content-Type', 'text/plain; charset=utf-8');
     }
 
     /** Identidad + tema, lo mínimo para renderizar la salida pública. */

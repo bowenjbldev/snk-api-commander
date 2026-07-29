@@ -11,7 +11,9 @@ use Illuminate\Support\Str;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Snk\Kilkana\Enums\SnkKilkanaCategoryStatusEnum;
 use Packages\Snk\Kilkana\Enums\SnkKilkanaCommentStatusEnum;
+use Packages\Snk\Kilkana\Enums\SnkKilkanaConsentSourceEnum;
 use Packages\Snk\Kilkana\Enums\SnkKilkanaMediaRightsEnum;
+use Packages\Snk\Kilkana\Enums\SnkKilkanaSubscriberStatusEnum;
 use Packages\Snk\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaCommentModel;
@@ -19,9 +21,10 @@ use Packages\Snk\Kilkana\Models\SnkKilkanaLayoutModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaMediaCollectionModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaMediaModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaMediaTagModel;
-use Packages\Snk\Kilkana\Models\SnkKilkanaSettingModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaPostViewModel;
+use Packages\Snk\Kilkana\Models\SnkKilkanaSettingModel;
+use Packages\Snk\Kilkana\Models\SnkKilkanaSubscriberModel;
 use Packages\Snk\Kilkana\Models\SnkKilkanaTagModel;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -129,8 +132,47 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         // Después de los posts: reasigna dos breves a la firma de la casa.
         $this->seedCollectiveByline();
         $this->seedComments();
+        $this->seedSubscribers();
         $this->seedLayouts();
         $this->seedSettings();
+    }
+
+    /**
+     * La lista del boletín, con los tres estados representados.
+     *
+     * No estaba sembrada: la pantalla de suscriptores salía vacía en una demo donde todo lo
+     * demás tiene contenido, así que no se veía ni el listado ni el filtro por estado.
+     *
+     * Los tres orígenes también, y esa es la mitad que importa: la lista IMPORTADA es la que
+     * trae el riesgo legal, y si todas las filas parecen iguales no se puede ni acreditar ni
+     * purgar por separado. Aquí se ve un periódico que ya venía con su lista del papel.
+     */
+    private function seedSubscribers(): void
+    {
+        $ayer = now()->subMonths(3);
+
+        $lista = [
+            'marta.ruiz@snk.test' => [SnkKilkanaSubscriberStatusEnum::Confirmed, SnkKilkanaConsentSourceEnum::PublicForm],
+            'aitor.etxeberria@snk.test' => [SnkKilkanaSubscriberStatusEnum::Confirmed, SnkKilkanaConsentSourceEnum::PublicForm],
+            'nuria.sanchis@snk.test' => [SnkKilkanaSubscriberStatusEnum::Confirmed, SnkKilkanaConsentSourceEnum::PublicForm],
+            'diego.ferreiro@snk.test' => [SnkKilkanaSubscriberStatusEnum::Pending, SnkKilkanaConsentSourceEnum::PublicForm],
+            'lucia.ibarra@snk.test' => [SnkKilkanaSubscriberStatusEnum::Pending, SnkKilkanaConsentSourceEnum::PublicForm],
+            'pau.comas@snk.test' => [SnkKilkanaSubscriberStatusEnum::Pending, SnkKilkanaConsentSourceEnum::PublicForm],
+            // Los dos de la lista que el periódico traía en papel: el consentimiento se dio
+            // antes y fuera, y por eso su fecha es vieja.
+            'boletin@bibliotecagijon.test' => [SnkKilkanaSubscriberStatusEnum::Pending, SnkKilkanaConsentSourceEnum::Import],
+            'prensa@puertogijon.test' => [SnkKilkanaSubscriberStatusEnum::Confirmed, SnkKilkanaConsentSourceEnum::Import],
+            // Se dio de baja: la fila SE QUEDA, que es la prueba de que pidió no recibir más.
+            'helene.dubois@snk.test' => [SnkKilkanaSubscriberStatusEnum::Unsubscribed, SnkKilkanaConsentSourceEnum::PublicForm],
+        ];
+
+        foreach ($lista as $email => [$estado, $origen]) {
+            SnkKilkanaSubscriberModel::firstOrCreate(['email' => $email], [
+                'status' => $estado,
+                'consent_source' => $origen,
+                'consent_at' => $origen === SnkKilkanaConsentSourceEnum::Import ? $ayer : now(),
+            ]);
+        }
     }
 
     /**
@@ -400,7 +442,6 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         return is_string($password) && $password !== '' ? $password : Str::random(32);
     }
 
-
     /**
      * Comentarios de demo. Sin ellos el contador del panel es siempre 0 y no hay nada que
      * moderar en /admin/comments, así que la funcionalidad no se puede ni ver ni probar.
@@ -538,7 +579,6 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         return $readers;
     }
 
-
     /** Composición de arranque (snapshot del builder): un fresh ya no deja la portada en blanco. */
     private function seedLayouts(): void
     {
@@ -562,6 +602,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             'tenant_name' => $tenant['name'] ?? null,
             'tenant_tagline' => $tenant['tagline'] ?? null,
             'tenant_city' => $tenant['city'] ?? null,
+            'tenant_url' => $tenant['url'] ?? null,
             'onboarded' => (bool) ($settings['onboarded'] ?? false),
         ]);
     }
@@ -753,7 +794,6 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             $row->tags()->syncWithoutDetaching($tagIds);
         }
     }
-
 
     /**
      * Una pieza con imagen social propia, distinta de su portada.
@@ -960,5 +1000,4 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             );
         }
     }
-
 }

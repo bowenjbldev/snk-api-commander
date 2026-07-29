@@ -22,8 +22,14 @@ class SnkKilkanaSettingService
 {
     private const SINGLETON_ID = 1;
 
-    /** Los tres campos de la identidad, planos en la base y anidados en la API. */
-    private const TENANT = ['name', 'tagline', 'city'];
+    /**
+     * Los campos de la identidad, planos en la base y anidados en la API.
+     *
+     * `url` es la direccion publica del periodico, y no esta por completar la ficha: todo
+     * correo que sale necesita enlazar a algun sitio, y el enlace de un boletin no puede ser
+     * relativo. Sin ella, confirmar y darse de baja no tienen a donde volver.
+     */
+    private const TENANT = ['name', 'tagline', 'city', 'url'];
 
     public function get(): SnkKilkanaSettingModel
     {
@@ -72,6 +78,7 @@ class SnkKilkanaSettingService
                 'name' => $row->tenant_name,
                 'tagline' => $row->tenant_tagline,
                 'city' => $row->tenant_city,
+                'url' => $row->tenant_url,
             ],
             'onboarded' => (bool) $row->onboarded,
             'version' => (int) $row->version,
