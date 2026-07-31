@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Packages\Commander\Jobs\CommanderDeprovisionPackageJob;
 use Packages\Commander\Models\CommanderActivityEventModel;
 use Packages\Commander\Models\CommanderPackageActivityDailyModel;
 use Packages\Commander\Models\CommanderPackageCommitModel;
@@ -18,18 +19,15 @@ use Packages\Commander\Models\CommanderQuotaModel;
 use Packages\Commander\Models\CommanderRequestLogModel;
 use Packages\Commander\Models\CommanderSubscriptionModel;
 use Packages\Commander\Models\CommanderUsageRollupModel;
-use Packages\Commander\Jobs\CommanderDeprovisionPackageJob;
 use Packages\Commander\Services\CommanderPackageRegistryService;
 use Packages\Core\Enums\CorePackageStatusEnum;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Core\Services\CorePackageStateService;
 
 /**
- * Hub del panel package-centrico sobre la tabla UNICA commander_packages: una fila por package en
- * disco. index() sincroniza desde disco y enriquece cada fila con on_disk + conteo de planes; la fila
- * lleva catalogo (label/description/listing_status) y —si esta provisionada— lo operativo (subdomain,
- * cliente, estado runtime, KPIs) + relaciones. Las acciones operativas (estado, cambio de plan,
- * usage, logs, de-provision) exigen una fila provisionada y se direccionan por su PK numerica.
+ * Hub del panel sobre commander_packages: filas de catálogo y una fila operativa por instancia.
+ * index() sincroniza productos desplegados y enriquece las filas con disco/planes. Las acciones
+ * operativas exigen `provisioned_at` y siempre se direccionan por la PK numérica de la instancia.
  */
 #[Group('Packages')]
 class CommanderPackagesController extends CoreBaseApiController
@@ -37,9 +35,13 @@ class CommanderPackagesController extends CoreBaseApiController
     protected string $modelClass = CommanderPackageModel::class;
 
     protected string $indexPermission = 'index packages';
+
     protected string $showPermission = 'show packages';
+
     protected string $storePermission = 'create packages';
+
     protected string $updatePermission = 'update packages';
+
     protected string $destroyPermission = 'delete packages';
 
     protected array $validationRulesUpdate = [
@@ -50,12 +52,17 @@ class CommanderPackagesController extends CoreBaseApiController
 
     private const CONTROL_PERMISSION = 'control packages';
 
+    private const QUOTA_UNITS = [
+        'requests_day' => 'count',
+        'disk_db_mb' => 'mb',
+        'disk_storage_mb' => 'mb',
+        'users_total' => 'count',
+    ];
+
     public function __construct(
         private readonly CommanderPackageRegistryService $registry,
         private readonly CorePackageStateService $state,
-    )
-    {
-    }
+    ) {}
 
     public function index(): JsonResponse
     {
@@ -63,6 +70,7 @@ class CommanderPackagesController extends CoreBaseApiController
             return $response;
         }
 
+        $this->registry->syncCatalog();
         $onDisk = $this->registry->availableOnDisk();
         $planCounts = CommanderPlanModel::query()
             ->selectRaw('package, COUNT(*) as c')->groupBy('package')->pluck('c', 'package');
@@ -261,6 +269,22 @@ class CommanderPackagesController extends CoreBaseApiController
 
             $packageRow->subscription_id = $created->id;
             $packageRow->save();
+
+            foreach ($plan->quotaLimits() as $metric => $limit) {
+                $quota = CommanderQuotaModel::firstOrNew([
+                    'package_id' => $packageRow->id,
+                    'metric_key' => $metric,
+                ]);
+                if (! $quota->exists) {
+                    $quota->current_value = 0;
+                    $quota->unit = self::QUOTA_UNITS[$metric] ?? 'count';
+                    $quota->on_exceed = $limit === null ? 'none' : 'suspend';
+                } elseif ($limit === null) {
+                    $quota->on_exceed = 'none';
+                }
+                $quota->limit_value = $limit;
+                $quota->save();
+            }
 
             return $created;
         });

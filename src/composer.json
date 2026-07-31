@@ -41,8 +41,8 @@
             "Packages\\Core\\Database\\Seeders\\": "packages/Core/database/seeders/",
             "Packages\\Initech\\Crm\\": "packages/Initech/Crm/app/",
             "Packages\\Initech\\Crm\\Database\\Seeders\\": "packages/Initech/Crm/database/seeders/",
-            "Packages\\Snk\\Kilkana\\": "packages/Snk/Kilkana/app/",
-            "Packages\\Snk\\Kilkana\\Database\\Seeders\\": "packages/Snk/Kilkana/database/seeders/"
+            "Packages\\Kilkana\\": "packages/Kilkana/app/",
+            "Packages\\Kilkana\\Database\\Seeders\\": "packages/Kilkana/database/seeders/"
         }
     },
     "autoload-dev": {

@@ -43,11 +43,11 @@ describe('store mutations', () => {
 
   it('suspend → resume writes activity and flips status', () => {
     const pkg = pkgBySub('bluepeak')
-    s().suspend(pkg.name, { reason: 'manual' })
+    s().suspend(pkg.id, { reason: 'manual' })
     expect(pkgBySub('bluepeak').status).toBe('suspended')
     expect(s().activity[0]).toMatchObject({ kind: 'suspend', package_id: pkg.id })
 
-    s().resume(pkg.name)
+    s().resume(pkg.id)
     expect(pkgBySub('bluepeak').status).toBe('active')
     expect(s().activity[0]).toMatchObject({ kind: 'resume', package_id: pkg.id })
   })
@@ -55,7 +55,7 @@ describe('store mutations', () => {
   it('grace sets a deadline', () => {
     const until = new Date(Date.now() + 72 * 3_600_000).toISOString()
     const pkg = pkgBySub('mori-assets')
-    s().grace(pkg.name, { reason: 'manual', grace_until: until })
+    s().grace(pkg.id, { reason: 'manual', grace_until: until })
     const after = pkgBySub('mori-assets')
     expect(after.status).toBe('grace')
     expect(after.grace_until).toBe(until)
@@ -76,7 +76,7 @@ describe('store mutations', () => {
     const pkg = pkgBySub('acme-shop')
     const oldTermId = pkg.subscription_id!
 
-    s().changePlan(pkg.name, 99)
+    s().changePlan(pkg.id, 99)
 
     // El término anterior queda cerrado.
     expect(s().subscriptions.find((x) => x.id === oldTermId)?.ended_at).not.toBeNull()

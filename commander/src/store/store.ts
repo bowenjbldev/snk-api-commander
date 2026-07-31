@@ -19,11 +19,11 @@ import type {
 /** Payload for the client-first provisioning flow (POST /provisioning). */
 export interface ProvisionInput {
   plan_id: number
+  admin_email: string
+  admin_password: string
   client_id?: number // cliente existente (bigint id)
   // … o un cliente nuevo: la BD asigna el id, se manda el slug legible.
   client?: Partial<Omit<Client, 'id' | 'slug'>> & { slug: string; name: string; email: string }
-  // Slug del path del package (segmento /api/v1/<slug>). Opcional: el backend lo deriva si se omite.
-  slug?: string
 }
 
 /** Payload for creating an invoice from the panel (POST /invoices). */
@@ -52,19 +52,19 @@ interface StoreActions {
   actionError: { message: string; at: number } | null
   loadData: () => Promise<void>
 
-  // ── package state machine (in-process: writes the package's commander_packages row), por `name` ──
-  suspend: (name: string, input: SuspendInput) => void
-  grace: (name: string, input: GraceInput) => void
-  resume: (name: string) => void
+  // ── package state machine, por PK de instancia ──
+  suspend: (id: number, input: SuspendInput) => void
+  grace: (id: number, input: GraceInput) => void
+  resume: (id: number) => void
   // Change the package's plan: closes the current subscription term and opens a new one (1:N history).
-  changePlan: (name: string, planId: number) => void
+  changePlan: (id: number, planId: number) => void
 
   // ── quotas ──
   editQuotaLimit: (quotaId: number, limit: number | null) => void
   setQuotaPolicy: (quotaId: number, policy: OnExceed) => void
 
   // ── billing ──
-  markInvoicePaid: (invoiceId: number) => { resumablePackageName?: string }
+  markInvoicePaid: (invoiceId: number) => { resumablePackageId?: number; resumablePackageName?: string }
   markInvoiceOverdue: (invoiceId: number) => void
   setInvoiceEnforcement: (invoiceId: number, enforcement: Invoice['enforcement']) => void
   addInvoice: (input: InvoiceInput) => string
@@ -76,7 +76,7 @@ interface StoreActions {
   updateClient: (id: number, patch: Partial<Client>) => void
   // De-provision (soft): nulls the package's operational columns (DROP DATABASE + clear metering) but
   // keeps the catalog row + billing history. The package becomes catalog-only (provisioned_at = null).
-  deprovision: (name: string) => void
+  deprovision: (id: number) => void
   updateSettings: (patch: Partial<OperatorSettings>) => void
 
   // ── catalog (plans) ──
@@ -85,11 +85,10 @@ interface StoreActions {
   deletePlan: (id: number) => void
 
   // ── package catalog metadata ──
-  updatePackage: (name: string, patch: Partial<Pick<Package, 'label' | 'description' | 'listing_status'>>) => void
+  updatePackage: (id: number, patch: Partial<Pick<Package, 'label' | 'description' | 'listing_status'>>) => void
 
-  // ── client-first provisioning (one-step, in-process) ──
-  // Creates client (new/existing) + subscription + fills the package's live columns (migrates + seeds +
-  // activates), then refreshes the registry. No host step.
+  // ── client-first provisioning ──
+  // Registers the instance, queues DB setup, then refreshes its pending row. No host step.
   provision: (input: ProvisionInput) => Promise<void>
 }
 
@@ -158,43 +157,40 @@ export const useStore = create<StoreState>((set, get) => {
     })
   }
 
-  // The numeric package_id (= the unified row id) for a package name (for activity rows / relations).
-  const pkgId = (name: string): number | undefined => get().packages.find((p) => p.name === name)?.id
-
   // Reconcile the server's authoritative package row into the registry, merging over the existing
   // entry so enrichment (on_disk, plan_count) survives a state-action response that omits it.
   const replacePackageRow = (row: Package) =>
-    set((s) => ({ packages: s.packages.map((p) => (p.name === row.name ? { ...p, ...row } : p)) }))
+    set((s) => ({ packages: s.packages.map((p) => (p.id === row.id ? { ...p, ...row } : p)) }))
   // Per-package action sequence: each optimistic state action bumps it, and a reconcile is applied
   // only if it is the response to the LATEST issued action for that package. Makes two rapid
   // out-of-order responses safe without comparing the server's changed_at to the client clock.
-  const pkgActionSeq = new Map<string, number>()
-  const reconcilePackage = (name: string) => {
-    const seq = (pkgActionSeq.get(name) ?? 0) + 1
-    pkgActionSeq.set(name, seq)
+  const pkgActionSeq = new Map<number, number>()
+  const reconcilePackage = (id: number) => {
+    const seq = (pkgActionSeq.get(id) ?? 0) + 1
+    pkgActionSeq.set(id, seq)
     return (row: Package) => {
-      if (pkgActionSeq.get(name) === seq) replacePackageRow(row)
+      if (pkgActionSeq.get(id) === seq) replacePackageRow(row)
     }
   }
 
   // Optimistic state transition on the package row (by name), only if it has a live instance.
-  const applyLocalState = (name: string, status: Package['status'], opts: StateOpts) =>
+  const applyLocalState = (id: number, status: Package['status'], opts: StateOpts) =>
     set((s) => ({
       packages: s.packages.map((p) =>
-        p.name === name && p.provisioned_at != null ? applyPackageState(p, status, opts) : p,
+        p.id === id && p.provisioned_at != null ? applyPackageState(p, status, opts) : p,
       ),
     }))
 
   const changeState = (
-    name: string,
+    id: number,
     status: Package['status'],
     opts: StateOpts,
     request: () => Promise<Package>,
   ) => {
-    applyLocalState(name, status, opts)
+    applyLocalState(id, status, opts)
     const kind = status === 'active' ? 'resume' : status === 'suspended' ? 'suspend' : 'grace'
-    set((s) => ({ activity: [activity(kind, { package_id: pkgId(name), reason: opts.reason }), ...s.activity] }))
-    persist(request(), reconcilePackage(name))
+    set((s) => ({ activity: [activity(kind, { package_id: id, reason: opts.reason }), ...s.activity] }))
+    persist(request(), reconcilePackage(id))
   }
 
   const replaceInvoice = (i: Invoice) =>
@@ -280,17 +276,17 @@ export const useStore = create<StoreState>((set, get) => {
       }
     },
 
-    suspend: (name, input) => {
+    suspend: (id, input) => {
       changeState(
-        name, 'suspended', input,
-        () => packagesApi.suspend(name, { reason: input.reason, message: input.message ?? null }),
+        id, 'suspended', input,
+        () => packagesApi.suspend(id, { reason: input.reason, message: input.message ?? null }),
       )
     },
 
-    grace: (name, input) => {
+    grace: (id, input) => {
       changeState(
-        name, 'grace', input,
-        () => packagesApi.grace(name, {
+        id, 'grace', input,
+        () => packagesApi.grace(id, {
           reason: input.reason,
           message: input.message ?? null,
           grace_until: input.grace_until,
@@ -298,10 +294,10 @@ export const useStore = create<StoreState>((set, get) => {
       )
     },
 
-    resume: (name) => changeState(name, 'active', {}, () => packagesApi.resume(name)),
+    resume: (id) => changeState(id, 'active', {}, () => packagesApi.resume(id)),
 
-    changePlan: (name, planId) => {
-      const pkg = get().packages.find((p) => p.name === name)
+    changePlan: (id, planId) => {
+      const pkg = get().packages.find((p) => p.id === id)
       const plan = get().plans.find((pl) => pl.id === planId)
       if (!pkg || !plan) return
       const now = new Date().toISOString()
@@ -324,7 +320,7 @@ export const useStore = create<StoreState>((set, get) => {
           },
           ...s.subscriptions.map((x) => (x.id === pkg.subscription_id ? { ...x, ended_at: now } : x)),
         ],
-        packages: s.packages.map((p) => (p.name === name ? { ...p, subscription_id: tempId } : p)),
+        packages: s.packages.map((p) => (p.id === id ? { ...p, subscription_id: tempId } : p)),
         activity: [
           activity('change_plan', { package_id: pkg.id, reason: `plan:${plan.name}` }),
           ...s.activity,
@@ -332,7 +328,7 @@ export const useStore = create<StoreState>((set, get) => {
       }))
       // La respuesta es el package (no el término); resync para tomar el id real del nuevo término.
       packagesApi
-        .changePlan(name, planId)
+        .changePlan(id, planId)
         .then(() => get().loadData())
         .catch((e) => {
           fail(e instanceof Error ? e.message : 'Request failed')
@@ -364,10 +360,12 @@ export const useStore = create<StoreState>((set, get) => {
 
     markInvoicePaid: (invoiceId) => {
       const inv = get().invoices.find((i) => i.id === invoiceId)
+      let resumablePackageId: number | undefined
       let resumablePackageName: string | undefined
       if (inv) {
         const reg = get().packages.find((p) => p.id === inv.package_id && p.provisioned_at != null)
         if (reg && reg.status === 'suspended' && reg.reason === 'payment_overdue') {
+          resumablePackageId = reg.id
           resumablePackageName = reg.name
         }
       }
@@ -392,7 +390,7 @@ export const useStore = create<StoreState>((set, get) => {
         }),
         replaceInvoice,
       )
-      return { resumablePackageName }
+      return { resumablePackageId, resumablePackageName }
     },
 
     markInvoiceOverdue: (invoiceId) => {
@@ -442,12 +440,11 @@ export const useStore = create<StoreState>((set, get) => {
       persist(api<Client>(`/clients/${id}`, { method: 'PATCH', body: patch }), replaceClient)
     },
 
-    deprovision: (name) => {
-      const id = pkgId(name)
+    deprovision: (id) => {
       set((s) => ({
         // Soft: la fila persiste como solo-catalogo (provisioned_at null), conservando label/description.
         packages: s.packages.map((p) =>
-          p.name === name
+          p.id === id
             ? {
                 ...p,
                 provisioned_at: null,
@@ -469,9 +466,9 @@ export const useStore = create<StoreState>((set, get) => {
             : p,
         ),
         // El metering/cuotas de la instancia muere; el billing (subscriptions/invoices) se conserva.
-        quotas: id != null ? s.quotas.filter((q) => q.package_id !== id) : s.quotas,
+        quotas: s.quotas.filter((q) => q.package_id !== id),
       }))
-      persist(packagesApi.deprovision(name))
+      persist(packagesApi.deprovision(id))
     },
 
     updateSettings: (patch) => {
@@ -537,14 +534,13 @@ export const useStore = create<StoreState>((set, get) => {
       persist(api(`/plans/${id}`, { method: 'DELETE' }))
     },
 
-    updatePackage: (name, patch) => {
-      set((s) => ({ packages: s.packages.map((p) => (p.name === name ? { ...p, ...patch } : p)) }))
-      persist(packagesApi.update(name, patch))
+    updatePackage: (id, patch) => {
+      set((s) => ({ packages: s.packages.map((p) => (p.id === id ? { ...p, ...patch } : p)) }))
+      persist(packagesApi.update(id, patch))
     },
 
     provision: async (input) => {
-      // One-step, in-process: the server creates the client + subscription + fills the package's live
-      // columns (migrates + seeds + activates the package) atomically. Refresh the registry on success.
+      // The worker activates it asynchronously after DB setup; refresh the pending registry row now.
       await api<{ package: Package }>('/provisioning', { method: 'POST', body: input })
       await get().loadData()
     },

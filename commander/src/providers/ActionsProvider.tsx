@@ -50,7 +50,7 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
       resume: (t) => {
         const s = useStore.getState()
         const list = asArray(t)
-        list.forEach((p) => s.resume(p.name))
+        list.forEach((p) => s.resume(p.id))
         toast.success(
           list.length === 1 ? 'Package resumed' : `${list.length} packages resumed`,
           list.length === 1 ? list[0].name : undefined,
@@ -59,13 +59,13 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
       deprovision: (pkg, onDeleted) => setTyped({ kind: 'deprovision', pkg, onDeleted }),
       markPaid: (invoice) => {
         const s = useStore.getState()
-        const { resumablePackageName } = s.markInvoicePaid(invoice.id)
+        const { resumablePackageId, resumablePackageName } = s.markInvoicePaid(invoice.id)
         toast.success('Invoice marked as paid', invoice.number)
-        if (resumablePackageName) {
+        if (resumablePackageId != null && resumablePackageName) {
           toast.info('Package can be resumed', `${resumablePackageName} was suspended for payment_overdue.`, {
             actionLabel: 'Resume package',
             onAction: () => {
-              useStore.getState().resume(resumablePackageName)
+              useStore.getState().resume(resumablePackageId)
               toast.success('Package resumed', resumablePackageName)
             },
           })
@@ -87,14 +87,14 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
     const s = useStore.getState()
     const { mode, targets } = stateChange
     if (mode === 'suspend') {
-      targets.forEach((p) => s.suspend(p.name, { reason: r.reason, message: r.message }))
+      targets.forEach((p) => s.suspend(p.id, { reason: r.reason, message: r.message }))
       toast.success(
         targets.length === 1 ? 'Package suspended' : `${targets.length} ${noun(targets.length)} suspended`,
         targets.length === 1 ? targets[0].name : undefined,
       )
     } else {
       const graceUntil = new Date(Date.now() + (r.graceHours ?? graceHoursDefault) * 3_600_000).toISOString()
-      targets.forEach((p) => s.grace(p.name, { reason: r.reason, message: r.message, grace_until: graceUntil }))
+      targets.forEach((p) => s.grace(p.id, { reason: r.reason, message: r.message, grace_until: graceUntil }))
       toast.success(
         targets.length === 1 ? 'Moved to grace' : `${targets.length} ${noun(targets.length)} moved to grace`,
         targets.length === 1 ? targets[0].name : undefined,
@@ -134,7 +134,7 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
           onClose={() => setTyped(null)}
           onConfirm={() => {
             const { pkg, onDeleted } = typed
-            useStore.getState().deprovision(pkg.name)
+            useStore.getState().deprovision(pkg.id)
             toast.success('Package de-provisioned', pkg.name)
             setTyped(null)
             onDeleted?.()
@@ -159,7 +159,7 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
             const s = useStore.getState()
             if (overduePackage) {
               const graceUntil = new Date(Date.now() + graceHoursDefault * 3_600_000).toISOString()
-              s.grace(overduePackage.name, { reason: 'payment_overdue', grace_until: graceUntil })
+              s.grace(overduePackage.id, { reason: 'payment_overdue', grace_until: graceUntil })
             }
             s.setInvoiceEnforcement(overdue.id, 'grace')
             toast.success('Moved to grace', overduePackage?.name)
@@ -167,7 +167,7 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
           }}
           onSuspend={() => {
             const s = useStore.getState()
-            if (overduePackage) s.suspend(overduePackage.name, { reason: 'payment_overdue' })
+            if (overduePackage) s.suspend(overduePackage.id, { reason: 'payment_overdue' })
             s.setInvoiceEnforcement(overdue.id, 'suspended')
             toast.success('Package suspended', overduePackage?.name)
             setOverdue(null)

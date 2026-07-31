@@ -4,6 +4,7 @@ namespace Packages\Core\Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Packages\Core\Models\CoreUserModel;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -14,14 +15,6 @@ class CoreDatabaseSeeder extends Seeder
 
     public function run(): void
     {
-        $password = config('core.auth.admin_password');
-        if (! is_string($password) || $password === '') {
-            if (app()->environment('production')) {
-                throw new \RuntimeException('CORE_ADMIN_PASSWORD is required when seeding in production.');
-            }
-            $password = 'secret1234';
-        }
-
         // Create roles
         $admin = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'sanctum']);
 
@@ -44,7 +37,20 @@ class CoreDatabaseSeeder extends Seeder
         // Assign permissions to roles
         $admin->givePermissionTo($allPermissions);
 
-        // Admin de ESTA BD (la del package o la del operador). Aislamiento por BD, sin package_id.
+        // Nunca copies el admin global del control plane a un tenant. El provisioning crea el
+        // administrador elegido para esa instancia antes de ejecutar los seeders de negocio.
+        if (DB::getDefaultConnection() === 'tenant') {
+            return;
+        }
+
+        $password = config('core.auth.admin_password');
+        if (! is_string($password) || $password === '') {
+            if (app()->environment('production')) {
+                throw new \RuntimeException('CORE_ADMIN_PASSWORD is required when seeding in production.');
+            }
+            $password = 'secret1234';
+        }
+
         $user = CoreUserModel::firstOrCreate(
             ['email' => config('core.auth.admin_email', 'admin@snake.com')],
             [

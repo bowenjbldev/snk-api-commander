@@ -2,8 +2,8 @@
 
 namespace Tests\Unit;
 
+use Packages\Kilkana\Support\SnkKilkanaRichText;
 use PHPUnit\Framework\TestCase;
-use Packages\Snk\Kilkana\Support\SnkKilkanaRichText;
 
 class SnkKilkanaRichTextTest extends TestCase
 {
@@ -48,7 +48,7 @@ class SnkKilkanaRichTextTest extends TestCase
         $this->assertNull(SnkKilkanaRichText::cleanBlocks(null));
     }
 
-    public function test_cleanBlocks_solo_toca_html_de_bloques_de_texto(): void
+    public function test_clean_blocks_solo_toca_html_de_bloques_de_texto(): void
     {
         $blocks = [
             ['id' => 'a', 'type' => 'text', 'config' => ['html' => '<p onclick="x">hi</p>', 'text' => 'hi']],

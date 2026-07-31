@@ -20,9 +20,7 @@ use Packages\Commander\Support\CommanderGitCommitData;
  */
 class CommanderGitSyncService
 {
-    public function __construct(private readonly CommanderPackageGitSource $source)
-    {
-    }
+    public function __construct(private readonly CommanderPackageGitSource $source) {}
 
     /**
      * @return array<int, array{package: string, commits: int, days: int}>
@@ -80,7 +78,7 @@ class CommanderGitSyncService
     }
 
     /**
-     * @param array<int, CommanderGitCommitData> $commits
+     * @param  array<int, CommanderGitCommitData>  $commits
      */
     private function upsertCommits(int $packageId, array $commits, CarbonImmutable $now): void
     {
@@ -113,7 +111,7 @@ class CommanderGitSyncService
     /**
      * Recalcula (desde la tabla cruda) los buckets diarios de los días tocados por los commits nuevos.
      *
-     * @param array<int, CommanderGitCommitData> $commits
+     * @param  array<int, CommanderGitCommitData>  $commits
      * @return int días actualizados
      */
     private function rollupAffectedDays(int $packageId, array $commits, CarbonImmutable $now): int
@@ -155,20 +153,29 @@ class CommanderGitSyncService
         return count($rows);
     }
 
-    /**
-     * Fila repo 1:1 del package; la crea al vuelo derivando el path del monorepo desde el cliente +
-     * nombre del package (zero-config). path_prefix = src/packages/<ClientStudly>/<PackageName>.
-     */
+    /** Fila repo 1:1: usa el overlay si existe y, si no, el package compartido. */
     private function ensureRepo(CommanderPackageModel $package): CommanderPackageRepoModel
     {
+        $customPath = 'src/packages/'.Str::studly((string) $package->client?->slug).'/'.$package->name;
+        $sharedPath = 'src/packages/'.$package->name;
+        $customDirectory = base_path(substr($customPath, 4));
+        $path = is_dir($customDirectory) ? $customPath : $sharedPath;
+
         // `provider` no se setea aqui: lo aporta el default de la columna (el unico sitio que nombra
         // el proveedor). El servicio es agnostico.
-        return CommanderPackageRepoModel::firstOrCreate(
+        $repo = CommanderPackageRepoModel::firstOrCreate(
             ['package_id' => $package->id],
             [
-                'path_prefix' => 'src/packages/'.Str::studly((string) $package->client?->slug).'/'.$package->name,
+                'path_prefix' => $path,
                 'default_branch' => 'main',
             ],
         );
+
+        // Corrige automáticamente el path zero-config antiguo tras mover un package a compartido.
+        if ($repo->path_prefix === $customPath && $path === $sharedPath) {
+            $repo->forceFill(['path_prefix' => $sharedPath])->save();
+        }
+
+        return $repo;
     }
 }

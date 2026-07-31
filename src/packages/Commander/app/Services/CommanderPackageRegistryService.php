@@ -2,23 +2,36 @@
 
 namespace Packages\Commander\Services;
 
-/**
- * Registro de packages de negocio anidados por cliente: el codigo vive en disco
- * (packages/<Cliente>/<Paquete>, via git). En el modelo INSTANCIA, una fila de commander_packages
- * ES un par (cliente, paquete) provisionado: las crea el provisioning, NO un sync de catalogo.
- * Este servicio solo informa de los TIPOS de paquete desplegados en disco (para el flag on_disk
- * y "que se puede provisionar").
- */
+use Packages\Commander\Models\CommanderPackageModel;
+use Packages\Core\Support\CorePackageDiscoverySupport;
+
+/** Catálogo de productos desplegados e implementaciones compartidas/específicas. */
 class CommanderPackageRegistryService
 {
-    /**
-     * Tipos de paquete (StudlyCase) presentes en disco bajo algun cliente: el 2º nivel de
-     * packages/<Cliente>/<Paquete>. El framework (Core, Commander) es de 1er nivel -> excluido.
-     */
+    /** @return string[] tipos StudlyCase; excluye Core, Commander y paraguas vacíos */
     public function availableOnDisk(): array
     {
-        $dirs = glob(base_path('packages/*/*'), GLOB_ONLYDIR) ?: [];
+        return $this->discovery()->availableBusinessPackages();
+    }
 
-        return array_values(array_unique(array_map('basename', $dirs)));
+    public function hasImplementation(string $client, string $package): bool
+    {
+        return $this->discovery()->hasImplementation($client, $package);
+    }
+
+    /** Mantiene una fila de catálogo para que un producto compartido pueda tener planes antes del primer alta. */
+    public function syncCatalog(): void
+    {
+        foreach ($this->availableOnDisk() as $name) {
+            CommanderPackageModel::firstOrCreate(
+                ['name' => $name, 'client_id' => null, 'provisioned_at' => null],
+                ['label' => $name, 'listing_status' => 'active', 'status' => 'active'],
+            );
+        }
+    }
+
+    private function discovery(): CorePackageDiscoverySupport
+    {
+        return CorePackageDiscoverySupport::fromEnvironment(base_path('packages'));
     }
 }

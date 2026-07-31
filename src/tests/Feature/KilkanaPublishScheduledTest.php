@@ -34,4 +34,24 @@ class KilkanaPublishScheduledTest extends TestCase
         $this->assertSame($default, DB::getDefaultConnection());
         $this->assertSame($tenantDatabase, config('database.connections.tenant.database'));
     }
+
+    public function test_it_skips_suspended_tenants(): void
+    {
+        $client = CommanderClientModel::create([
+            'slug' => 'suspended', 'name' => 'Suspended',
+            'email' => 'suspended@example.com', 'status' => 'active',
+        ]);
+        CommanderPackageModel::create([
+            'client_id' => $client->id,
+            'slug' => 'kilkana',
+            'name' => 'Kilkana',
+            'database' => 'suspended_kilkana',
+            'status' => 'suspended',
+            'provisioned_at' => now(),
+        ]);
+
+        $this->artisan('kilkana:publish-scheduled')
+            ->expectsOutput('Done: 0 post(s) published across 0 tenant(s); 0 failed.')
+            ->assertSuccessful();
+    }
 }

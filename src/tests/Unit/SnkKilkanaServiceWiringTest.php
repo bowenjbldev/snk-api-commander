@@ -2,13 +2,13 @@
 
 namespace Tests\Unit;
 
-use Packages\Snk\Kilkana\Http\Controllers\SnkKilkanaCommentsController;
-use Packages\Snk\Kilkana\Http\Controllers\SnkKilkanaLayoutsController;
-use Packages\Snk\Kilkana\Http\Controllers\SnkKilkanaMediaController;
-use Packages\Snk\Kilkana\Http\Controllers\SnkKilkanaPostsController;
-use Packages\Snk\Kilkana\Http\Controllers\SnkKilkanaPublicController;
-use Packages\Snk\Kilkana\Http\Controllers\SnkKilkanaSettingsController;
-use Packages\Snk\Kilkana\Http\Controllers\SnkKilkanaUsersController;
+use Packages\Kilkana\Http\Controllers\SnkKilkanaCommentsController;
+use Packages\Kilkana\Http\Controllers\SnkKilkanaLayoutsController;
+use Packages\Kilkana\Http\Controllers\SnkKilkanaMediaController;
+use Packages\Kilkana\Http\Controllers\SnkKilkanaPostsController;
+use Packages\Kilkana\Http\Controllers\SnkKilkanaPublicController;
+use Packages\Kilkana\Http\Controllers\SnkKilkanaSettingsController;
+use Packages\Kilkana\Http\Controllers\SnkKilkanaUsersController;
 use Tests\TestCase;
 
 class SnkKilkanaServiceWiringTest extends TestCase

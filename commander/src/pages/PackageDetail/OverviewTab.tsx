@@ -28,7 +28,7 @@ export function OverviewTab() {
   const updatePackage = useStore((s) => s.updatePackage)
   const navigate = useNavigate()
   const can = useCan()
-  const canEdit = can('update plans')
+  const canEdit = can('update packages')
   const canProvision = can('provision packages')
   const [provisionOpen, setProvisionOpen] = useState(false)
   const client = useStore((s) => (packageRow ? s.clients.find((c) => c.id === packageRow.client_id) : undefined))
@@ -39,12 +39,13 @@ export function OverviewTab() {
 
   const metaForm = (
     <PackageMetaForm
-      key={pkg.name}
+      key={pkg.id}
       pkg={pkg}
       canEdit={canEdit}
-      onSave={(patch) => updatePackage(pkg.name, patch)}
+      onSave={(patch) => updatePackage(pkg.id, patch)}
     />
   )
+  const pendingOperation = !packageRow && pkg.client_id != null
 
   // No live instance yet → just the catalog form + a provisioning prompt.
   if (!packageRow) {
@@ -53,14 +54,16 @@ export function OverviewTab() {
         {metaForm}
         <div className="scns-card">
           <EmptyState
-            title="This package has no live instance yet"
+            title={pendingOperation ? 'A background package operation is in progress' : 'This package has no live instance yet'}
             description={
-              plans.length === 0
+              pendingOperation
+                ? 'The instance stays outside runtime routing until the worker finishes successfully.'
+                : plans.length === 0
                 ? 'Create a plan first (Plans tab), then provision a live instance to see its state, details and quotas here.'
                 : 'Provision a live instance to see its state, details and quotas here.'
             }
             action={
-              canProvision && plans.length > 0
+              !pendingOperation && canProvision && plans.length > 0
                 ? { label: 'Provision', onClick: () => setProvisionOpen(true) }
                 : undefined
             }

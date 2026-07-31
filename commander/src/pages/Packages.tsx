@@ -5,7 +5,7 @@ import { Box, CheckmarkOutline, Time, PauseOutline, Activity, Money, Close, Add 
 import { useStore } from '../store/store'
 import { useCan } from '../store/auth'
 import { PageHeader } from '../components/PageHeader'
-import { PackageCreateTearsheet } from '../components/PackageCreateTearsheet'
+import { ProvisionModal } from '../components/modals/ProvisionModal'
 import { KpiCluster, KpiTile } from '../components/KpiCluster'
 import { DataTableShell, type ShellColumn } from '../components/DataTableShell'
 import { QuotaBar } from '../components/QuotaBar'
@@ -23,6 +23,7 @@ import type { Package } from '../store/types'
 const PROV_ITEMS = [
   { id: 'all', label: 'Provisioned: All' },
   { id: 'live', label: 'Provisioned: Live' },
+  { id: 'pending', label: 'Provisioned: Pending' },
   { id: 'catalog', label: 'Provisioned: Catalog-only' },
 ]
 const STATUS_ITEMS = [
@@ -40,13 +41,13 @@ const LISTING_ITEMS = [
 // Status dot in the Package cell (replaces the Status column): runtime state for live instances,
 // neutral grey for catalog-only rows.
 function pkgDotColor(p: Package): string {
-  if (p.provisioned_at == null) return 'var(--cds-text-placeholder)'
+  if (p.provisioned_at == null) return p.client_id != null ? 'var(--cds-support-info)' : 'var(--cds-text-placeholder)'
   if (p.status === 'active') return 'var(--scns-success)'
   if (p.status === 'grace') return 'var(--scns-warning)'
   return 'var(--scns-error)'
 }
 function pkgStatusLabel(p: Package): string {
-  if (p.provisioned_at == null) return 'Catalog (not provisioned)'
+  if (p.provisioned_at == null) return p.client_id != null ? 'Pending background operation' : 'Catalog (not provisioned)'
   if (p.status === 'active') return 'Operational'
   if (p.status === 'grace') {
     const left = p.grace_until ? formatCountdownShort(msUntil(p.grace_until, Date.now())) : null
@@ -62,6 +63,7 @@ export function Packages() {
   const packages = useStore((s) => s.packages)
   const clients = useStore((s) => s.clients)
   const subscriptions = useStore((s) => s.subscriptions)
+  const plans = useStore((s) => s.plans)
   const navigate = useNavigate()
   const can = useCan()
 
@@ -123,7 +125,8 @@ export function Packages() {
       packages.filter((p) => {
         const live = p.provisioned_at != null
         if (provFilter === 'live' && !live) return false
-        if (provFilter === 'catalog' && live) return false
+        if (provFilter === 'pending' && (live || p.client_id == null)) return false
+        if (provFilter === 'catalog' && (live || p.client_id != null)) return false
         if (statusFilter !== 'all') {
           if (!live) return false
           const want = statusFilter === 'operational' ? 'active' : statusFilter
@@ -234,7 +237,7 @@ export function Packages() {
         subtitle="Business packages, plans and live deployments"
         primaryAction={
           can('provision packages')
-            ? { label: 'Create package', icon: Add, onClick: () => setCreateOpen(true) }
+            ? { label: 'Provision instance', icon: Add, onClick: () => setCreateOpen(true) }
             : undefined
         }
       />
@@ -253,7 +256,7 @@ export function Packages() {
       <DataTableShell
         rows={filtered}
         columns={columns}
-        getId={(p) => p.name}
+        getId={(p) => p.id}
         searchText={(p) => `${p.name} ${p.label ?? ''} ${p.client_id != null ? clientName.get(p.client_id) ?? '' : ''}`}
         searchPlaceholder="Search packages"
         initialSort={{ key: 'name', dir: 'ASC' }}
@@ -307,7 +310,7 @@ export function Packages() {
         }
       />
 
-      <PackageCreateTearsheet open={createOpen} onClose={() => setCreateOpen(false)} />
+      <ProvisionModal open={createOpen} plans={plans} onClose={() => setCreateOpen(false)} />
     </div>
   )
 }

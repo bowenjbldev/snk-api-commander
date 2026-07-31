@@ -130,4 +130,3 @@ class CoreServiceProvider extends ServiceProvider
         return !str_contains($key, '.');
     }
 }
-

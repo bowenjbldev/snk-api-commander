@@ -39,7 +39,7 @@ export function LogsTab() {
 // Real recent requests for this package — read in-process from commander_request_logs.
 function LogsView({ pkg }: { pkg: Package }) {
   const [tick, setTick] = useState(0)
-  const state = useLoad(() => packagesApi.logs(pkg.name, { limit: 50 }).then((res) => res.data ?? []), [pkg.name, tick])
+  const state = useLoad(() => packagesApi.logs(pkg.id, { limit: 50 }).then((res) => res.data ?? []), [pkg.id, tick])
   const logs = state.data ?? []
 
   return (

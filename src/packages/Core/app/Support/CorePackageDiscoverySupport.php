@@ -2,12 +2,17 @@
 
 namespace Packages\Core\Support;
 
+use Illuminate\Database\Seeder;
+use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
+
 final class CorePackageDiscoverySupport
 {
     /** Subdirectorios de recurso que marcan el fin del namespace del módulo. */
     private const RESOURCE_DIRS = ['app', 'config', 'routes', 'database'];
 
     private string $packagesBasePath;
+
     /**
      * @var string[]|null
      */
@@ -24,7 +29,7 @@ final class CorePackageDiscoverySupport
     }
 
     /**
-     * @return array<class-string<\Illuminate\Support\ServiceProvider>>
+     * @return array<class-string<ServiceProvider>>
      */
     public function discoverProviderClasses(): array
     {
@@ -34,7 +39,15 @@ final class CorePackageDiscoverySupport
 
         foreach ($paths as $path) {
             $module = $this->moduleNamespace($path);            // Core | Acme\Shop
-            $expectedClass = $this->classBase($module) . 'ServiceProvider'; // AcmeShopServiceProvider
+
+            // Los providers de overlays de cliente no se cargan globalmente: un binding de
+            // ElMundo no puede modificar las peticiones de ElConfidencial. El overlay sigue
+            // pudiendo aportar rutas, config, migraciones y seeders acotados a su tenant.
+            if (str_contains($module, '\\')) {
+                continue;
+            }
+
+            $expectedClass = $this->classBase($module).'ServiceProvider'; // AcmeShopServiceProvider
             $class = pathinfo($path, PATHINFO_FILENAME);
 
             if ($class !== $expectedClass) {
@@ -74,15 +87,17 @@ final class CorePackageDiscoverySupport
             // Sus configs van SIEMPRE namespaced (acme.shop.sanctum, acme.shop.scramble...).
             $key = ($moduleKey === 'core' && $this->shouldUseGlobalConfigKey($fileKey))
                 ? $fileKey
-                : $moduleKey . '.' . $fileKey;
+                : $moduleKey.'.'.$fileKey;
 
-            if (!array_key_exists($key, $configs)) {
+            if (! array_key_exists($key, $configs)) {
                 $configs[$key] = $path;
+
                 continue;
             }
 
             if (is_array($configs[$key])) {
                 $configs[$key][] = $path;
+
                 continue;
             }
 
@@ -90,7 +105,7 @@ final class CorePackageDiscoverySupport
         }
 
         foreach ($configs as $key => $value) {
-            if (!is_array($value)) {
+            if (! is_array($value)) {
                 continue;
             }
 
@@ -117,7 +132,7 @@ final class CorePackageDiscoverySupport
     }
 
     /**
-     * @return array<class-string<\Illuminate\Database\Seeder>>
+     * @return array<class-string<Seeder>>
      */
     public function discoverSeederClasses(?string $excludeClass = null): array
     {
@@ -149,6 +164,75 @@ final class CorePackageDiscoverySupport
     }
 
     /**
+     * Implementaciones aplicables a una instancia, en orden base -> overlay de cliente.
+     *
+     * @return string[] módulos: Kilkana, ElMundo\Kilkana
+     */
+    public function implementationModules(string $client, string $package): array
+    {
+        $client = Str::studly($client);
+        $package = Str::studly($package);
+
+        if ($client === '' || $package === '' || in_array($package, ['Core', 'Commander'], true)) {
+            return [];
+        }
+
+        $modules = [$package, "{$client}\\{$package}"];
+        if (! is_file($this->modulePath($modules[0]).'/routes/api.php')
+            && ! is_file($this->modulePath($modules[1]).'/routes/api.php')) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            $modules,
+            fn (string $module): bool => is_dir($this->modulePath($module))
+                && $this->containsModuleResources($this->modulePath($module)),
+        ));
+    }
+
+    /** @return string[] rutas absolutas, base -> overlay */
+    public function implementationDirectories(string $client, string $package): array
+    {
+        return array_map($this->modulePath(...), $this->implementationModules($client, $package));
+    }
+
+    public function hasImplementation(string $client, string $package): bool
+    {
+        return $this->implementationModules($client, $package) !== [];
+    }
+
+    /** @return string[] tipos de negocio desplegados, compartidos o específicos */
+    public function availableBusinessPackages(): array
+    {
+        $names = [];
+        $candidates = array_merge(
+            glob($this->packagesBasePath.'/*', GLOB_ONLYDIR) ?: [],
+            glob($this->packagesBasePath.'/*/*', GLOB_ONLYDIR) ?: [],
+        );
+
+        foreach ($candidates as $directory) {
+            $relative = ltrim(substr($directory, strlen($this->packagesBasePath)), '/');
+            $segments = explode('/', $relative);
+
+            if (count($segments) === 1) {
+                if (in_array($segments[0], ['Core', 'Commander'], true)
+                    || ! is_file("{$directory}/routes/api.php")) {
+                    continue;
+                }
+            } elseif (count($segments) !== 2 || ! is_file("{$directory}/routes/api.php")) {
+                continue;
+            }
+
+            $names[] = end($segments);
+        }
+
+        $names = array_values(array_unique($names));
+        sort($names, SORT_STRING);
+
+        return $names;
+    }
+
+    /**
      * Glob de un recurso en packages de framework (1 nivel: packages/Core/...) Y de negocio
      * anidados por cliente (2 niveles: packages/Acme/Shop/...). Las carpetas paraguas de cliente
      * (packages/Acme) no tienen recursos propios, así que no colisionan.
@@ -157,13 +241,13 @@ final class CorePackageDiscoverySupport
      */
     private function globModules(string $tail): array
     {
-        if (!is_dir($this->packagesBasePath)) {
+        if (! is_dir($this->packagesBasePath)) {
             return [];
         }
 
         $paths = array_merge(
-            glob($this->packagesBasePath . '/*' . $tail) ?: [],
-            glob($this->packagesBasePath . '/*/*' . $tail) ?: [],
+            glob($this->packagesBasePath.'/*'.$tail) ?: [],
+            glob($this->packagesBasePath.'/*/*'.$tail) ?: [],
         );
 
         sort($paths, SORT_STRING);
@@ -171,8 +255,24 @@ final class CorePackageDiscoverySupport
         return $paths;
     }
 
+    private function modulePath(string $module): string
+    {
+        return $this->packagesBasePath.'/'.str_replace('\\', '/', $module);
+    }
+
+    private function containsModuleResources(string $directory): bool
+    {
+        foreach (['routes/*.php', 'config/*.php', 'database/migrations/*.php', 'database/seeders/*.php'] as $pattern) {
+            if ((glob("{$directory}/{$pattern}") ?: []) !== []) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /**
-     * @param string[] $paths
+     * @param  string[]  $paths
      * @return string[]
      */
     private function filterByLoadableModule(array $paths, bool $allowCore): array
@@ -236,9 +336,9 @@ final class CorePackageDiscoverySupport
         }
 
         $projectRoot = dirname($this->packagesBasePath);
-        $projectConfigPath = $projectRoot . '/config';
+        $projectConfigPath = $projectRoot.'/config';
         $paths = is_dir($projectConfigPath)
-            ? (glob($projectConfigPath . '/*.php') ?: [])
+            ? (glob($projectConfigPath.'/*.php') ?: [])
             : [];
 
         sort($paths, SORT_STRING);
@@ -258,12 +358,12 @@ final class CorePackageDiscoverySupport
     }
 
     /**
-     * @param string[] $paths
+     * @param  string[]  $paths
      * @return string[]
      */
     private function sortConfigPathsForKey(string $key, array $paths): array
     {
-        if (!str_contains($key, '.')) {
+        if (! str_contains($key, '.')) {
             usort($paths, function (string $a, string $b): int {
                 $aIsCore = strcasecmp($this->moduleNamespace($a), 'Core') === 0;
                 $bIsCore = strcasecmp($this->moduleNamespace($b), 'Core') === 0;

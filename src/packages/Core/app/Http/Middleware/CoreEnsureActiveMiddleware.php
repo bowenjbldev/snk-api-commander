@@ -6,19 +6,20 @@ use Closure;
 use Illuminate\Http\Request;
 use Packages\Core\Enums\CorePackageStatusEnum;
 use Packages\Core\Services\CorePackageStateService;
+use Packages\Core\Support\CoreActivePackageSupport;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Kill-switch del deploy: lee el estado del package (commander_packages, cacheado) y corta con 402
  * cuando el estado efectivo es suspended. Grace deja pasar con headers de
- * aviso. Fail-open: cualquier fallo interno (tabla ausente pre-migrate,
- * cache caida) equivale a active.
+ * aviso. Si no puede comprobar el estado de un tenant, falla cerrado con 503.
  */
 class CoreEnsureActiveMiddleware
 {
-    public function __construct(private readonly CorePackageStateService $stateService)
-    {
-    }
+    public function __construct(
+        private readonly CorePackageStateService $stateService,
+        private readonly CoreActivePackageSupport $active,
+    ) {}
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -28,13 +29,21 @@ class CoreEnsureActiveMiddleware
             }
         }
 
+        // Health, Core y Commander no representan una instancia tenant.
+        if ($this->active->id() === null) {
+            return $next($request);
+        }
+
         try {
             $state = $this->stateService->current();
             $effective = $state->effectiveStatus();
         } catch (\Throwable $e) {
             report($e);
 
-            return $next($request);
+            return response()->json([
+                'status' => 'unavailable',
+                'message' => 'Tenant status could not be verified.',
+            ], 503);
         }
 
         if ($effective === CorePackageStatusEnum::Suspended) {

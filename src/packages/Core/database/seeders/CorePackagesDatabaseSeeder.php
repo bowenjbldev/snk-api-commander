@@ -7,7 +7,8 @@ use Packages\Core\Support\CorePackageDiscoverySupport;
 
 class CorePackagesDatabaseSeeder extends Seeder
 {
-    public static ?string $targetPackage = null;
+    /** @var string|string[]|null */
+    public static string|array|null $targetPackage = null;
 
     private ?CorePackageDiscoverySupport $packageDiscovery = null;
 
@@ -19,18 +20,22 @@ class CorePackagesDatabaseSeeder extends Seeder
     }
 
     /**
-     * @return array<class-string<\Illuminate\Database\Seeder>>
+     * @return array<class-string<Seeder>>
      */
     private function discoverPackageSeeders(): array
     {
         $seeders = $this->packageDiscovery()->discoverSeederClasses(static::class);
 
         if (self::$targetPackage !== null) {
-            $targetNamespace = "Packages\\" . self::$targetPackage . "\\";
-            $coreNamespace = "Packages\\Core\\";
+            $targets = array_map(
+                fn (string $target): string => "Packages\\{$target}\\",
+                (array) self::$targetPackage,
+            );
+            $coreNamespace = 'Packages\\Core\\';
 
-            $seeders = array_values(array_filter($seeders, function (string $seeder) use ($targetNamespace, $coreNamespace): bool {
-                return str_starts_with($seeder, $coreNamespace) || str_starts_with($seeder, $targetNamespace);
+            $seeders = array_values(array_filter($seeders, function (string $seeder) use ($targets, $coreNamespace): bool {
+                return str_starts_with($seeder, $coreNamespace)
+                    || collect($targets)->contains(fn (string $target): bool => str_starts_with($seeder, $target));
             }));
         }
 

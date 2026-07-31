@@ -5,6 +5,7 @@ namespace Packages\Core\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Packages\Commander\Models\CommanderPackageModel;
 use Packages\Core\Support\CoreActivePackageSupport;
 use Packages\Core\Support\CorePackageSelectorSupport;
@@ -17,15 +18,12 @@ use Symfony\Component\HttpFoundation\Response;
  * fila viva de commander_packages (subdomain del cliente + slug) y la fijan como package activo
  * (lo leen state, metering y cuotas). Sin fila provisionada => 404.
  *
- * También aplica los overrides de config GLOBAL del package (namespace {cliente}.{slug}, cargado
- * por el discovery): antes era un middleware global pre-routing, pero con subdominio = cliente el
- * package solo se conoce con el slug del path, así que el override vive aquí. API stateless.
+ * Aplica config compartida ({slug}) y luego el overlay ({cliente}.{slug}); restaura config,
+ * conexión y contexto en finally para no cruzar tenants en workers persistentes.
  */
 class CoreResolvePackageFromHostMiddleware
 {
-    public function __construct(private readonly CoreActivePackageSupport $active)
-    {
-    }
+    public function __construct(private readonly CoreActivePackageSupport $active) {}
 
     public function handle(Request $request, Closure $next, string $slug): Response
     {
@@ -36,7 +34,7 @@ class CoreResolvePackageFromHostMiddleware
         $package = $clientSubdomain !== null
             ? CommanderPackageModel::query()
                 ->whereNotNull('provisioned_at')
-                ->whereHas('client', fn ($q) => $q->where('slug', $clientSubdomain))
+                ->whereHas('client', fn ($q) => $q->where('slug', $clientSubdomain)->where('status', 'active'))
                 ->where('slug', $slug)
                 ->first()
             : null;
@@ -45,12 +43,25 @@ class CoreResolvePackageFromHostMiddleware
             abort(404); // (cliente, slug) no provisionado
         }
 
-        $this->active->set($package);
+        if (empty($package->database) || empty($package->database_username) || empty($package->database_password)) {
+            abort(503, 'Tenant database is not available.');
+        }
 
-        // Aislamiento FÍSICO: conmuta la conexión default a la BD del package ({client}_{slug}).
-        // Bajo PHP-FPM cada request es share-nothing -> el cambio vive solo en este request.
-        // El token de un tenant ni existe en la BD de otro -> 401 automático, sin check explícito.
-        if (! empty($package->database)) {
+        try {
+            CorePackageSelectorSupport::validatedDatabaseIdentifier($package->database);
+            CorePackageSelectorSupport::validatedDatabaseIdentifier($package->database_username);
+        } catch (\RuntimeException) {
+            abort(503, 'Tenant database is not available.');
+        }
+
+        $originalConnection = DB::getDefaultConnection();
+        $originalTenantConfig = config('database.connections.tenant');
+        $originalConfig = [];
+
+        try {
+            $this->active->set($package);
+
+            // Aislamiento FÍSICO: conmuta la conexión default a la BD del package ({client}_{slug}).
             config([
                 'database.connections.tenant.database' => $package->database,
                 'database.connections.tenant.username' => $package->database_username,
@@ -58,23 +69,62 @@ class CoreResolvePackageFromHostMiddleware
             ]);
             DB::purge('tenant');
             DB::setDefaultConnection('tenant');
+
+            $packageConfigKey = strtolower(Str::studly($slug));
+            $clientConfigKey = strtolower(Str::studly($clientSubdomain));
+            $originalConfig = $this->applyConfigOverrides(
+                [$packageConfigKey, "{$clientConfigKey}.{$packageConfigKey}"],
+                $packageConfigKey,
+            );
+
+            return $next($request);
+        } finally {
+            foreach ($originalConfig as $key => $value) {
+                config([$key => $value]);
+            }
+            config(['database.connections.tenant' => $originalTenantConfig]);
+            DB::setDefaultConnection($originalConnection);
+            DB::purge('tenant');
+            $this->active->forget();
         }
-
-        $this->applyConfigOverrides("{$clientSubdomain}.{$slug}");
-
-        return $next($request);
     }
 
-    /** Fusiona los config del package que coinciden con una clave del skeleton sobre la global. */
-    private function applyConfigOverrides(string $namespace): void
+    /**
+     * Fusiona primero el config compartido y después el overlay, guardando lo que debe restaurarse.
+     *
+     * @param  string[]  $namespaces
+     * @return array<string, mixed>
+     */
+    private function applyConfigOverrides(array $namespaces, string $packageNamespace): array
     {
-        foreach ($this->globalConfigKeys() as $key) {
-            $override = config("{$namespace}.{$key}");
+        $original = [];
+        $globalKeys = $this->globalConfigKeys();
 
-            if (is_array($override) && $override !== []) {
-                config([$key => array_replace_recursive((array) config($key, []), $override)]);
+        foreach ($globalKeys as $key) {
+            foreach ($namespaces as $namespace) {
+                $override = config("{$namespace}.{$key}");
+
+                if (is_array($override) && $override !== []) {
+                    $original[$key] ??= config($key);
+                    config([$key => array_replace_recursive((array) config($key, []), $override)]);
+                }
             }
         }
+
+        // La config propia del overlay (acme.shop.features) se expone donde la consume
+        // el package base (shop.features), sin dejarla aplicada al siguiente request.
+        $overlayNamespace = end($namespaces);
+        foreach ((array) config($overlayNamespace, []) as $key => $override) {
+            if (in_array($key, $globalKeys, true) || ! is_array($override)) {
+                continue;
+            }
+
+            $target = "{$packageNamespace}.{$key}";
+            $original[$target] ??= config($target);
+            config([$target => array_replace_recursive((array) config($target, []), $override)]);
+        }
+
+        return $original;
     }
 
     /** Claves del skeleton de Laravel (config/*.php): las únicas que un package puede overridear. */

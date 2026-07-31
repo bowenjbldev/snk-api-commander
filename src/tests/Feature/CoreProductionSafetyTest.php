@@ -3,15 +3,20 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\URL;
 use Packages\Commander\Jobs\CommanderDeprovisionPackageJob;
 use Packages\Commander\Jobs\CommanderProvisionPackageJob;
 use Packages\Commander\Models\CommanderClientModel;
 use Packages\Commander\Models\CommanderPackageModel;
 use Packages\Core\Database\Seeders\CoreDatabaseSeeder;
+use Packages\Core\Http\Middleware\CoreEnsureActiveMiddleware;
+use Packages\Core\Services\CorePackageStateService;
+use Packages\Core\Support\CoreActivePackageSupport;
 use Tests\TestCase;
 
 class CoreProductionSafetyTest extends TestCase
@@ -26,7 +31,17 @@ class CoreProductionSafetyTest extends TestCase
 
         $this->assertSame([], $names->duplicates()->unique()->values()->all());
         $this->assertContains('commander.users.index', $names);
-        $this->assertContains('snk.kilkana.users.index', $names);
+        $this->assertContains('kilkana.users.index', $names);
+    }
+
+    public function test_shared_signed_routes_are_generated_for_the_requested_client_host(): void
+    {
+        app('url')->setRequest(Request::create('https://elmundo.snake.test/api/v1/kilkana'));
+
+        $url = URL::signedRoute('kilkana.subscribe.confirm', ['client' => 'elmundo', 'subscriber' => 42]);
+
+        $this->assertStringStartsWith('https://elmundo.snake.test/api/v1/kilkana/public/subscribe/confirm/42?', $url);
+        $this->assertTrue(URL::hasValidSignature(Request::create($url)));
     }
 
     public function test_queue_visibility_and_package_locks_cover_destructive_jobs(): void
@@ -47,6 +62,22 @@ class CoreProductionSafetyTest extends TestCase
             $provision->middleware()[0]->getLockKey($provision),
             $deprovision->middleware()[0]->getLockKey($deprovision),
         );
+    }
+
+    public function test_tenant_state_check_fails_closed(): void
+    {
+        $state = \Mockery::mock(CorePackageStateService::class);
+        $state->shouldReceive('current')->once()->andThrow(new \RuntimeException('cache unavailable'));
+        $active = new CoreActivePackageSupport;
+        $active->set((new CommanderPackageModel)->forceFill(['id' => 42]));
+
+        $response = (new CoreEnsureActiveMiddleware($state, $active))->handle(
+            Request::create('/api/v1/kilkana/posts'),
+            fn () => response('should not run'),
+        );
+
+        $this->assertSame(503, $response->getStatusCode());
+        $this->assertSame('unavailable', $response->getData(true)['status']);
     }
 
     public function test_all_tenant_migration_fails_closed_for_incomplete_registry_entry(): void

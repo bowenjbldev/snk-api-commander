@@ -24,27 +24,39 @@ class CommanderGitSyncTest extends CommanderTestCase
 {
     use RefreshDatabase;
 
-    private function provisionedPackage(): CommanderPackageModel
+    private function provisionedPackage(string $name = 'Shop'): CommanderPackageModel
     {
         $client = CommanderClientModel::create([
             'slug' => 'acme', 'name' => 'Acme', 'email' => 'a@a.test', 'status' => 'active',
         ]);
 
         return CommanderPackageModel::create([
-            'name' => 'Shop', 'slug' => 'shop', 'database' => 'acme_shop',
+            'name' => $name, 'slug' => strtolower($name), 'database' => 'acme_'.strtolower($name),
             'client_id' => $client->id, 'status' => 'active', 'provisioned_at' => now(),
         ]);
+    }
+
+    public function test_sync_uses_shared_code_when_the_client_has_no_overlay(): void
+    {
+        $package = $this->provisionedPackage('Kilkana');
+        $this->app->instance(CommanderPackageGitSource::class, $this->fakeSource([]));
+
+        $this->app->make(CommanderGitSyncService::class)->sync();
+
+        $this->assertSame(
+            'src/packages/Kilkana',
+            CommanderPackageRepoModel::where('package_id', $package->id)->value('path_prefix'),
+        );
     }
 
     /** Source fake: devuelve los commits solo en la primera pasada (cursor null); luego nada. */
     private function fakeSource(array $commits): CommanderPackageGitSource
     {
-        return new class($commits) implements CommanderPackageGitSource {
+        return new class($commits) implements CommanderPackageGitSource
+        {
             public array $sinceCalls = [];
 
-            public function __construct(private array $commits)
-            {
-            }
+            public function __construct(private array $commits) {}
 
             public function fetchCommits($repo, $sinceSha): iterable
             {
@@ -70,9 +82,9 @@ class CommanderGitSyncTest extends CommanderTestCase
 
         $this->assertSame([['package' => 'acme/shop', 'commits' => 3, 'days' => 2]], $summary);
 
-        // Fila repo 1:1 auto-creada con el path del monorepo derivado del cliente + package.
+        // Sin overlay desplegado, los insights apuntan al producto compartido.
         $repo = CommanderPackageRepoModel::where('package_id', $package->id)->firstOrFail();
-        $this->assertSame('src/packages/Acme/Shop', $repo->path_prefix);
+        $this->assertSame('src/packages/Shop', $repo->path_prefix);
         $this->assertSame('bbb', $repo->last_synced_sha); // el más reciente por fecha (15:00 del 20)
 
         $this->assertSame(3, CommanderPackageCommitModel::where('package_id', $package->id)->count());

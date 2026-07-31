@@ -51,7 +51,8 @@ export function ProvisionModal({ open, packageName, plans, planId, lockClientId,
   const [newName, setNewName] = useState('')
   const [newEmail, setNewEmail] = useState('')
   const [newBillingEmail, setNewBillingEmail] = useState('')
-  const [pkgSlug, setPkgSlug] = useState('')
+  const [adminEmail, setAdminEmail] = useState('')
+  const [adminPassword, setAdminPassword] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [busy, setBusy] = useState(false)
 
@@ -63,7 +64,8 @@ export function ProvisionModal({ open, packageName, plans, planId, lockClientId,
       setNewName('')
       setNewEmail('')
       setNewBillingEmail('')
-      setPkgSlug('')
+      setAdminEmail('')
+      setAdminPassword('')
       setSubmitted(false)
       setBusy(false)
     }
@@ -77,20 +79,24 @@ export function ProvisionModal({ open, packageName, plans, planId, lockClientId,
   const newEmailError =
     clientMode === 'new' ? (!newEmail.trim() ? 'Required' : !validEmail(newEmail) ? 'Invalid email' : '') : ''
   const existingError = clientMode === 'existing' && !clientId ? 'Select a client' : ''
-  const valid = !planError && !newNameError && !newEmailError && !existingError
+  const adminEmailError = !adminEmail.trim() ? 'Required' : !validEmail(adminEmail) ? 'Invalid email' : ''
+  const adminPasswordError = adminPassword.length < 12 || !/[A-Za-z]/.test(adminPassword) || !/\d/.test(adminPassword)
+    ? 'Use at least 12 characters with letters and numbers'
+    : ''
+  const valid = !planError && !newNameError && !newEmailError && !existingError && !adminEmailError && !adminPasswordError
 
   const submit = async () => {
     setSubmitted(true)
     if (!valid || !selectedPlan) return
     setBusy(true)
     try {
-      const pathSlug = slugify(pkgSlug) || undefined
       const input =
         clientMode === 'existing'
-          ? { plan_id: selectedPlan.id, client_id: clientId || undefined, slug: pathSlug }
+          ? { plan_id: selectedPlan.id, client_id: clientId || undefined, admin_email: adminEmail.trim(), admin_password: adminPassword }
           : {
               plan_id: selectedPlan.id,
-              slug: pathSlug,
+              admin_email: adminEmail.trim(),
+              admin_password: adminPassword,
               client: {
                 slug: slugify(newName),
                 name: newName.trim(),
@@ -99,7 +105,7 @@ export function ProvisionModal({ open, packageName, plans, planId, lockClientId,
               },
             }
       await provision(input)
-      toast.success('Instance provisioned', `${selectedPlan.package} · ${selectedPlan.name} is live`)
+      toast.success('Provisioning queued', `${selectedPlan.package} · ${selectedPlan.name} will go live after setup`)
       onProvisioned?.()
       onClose()
     } catch (e) {
@@ -187,12 +193,22 @@ export function ProvisionModal({ open, packageName, plans, planId, lockClientId,
           )}
 
           <TextInput
-            id="prov-slug"
-            labelText="Package slug (optional)"
-            placeholder="auto from package name"
-            value={pkgSlug}
-            onChange={(e) => setPkgSlug(e.target.value)}
-            helperText="Path segment of the API (/api/v1/<slug>). The host comes from the client. Leave blank to let the backend derive it."
+            id="prov-admin-email"
+            type="email"
+            labelText="Tenant administrator email"
+            value={adminEmail}
+            onChange={(e) => setAdminEmail(e.target.value)}
+            invalid={submitted && !!adminEmailError}
+            invalidText={adminEmailError}
+          />
+          <TextInput
+            id="prov-admin-password"
+            type="password"
+            labelText="Tenant administrator password"
+            value={adminPassword}
+            onChange={(e) => setAdminPassword(e.target.value)}
+            invalid={submitted && !!adminPasswordError}
+            invalidText={adminPasswordError}
           />
         </div>
     </Modal>

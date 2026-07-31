@@ -17,6 +17,7 @@ use Packages\Commander\Models\CommanderUsageRollupModel;
 use Packages\Commander\Services\CommanderQuotaMeasurerService;
 use Packages\Core\Database\Seeders\CoreDatabaseSeeder;
 use Packages\Core\Models\CoreUserModel;
+use Packages\Core\Support\CoreActivePackageSupport;
 use Tests\CommanderTestCase;
 
 /**
@@ -124,6 +125,51 @@ class CommanderControlCenterTest extends CommanderTestCase
         $this->assertSame('quota_exceeded:requests_day', $event->reason);
     }
 
+    public function test_quota_measurement_does_not_reuse_or_leak_tenant_context(): void
+    {
+        $pkg = $this->package();
+        $catalog = CommanderPackageModel::create([
+            'name' => 'Kilkana', 'label' => 'Kilkana', 'listing_status' => 'active',
+        ]);
+        CommanderQuotaModel::create([
+            'package_id' => $pkg->id, 'metric_key' => 'users_total',
+            'limit_value' => 100, 'current_value' => 7, 'on_exceed' => 'warn', 'unit' => 'count',
+        ]);
+
+        $active = app(CoreActivePackageSupport::class);
+        $active->set($catalog);
+        $originalTenantConfig = config('database.connections.tenant');
+
+        $results = app(CommanderQuotaMeasurerService::class)->measureAll(persist: false, enforce: false);
+
+        $this->assertNull($results[0]['value']);
+        $this->assertSame($originalTenantConfig, config('database.connections.tenant'));
+        $this->assertTrue($catalog->is($active->current()));
+    }
+
+    public function test_quota_auto_heal_waits_until_every_metric_is_below_limit(): void
+    {
+        $pkg = $this->package();
+        $pkg->forceFill([
+            'status' => 'grace',
+            'reason' => 'quota_exceeded:requests_day',
+            'grace_until' => now()->addHour(),
+        ])->save();
+        $metric = CommanderQuotaModel::create([
+            'package_id' => $pkg->id, 'metric_key' => 'requests_day',
+            'limit_value' => 100, 'current_value' => 10, 'on_exceed' => 'suspend', 'unit' => 'count',
+        ]);
+        $active = app(CoreActivePackageSupport::class);
+        $active->set($pkg);
+        $service = app(CommanderQuotaMeasurerService::class);
+
+        $service->enforce($metric, anotherMetricIsOver: true);
+        $this->assertSame('grace', $pkg->fresh()->getRawOriginal('status'));
+
+        $service->enforce($metric, anotherMetricIsOver: false);
+        $this->assertSame('active', $pkg->fresh()->getRawOriginal('status'));
+    }
+
     public function test_global_logs_tag_each_row_with_package(): void
     {
         $admin = $this->admin();
@@ -184,10 +230,11 @@ class CommanderControlCenterTest extends CommanderTestCase
             'slug' => 'cmd-basic', 'package' => 'Commander', 'name' => 'Basic', 'price_monthly' => 10,
         ])->assertStatus(422)->assertJsonValidationErrors('package');
 
-        // 'Kilkana' existe bajo el cliente Snk -> pasa el guard de package desplegado.
+        // 'Kilkana' existe como package compartido -> pasa el guard de código desplegado.
         $this->actingAs($admin, 'sanctum')->postJson('/api/v1/plans', [
-            'slug' => 'kilkana-basic', 'package' => 'Kilkana', 'name' => 'Basic', 'price_monthly' => 10,
+            'slug' => 'kilkana-basic', 'package' => 'kilkana', 'name' => 'Basic', 'price_monthly' => 10,
         ])->assertStatus(201);
+        $this->assertSame('Kilkana', CommanderPlanModel::where('slug', 'kilkana-basic')->value('package'));
     }
 
     public function test_packages_registry_lists_enriched_and_excludes_core_commander(): void
@@ -230,7 +277,7 @@ class CommanderControlCenterTest extends CommanderTestCase
     private function planFor(string $package, string $name, float $price = 100, string $status = 'active'): CommanderPlanModel
     {
         return CommanderPlanModel::create([
-            'slug' => Str::slug("{$package} {$name}") . '-' . uniqid(),
+            'slug' => Str::slug("{$package} {$name}").'-'.uniqid(),
             'package' => $package, 'name' => $name, 'price_monthly' => $price, 'status' => $status,
         ]);
     }

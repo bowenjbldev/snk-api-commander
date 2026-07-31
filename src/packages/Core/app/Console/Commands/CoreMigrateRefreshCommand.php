@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Packages\Core\Console\Concerns\CorePackageDatabaseSupport;
+use Packages\Core\Support\CorePackageDiscoverySupport;
 use Packages\Core\Support\CorePackageSelectorSupport;
 
 class CoreMigrateRefreshCommand extends Command
@@ -18,43 +19,54 @@ class CoreMigrateRefreshCommand extends Command
         {--seed : Run seeders after refreshing}
         {--force : Force the operation to run in production}';
 
-    protected $description = 'Reset and re-run all Core + package migrations on a nested package tenant DB';
+    protected $description = 'Reset and re-run Core + shared + overlay migrations on a tenant DB';
 
     public function handle(): int
     {
         [$client, $package] = $this->resolvePackageForConsole();
 
-        // TENANT: apunta la conexión a la BD del paquete anidado ({client}_{package}) antes de refrescar.
+        // TENANT: apunta la conexión a la BD aislada ({client}_{package}) antes de refrescar.
         config([
-            'database.connections.tenant.database' => CorePackageSelectorSupport::databaseName($client, $package),
+            'database.connections.tenant.database' => CorePackageSelectorSupport::validatedDatabaseIdentifier(
+                CorePackageSelectorSupport::databaseName($client, $package)
+            ),
             'database.connections.tenant.username' => config('database.connections.provisioner.username'),
             'database.connections.tenant.password' => config('database.connections.provisioner.password'),
         ]);
         DB::purge('tenant');
 
-        $paths = [
-            'packages/Core/database/migrations',
-            "packages/{$client}/{$package}/database/migrations",
-        ];
+        $discovery = CorePackageDiscoverySupport::fromEnvironment(base_path('packages'));
+        $paths = [base_path('packages/Core/database/migrations')];
+        foreach ($discovery->implementationDirectories($client, $package) as $directory) {
+            if (is_dir("{$directory}/database/migrations")) {
+                $paths[] = "{$directory}/database/migrations";
+            }
+        }
 
         $args = [
             '--path' => $paths,
+            '--realpath' => true,
             '--database' => 'tenant',
             '--force' => $this->option('force'),
         ];
 
         $this->info("Refreshing migrations for [{$client}/{$package}]...");
-        Artisan::call('migrate:refresh', $args, $this->output);
+        $status = Artisan::call('migrate:refresh', $args, $this->output);
+
+        if ($status !== self::SUCCESS) {
+            return $status;
+        }
 
         if ($this->option('seed')) {
             $this->info("Running seeders for [{$client}/{$package}]...");
-            Artisan::call('core:seed', [
+
+            return Artisan::call('core:seed', [
                 '--client' => $client,
                 '--package' => $package,
                 '--force' => $this->option('force'),
             ], $this->output);
         }
 
-        return self::SUCCESS;
+        return $status;
     }
 }

@@ -5,10 +5,9 @@ namespace Packages\Core\Support;
 use Packages\Commander\Models\CommanderPackageModel;
 
 /**
- * Package cuyo subdominio sirvio el request actual. Lo fija por request
- * CoreResolvePackageFromHostMiddleware. Sin request con package (CLI, host del operador/apex)
- * queda null; el codigo que necesita un package concreto lo pasa explicito. Singleton: el
- * valor vive durante el request.
+ * Instancia (cliente, package) que sirve el request actual. La fija
+ * CoreResolvePackageFromHostMiddleware a partir del host y del slug del path. Sin request tenant
+ * (CLI, host del operador/apex) queda null. Singleton: el valor vive durante el request.
  */
 class CoreActivePackageSupport
 {

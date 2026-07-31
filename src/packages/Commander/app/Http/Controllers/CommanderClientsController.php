@@ -3,8 +3,8 @@
 namespace Packages\Commander\Http\Controllers;
 
 use Dedoc\Scramble\Attributes\Group;
-use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Commander\Models\CommanderClientModel;
+use Packages\Core\Http\Controllers\CoreBaseApiController;
 
 #[Group('Clients')]
 class CommanderClientsController extends CoreBaseApiController
@@ -12,15 +12,19 @@ class CommanderClientsController extends CoreBaseApiController
     protected string $modelClass = CommanderClientModel::class;
 
     protected string $indexPermission = 'index clients';
+
     protected string $showPermission = 'show clients';
+
     protected string $storePermission = 'create clients';
+
     protected string $updatePermission = 'update clients';
+
     protected string $destroyPermission = 'delete clients';
 
     protected array $allowedWith = ['packages', 'subscriptions', 'invoices'];
 
     protected array $validationRulesStore = [
-        'slug' => 'required|string|max:64|unique:commander_clients,slug',
+        'slug' => 'required|string|max:63|regex:/\A[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\z/|not_in:api,commander,www|unique:commander_clients,slug',
         'name' => 'required|string|max:255',
         'company' => 'nullable|string|max:255',
         'email' => 'required|email|max:255',

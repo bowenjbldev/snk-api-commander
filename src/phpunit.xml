@@ -19,6 +19,7 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <env name="APP_KEY" value="base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="/>
         <!-- Vacio = modo centralizado (load-all + routing por subdominio), como en produccion. -->
         <env name="BASE_DOMAIN" value="snake.test"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>

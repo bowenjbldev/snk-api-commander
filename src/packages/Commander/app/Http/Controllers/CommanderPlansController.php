@@ -8,17 +8,24 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Packages\Commander\Models\CommanderPlanModel;
+use Packages\Commander\Services\CommanderPackageRegistryService;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 
 #[Group('Plans')]
 class CommanderPlansController extends CoreBaseApiController
 {
+    public function __construct(private readonly CommanderPackageRegistryService $registry) {}
+
     protected string $modelClass = CommanderPlanModel::class;
 
     protected string $indexPermission = 'index plans';
+
     protected string $showPermission = 'show plans';
+
     protected string $storePermission = 'create plans';
+
     protected string $updatePermission = 'update plans';
+
     protected string $destroyPermission = 'delete plans';
 
     protected array $validationRulesStore = [
@@ -58,13 +65,7 @@ class CommanderPlansController extends CoreBaseApiController
         return parent::update($request, $id);
     }
 
-    /**
-     * Un plan oferta un TIPO lógico de package (Shop). Es provisionable si su código existe en disco
-     * bajo ALGÚN cliente (packages/<Client>/<Package>) — el código es per-cliente y anidado. El check
-     * fino (que ESTE cliente tenga el código) lo hace CommanderProvisioningController::store al provisionar.
-     *
-     * @throws ValidationException si ningún cliente tiene ese package en disco.
-     */
+    /** @throws ValidationException si el producto no existe compartido ni para ningún cliente. */
     private function guardPackageDeployed(Request $request): void
     {
         $package = $request->input('package');
@@ -73,14 +74,14 @@ class CommanderPlansController extends CoreBaseApiController
             return; // las reglas base (required) gestionan el caso vacio
         }
 
-        $studly = Str::studly($package);
-
-        // packages/*/Studly: cualquier cliente que tenga ese package anidado.
-        if ((glob(base_path("packages/*/{$studly}"), GLOB_ONLYDIR) ?: []) === []) {
+        $package = Str::studly($package);
+        if (! in_array($package, $this->registry->availableOnDisk(), true)) {
             throw ValidationException::withMessages([
-                'package' => ["Package code '{$studly}' is not deployed for any client."],
+                'package' => ['Package code is not deployed as shared or client-specific code.'],
             ]);
         }
+
+        $request->merge(['package' => $package]);
     }
 
     protected array $validationRulesUpdate = [

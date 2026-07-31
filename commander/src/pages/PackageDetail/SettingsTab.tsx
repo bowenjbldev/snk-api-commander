@@ -110,6 +110,7 @@ function SettingsView({ pkg, plans }: { pkg: Package; plans: Plan[] }) {
       {changePlanOpen && (
         <ChangePlanModal
           open
+          packageId={pkg.id}
           packageName={pkg.name}
           plans={plans}
           currentPlanId={subscription?.plan_id ?? null}

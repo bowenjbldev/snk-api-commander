@@ -141,25 +141,25 @@ export function platformCodeFrequency(params: { days?: number } = {}): Promise<{
 // Registro de packages de negocio (tipos): el hub package-céntrico. list() sincroniza desde disco y
 // enriquece cada fila con on_disk + el package provisionado anidado + conteos de planes. Metadatos
 // editables (label/description/status). Como el modelo es 1:1, las acciones operativas del package
-// provisionado (estado, usage, logs, de-provision) también cuelgan de aquí, direccionadas por `name`.
+// provisionado (estado, usage, logs, de-provision) también cuelgan de aquí, siempre por PK.
 export const packagesApi = {
   list: () => api<Package[]>('/packages'),
-  update: (name: string, patch: Partial<Pick<Package, 'label' | 'description' | 'listing_status'>>) =>
-    api<Package>(`/packages/${name}`, { method: 'PATCH', body: patch }),
+  update: (id: number, patch: Partial<Pick<Package, 'label' | 'description' | 'listing_status'>>) =>
+    api<Package>(`/packages/${id}`, { method: 'PATCH', body: patch }),
 
-  // ── operaciones del package provisionado (commander_packages), por `name` ──
-  suspend: (name: string, body: { reason: string; message?: string | null }) =>
-    api<Package>(`/packages/${name}/suspend`, { method: 'POST', body }),
-  grace: (name: string, body: { reason: string; message?: string | null; grace_until?: string }) =>
-    api<Package>(`/packages/${name}/grace`, { method: 'POST', body }),
-  resume: (name: string) => api<Package>(`/packages/${name}/resume`, { method: 'POST' }),
-  changePlan: (name: string, plan_id: number) =>
-    api<Package>(`/packages/${name}/change-plan`, { method: 'POST', body: { plan_id } }),
-  deprovision: (name: string) => api(`/packages/${name}`, { method: 'DELETE' }),
+  // ── operaciones de instancia, siempre por PK (el nombre se repite entre clientes) ──
+  suspend: (id: number, body: { reason: string; message?: string | null }) =>
+    api<Package>(`/packages/${id}/suspend`, { method: 'POST', body }),
+  grace: (id: number, body: { reason: string; message?: string | null; grace_until?: string }) =>
+    api<Package>(`/packages/${id}/grace`, { method: 'POST', body }),
+  resume: (id: number) => api<Package>(`/packages/${id}/resume`, { method: 'POST' }),
+  changePlan: (id: number, plan_id: number) =>
+    api<Package>(`/packages/${id}/change-plan`, { method: 'POST', body: { plan_id } }),
+  deprovision: (id: number) => api(`/packages/${id}`, { method: 'DELETE' }),
 
   // A package's real usage rollups (commander_usage_rollups, queried in-process by package_id).
   usage: (
-    name: string,
+    id: number,
     params: { period?: 'hour' | 'day'; from?: string; to?: string } = {},
   ): Promise<{ data: UsageRollup[] }> => {
     const qs = new URLSearchParams()
@@ -167,13 +167,13 @@ export const packagesApi = {
     if (params.from) qs.set('from', params.from)
     if (params.to) qs.set('to', params.to)
     const q = qs.toString()
-    return api<{ data: UsageRollup[] }>(`/packages/${name}/usage${q ? `?${q}` : ''}`)
+    return api<{ data: UsageRollup[] }>(`/packages/${id}/usage${q ? `?${q}` : ''}`)
   },
 
   // A package's real recent request logs (commander_request_logs, queried in-process by package_id).
   // No real-time stream — fetch on demand / poll.
   logs: (
-    name: string,
+    id: number,
     params: { limit?: number; since?: string; status_class?: 2 | 3 | 4 | 5 } = {},
   ): Promise<{ data: LogEntry[] }> => {
     const qs = new URLSearchParams()
@@ -181,16 +181,16 @@ export const packagesApi = {
     if (params.since) qs.set('since', params.since)
     if (params.status_class) qs.set('status_class', String(params.status_class))
     const q = qs.toString()
-    return api<{ data: LogEntry[] }>(`/packages/${name}/logs${q ? `?${q}` : ''}`)
+    return api<{ data: LogEntry[] }>(`/packages/${id}/logs${q ? `?${q}` : ''}`)
   },
 
   // A package's git insights (commander_package_* tables, synced by `commander:git:sync`):
   // repo/sync status + all-time summary + daily activity (heatmap/code-frequency) + recent commits.
-  insights: (name: string, params: { days?: number } = {}): Promise<{ data: PackageInsights }> => {
+  insights: (id: number, params: { days?: number } = {}): Promise<{ data: PackageInsights }> => {
     const qs = new URLSearchParams()
     if (params.days) qs.set('days', String(params.days))
     const q = qs.toString()
-    return api<{ data: PackageInsights }>(`/packages/${name}/insights${q ? `?${q}` : ''}`)
+    return api<{ data: PackageInsights }>(`/packages/${id}/insights${q ? `?${q}` : ''}`)
   },
 }
 

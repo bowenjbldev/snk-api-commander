@@ -6,6 +6,7 @@ import type { Plan } from '../../store/types'
 
 interface Props {
   open: boolean
+  packageId: number
   /** Business package whose plan is being changed. */
   packageName: string
   /** Plans to offer (package-scoped by the caller); only active, non-current ones are shown. */
@@ -19,7 +20,7 @@ interface Props {
 
 // Cambiar el plan del package: cierra el término vigente y abre uno nuevo (historial). Solo ofrece
 // planes activos de este package distintos al vigente; el backend re-valida package/active/distinto.
-export function ChangePlanModal({ open, packageName, plans, currentPlanId, onClose, onChanged }: Props) {
+export function ChangePlanModal({ open, packageId, packageName, plans, currentPlanId, onClose, onChanged }: Props) {
   const changePlan = useStore((s) => s.changePlan)
   const toast = useToast()
 
@@ -44,7 +45,7 @@ export function ChangePlanModal({ open, packageName, plans, currentPlanId, onClo
   const submit = () => {
     setSubmitted(true)
     if (!selected) return
-    changePlan(packageName, selected.id)
+    changePlan(packageId, selected.id)
     toast.success('Plan changed', `${packageName} → ${selected.name}`)
     onChanged?.()
     onClose()

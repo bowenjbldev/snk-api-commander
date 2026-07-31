@@ -10,9 +10,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Packages\Core\Enums\CorePackageStatusEnum;
 
 /**
- * Tabla unica de packages de negocio. Una fila por package en disco: catalogo (label/description/
- * listing_status) SIEMPRE presente; columnas operativas (subdomain/database/client/estado/KPIs) +
- * `provisioned_at` solo cuando esta provisionado (la instancia viva 1:1). El de-provision las anula.
+ * Tabla única de productos e instancias. Las filas de catálogo no tienen cliente; cada alta crea
+ * otra fila para el par (cliente, package), con BD, estado y `provisioned_at` al terminar el worker.
  */
 class CommanderPackageModel extends Model
 {

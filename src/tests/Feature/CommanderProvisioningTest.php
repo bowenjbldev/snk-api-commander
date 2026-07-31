@@ -3,14 +3,14 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Packages\Commander\Database\Seeders\CommanderDatabaseSeeder;
+use Packages\Commander\Jobs\CommanderProvisionPackageJob;
 use Packages\Commander\Models\CommanderClientModel;
+use Packages\Commander\Models\CommanderPackageModel;
 use Packages\Commander\Models\CommanderPlanModel;
 use Packages\Core\Database\Seeders\CoreDatabaseSeeder;
-use Packages\Commander\Models\CommanderPackageModel;
 use Packages\Core\Models\CoreUserModel;
-use Illuminate\Support\Facades\Queue;
-use Packages\Commander\Jobs\CommanderProvisionPackageJob;
 use Tests\CommanderTestCase;
 
 class CommanderProvisioningTest extends CommanderTestCase
@@ -18,24 +18,24 @@ class CommanderProvisioningTest extends CommanderTestCase
     use RefreshDatabase;
 
     /**
-     * Fixture: el package es per-cliente y ANIDADO. provisioning exige is_dir(packages/<Client>/<Pkg>);
-     * el cliente de los tests es 'acme' (Studly Acme), así que el código vive en packages/Acme/Demo.
+     * Fixture: el package compartido vive en packages/<Pkg>; cualquier cliente puede provisionarlo.
      * En sqlite no se migra la BD tenant (solo se valida la parte commander).
      */
     private const FIXTURE_PACKAGE = 'Demo';
-    private const FIXTURE_CLIENT_DIR = 'Acme';
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        @mkdir(base_path('packages/'.self::FIXTURE_CLIENT_DIR.'/'.self::FIXTURE_PACKAGE), 0777, true);
+        @mkdir(base_path('packages/'.self::FIXTURE_PACKAGE.'/routes'), 0777, true);
+        file_put_contents(base_path('packages/'.self::FIXTURE_PACKAGE.'/routes/api.php'), '<?php');
     }
 
     protected function tearDown(): void
     {
-        @rmdir(base_path('packages/'.self::FIXTURE_CLIENT_DIR.'/'.self::FIXTURE_PACKAGE));
-        @rmdir(base_path('packages/'.self::FIXTURE_CLIENT_DIR));
+        @unlink(base_path('packages/'.self::FIXTURE_PACKAGE.'/routes/api.php'));
+        @rmdir(base_path('packages/'.self::FIXTURE_PACKAGE.'/routes'));
+        @rmdir(base_path('packages/'.self::FIXTURE_PACKAGE));
 
         parent::tearDown();
     }
@@ -48,7 +48,7 @@ class CommanderProvisioningTest extends CommanderTestCase
         return CoreUserModel::where('email', 'admin@snake.com')->firstOrFail();
     }
 
-    /** Plan de un tipo de package que existe en disco bajo algún cliente (fixture Acme/Demo). */
+    /** Plan de un tipo de package compartido que existe en disco (fixture packages/Demo). */
     private function plan(): CommanderPlanModel
     {
         return CommanderPlanModel::create([
@@ -65,6 +65,8 @@ class CommanderProvisioningTest extends CommanderTestCase
 
         $res = $this->actingAs($admin, 'sanctum')->postJson('/api/v1/provisioning', [
             'plan_id' => $plan->id,
+            'admin_email' => 'owner@acme.com',
+            'admin_password' => 'tenant-password-123',
             'client' => [
                 'slug' => 'acme', 'name' => 'Acme Inc', 'email' => 'hi@acme.com',
                 'billing_email' => 'billing@acme.com', 'tax_id' => 'ESB12345678',
@@ -126,6 +128,8 @@ class CommanderProvisioningTest extends CommanderTestCase
 
         $this->actingAs($user, 'sanctum')->postJson('/api/v1/provisioning', [
             'plan_id' => $plan->id,
+            'admin_email' => 'owner@acme.com',
+            'admin_password' => 'tenant-password-123',
             'client' => ['slug' => 'acme', 'name' => 'Acme', 'email' => 'a@a.com'],
         ])->assertStatus(403);
     }
@@ -141,8 +145,42 @@ class CommanderProvisioningTest extends CommanderTestCase
         // El cliente acme no tiene packages/Acme/Ghost → 422.
         $this->actingAs($admin, 'sanctum')->postJson('/api/v1/provisioning', [
             'plan_id' => $plan->id,
+            'admin_email' => 'owner@acme.com',
+            'admin_password' => 'tenant-password-123',
             'client' => ['slug' => 'acme', 'name' => 'Acme', 'email' => 'a@a.com'],
         ])->assertStatus(422);
+    }
+
+    public function test_provisioning_rejects_inactive_plan_and_client(): void
+    {
+        $admin = $this->admin();
+        $inactivePlan = $this->plan();
+        $inactivePlan->update(['status' => 'inactive']);
+
+        $payload = [
+            'plan_id' => $inactivePlan->id,
+            'admin_email' => 'owner@acme.com',
+            'admin_password' => 'tenant-password-123',
+            'client' => ['slug' => 'acme', 'name' => 'Acme', 'email' => 'a@a.com'],
+        ];
+        $this->actingAs($admin, 'sanctum')->postJson('/api/v1/provisioning', $payload)
+            ->assertStatus(422)
+            ->assertJsonPath('error', 'The selected plan is inactive.');
+
+        $inactivePlan->update(['status' => 'active']);
+        $plan = $inactivePlan;
+        $client = CommanderClientModel::create([
+            'slug' => 'acme', 'name' => 'Acme', 'email' => 'a@a.com', 'status' => 'inactive',
+        ]);
+        $payload['plan_id'] = $plan->id;
+        $payload['client_id'] = $client->id;
+        unset($payload['client']);
+
+        $this->actingAs($admin, 'sanctum')->postJson('/api/v1/provisioning', $payload)
+            ->assertStatus(422)
+            ->assertJsonPath('error', 'The selected client is inactive.');
+
+        $this->assertSame(0, CommanderPackageModel::query()->count());
     }
 
     public function test_provisioning_conflicts_when_instance_already_exists(): void
@@ -161,7 +199,29 @@ class CommanderProvisioningTest extends CommanderTestCase
         // Re-provisionar el MISMO cliente + Demo => 409 (ya tiene 'demo').
         $this->actingAs($admin, 'sanctum')->postJson('/api/v1/provisioning', [
             'plan_id' => $plan->id,
+            'admin_email' => 'owner@acme.com',
+            'admin_password' => 'tenant-password-123',
             'client_id' => $client->id,
         ])->assertStatus(409);
+    }
+
+    public function test_failed_provisioning_keeps_a_client_used_by_another_instance(): void
+    {
+        $client = CommanderClientModel::create([
+            'slug' => 'acme', 'name' => 'Acme', 'email' => 'a@a.com', 'status' => 'active',
+        ]);
+        $failed = CommanderPackageModel::create([
+            'name' => 'Demo', 'slug' => 'demo', 'client_id' => $client->id, 'database' => 'acme_demo',
+        ]);
+        $other = CommanderPackageModel::create([
+            'name' => 'Kilkana', 'slug' => 'kilkana', 'client_id' => $client->id, 'database' => 'acme_kilkana',
+        ]);
+        $job = new CommanderProvisionPackageJob($failed->id, 'acme', 'Demo', $client->id);
+
+        (new \ReflectionMethod($job, 'rollback'))->invoke($job, $failed);
+
+        $this->assertNull($failed->fresh());
+        $this->assertNotNull($other->fresh());
+        $this->assertNotNull($client->fresh());
     }
 }

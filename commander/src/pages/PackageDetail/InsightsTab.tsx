@@ -54,7 +54,7 @@ function InsightsView({ pkg }: { pkg: Package }) {
   const { theme } = useAppTheme()
   const [rangeIdx, setRangeIdx] = useState(2) // default 12 mo
   const days = RANGES[rangeIdx].days
-  const state = useLoad<PackageInsights>(() => packagesApi.insights(pkg.name, { days }).then((res) => res.data), [pkg.name, days])
+  const state = useLoad<PackageInsights>(() => packagesApi.insights(pkg.id, { days }).then((res) => res.data), [pkg.id, days])
 
   const insights = state.data
   const daily = insights?.daily ?? []

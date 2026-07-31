@@ -50,7 +50,8 @@ export interface Plan {
 // Tabla unica commander_packages: una fila por package de negocio (en disco). Mezcla CATALOGO
 // (label/description/listing_status, siempre presente, sincronizado desde disco) con lo OPERATIVO de
 // la instancia viva 1:1 (slug/database/cliente/estado runtime/KPIs), que es null hasta provisionar.
-// `provisioned_at != null` marca la instancia viva. El de-provision (soft) anula lo operativo y conserva
+// `provisioned_at != null` marca la instancia viva; client_id con fecha null indica trabajo pendiente.
+// El de-provision (soft) anula lo operativo y conserva
 // el catalogo + el historial de billing. La API la enriquece con on_disk + plan_count + relaciones.
 export interface Package {
   id: number

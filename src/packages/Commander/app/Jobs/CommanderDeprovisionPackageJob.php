@@ -4,12 +4,15 @@ namespace Packages\Commander\Jobs;
 
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Packages\Commander\Models\CommanderPackageModel;
 use Packages\Commander\Models\CommanderQuotaModel;
 use Packages\Commander\Models\CommanderRequestLogModel;
 use Packages\Commander\Models\CommanderSubscriptionModel;
 use Packages\Commander\Models\CommanderUsageRollupModel;
+use Packages\Core\Support\CorePackageSelectorSupport;
 
 class CommanderDeprovisionPackageJob implements ShouldQueue
 {
@@ -24,14 +27,23 @@ class CommanderDeprovisionPackageJob implements ShouldQueue
         $this->onQueue('provisioning');
     }
 
+    public function middleware(): array
+    {
+        return [(new WithoutOverlapping("tenant-package:{$this->packageId}"))->shared()->expireAfter($this->timeout + 60)];
+    }
+
     public function handle(): void
     {
         $package = CommanderPackageModel::findOrFail($this->packageId);
+        $database = CorePackageSelectorSupport::validatedDatabaseIdentifier($package->database);
 
         if (DB::connection('provisioner')->getDriverName() !== 'sqlite') {
-            DB::connection('provisioner')->statement("DROP DATABASE IF EXISTS `{$package->database}`");
-            DB::connection('provisioner')->statement("DROP USER IF EXISTS '{$package->database_username}'@'%'");
+            $username = CorePackageSelectorSupport::validatedDatabaseIdentifier($package->database_username);
+            DB::connection('provisioner')->statement("DROP DATABASE IF EXISTS `{$database}`");
+            DB::connection('provisioner')->statement("DROP USER IF EXISTS '{$username}'@'%'");
         }
+
+        Storage::disk('public')->deleteDirectory("media/{$database}");
 
         DB::connection('commander')->transaction(function () use ($package): void {
             CommanderRequestLogModel::query()->where('package_id', $package->id)->delete();

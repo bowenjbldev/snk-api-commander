@@ -64,8 +64,8 @@ function UsageView({ pkg }: { pkg: Package }) {
   const usage = useLoad(() => {
     const windowMs = granularity === 0 ? 48 * 3_600_000 : 30 * 86_400_000
     const from = new Date(Date.now() - windowMs).toISOString()
-    return packagesApi.usage(pkg.name, { period, from }).then((res) => rollupsToUsageSeries(res.data ?? []))
-  }, [pkg.name, granularity, period])
+    return packagesApi.usage(pkg.id, { period, from }).then((res) => rollupsToUsageSeries(res.data ?? []))
+  }, [pkg.id, granularity, period])
 
   const series = usage.data
   const hasData = !!series && series.requests.length > 0

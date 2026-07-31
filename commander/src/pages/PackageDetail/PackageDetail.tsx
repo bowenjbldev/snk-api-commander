@@ -96,7 +96,7 @@ export function PackageDetail() {
             Business package
             {pkg.label && pkg.label !== pkg.name ? <> · <span className="scns-mono">{pkg.name}</span></> : null}
             {' · '}{plans.length} {plans.length === 1 ? 'plan' : 'plans'} ·{' '}
-            {packageRow ? 'live deployment' : 'catalog only'}
+            {packageRow ? 'live deployment' : pkg.client_id != null ? 'pending operation' : 'catalog only'}
           </div>
           {packageRow && (
             <div style={{ marginTop: 6 }}>
@@ -137,6 +137,7 @@ export function PackageDetail() {
       {changePlanOpen && packageRow && (
         <ChangePlanModal
           open
+          packageId={packageRow.id}
           packageName={pkg.name}
           plans={plans}
           currentPlanId={subscription?.plan_id ?? null}

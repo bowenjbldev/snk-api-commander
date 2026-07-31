@@ -2,14 +2,17 @@
 
 namespace Packages\Core\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Routing\Router;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Cache\RateLimiting\Limit;
-use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\ServiceProvider;
+use Packages\Core\Http\Middleware\CoreEnsureActiveMiddleware;
+use Packages\Core\Http\Middleware\CoreMeteringMiddleware;
 use Packages\Core\Http\Middleware\CoreResolvePackageFromHostMiddleware;
+use Packages\Core\Support\CoreActivePackageSupport;
 use Packages\Core\Support\CorePackageDiscoverySupport;
 use Packages\Core\Support\CorePackageSelectorSupport;
 
@@ -29,11 +32,16 @@ class CoreRouteServiceProvider extends ServiceProvider
         // SPA dashboards fan out several requests per navigation (loadData + per-page usage),
         // so the per-user budget is generous and env-tunable.
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute((int) env('CORE_API_RATE_LIMIT', 240))->by($request->user()?->id ?: $request->ip());
+            $tenant = $this->app->make(CoreActivePackageSupport::class)->id() ?? 'control';
+            $actor = $request->user()?->getAuthIdentifier() ?? $request->ip();
+
+            return Limit::perMinute((int) env('CORE_API_RATE_LIMIT', 240))->by("{$tenant}:{$actor}");
         });
 
         RateLimiter::for('login', function (Request $request) {
-            return Limit::perMinute((int) env('CORE_LOGIN_RATE_LIMIT', 10))->by($request->ip());
+            $tenant = $this->app->make(CoreActivePackageSupport::class)->id() ?? 'control';
+
+            return Limit::perMinute((int) env('CORE_LOGIN_RATE_LIMIT', 10))->by("{$tenant}:{$request->ip()}");
         });
     }
 
@@ -53,9 +61,9 @@ class CoreRouteServiceProvider extends ServiceProvider
         // El panel del operador (no tenant) lo apaga y no los engancha.
         if (config('core.commander', true)) {
             // Metering el primero (outermost): registra tambien los 429 del throttle y los 402 del kill-switch.
-            $router->prependMiddlewareToGroup('api', \Packages\Core\Http\Middleware\CoreMeteringMiddleware::class);
+            $router->prependMiddlewareToGroup('api', CoreMeteringMiddleware::class);
             // Kill-switch tras throttle y antes del auth de ruta.
-            $router->pushMiddlewareToGroup('api', \Packages\Core\Http\Middleware\CoreEnsureActiveMiddleware::class);
+            $router->pushMiddlewareToGroup('api', CoreEnsureActiveMiddleware::class);
         }
     }
 
@@ -72,13 +80,14 @@ class CoreRouteServiceProvider extends ServiceProvider
 
                 if (strcasecmp($module, 'Core') === 0) {
                     $coreFiles[] = $routeFile;
+
                     continue;
                 }
 
                 $packageFiles[$module] = $routeFile;
             }
 
-            // Centralizado: cada package bajo su propio subdominio {sub}.{BASE_DOMAIN}.
+            // Centralizado: cliente en subdominio y package en path.
             $base = (string) config('core.base_domain');
 
             // Rutas de Core (health/docs) GLOBALES: cualquier host (api.{BASE_DOMAIN}, localhost,
@@ -93,30 +102,66 @@ class CoreRouteServiceProvider extends ServiceProvider
             foreach ($packageFiles as $module => $routeFile) {
                 // Commander (operador): subdominio fijo, SIN resolutor (no es tenant).
                 if (strcasecmp($module, 'Commander') === 0) {
-                    Route::domain('commander.' . $base)
+                    $namePrefix = 'commander.';
+                    Route::domain('commander.'.$base)
                         ->prefix('api/v1')
+                        ->name($namePrefix)
                         ->middleware(['api'])
                         ->group($routeFile);
+                    $this->removeEmptyGroupNames($namePrefix);
+
                     continue;
                 }
 
-                // Negocio anidado: module = Cliente\Package (p.ej. Acme\Shop). El SUBDOMINIO es el
-                // CLIENTE y el SLUG del package va en el path -> acme.{BASE}/api/v1/shop. Dos clientes
-                // con el mismo slug montan en subdominios distintos: cero colisión en el comodín.
                 $segments = explode('\\', $module);
                 if (count($segments) !== 2) {
-                    continue; // un package de negocio debe ser Cliente\Package (anidado)
+                    continue;
                 }
+
                 [$clientSeg, $packageSeg] = $segments;
                 $clientSubdomain = CorePackageSelectorSupport::packageToSubdomain($clientSeg);
                 $packageSlug = CorePackageSelectorSupport::packageToSubdomain($packageSeg);
 
-                Route::domain($clientSubdomain . '.' . $base)
-                    ->prefix('api/v1/' . $packageSlug)
-                    // El resolutor recibe el slug del package; el cliente lo da el host.
-                    ->middleware([CoreResolvePackageFromHostMiddleware::class . ':' . $packageSlug, 'api'])
+                // Primero los overlays concretos. Si no definen una ruta, la ruta wildcard del
+                // package compartido registrada después sigue siendo el fallback.
+                $namePrefix = strtolower(str_replace('\\', '.', $module)).'.';
+                Route::domain($clientSubdomain.'.'.$base)
+                    ->prefix('api/v1/'.$packageSlug)
+                    ->name($namePrefix)
+                    ->middleware([CoreResolvePackageFromHostMiddleware::class.':'.$packageSlug, 'api'])
                     ->group($routeFile);
+                $this->removeEmptyGroupNames($namePrefix);
+            }
+
+            foreach ($packageFiles as $module => $routeFile) {
+                $segments = explode('\\', $module);
+                if (count($segments) !== 1 || strcasecmp($module, 'Commander') === 0) {
+                    continue;
+                }
+
+                $packageSlug = CorePackageSelectorSupport::packageToSubdomain($module);
+
+                $namePrefix = $packageSlug.'.';
+                Route::domain('{client}.'.$base)
+                    ->prefix('api/v1/'.$packageSlug)
+                    ->name($namePrefix)
+                    ->middleware([CoreResolvePackageFromHostMiddleware::class.':'.$packageSlug, 'api'])
+                    ->group($routeFile);
+                $this->removeEmptyGroupNames($namePrefix);
             }
         });
+    }
+
+    private function removeEmptyGroupNames(string $prefix): void
+    {
+        foreach (Route::getRoutes() as $route) {
+            if ($route->getName() !== $prefix) {
+                continue;
+            }
+
+            $action = $route->getAction();
+            unset($action['as']);
+            $route->setAction($action);
+        }
     }
 }
