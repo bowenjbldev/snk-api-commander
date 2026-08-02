@@ -12,7 +12,7 @@
 set -e
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-BASE_DOMAIN="snake.test"
+BASE_DOMAIN="snakepc.test"
 if [ -f "$ROOT_DIR/.env" ]; then
     val=$(grep -E "^BASE_DOMAIN=" "$ROOT_DIR/.env" | cut -d '=' -f2)
     [ -n "$val" ] && BASE_DOMAIN="$val"

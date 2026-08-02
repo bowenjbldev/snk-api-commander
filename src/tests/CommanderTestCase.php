@@ -14,7 +14,7 @@ abstract class CommanderTestCase extends TestCase
     {
         parent::setUp();
 
-        config(['app.url' => 'http://commander.snake.test']);
-        URL::forceRootUrl('http://commander.snake.test');
+        config(['app.url' => 'http://commander.snakepc.test']);
+        URL::forceRootUrl('http://commander.snakepc.test');
     }
 }

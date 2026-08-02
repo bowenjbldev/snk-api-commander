@@ -36,11 +36,11 @@ class CoreProductionSafetyTest extends TestCase
 
     public function test_shared_signed_routes_are_generated_for_the_requested_client_host(): void
     {
-        app('url')->setRequest(Request::create('https://elmundo.snake.test/api/v1/kilkana'));
+        app('url')->setRequest(Request::create('https://elmundo.snakepc.test/api/v1/kilkana'));
 
         $url = URL::signedRoute('kilkana.subscribe.confirm', ['client' => 'elmundo', 'subscriber' => 42]);
 
-        $this->assertStringStartsWith('https://elmundo.snake.test/api/v1/kilkana/public/subscribe/confirm/42?', $url);
+        $this->assertStringStartsWith('https://elmundo.snakepc.test/api/v1/kilkana/public/subscribe/confirm/42?', $url);
         $this->assertTrue(URL::hasValidSignature(Request::create($url)));
     }
 

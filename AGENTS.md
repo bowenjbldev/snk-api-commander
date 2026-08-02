@@ -17,6 +17,11 @@ Antes de cambiar código, lee [`docs/README.md`](docs/README.md) y después el d
 ## Invariantes
 
 - Una app sirve todos los clientes. Cliente = subdominio; producto = segmento tras `/api/v1`.
+- SnakePC es el ámbito local/portfolio y `commander.snakepc.test` su control plane. La dirección
+  futura de Kilkana es `{cliente}.kilkana.test`, sin `commander.kilkana.test`; aún no está
+  implementada porque hoy todo deriva de un único `BASE_DOMAIN`. Lee
+  [`docs/architecture.md`](docs/architecture.md#ámbitos-de-dominio-snakepc-y-kilkana) antes de
+  cambiar dominios.
 - Cada par `(cliente, producto)` provisionado tiene una BD propia `{cliente}_{producto}`.
 - `commander` es la única base de control; los modelos `commander_*` están fijados a esa conexión.
 - Producto compartido: `src/packages/<Paquete>`. Overlay opcional:

@@ -1,6 +1,6 @@
 // Headless screenshot capture of every Commander screen.
 // Uses playwright-core driving the system google-chrome against the running
-// commander-web container (https://commander.snake.test:8443). Writes PNGs to
+// commander-web container (https://commander.snakepc.test:8443). Writes PNGs to
 // <repo>/.screenshots. Run: npm run screenshots
 import { chromium } from 'playwright-core'
 import { fileURLToPath } from 'node:url'
@@ -9,7 +9,7 @@ import { mkdirSync, rmSync, readdirSync } from 'node:fs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const OUT = resolve(__dirname, '../../.screenshots')
-const BASE = process.env.COMMANDER_URL || 'https://commander.snake.test:8443'
+const BASE = process.env.COMMANDER_URL || 'https://commander.snakepc.test:8443'
 const EMAIL = process.env.ADMIN_EMAIL || 'admin@snake.com'
 const PASS = process.env.ADMIN_PASSWORD || 'secret1234'
 const CHROME = process.env.CHROME_BIN || '/usr/bin/google-chrome'
@@ -56,7 +56,7 @@ async function main() {
     executablePath: CHROME,
     headless: true,
     args: [
-      '--host-resolver-rules=MAP commander.snake.test 127.0.0.1',
+      '--host-resolver-rules=MAP commander.snakepc.test 127.0.0.1',
       '--no-sandbox',
       '--force-color-profile=srgb',
     ],

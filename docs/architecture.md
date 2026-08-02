@@ -36,6 +36,30 @@ se normaliza a `[a-z0-9_]{1,64}`.
 ruta (`kilkana`); `id` identifica una fila concreta. Las acciones de estado, uso, logs, plan y
 de-provisioning usan siempre el `id` numérico para no confundir dos instancias del mismo producto.
 
+### Ámbitos de dominio: SnakePC y Kilkana
+
+`snakepc.test` representa el entorno local y portfolio técnico del propietario. Commander forma
+parte de ese ámbito y su URL actual es `commander.snakepc.test`.
+
+Kilkana es un SaaS con identidad propia. Cuando se habilite su dominio local de producto, la
+estructura objetivo será:
+
+```text
+commander.snakepc.test          control plane privado
+elmundo.kilkana.test            instancia Kilkana de El Mundo
+elconfidencial.kilkana.test     instancia Kilkana de El Confidencial
+```
+
+No se necesita `commander.kilkana.test`: Commander administra Kilkana, pero no pertenece a su
+marca pública. Esta separación es una **decisión futura, todavía no implementada**. Hoy Core,
+nginx y la SPA derivan Commander y los tenants de un único `BASE_DOMAIN`; por eso un despliegue
+activo no debe mezclar ambos sufijos.
+
+Antes de activar `*.kilkana.test` habrá que separar el dominio del control plane del dominio de
+tenants —y, si aparecen más SaaS, permitir un dominio por producto— en rutas, nginx/TLS y enlaces
+generados por la SPA. No se debe resolver esa fase añadiendo aliases de hosts mientras Laravel
+siga registrando un único dominio base.
+
 ## Productos compartidos y overlays
 
 Hay tres formas válidas de implementar un producto:

@@ -9,7 +9,7 @@ export function baseDomain(): string {
   const host = typeof window !== 'undefined' ? window.location.hostname : ''
   if (host.startsWith('commander.')) return host.slice('commander.'.length)
 
-  return host || 'snake.test'
+  return host || 'snakepc.test'
 }
 
 // El host del package provisionado deriva del CLIENTE (client.slug es el subdominio), no del package.

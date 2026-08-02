@@ -73,7 +73,7 @@ echo "Generating certificate for $DOMAIN..."
     "$DOMAIN"
 
 # Wildcard para los subdominios de package (<package>.<BASE_DOMAIN>)
-# Nota: cubre un solo nivel (a.snake.test si, a.b.snake.test no) y no el apex.
+# Nota: cubre un solo nivel (a.snakepc.test si, a.b.snakepc.test no) y no el apex.
 if [ -n "${BASE_DOMAIN:-}" ]; then
     echo "Generating wildcard certificate for *.$BASE_DOMAIN..."
     "$MKCERT" \

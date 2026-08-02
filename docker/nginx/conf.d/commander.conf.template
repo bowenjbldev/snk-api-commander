@@ -1,5 +1,5 @@
 # Operator panel on one origin: the SPA (commander-web container) + the Commander API (Laravel,
-# the same app container as api.snake.test). Same-origin → no CORS, no Vite proxy. The wildcard
+# the same app container as api.snakepc.test). Same-origin → no CORS, no Vite proxy. The wildcard
 # cert (wildcard.${BASE_DOMAIN}.pem from scripts/setup-ssl.sh) already covers this subdomain.
 server {
     listen 80;

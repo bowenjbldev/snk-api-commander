@@ -34,7 +34,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 get_env() { grep -E "^$1=" "$ROOT_DIR/.env" 2>/dev/null | head -1 | cut -d= -f2- || true; }
-BASE_DOMAIN="$(get_env BASE_DOMAIN)"; BASE_DOMAIN="${BASE_DOMAIN:-snake.test}"
+BASE_DOMAIN="$(get_env BASE_DOMAIN)"; BASE_DOMAIN="${BASE_DOMAIN:-snakepc.test}"
 PORT="$(get_env HTTPS_PORT)"; PORT="${PORT:-8443}"
 EMAIL="${ADMIN_EMAIL:-admin@snake.com}"
 PASS="${ADMIN_PASSWORD:-secret1234}"

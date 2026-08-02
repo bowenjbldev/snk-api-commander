@@ -13,7 +13,7 @@ export default defineConfig({
   },
   server: {
     port: 5174,
-    allowedHosts: ['commander.snake.test'],
+    allowedHosts: ['commander.snakepc.test'],
     // Same-origin /api → backend HTTPS (self-signed). Avoids CORS + cert prompts in dev.
     proxy: {
       '/api': { target: 'https://localhost:8443', changeOrigin: true, secure: false },

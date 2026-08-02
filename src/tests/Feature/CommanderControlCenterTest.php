@@ -63,7 +63,7 @@ class CommanderControlCenterTest extends CommanderTestCase
 
         // PUT persiste el perfil + preferencias.
         $this->actingAs($admin, 'sanctum')->putJson('/api/v1/settings', [
-            'operator_name' => 'Jorge', 'operator_email' => 'ops@snake.test',
+            'operator_name' => 'Jorge', 'operator_email' => 'ops@snakepc.test',
             'default_grace_hours' => 120, 'notify_on_overdue' => false,
         ])->assertOk()->assertJsonPath('operator_name', 'Jorge');
 

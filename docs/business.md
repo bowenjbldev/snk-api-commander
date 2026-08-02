@@ -44,6 +44,19 @@ Esto separa tres identidades que antes se mezclaban:
 Aunque una instancia no tenga personalización, su fila individual no sobra: es donde viven su
 estado, sus límites, su suscripción, sus facturas y el punto de extensión si un día la necesita.
 
+## Identidad de marca y dominios
+
+SnakePC y Kilkana no son el mismo ámbito comercial:
+
+| Ámbito | Función | Dominio local previsto |
+|---|---|---|
+| SnakePC | portfolio, plataforma y control plane privado | `commander.snakepc.test` |
+| Kilkana | producto SaaS para periódicos | `{cliente}.kilkana.test` |
+
+El dominio propio de Kilkana es una fase futura. Mientras no se desacople el dominio de Commander
+del dominio de tenants, el entorno seguirá usando un solo `BASE_DOMAIN`. La decisión y el trabajo
+técnico necesario están fijados en [Arquitectura](architecture.md#ámbitos-de-dominio-snakepc-y-kilkana).
+
 ## Qué existe en este repositorio
 
 | Capacidad | Estado actual |

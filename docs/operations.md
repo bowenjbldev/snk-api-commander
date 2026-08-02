@@ -52,18 +52,18 @@ wildcard, añade al hosts de Windows/Linux al menos `api`, `commander` y cada sl
 Para probar sin DNS:
 
 ```bash
-curl -k --resolve api.snake.test:8443:127.0.0.1 \
-  https://api.snake.test:8443/api/v1/
+curl -k --resolve api.snakepc.test:8443:127.0.0.1 \
+  https://api.snakepc.test:8443/api/v1/
 ```
 
 Rutas locales habituales:
 
 | Recurso | URL |
 |---|---|
-| Commander | `https://commander.snake.test` o `:8443` |
-| health Core | `https://api.snake.test/api/v1/` |
-| OpenAPI UI | `https://api.snake.test/api/v1/docs` |
-| spec OpenAPI | `https://api.snake.test/api/v1/docs.json` |
+| Commander | `https://commander.snakepc.test` o `:8443` |
+| health Core | `https://api.snakepc.test/api/v1/` |
+| OpenAPI UI | `https://api.snakepc.test/api/v1/docs` |
+| spec OpenAPI | `https://api.snakepc.test/api/v1/docs.json` |
 | Mailpit | `http://localhost:8025` |
 
 Para que Laravel envíe a Mailpit en vez de escribir al log, configura en `src/.env`:

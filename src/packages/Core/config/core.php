@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'base_domain' => env('BASE_DOMAIN', 'snake.test'),
+    'base_domain' => env('BASE_DOMAIN', 'snakepc.test'),
 
     /*
     |--------------------------------------------------------------------------

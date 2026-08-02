@@ -11,7 +11,7 @@ https://{cliente}.{BASE_DOMAIN}/api/v1/{paquete}/...
         └ cliente                         └ producto
 ```
 
-Por ejemplo, `https://elmundo.snake.test/api/v1/kilkana/public/posts` usa la instancia de
+Por ejemplo, `https://elmundo.snakepc.test/api/v1/kilkana/public/posts` usa la instancia de
 Kilkana de El Mundo y la base `elmundo_kilkana`.
 
 El código común de un producto vive en `src/packages/<Paquete>`; una personalización opcional

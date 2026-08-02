@@ -66,7 +66,7 @@ class CorePackageConfigOverrideTest extends TestCase
             'acme.shop.session' => ['lifetime' => 999],
         ]);
 
-        $seen = $this->captureFor('acme.snake.test', 'shop');
+        $seen = $this->captureFor('acme.snakepc.test', 'shop');
 
         $this->assertSame('SharedShop', $seen['app_name']);
         $this->assertSame(999, $seen['session_lifetime']);
@@ -92,7 +92,7 @@ class CorePackageConfigOverrideTest extends TestCase
             ],
         ]);
 
-        $seen = $this->captureFor('el-mundo.snake.test', 'news-room');
+        $seen = $this->captureFor('el-mundo.snakepc.test', 'news-room');
 
         $this->assertSame('El Mundo newsroom', $seen['app_name']);
         $this->assertSame('brand', $seen['package_config']['theme']);
@@ -108,6 +108,6 @@ class CorePackageConfigOverrideTest extends TestCase
 
         $this->expectException(NotFoundHttpException::class);
 
-        $this->captureFor('ghost.snake.test', 'shop');
+        $this->captureFor('ghost.snakepc.test', 'shop');
     }
 }
