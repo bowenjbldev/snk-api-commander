@@ -19,8 +19,11 @@ existe en esta rama y separa explícitamente lo implementado de la dirección de
 - Hay una aplicación Laravel y un control plane llamado **Commander**.
 - El subdominio identifica al cliente y el primer segmento tras `/api/v1` identifica al
   producto: `{cliente}.dom/api/v1/{paquete}`.
-- La base `commander` guarda clientes, catálogo, instancias, planes, billing, cuotas,
+- La base `commander` guarda cuentas comerciales, clientes, catálogo, instancias, planes, billing, cuotas,
   observabilidad y el operador.
+- Todo cliente pertenece a una cuenta comercial. En el caso normal es 1:1; una cuenta de grupo
+  puede agrupar varias cabeceras. El cliente sigue siendo la cabecera cuyo slug identifica el
+  subdominio.
 - Cada par `(cliente, producto)` provisionado tiene otra base aislada con Core y sus tablas de
   negocio. No hay `tenant_id` en esas tablas.
 - Un producto compartido vive en `src/packages/<Paquete>`. Un overlay opcional vive en

@@ -8,6 +8,7 @@ base por instancia:
 ```text
 commander
 ├── users/roles/tokens del operador
+├── commander_accounts
 ├── commander_clients
 ├── commander_packages
 ├── planes, suscripciones y facturas
@@ -53,11 +54,12 @@ vive ya define la instancia.
 
 ## Esquema Commander
 
-Las trece tablas `commander_*` viven solo en `commander`.
+Las catorce tablas `commander_*` viven solo en `commander`.
 
 | Tabla | Responsabilidad | Claves relevantes |
 |---|---|---|
-| `commander_clients` | cuenta comercial y slug DNS del cliente | `slug` único; `status` active/inactive |
+| `commander_accounts` | identidad comercial; una o varias cabeceras | PK numérica |
+| `commander_clients` | cabecera tenant y slug DNS | FK obligatoria `account_id`; `slug` único; `status` active/inactive |
 | `commander_packages` | catálogo y filas de instancia | FK `client_id`; único `(client_id, slug)`; `provisioned_at` |
 | `commander_plans` | oferta por tipo de producto y cuotas por defecto | `slug` único; `package` StudlyCase |
 | `commander_subscriptions` | historial de términos de plan | FKs cliente/instancia; término actual con `ended_at IS NULL` |
@@ -70,6 +72,49 @@ Las trece tablas `commander_*` viven solo en `commander`.
 | `commander_package_repos` | origen Git y cursor de sync por instancia | `package_id` único |
 | `commander_package_commits` | commits crudos acotados al path | único `(package_id, sha)` |
 | `commander_package_activity_daily` | rollup Git diario | único `(package_id, day)` |
+
+### Cuentas comerciales y cabeceras
+
+`commander_accounts` no es un tenant. Agrupa clientes que comparten pagador o contrato, mientras
+cada `commander_client` sigue representando una cabecera, un subdominio y una frontera de datos.
+La relación es obligatoria: un periódico independiente recibe automáticamente una cuenta 1:1 y
+un grupo reutiliza la misma cuenta para todas sus cabeceras. La restricción `NOT NULL` impide
+clientes huérfanos incluso fuera de la API.
+
+La cuenta se identifica solo por su `id`; no tiene slug porque no participa en hosts ni rutas.
+`email` es un contacto principal obligatorio y `billing_email` un destino opcional de facturas:
+ninguno es único ni se usa para autenticar o deducir pertenencia. Una persona o gestoría puede
+atender varias cuentas legítimas.
+
+#### `commander_accounts`
+
+| Columna | Tipo | Nula | Significado |
+|---|---|---:|---|
+| `id` | bigint unsigned | no | PK autoincremental e identidad estable de la cuenta. |
+| `name` | varchar(255) | no | Nombre comercial o razón reconocible por el operador. |
+| `email` | varchar(255) | no | Contacto principal; no es único ni una credencial. |
+| `billing_email` | varchar(255) | sí | Destino alternativo para facturación. |
+| `phone` | varchar(50) | sí | Teléfono de contacto comercial. |
+| `tax_id` | varchar(64) | sí | Identificador fiscal tal como lo facilita el cliente. |
+| `payment_terms` | varchar(32) | sí | Condición validada por la API: `prepaid`, `net_15`, `net_30` o `net_60`. |
+| `address_line1` | varchar(255) | sí | Primera línea de la dirección de facturación. |
+| `address_line2` | varchar(255) | sí | Segunda línea de la dirección de facturación. |
+| `city` | varchar(128) | sí | Localidad de facturación. |
+| `postal_code` | varchar(32) | sí | Código postal sin asumir un formato nacional. |
+| `country` | varchar(2) | sí | Código de país ISO 3166-1 alfa-2. |
+| `notes` | text | sí | Notas internas del operador. |
+| `created_at` | timestamp | sí | Fecha de alta. |
+| `updated_at` | timestamp | sí | Última modificación. |
+
+La tabla solo tiene la PK sobre `id`. La relación se materializa desde
+`commander_clients.account_id`, una FK obligatoria con borrado `RESTRICT`.
+
+No hay propagación de estado ni cuotas agregadas. Tres cabeceras de una cuenta conservan tres
+filas `commander_packages`, tres bases, tres términos de suscripción y medición independiente.
+
+Las facturas todavía pertenecen a una instancia concreta. La cuenta permite agrupar y calcular
+totales, pero una factura consolidada con varias cabeceras requerirá cabecera de factura y líneas;
+no se simula poniendo varias publicaciones dentro de una BD.
 
 ### `commander_packages`
 
@@ -207,3 +252,5 @@ de Commander. `KILKANA_SEED_DEMO=false` evita datos y lector demo por defecto.
   explícito antes de automatizar reintentos o autoservicio.
 - `commander_request_logs` renuncia a FK por coste de escritura; de-provisioning debe borrarlos de
   forma explícita.
+- `commander_accounts` agrupa cabeceras, pero `commander_invoices` sigue exigiendo un único
+  `package_id`; no existe aún factura consolidada ni bolsa de cuotas compartida.

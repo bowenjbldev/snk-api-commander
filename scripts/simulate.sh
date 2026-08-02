@@ -11,6 +11,7 @@
 #
 # Uso:
 #   bash scripts/simulate.sh                     # flujo completo (spec por defecto)
+#   bash scripts/simulate.sh group               # una cuenta + tres cabeceras Kilkana
 #   bash scripts/simulate.sh traffic <cli> <slug> [n]  # SOLO trafico HTTP a un deploy
 #   bash scripts/simulate.sh invoices            # SOLO generar invoices
 #   bash scripts/simulate.sh pipeline            # SOLO rollup + measure + refresh
@@ -21,6 +22,7 @@
 #
 # Overrides por entorno:
 #   ADMIN_EMAIL / ADMIN_PASSWORD   credenciales del operador (commander)
+#   TENANT_ADMIN_EMAIL / TENANT_ADMIN_PASSWORD   admin sembrado en cada tenant
 #   SCENARIO=shop|blog|generic     escenario de trafico (en `traffic`)
 #   DOCKER_COMPOSE="docker compose"  runner de artisan/composer/mariadb
 #
@@ -38,6 +40,8 @@ BASE_DOMAIN="$(get_env BASE_DOMAIN)"; BASE_DOMAIN="${BASE_DOMAIN:-snakepc.test}"
 PORT="$(get_env HTTPS_PORT)"; PORT="${PORT:-8443}"
 EMAIL="${ADMIN_EMAIL:-admin@snake.com}"
 PASS="${ADMIN_PASSWORD:-secret1234}"
+TENANT_EMAIL="${TENANT_ADMIN_EMAIL:-tenant-admin@snake.com}"
+TENANT_PASS="${TENANT_ADMIN_PASSWORD:-tenant-secret-1234}"
 COMMANDER="commander.$BASE_DOMAIN"
 CBASE="https://$COMMANDER:$PORT/api/v1"
 
@@ -53,6 +57,21 @@ PACKAGES=(
   "acme    ACME-Inc Blog blog-basic  50000 30"
   "initech Initech  Crm  crm-mini       50 45"
 )
+PLAN_PRICE=19.99
+ACCOUNT_NAME=""
+ACCOUNT_EMAIL=""
+ACCOUNT_ID=""
+
+set_kilkana_group() {
+  ACCOUNT_NAME="Grupo Prensa Demo"
+  ACCOUNT_EMAIL="direccion@grupo-prensa.test"
+  PLAN_PRICE=99
+  PACKAGES=(
+    "diario-norte  Diario-Norte  Kilkana kilkana-business-demo 100000 10"
+    "diario-centro Diario-Centro Kilkana kilkana-business-demo 100000 10"
+    "diario-sur    Diario-Sur    Kilkana kilkana-business-demo 100000 10"
+  )
+}
 
 # Helpers de derivacion (demo: packages de una sola palabra -> slug = minusculas).
 slug_of() { tr '[:upper:]' '[:lower:]' <<<"$1"; }                 # Shop -> shop
@@ -92,9 +111,9 @@ run_traffic() { # run_traffic <client> <slug> <iter>
   }
   rnd() { echo $(( RANDOM % $1 )); }
 
-  echo "==> [$CLI/$SLUG] login $EMAIL @ $BASE"
+  echo "==> [$CLI/$SLUG] login $TENANT_EMAIL @ $BASE"
   local LOGIN; LOGIN="$("${CURL[@]}" -X POST "$BASE/auth/login" -H 'Content-Type: application/json' \
-      -H 'Accept: application/json' -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}")"
+      -H 'Accept: application/json' -d "{\"email\":\"$TENANT_EMAIL\",\"password\":\"$TENANT_PASS\"}")"
   TOKEN="$(jval "$LOGIN" token)"
   if [ -z "$TOKEN" ]; then echo "    ERROR login: $LOGIN"; rm -f "$TALLY"; return 1; fi
 
@@ -208,7 +227,9 @@ stage_scaffold() {
   for row in "${PACKAGES[@]}"; do
     read -r cli cname name _ _ _ <<<"$row"
     cstudly="$(studly_of "$cli")"
-    if [ -d "$ROOT_DIR/src/packages/$cstudly/$name" ]; then
+    if [ -f "$ROOT_DIR/src/packages/$name/routes/api.php" ]; then
+      echo "    $name compartido ya existe en disco — se reutiliza"
+    elif [ -d "$ROOT_DIR/src/packages/$cstudly/$name" ]; then
       echo "    $cstudly/$name ya existe en disco — se reutiliza"
     else
       artisan make:package "$cli" "$name" --no-dump >/dev/null && echo "    $cstudly/$name scaffolded" && made=1
@@ -218,24 +239,51 @@ stage_scaffold() {
   return 0
 }
 
+ensure_account() {
+  ACCOUNT_ID=""
+  [ -n "$ACCOUNT_NAME" ] || return 0
+
+  local resp
+  ACCOUNT_ID="$(dbq -N commander -e "SELECT id FROM commander_accounts WHERE name='$ACCOUNT_NAME' AND email='$ACCOUNT_EMAIL' ORDER BY id LIMIT 1;" 2>/dev/null | tr -d '[:space:]')"
+  if [ -z "$ACCOUNT_ID" ]; then
+    resp="$(capi POST /accounts "{\"name\":\"$ACCOUNT_NAME\",\"email\":\"$ACCOUNT_EMAIL\",\"billing_email\":\"facturacion@grupo-prensa.test\",\"country\":\"ES\",\"payment_terms\":\"net_30\"}")"
+    ACCOUNT_ID="$(jval "$resp" id)"
+  fi
+  [ -n "$ACCOUNT_ID" ] || { echo "ERROR: no se pudo crear/resolver account $ACCOUNT_NAME: ${resp:-}"; exit 1; }
+  echo "    account=$ACCOUNT_NAME id=$ACCOUNT_ID"
+}
+
+stage_group_prepare() {
+  hr; echo "STAGE — preparar simulacion de grupo sin borrar datos existentes"; hr
+  artisan core:migrate --force >/dev/null
+  artisan core:seed --force >/dev/null
+  echo "    commander migrada + permisos sembrados"
+}
+
 stage_provision() {
   hr; echo "STAGE 3/5 — provisionar vía Commander API (cliente-primero)"; hr
   login_operator
-  local row cli cname name slug qreq _it pid resp err
+  ensure_account
+  local row cli cname name slug qreq _it pid resp err cid existing_pkg account_json
   for row in "${PACKAGES[@]}"; do
     read -r cli cname name slug qreq _it <<<"$row"
-    pid="$(jval "$(capi POST /plans "{\"slug\":\"$slug\",\"package\":\"$name\",\"name\":\"$name plan\",\"price_monthly\":19.99,\"q_requests_day\":$qreq,\"q_disk_db_mb\":1024,\"q_users_total\":50,\"status\":\"active\"}")" id)"
+    pid="$(jval "$(capi POST /plans "{\"slug\":\"$slug\",\"package\":\"$name\",\"name\":\"$name plan\",\"price_monthly\":$PLAN_PRICE,\"q_requests_day\":$qreq,\"q_disk_db_mb\":1024,\"q_disk_storage_mb\":20480,\"q_users_total\":50,\"status\":\"active\"}")" id)"
+    [ -n "$pid" ] || pid="$(dbq -N commander -e "SELECT id FROM commander_plans WHERE slug='$slug' LIMIT 1;" 2>/dev/null | tr -d '[:space:]')"
     [ -n "$pid" ] || { echo "    $cli/$name: plan FALLO"; continue; }
-    resp="$(capi POST /provisioning "{\"plan_id\":$pid,\"client\":{\"slug\":\"$cli\",\"name\":\"$cname\",\"email\":\"ops@$cli.test\"}}")"
-    err="$(jval "$resp" error)"
-    if [ -n "$err" ]; then
-      # Cliente ya existe (2ª package del mismo cliente): reintenta con client_id.
-      local cid; cid="$(dbq -N commander -e "SELECT id FROM commander_clients WHERE slug='$cli' LIMIT 1;" 2>/dev/null | tr -d '[:space:]')"
-      if [ -n "$cid" ]; then
-        resp="$(capi POST /provisioning "{\"plan_id\":$pid,\"client_id\":$cid}")"
-        err="$(jval "$resp" error)"
+    cid="$(dbq -N commander -e "SELECT id FROM commander_clients WHERE slug='$cli' LIMIT 1;" 2>/dev/null | tr -d '[:space:]')"
+    if [ -n "$cid" ]; then
+      [ -z "$ACCOUNT_ID" ] || capi PATCH "/clients/$cid" "{\"account_id\":$ACCOUNT_ID}" >/dev/null
+      existing_pkg="$(dbq -N commander -e "SELECT id FROM commander_packages WHERE client_id=$cid AND slug='$(slug_of "$name")' LIMIT 1;" 2>/dev/null | tr -d '[:space:]')"
+      if [ -n "$existing_pkg" ]; then
+        printf '    %-14s %-8s -> ya registrada (package id=%s)\n' "$cli" "$name" "$existing_pkg"
+        continue
       fi
+      resp="$(capi POST /provisioning "{\"plan_id\":$pid,\"client_id\":$cid,\"admin_email\":\"$TENANT_EMAIL\",\"admin_password\":\"$TENANT_PASS\"}")"
+    else
+      account_json=""; [ -z "$ACCOUNT_ID" ] || account_json="\"account_id\":$ACCOUNT_ID,"
+      resp="$(capi POST /provisioning "{\"plan_id\":$pid,\"admin_email\":\"$TENANT_EMAIL\",\"admin_password\":\"$TENANT_PASS\",\"client\":{$account_json\"slug\":\"$cli\",\"name\":\"$cname\",\"email\":\"ops@$cli.test\"}}")"
     fi
+    err="$(jval "$resp" error)"
     if [ -n "$err" ]; then
       printf '    %-7s %-4s -> FALLO: %s\n' "$cli" "$name" "$err"
     else
@@ -458,19 +506,30 @@ $r->invoke($s,"hour",$n->startOfHour());$r->invoke($s,"day",$n->startOfDay());' 
 
 stage_report() {
   hr; echo "REPORTE — estado del Commander"; hr
-  echo "Packages (cliente x package; estado runtime + cuota req/dia):"
-  dbq commander -e "SELECT c.slug AS client, p.slug AS package, p.database AS db, p.status,
+  echo "Packages (account x cabecera x package; estado runtime + cuota req/dia):"
+  dbq commander -e "SELECT COALESCE(a.name, '-') AS account, c.slug AS client, p.slug AS package, p.database AS db, p.status,
       COALESCE(p.reason,'-') reason, p.requests_24h, p.quota_health
     FROM commander_packages p
     JOIN commander_clients c ON c.id = p.client_id
+    LEFT JOIN commander_accounts a ON a.id = c.account_id
     WHERE p.provisioned_at IS NOT NULL
     ORDER BY p.id;" 2>/dev/null || true
+  echo; echo "Accounts (cabeceras, instancias y MRR por terminos vigentes):"
+  dbq commander -e "SELECT a.name AS account, COUNT(DISTINCT c.id) AS clients,
+      COUNT(DISTINCT p.id) AS packages, COALESCE(SUM(s.price_monthly), 0) AS mrr
+    FROM commander_accounts a
+    LEFT JOIN commander_clients c ON c.account_id = a.id
+    LEFT JOIN commander_packages p ON p.client_id = c.id AND p.provisioned_at IS NOT NULL
+    LEFT JOIN commander_subscriptions s ON s.package_id = p.id AND s.ended_at IS NULL
+    GROUP BY a.id, a.name ORDER BY a.id;" 2>/dev/null || true
   echo; echo "Invoices (estados):"
   dbq commander -e "SELECT number, package_id, amount, status FROM commander_invoices ORDER BY id;" 2>/dev/null || true
   echo; echo "Subscriptions (términos; vigente = ended_at NULL, lo demás es historial):"
   dbq commander -e "SELECT package_id, plan, price_monthly, billing_status, ended_at FROM commander_subscriptions ORDER BY package_id, id;" 2>/dev/null || true
   echo; echo "Tablas commander_* con filas:"
   dbq commander -N -e "SELECT 'packages',COUNT(*) FROM commander_packages
+    UNION ALL SELECT 'accounts',COUNT(*) FROM commander_accounts
+    UNION ALL SELECT 'clients',COUNT(*) FROM commander_clients
     UNION ALL SELECT 'subscriptions',COUNT(*) FROM commander_subscriptions
     UNION ALL SELECT 'invoices',COUNT(*) FROM commander_invoices
     UNION ALL SELECT 'request_logs',COUNT(*) FROM commander_request_logs
@@ -479,6 +538,7 @@ stage_report() {
     UNION ALL SELECT 'package_commits',COUNT(*) FROM commander_package_commits
     UNION ALL SELECT 'package_activity_daily',COUNT(*) FROM commander_package_activity_daily;" 2>/dev/null || true
   hr; echo "Hecho. Panel: https://$COMMANDER:$PORT  (admin: $EMAIL / $PASS)"
+  echo "Tenants demo: $TENANT_EMAIL / $TENANT_PASS"
 }
 
 # ------------------------------------------------------------------ main
@@ -490,6 +550,7 @@ case "${1:-all}" in
   volume)   stage_seed_volume "${2:-100000}"; stage_report ;;
   year)     stage_seed_year "${2:-365}"; stage_report ;;
   report)   stage_report ;;
+  group)    set_kilkana_group; stage_group_prepare; stage_scaffold; stage_provision; stage_traffic; stage_pipeline; stage_report ;;
   all)      stage_clean; stage_scaffold; stage_provision; stage_change_plan; stage_invoices; stage_traffic; stage_pipeline; stage_seed_year 365; stage_report ;;
-  *) echo "uso: simulate.sh [all|traffic <client> <slug> [n]|invoices|change-plan|pipeline|volume [filas]|year [dias]|report]"; exit 1 ;;
+  *) echo "uso: simulate.sh [all|group|traffic <client> <slug> [n]|invoices|change-plan|pipeline|volume [filas]|year [dias]|report]"; exit 1 ;;
 esac

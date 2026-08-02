@@ -9,7 +9,7 @@ activa en cada petición.
 | Pieza | Responsabilidad | Ubicación |
 |---|---|---|
 | Core | descubrimiento, rutas, auth base, permisos, conexión tenant, metering, estado y comandos | `src/packages/Core` |
-| Commander | control plane: catálogo, clientes, planes, provisioning, billing, cuotas y observabilidad | `src/packages/Commander` |
+| Commander | control plane: cuentas comerciales, clientes, planes, provisioning, billing, cuotas y observabilidad | `src/packages/Commander` |
 | Commander SPA | interfaz del operador contra la API real de Commander | `commander` |
 | Kilkana | producto editorial compartido y sus migraciones | `src/packages/Kilkana` |
 | Overlay | diferencias de un cliente sobre un producto compartido | `src/packages/<Cliente>/<Paquete>` |
@@ -27,6 +27,21 @@ Path:  /api/v1/kilkana/...       → commander_packages.slug = kilkana
 Fila:  commander_packages.id     → identidad operativa estable
 BD:    elmundo_kilkana           → datos aislados de la instancia
 ```
+
+Una `commander_account` es la identidad comercial superior obligatoria. En el caso normal tiene
+una cabecera; en un grupo puede contener varias. No interviene en el host, el nombre de BD ni la
+resolución:
+
+```text
+account Grupo Demo
+├── client diario-norte  → diario-norte.<dominio>  → diario_norte_kilkana
+├── client diario-centro → diario-centro.<dominio> → diario_centro_kilkana
+└── client diario-sur    → diario-sur.<dominio>    → diario_sur_kilkana
+```
+
+No existen clientes sin `account_id`. Si el alta recibe un cliente nuevo sin una cuenta existente,
+Commander crea una cuenta 1:1 con sus datos comerciales. Las cuotas, estado, suscripción y
+credenciales continúan perteneciendo a cada fila de instancia, no a la cuenta agrupadora.
 
 Los subdominios `api`, `commander` y `www` están reservados. El slug de cliente acepta un único
 nivel DNS, de 1 a 63 caracteres, con letras minúsculas, números y guiones. El nombre de la base
@@ -137,7 +152,7 @@ compartido para que el código base la consuma sin conocer al cliente.
 
 La separación principal es física:
 
-- `commander`: operador, catálogo, clientes, planes, billing, estado, cuotas y métricas.
+- `commander`: operador, cuentas, clientes, catálogo, planes, billing, estado, cuotas y métricas.
 - `{cliente}_{paquete}`: usuarios, tokens, roles y tablas de negocio de una instancia.
 
 Un usuario o token de Kilkana no existe en la base de otra instancia ni en Commander. Sanctum

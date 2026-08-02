@@ -54,6 +54,7 @@ class CommanderProvisioningController extends CoreBaseApiController
             // … or a new client object (required unless client_id given). client.slug = handle legible;
             // el id (bigint) lo asigna la BD.
             'client' => 'nullable|array',
+            'client.account_id' => 'sometimes|required|integer|exists:commander_accounts,id',
             'client.slug' => ['required_without:client_id', 'string', 'max:63', 'regex:/\A[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\z/'],
             'client.name' => 'required_without:client_id|string|max:255',
             'client.email' => 'required_without:client_id|email|max:255',
@@ -132,17 +133,20 @@ class CommanderProvisioningController extends CoreBaseApiController
 
             $clientId = $data['client_id'] ?? null;
             $createdClientId = null;
+            $createdAccountId = null;
             if ($clientId === null) {
                 $c = $data['client'];
+                $createsAccount = empty($c['account_id']);
                 $client = CommanderClientModel::create(array_merge(
                     ['slug' => $c['slug'], 'name' => $c['name'], 'email' => $c['email'], 'status' => 'active'],
                     array_intersect_key($c, array_flip([
-                        'company', 'phone', 'billing_email', 'tax_id', 'address_line1',
+                        'account_id', 'company', 'phone', 'billing_email', 'tax_id', 'address_line1',
                         'address_line2', 'city', 'postal_code', 'country', 'payment_terms',
                     ])),
                 ));
                 $clientId = $client->id; // bigint asignado por la BD
                 $createdClientId = $clientId;
+                $createdAccountId = $createsAccount ? $client->account_id : null;
             }
 
             // La UNIQUE(client_id, slug) serializa intentos concurrentes del mismo alta.
@@ -205,6 +209,7 @@ class CommanderProvisioningController extends CoreBaseApiController
                 'package' => $commanderPackage,
                 'subscription_id' => $subscription->id,
                 'created_client_id' => $createdClientId,
+                'created_account_id' => $createdAccountId,
             ];
         });
 
@@ -218,10 +223,11 @@ class CommanderProvisioningController extends CoreBaseApiController
             $provisioning['created_client_id'],
             $data['admin_email'],
             Crypt::encryptString($data['admin_password']),
+            $provisioning['created_account_id'],
         );
 
         return response()->json([
-            'package' => $commanderPackage->fresh()->load(['client', 'subscription', 'quotas']),
+            'package' => $commanderPackage->fresh()->load(['client.account', 'subscription', 'quotas']),
         ], 202);
     }
 }

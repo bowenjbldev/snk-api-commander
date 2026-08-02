@@ -21,7 +21,7 @@ class CommanderDatabaseSeeder extends Seeder
 
     private function seedPermissions(): void
     {
-        $resources = ['clients', 'packages', 'subscriptions', 'invoices', 'quotas', 'activity', 'plans', 'settings'];
+        $resources = ['accounts', 'clients', 'packages', 'subscriptions', 'invoices', 'quotas', 'activity', 'plans', 'settings'];
         $actions = ['index', 'show', 'create', 'update', 'delete'];
         $names = [];
         foreach ($resources as $resource) {

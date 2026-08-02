@@ -234,6 +234,7 @@ Commander:
 
 ```bash
 bash scripts/simulate.sh
+bash scripts/simulate.sh group
 bash scripts/simulate.sh traffic <cliente> <slug> 100
 bash scripts/simulate.sh pipeline
 bash scripts/simulate.sh volume 100000
@@ -243,6 +244,12 @@ bash scripts/simulate.sh report
 
 `volume` y `year` escriben grandes volúmenes directamente en MariaDB. Son herramientas de demo,
 no comandos de producción.
+
+`group` es aditivo: migra Commander sin hacer `fresh`, crea o reutiliza la cuenta
+`Grupo Prensa Demo` y provisiona tres cabeceras Kilkana independientes (`diario-norte`,
+`diario-centro`, `diario-sur`). El reporte muestra la cuenta común, las tres bases y el MRR
+agregado a partir de sus términos vigentes. Usa `TENANT_ADMIN_EMAIL` y
+`TENANT_ADMIN_PASSWORD` para cambiar las credenciales tenant de la demo.
 
 ## Acceso directo a MariaDB
 

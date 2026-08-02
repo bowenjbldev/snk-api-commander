@@ -23,6 +23,9 @@ Antes de cambiar código, lee [`docs/README.md`](docs/README.md) y después el d
   [`docs/architecture.md`](docs/architecture.md#ámbitos-de-dominio-snakepc-y-kilkana) antes de
   cambiar dominios.
 - Cada par `(cliente, producto)` provisionado tiene una BD propia `{cliente}_{producto}`.
+- Todo cliente pertenece obligatoriamente a una `commander_account`: el alta normal crea una
+  cuenta 1:1 y un grupo reutiliza una cuenta 1:N. El cliente sigue siendo subdominio, tenant y
+  frontera de BD; no agregues datos tenant ni cuotas dentro de la cuenta.
 - `commander` es la única base de control; los modelos `commander_*` están fijados a esa conexión.
 - Producto compartido: `src/packages/<Paquete>`. Overlay opcional:
   `src/packages/<Cliente>/<Paquete>` con solo diferencias.

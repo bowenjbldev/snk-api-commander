@@ -8,6 +8,7 @@ use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Packages\Commander\Models\CommanderAccountModel;
 use Packages\Commander\Models\CommanderClientModel;
 use Packages\Commander\Models\CommanderPackageModel;
 use Packages\Commander\Models\CommanderQuotaModel;
@@ -30,6 +31,7 @@ class CommanderProvisionPackageJob implements ShouldQueue
         public readonly ?int $createdClientId,
         public readonly ?string $adminEmail = null,
         public readonly ?string $encryptedAdminPassword = null,
+        public readonly ?int $createdAccountId = null,
     ) {
         $this->onQueue('provisioning');
     }
@@ -72,10 +74,14 @@ class CommanderProvisionPackageJob implements ShouldQueue
         $user = CorePackageSelectorSupport::validatedDatabaseIdentifier($package->database_username);
         $password = $package->database_password;
         $connection = DB::connection('provisioner');
+        $quotedPassword = $connection->getPdo()->quote($password);
+        if ($quotedPassword === false) {
+            throw new \RuntimeException('Could not quote the generated tenant database password.');
+        }
 
         $connection->statement("CREATE DATABASE `{$db}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
         // Valores generados internamente: tenant_<PK> y Str::random(), sin entrada del usuario.
-        $connection->statement("CREATE USER '{$user}'@'%' IDENTIFIED BY ?", [$password]);
+        $connection->unprepared("CREATE USER '{$user}'@'%' IDENTIFIED BY {$quotedPassword}");
     }
 
     private function runTenantSetup(CommanderPackageModel $package): void
@@ -144,6 +150,11 @@ class CommanderProvisionPackageJob implements ShouldQueue
             if ($this->createdClientId !== null
                 && ! CommanderPackageModel::query()->where('client_id', $this->createdClientId)->exists()) {
                 CommanderClientModel::query()->whereKey($this->createdClientId)->delete();
+            }
+
+            if ($this->createdAccountId !== null
+                && ! CommanderClientModel::query()->where('account_id', $this->createdAccountId)->exists()) {
+                CommanderAccountModel::query()->whereKey($this->createdAccountId)->delete();
             }
         });
     }

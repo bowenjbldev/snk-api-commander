@@ -21,9 +21,10 @@ class CommanderClientsController extends CoreBaseApiController
 
     protected string $destroyPermission = 'delete clients';
 
-    protected array $allowedWith = ['packages', 'subscriptions', 'invoices'];
+    protected array $allowedWith = ['account', 'packages', 'subscriptions', 'invoices'];
 
     protected array $validationRulesStore = [
+        'account_id' => 'sometimes|required|integer|exists:commander_accounts,id',
         'slug' => 'required|string|max:63|regex:/\A[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\z/|not_in:api,commander,www|unique:commander_clients,slug',
         'name' => 'required|string|max:255',
         'company' => 'nullable|string|max:255',
@@ -43,6 +44,7 @@ class CommanderClientsController extends CoreBaseApiController
     ];
 
     protected array $validationRulesUpdate = [
+        'account_id' => 'sometimes|required|integer|exists:commander_accounts,id',
         'name' => 'nullable|string|max:255',
         'company' => 'nullable|string|max:255',
         'email' => 'nullable|email|max:255',

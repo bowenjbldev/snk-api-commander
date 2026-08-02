@@ -89,6 +89,14 @@ código ni una promesa publicada:
 | Business | 99 € | ilimitados | 120 GB | 500.000 |
 | Grupo | a medida | a medida | a medida | a medida |
 
+`Grupo` es un contrato comercial sobre varias cabeceras, no una instancia más grande ni una BD
+compartida. Commander las agrupa mediante `commander_accounts`, pero cada cabecera conserva su
+cliente, instancia, suscripción, cuotas y base. La factura consolidada y cualquier negociación de
+asientos entre cabeceras siguen siendo trabajo de billing pendiente.
+
+Un cliente fuera de Grupo también tiene cuenta comercial, en relación 1:1 con su única cabecera.
+Así billing parte siempre de la misma raíz y no existe un segundo flujo sin cuenta.
+
 Principios comerciales propuestos:
 
 - todas las capacidades first-party incluidas, sin gate por lista de funciones;

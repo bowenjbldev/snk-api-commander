@@ -6,6 +6,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Packages\Commander\Database\Seeders\CommanderDatabaseSeeder;
 use Packages\Commander\Jobs\CommanderProvisionPackageJob;
+use Packages\Commander\Models\CommanderAccountModel;
 use Packages\Commander\Models\CommanderClientModel;
 use Packages\Commander\Models\CommanderPackageModel;
 use Packages\Commander\Models\CommanderPlanModel;
@@ -57,7 +58,7 @@ class CommanderProvisioningTest extends CommanderTestCase
         ]);
     }
 
-    public function test_provisioning_creates_live_instance_from_client_and_plan(): void
+    public function test_normal_client_provisioning_creates_its_required_account(): void
     {
         $admin = $this->admin();
         $plan = $this->plan();
@@ -81,6 +82,7 @@ class CommanderProvisioningTest extends CommanderTestCase
         $res->assertJsonPath('package.name', 'Demo');
         $res->assertJsonPath('package.slug', 'demo');           // slug del package (path)
         $res->assertJsonPath('package.subscription.plan', 'Pro');
+        $res->assertJsonPath('package.client.account.name', 'Acme Inc');
 
         // Instance row created + active + its own database (snake(client)_snake(package) = acme_demo).
         $cp = CommanderPackageModel::where('slug', 'demo')->first();
@@ -101,6 +103,17 @@ class CommanderProvisioningTest extends CommanderTestCase
         $this->assertSame('ESB12345678', $client->tax_id);
         $this->assertSame('ES', $client->country);
         $this->assertSame($client->id, $cp->client_id);
+        $account = $client->account()->firstOrFail();
+        $this->assertSame('Acme Inc', $account->name);
+        $this->assertSame('hi@acme.com', $account->email);
+        $this->assertSame('billing@acme.com', $account->billing_email);
+        $this->assertSame(1, $account->clients()->count());
+        Queue::assertPushed(CommanderProvisionPackageJob::class, fn ($job) => $job->createdAccountId === $account->id);
+
+        $this->actingAs($admin, 'sanctum')
+            ->patchJson("/api/v1/clients/{$client->id}", ['account_id' => null])
+            ->assertUnprocessable();
+        $this->assertSame($account->id, $client->fresh()->account_id);
 
         // Subscription + quotas (tabla unica) hang off the package row (1:1).
         $this->assertNotNull($cp->subscription_id);
@@ -223,5 +236,23 @@ class CommanderProvisioningTest extends CommanderTestCase
         $this->assertNull($failed->fresh());
         $this->assertNotNull($other->fresh());
         $this->assertNotNull($client->fresh());
+    }
+
+    public function test_failed_normal_provisioning_removes_its_automatic_account(): void
+    {
+        $client = CommanderClientModel::create([
+            'slug' => 'acme', 'name' => 'Acme', 'email' => 'a@a.com', 'status' => 'active',
+        ]);
+        $accountId = $client->account_id;
+        $failed = CommanderPackageModel::create([
+            'name' => 'Demo', 'slug' => 'demo', 'client_id' => $client->id, 'database' => 'acme_demo',
+        ]);
+        $job = new CommanderProvisionPackageJob($failed->id, 'acme', 'Demo', $client->id, null, null, $accountId);
+
+        (new \ReflectionMethod($job, 'rollback'))->invoke($job, $failed);
+
+        $this->assertNull($failed->fresh());
+        $this->assertNull($client->fresh());
+        $this->assertNull(CommanderAccountModel::find($accountId));
     }
 }

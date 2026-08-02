@@ -1,12 +1,13 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Packages\Commander\Http\Controllers\CommanderAccountsController;
 use Packages\Commander\Http\Controllers\CommanderActivityController;
 use Packages\Commander\Http\Controllers\CommanderAuthController;
 use Packages\Commander\Http\Controllers\CommanderClientsController;
 use Packages\Commander\Http\Controllers\CommanderInvoicesController;
-use Packages\Commander\Http\Controllers\CommanderPlansController;
 use Packages\Commander\Http\Controllers\CommanderPackagesController;
+use Packages\Commander\Http\Controllers\CommanderPlansController;
 use Packages\Commander\Http\Controllers\CommanderProvisioningController;
 use Packages\Commander\Http\Controllers\CommanderQuotasController;
 use Packages\Commander\Http\Controllers\CommanderRequestLogsController;
@@ -26,6 +27,7 @@ Route::middleware(['api'])->group(function () {
 
         // Platform registry
         Route::apiResource('users', CommanderUsersController::class);
+        Route::apiResource('accounts', CommanderAccountsController::class);
         Route::apiResource('clients', CommanderClientsController::class);
         Route::apiResource('plans', CommanderPlansController::class);
 

@@ -83,8 +83,30 @@ Payload esencial:
 }
 ```
 
+Para crear una cabecera dentro de una cuenta comercial existente, el objeto nuevo acepta
+`account_id`:
+
+```json
+{
+  "plan_id": 7,
+  "admin_email": "admin@diario-norte.example",
+  "admin_password": "una-clave-de-12-o-mas",
+  "client": {
+    "account_id": 3,
+    "slug": "diario-norte",
+    "name": "Diario Norte",
+    "email": "redaccion@diario-norte.example"
+  }
+}
+```
+
+La cuenta no cambia la URL ni la BD: siguen derivándose de `client.slug`. Las siguientes
+cabeceras de la misma cuenta repiten el flujo con otro cliente y otra base.
+
 En lugar de `client_id` puede enviarse un objeto `client` con `slug`, `name`, `email` y datos
-opcionales de contacto/billing.
+opcionales de contacto/billing. Si omite `account_id`, Commander crea automáticamente su cuenta
+comercial 1:1. Un `account_id` existente se usa solo para añadir la cabecera a ese grupo; nunca se
+deduce por coincidencia de nombre o correo.
 
 ### Fase síncrona
 
@@ -94,8 +116,8 @@ El controller:
 2. valida plan activo, cliente activo, slug DNS, longitud de la BD y contraseña del admin;
 3. resuelve código compartido y/o específico;
 4. rechaza otro `(client_id, slug)` registrado;
-5. dentro de una transacción Commander crea cliente si procede, fila de instancia, término de
-   suscripción y cuatro cuotas;
+5. dentro de una transacción Commander crea la cuenta 1:1 cuando haga falta, el cliente, la fila
+   de instancia, el término de suscripción y cuatro cuotas;
 6. genera `database_username = tenant_<package_id>` y una contraseña aleatoria cifrada;
 7. deja `provisioned_at = null`;
 8. cifra temporalmente la contraseña del admin para el job, encola en `provisioning` y responde
@@ -119,8 +141,9 @@ de 600 segundos:
 9. restaura siempre conexión y configuración global.
 
 Si algo falla, intenta borrar la base y el usuario y elimina cuotas, término e instancia. Si el
-cliente se creó para ese alta y no tiene otra fila de paquete, también lo elimina. Después relanza
-la excepción para que quede registrada como job fallido.
+cliente se creó para ese alta y no tiene otra fila de paquete, también lo elimina; la cuenta 1:1
+creada automáticamente se elimina si quedó sin clientes. Una cuenta de grupo nunca se borra desde
+ese rollback. Después relanza la excepción para que quede registrada como job fallido.
 
 ### Hueco operativo actual
 
