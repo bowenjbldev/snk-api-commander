@@ -27,7 +27,7 @@ use Packages\Kilkana\Models\SnkKilkanaSubscriberModel;
 
 class SnkKilkanaPublicService
 {
-    private const AUTHOR_PUBLIC = 'author:id,user_id,alias,slug';
+    private const AUTHOR_PUBLIC = 'author:id,user_id,alias,slug,noindex';
 
     public function __construct(private readonly CoreActivePackageSupport $active) {}
 
@@ -55,7 +55,9 @@ class SnkKilkanaPublicService
             $query->whereFullText(['title', 'excerpt'], $filters['q']);
         }
 
-        return $query->limit($filters['count'] ?? 50)->get();
+        // Los listados son tarjetas: además de ahorrar peso, no pueden filtrar el cuerpo
+        // completo de una pieza cerrada antes de que el detalle aplique el muro.
+        return $query->limit($filters['count'] ?? 50)->get()->each->makeHidden('body_blocks');
     }
 
     /**
@@ -193,9 +195,10 @@ class SnkKilkanaPublicService
     {
         $post = $this->publishedAt($year, $month, $day, $slug)
             ->with([self::AUTHOR_PUBLIC, 'ogImage:id,url'])
+            ->withSum('views as views_total', 'engaged')
             ->first();
         if ($post) {
-            SnkKilkanaPostViewModel::hit($post->id);
+            $post->setAttribute('body_blocks', $post->publicBodyBlocks());
 
             return $post;
         }

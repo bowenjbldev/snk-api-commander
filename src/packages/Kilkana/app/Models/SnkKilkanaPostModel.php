@@ -117,6 +117,30 @@ class SnkKilkanaPostModel extends Model
         return $query->published()->where('noindex', false);
     }
 
+    /**
+     * Cuerpo que puede salir por la API pública.
+     *
+     * Mientras no exista una sesión lectora ligada a una suscripción, `metered` y `locked`
+     * fallan cerrados: solo exponen el teaser hasta el primer muro. La API autenticada del
+     * panel sigue serializando el cuerpo entero. Si falta el bloque, se entrega únicamente
+     * un muro automático; nunca todo el texto por un error editorial.
+     */
+    public function publicBodyBlocks(): array
+    {
+        $blocks = $this->body_blocks ?? [];
+        if ($this->content_tier === SnkKilkanaContentTierEnum::Free) {
+            return $blocks;
+        }
+
+        foreach ($blocks as $index => $block) {
+            if (($block['type'] ?? null) === 'paywall') {
+                return array_slice($blocks, 0, $index + 1);
+            }
+        }
+
+        return [['id' => 'paywall-auto', 'type' => 'paywall', 'config' => []]];
+    }
+
     /** La portada serializada como `cover` (objeto media o null). */
     public function getCoverAttribute(): ?SnkKilkanaMediaModel
     {

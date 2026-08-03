@@ -6,10 +6,10 @@ Para el entorno completo solo se necesita Docker. Hay dos ficheros de entorno:
 
 | Fichero | Dueño | Contenido principal |
 |---|---|---|
-| `.env` | Docker Compose | puertos, `BASE_DOMAIN`, usuario Commander y credencial del provisioner |
-| `src/.env` | Laravel | app key, conexiones, queue, mail, seed demo y rate limits |
+| `.env` | Docker Compose | puertos, dominios, usuario Commander y credencial del provisioner |
+| `src/.env` | Laravel | dominios, app key, conexiones, queue, mail, seed demo y rate limits |
 
-Créelos desde sus ejemplos y mantén el mismo `BASE_DOMAIN`:
+Créelos desde sus ejemplos y mantén iguales `BASE_DOMAIN` y `TENANT_BASE_DOMAIN`:
 
 ```bash
 cp .env.example .env
@@ -46,14 +46,18 @@ bash scripts/setup-ssl.sh
 bash scripts/dns-wildcard.sh
 ```
 
-El DNS recomendado resuelve `*.<BASE_DOMAIN>` a `127.0.0.1`. Si no puedes instalar un resolver
-wildcard, añade al hosts de Windows/Linux al menos `api`, `commander` y cada slug de cliente.
+El DNS recomendado resuelve `*.<BASE_DOMAIN>` y `*.<TENANT_BASE_DOMAIN>` a `127.0.0.1`. Si no
+puedes instalar un resolver wildcard, añade al hosts de Windows/Linux `api`, `commander` y cada
+slug de cliente. El fichero hosts no admite `*`.
 
 Para probar sin DNS:
 
 ```bash
 curl -k --resolve api.snakepc.test:8443:127.0.0.1 \
   https://api.snakepc.test:8443/api/v1/
+
+curl -k --resolve demo.kilkana.test:8443:127.0.0.1 \
+  https://demo.kilkana.test:8443/api/v1/kilkana/
 ```
 
 Rutas locales habituales:
@@ -61,6 +65,7 @@ Rutas locales habituales:
 | Recurso | URL |
 |---|---|
 | Commander | `https://commander.snakepc.test` o `:8443` |
+| tenant Kilkana demo | `https://demo.kilkana.test` o `:8443` |
 | health Core | `https://api.snakepc.test/api/v1/` |
 | OpenAPI UI | `https://api.snakepc.test/api/v1/docs` |
 | spec OpenAPI | `https://api.snakepc.test/api/v1/docs.json` |
@@ -295,7 +300,7 @@ Además:
 
 - `Hash::make` sobre `CoreUserModel.password` produce doble hash: el modelo ya castea `hashed`.
 - El usuario es `Packages\Core\Models\CoreUserModel`, no `App\Models\User`.
-- `BASE_DOMAIN` queda dentro de la caché de rutas; recachea tras cambiarlo.
+- `BASE_DOMAIN` y `TENANT_BASE_DOMAIN` quedan dentro de la caché de rutas; recachea tras cambiarlos.
 - Un producto u overlay nuevo necesita autoload actualizado y reinicio/recache del proceso.
 - Añadir código en Commander no crea una instancia: la fila solo enruta tras provisioning.
 - Un token tenant no autentica al operador, y uno de Commander no autentica en un tenant.

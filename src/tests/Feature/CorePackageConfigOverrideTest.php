@@ -66,7 +66,7 @@ class CorePackageConfigOverrideTest extends TestCase
             'acme.shop.session' => ['lifetime' => 999],
         ]);
 
-        $seen = $this->captureFor('acme.snakepc.test', 'shop');
+        $seen = $this->captureFor('acme.kilkana.test', 'shop');
 
         $this->assertSame('SharedShop', $seen['app_name']);
         $this->assertSame(999, $seen['session_lifetime']);
@@ -92,7 +92,7 @@ class CorePackageConfigOverrideTest extends TestCase
             ],
         ]);
 
-        $seen = $this->captureFor('el-mundo.snakepc.test', 'news-room');
+        $seen = $this->captureFor('el-mundo.kilkana.test', 'news-room');
 
         $this->assertSame('El Mundo newsroom', $seen['app_name']);
         $this->assertSame('brand', $seen['package_config']['theme']);
@@ -102,12 +102,35 @@ class CorePackageConfigOverrideTest extends TestCase
         $this->assertSame($originalName, config('app.name'));
     }
 
+    public function test_client_domain_parameter_is_not_forwarded_to_the_controller(): void
+    {
+        $this->provisionedPackage('demo', 'kilkana');
+        $request = Request::create('https://demo.kilkana.test/api/v1/kilkana/public/layouts/front', 'GET');
+        $route = app('router')->getRoutes()->match($request);
+        $request->setRouteResolver(fn () => $route);
+
+        $this->assertSame(['client' => 'demo', 'layout' => 'front'], $route->parameters());
+        $parameters = null;
+
+        app(CoreResolvePackageFromHostMiddleware::class)->handle(
+            $request,
+            function () use ($request, &$parameters) {
+                $parameters = $request->route()?->parameters();
+
+                return response('ok');
+            },
+            'kilkana',
+        );
+
+        $this->assertSame(['layout' => 'front'], $parameters);
+    }
+
     public function test_unprovisioned_aborts_404(): void
     {
         config(['ghost.shop.app' => ['name' => 'GhostOverride']]); // declarado pero sin cliente/fila
 
         $this->expectException(NotFoundHttpException::class);
 
-        $this->captureFor('ghost.snakepc.test', 'shop');
+        $this->captureFor('ghost.kilkana.test', 'shop');
     }
 }

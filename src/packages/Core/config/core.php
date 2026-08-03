@@ -7,13 +7,15 @@ return [
     | Base Domain
     |--------------------------------------------------------------------------
     |
-    | Dominio raiz del despliegue centralizado: cada package se sirve en
-    | {subdominio}.{base_domain} y el package se resuelve por host en cada request.
-    | Debe coincidir con BASE_DOMAIN de la infra (nginx/DNS).
+    | Dominio del control plane y dominio de los tenants. Mantenerlos separados
+    | permite servir Commander bajo SnakePC y los periodicos bajo Kilkana.
+    | TENANT_BASE_DOMAIN conserva BASE_DOMAIN como fallback para despliegues
+    | existentes que todavia usan un unico dominio.
     |
     */
 
     'base_domain' => env('BASE_DOMAIN', 'snakepc.test'),
+    'tenant_base_domain' => env('TENANT_BASE_DOMAIN', env('BASE_DOMAIN', 'snakepc.test')),
 
     /*
     |--------------------------------------------------------------------------

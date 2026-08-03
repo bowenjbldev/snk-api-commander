@@ -1,24 +1,24 @@
-# Centralizado: UN solo vhost wildcard sirve TODOS los subdominios de package
-# (*.${BASE_DOMAIN}) + el dominio principal (${APP_DOMAIN}). El package se resuelve
+# Centralizado: UN solo vhost sirve el dominio privado, los tenants
+# (*.${TENANT_BASE_DOMAIN}) y el dominio principal (${APP_DOMAIN}). El package se resuelve
 # por Host DENTRO de Laravel (CoreResolvePackageFromHostMiddleware), no por vhost.
 # El host exacto commander.${BASE_DOMAIN} lo gana commander.conf (server_name exacto
 # tiene prioridad sobre el wildcard). default_server: hosts no provisionados caen aqui
 # y Laravel responde 404.
 server {
     listen 80 default_server;
-    server_name ${APP_DOMAIN} *.${BASE_DOMAIN} localhost;
+    server_name ${APP_DOMAIN} *.${BASE_DOMAIN} *.${TENANT_BASE_DOMAIN} localhost;
     return 301 https://$host$request_uri;
 }
 
 server {
     listen 443 ssl default_server;
-    server_name ${APP_DOMAIN} *.${BASE_DOMAIN} localhost;
+    server_name ${APP_DOMAIN} *.${BASE_DOMAIN} *.${TENANT_BASE_DOMAIN} localhost;
     index index.php index.html;
     error_log  /var/log/nginx/error.log;
     access_log /var/log/nginx/access.log;
     root /var/www/src/public;
 
-    # El wildcard *.${BASE_DOMAIN} cubre tambien ${APP_DOMAIN} (un solo nivel).
+    # setup-ssl.sh genera este certificado con ambos wildcards como SAN.
     ssl_certificate     /etc/nginx/certs/wildcard.${BASE_DOMAIN}.pem;
     ssl_certificate_key /etc/nginx/certs/wildcard.${BASE_DOMAIN}-key.pem;
     ssl_protocols       TLSv1.2 TLSv1.3;
@@ -30,6 +30,7 @@ server {
         fastcgi_pass api-app:9000;
         fastcgi_index index.php;
         include fastcgi_params;
+        fastcgi_param HTTP_HOST $host;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         fastcgi_param PATH_INFO $fastcgi_path_info;
     }

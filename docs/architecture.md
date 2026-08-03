@@ -56,8 +56,7 @@ de-provisioning usan siempre el `id` numérico para no confundir dos instancias 
 `snakepc.test` representa el entorno local y portfolio técnico del propietario. Commander forma
 parte de ese ámbito y su URL actual es `commander.snakepc.test`.
 
-Kilkana es un SaaS con identidad propia. Cuando se habilite su dominio local de producto, la
-estructura objetivo será:
+Kilkana es un SaaS con identidad propia. La estructura local actual es:
 
 ```text
 commander.snakepc.test          control plane privado
@@ -65,15 +64,14 @@ elmundo.kilkana.test            instancia Kilkana de El Mundo
 elconfidencial.kilkana.test     instancia Kilkana de El Confidencial
 ```
 
-No se necesita `commander.kilkana.test`: Commander administra Kilkana, pero no pertenece a su
-marca pública. Esta separación es una **decisión futura, todavía no implementada**. Hoy Core,
-nginx y la SPA derivan Commander y los tenants de un único `BASE_DOMAIN`; por eso un despliegue
-activo no debe mezclar ambos sufijos.
+No existe `commander.kilkana.test`: Commander administra Kilkana, pero no pertenece a su marca
+pública. `BASE_DOMAIN` gobierna el control plane y `TENANT_BASE_DOMAIN` las rutas tenant; Core,
+nginx/TLS y la SPA respetan esa separación. Si `TENANT_BASE_DOMAIN` no está definido, Core cae a
+`BASE_DOMAIN` para mantener compatibles los despliegues anteriores.
 
-Antes de activar `*.kilkana.test` habrá que separar el dominio del control plane del dominio de
-tenants —y, si aparecen más SaaS, permitir un dominio por producto— en rutas, nginx/TLS y enlaces
-generados por la SPA. No se debe resolver esa fase añadiendo aliases de hosts mientras Laravel
-siga registrando un único dominio base.
+El límite deliberado actual es un dominio tenant por despliegue. Cuando exista un segundo SaaS
+con dominio de marca propio, se sustituirá por un mapa producto → dominio; no se anticipa hasta
+que aparezca ese segundo caso.
 
 ## Productos compartidos y overlays
 
@@ -105,7 +103,7 @@ rutas:        overlay exacto → compartido wildcard como fallback
 ```
 
 Las rutas del overlay se registran primero para su dominio exacto. La ruta compartida se registra
-después sobre `{client}.<BASE_DOMAIN>`. Si el overlay no redefine un endpoint, la petición llega a
+después sobre `{client}.<TENANT_BASE_DOMAIN>`. Si el overlay no redefine un endpoint, la petición llega a
 la ruta compartida.
 
 Los service providers de productos compartidos se cargan globalmente. Los providers de overlays
@@ -130,8 +128,8 @@ Confidencial. Un overlay entra por sus rutas y clases acotadas, no mediante bind
 La fila de Commander se consulta siempre mediante el modelo fijado a la conexión `commander`, de
 modo que cambiar la conexión por defecto no cambia el control plane.
 
-Core y el health check son globales. Commander usa el dominio fijo
-`commander.<BASE_DOMAIN>` y nunca pasa por el resolutor tenant.
+Core y el health check son globales. Commander usa `commander.<BASE_DOMAIN>` y nunca pasa por el
+resolutor tenant; los productos usan `{client}.<TENANT_BASE_DOMAIN>`.
 
 ## Configuración
 

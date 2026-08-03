@@ -73,7 +73,7 @@ class CoreMakePackageCommand extends Command
         $slug = str_replace('_', '-', Str::snake($package));
         $sub = str_replace('_', '-', Str::snake($client));
         $this->info("Package {$class} created at {$targetPath}");
-        $this->line("Provisiónalo desde el Commander (cliente '{$sub}' + plan del package {$package}) para servirlo en {$sub}.<BASE_DOMAIN>/api/v1/{$slug} (crea su BD).");
+        $this->line("Provisiónalo desde el Commander (cliente '{$sub}' + plan del package {$package}) para servirlo en {$sub}.<TENANT_BASE_DOMAIN>/api/v1/{$slug} (crea su BD).");
 
         return self::SUCCESS;
     }

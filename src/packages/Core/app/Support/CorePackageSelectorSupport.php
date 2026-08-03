@@ -52,12 +52,12 @@ final class CorePackageSelectorSupport
     }
 
     /**
-     * Subdominio de un solo nivel a partir del host: {sub}.{BASE_DOMAIN} -> sub.
+     * Subdominio de un solo nivel a partir del host: {sub}.{TENANT_BASE_DOMAIN} -> sub.
      * Devuelve null para el apex, hosts ajenos al base, o multinivel (a.b.base).
      */
     public static function subdomainFromHost(string $host): ?string
     {
-        $base = (string) config('core.base_domain');
+        $base = (string) config('core.tenant_base_domain', config('core.base_domain'));
 
         if ($base === '' || $host === $base) {
             return null;

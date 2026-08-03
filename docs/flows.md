@@ -2,7 +2,7 @@
 
 ## Petición tenant
 
-Ejemplo: `GET https://elmundo.example.com/api/v1/kilkana/public/posts`.
+Ejemplo: `GET https://elmundo.kilkana.test/api/v1/kilkana/public/posts`.
 
 ```text
 nginx
@@ -21,7 +21,7 @@ Resultados de resolución:
 
 | Condición | Respuesta |
 |---|---|
-| host fuera de `BASE_DOMAIN`, subdominio reservado o multinivel | la ruta tenant no coincide / `404` |
+| host fuera de `TENANT_BASE_DOMAIN`, subdominio reservado o multinivel | la ruta tenant no coincide / `404` |
 | cliente inexistente o inactivo | `404` |
 | fila sin `provisioned_at` | `404` |
 | credenciales o identificador de BD inválidos | `503` |
@@ -32,6 +32,10 @@ Resultados de resolución:
 La consulta de la instancia ocurre antes de cambiar la conexión. Tras el cambio, los modelos de
 negocio, Sanctum y Spatie leen exclusivamente la base tenant; los modelos Commander siguen fijados
 a `commander`.
+
+`{client}` pertenece únicamente al wildcard del dominio: el resolutor lo consume y lo elimina de
+los parámetros antes del dispatch. Así, `{layout}`, `{slug}`, `{post}` y demás argumentos de path
+llegan al controlador en su posición real.
 
 ## Fallback de implementación
 
@@ -246,8 +250,8 @@ El código llega por git, no por Commander:
 5. si falta cliente, nombre, BD, credenciales o implementación, aborta antes del primer DDL;
 6. si el preflight pasa, migra cada tenant en orden de id.
 
-El `BASE_DOMAIN` queda horneado en `route:cache`; hay que regenerarlo en cada despliegue que cambie
-entorno o rutas.
+`BASE_DOMAIN` y `TENANT_BASE_DOMAIN` quedan horneados en `route:cache`; hay que regenerarlo si
+cambia cualquiera de los dos o las rutas.
 
 ## Trabajos programados
 

@@ -87,8 +87,9 @@ class CoreRouteServiceProvider extends ServiceProvider
                 $packageFiles[$module] = $routeFile;
             }
 
-            // Centralizado: cliente en subdominio y package en path.
+            // Commander conserva su dominio privado; los tenants pueden usar otro dominio de marca.
             $base = (string) config('core.base_domain');
+            $tenantBase = (string) config('core.tenant_base_domain', $base);
 
             // Rutas de Core (health/docs) GLOBALES: cualquier host (api.{BASE_DOMAIN}, localhost,
             // monitorizacion). Son agnosticas de package; el resolutor no aplica. El health queda
@@ -125,7 +126,7 @@ class CoreRouteServiceProvider extends ServiceProvider
                 // Primero los overlays concretos. Si no definen una ruta, la ruta wildcard del
                 // package compartido registrada después sigue siendo el fallback.
                 $namePrefix = strtolower(str_replace('\\', '.', $module)).'.';
-                Route::domain($clientSubdomain.'.'.$base)
+                Route::domain($clientSubdomain.'.'.$tenantBase)
                     ->prefix('api/v1/'.$packageSlug)
                     ->name($namePrefix)
                     ->middleware([CoreResolvePackageFromHostMiddleware::class.':'.$packageSlug, 'api'])
@@ -142,7 +143,7 @@ class CoreRouteServiceProvider extends ServiceProvider
                 $packageSlug = CorePackageSelectorSupport::packageToSubdomain($module);
 
                 $namePrefix = $packageSlug.'.';
-                Route::domain('{client}.'.$base)
+                Route::domain('{client}.'.$tenantBase)
                     ->prefix('api/v1/'.$packageSlug)
                     ->name($namePrefix)
                     ->middleware([CoreResolvePackageFromHostMiddleware::class.':'.$packageSlug, 'api'])

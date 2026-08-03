@@ -12,7 +12,8 @@ use Packages\Core\Support\CorePackageSelectorSupport;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Centralizado, cliente-primero: el SUBDOMINIO es el CLIENTE ({client}.{BASE_DOMAIN}) y el SLUG
+ * Centralizado, cliente-primero: el SUBDOMINIO es el CLIENTE
+ * ({client}.{TENANT_BASE_DOMAIN}) y el SLUG
  * del package va en el path (/api/v1/{slug}). El resolutor recibe el slug como argumento de
  * middleware (lo conoce el registro de rutas) y el cliente lo deriva del host; juntos resuelven la
  * fila viva de commander_packages (subdomain del cliente + slug) y la fijan como package activo
@@ -76,6 +77,9 @@ class CoreResolvePackageFromHostMiddleware
                 [$packageConfigKey, "{$clientConfigKey}.{$packageConfigKey}"],
                 $packageConfigKey,
             );
+
+            // El wildcard de dominio solo resuelve el tenant; no es un argumento del controlador.
+            $request->route()?->forgetParameter('client');
 
             return $next($request);
         } finally {

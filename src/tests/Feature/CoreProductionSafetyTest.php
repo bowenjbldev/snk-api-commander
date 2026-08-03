@@ -32,15 +32,19 @@ class CoreProductionSafetyTest extends TestCase
         $this->assertSame([], $names->duplicates()->unique()->values()->all());
         $this->assertContains('commander.users.index', $names);
         $this->assertContains('kilkana.users.index', $names);
+
+        $routes = collect(Route::getRoutes()->getRoutes())->keyBy(fn ($route) => $route->getName());
+        $this->assertSame('commander.snakepc.test', $routes['commander.users.index']->getDomain());
+        $this->assertSame('{client}.kilkana.test', $routes['kilkana.users.index']->getDomain());
     }
 
     public function test_shared_signed_routes_are_generated_for_the_requested_client_host(): void
     {
-        app('url')->setRequest(Request::create('https://elmundo.snakepc.test/api/v1/kilkana'));
+        app('url')->setRequest(Request::create('https://elmundo.kilkana.test/api/v1/kilkana'));
 
         $url = URL::signedRoute('kilkana.subscribe.confirm', ['client' => 'elmundo', 'subscriber' => 42]);
 
-        $this->assertStringStartsWith('https://elmundo.snakepc.test/api/v1/kilkana/public/subscribe/confirm/42?', $url);
+        $this->assertStringStartsWith('https://elmundo.kilkana.test/api/v1/kilkana/public/subscribe/confirm/42?', $url);
         $this->assertTrue(URL::hasValidSignature(Request::create($url)));
     }
 

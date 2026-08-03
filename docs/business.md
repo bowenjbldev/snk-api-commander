@@ -53,9 +53,9 @@ SnakePC y Kilkana no son el mismo ámbito comercial:
 | SnakePC | portfolio, plataforma y control plane privado | `commander.snakepc.test` |
 | Kilkana | producto SaaS para periódicos | `{cliente}.kilkana.test` |
 
-El dominio propio de Kilkana es una fase futura. Mientras no se desacople el dominio de Commander
-del dominio de tenants, el entorno seguirá usando un solo `BASE_DOMAIN`. La decisión y el trabajo
-técnico necesario están fijados en [Arquitectura](architecture.md#ámbitos-de-dominio-snakepc-y-kilkana).
+La separación ya está operativa: Commander usa `BASE_DOMAIN=snakepc.test` y las cabeceras usan
+`TENANT_BASE_DOMAIN=kilkana.test`. El alcance y el límite de un único dominio tenant por despliegue
+están fijados en [Arquitectura](architecture.md#ámbitos-de-dominio-snakepc-y-kilkana).
 
 ## Qué existe en este repositorio
 

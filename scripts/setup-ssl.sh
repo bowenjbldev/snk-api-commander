@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Genera los certificados SSL locales que nginx necesita para arrancar:
 #   - Certificado para APP_DOMAIN (dominio principal, .env raiz)
-#   - Certificado wildcard *.BASE_DOMAIN (subdominios de package)
+#   - Certificado con SAN para *.BASE_DOMAIN y *.TENANT_BASE_DOMAIN
 #
 # Usa mkcert (certificados de confianza local, candado verde). Si no esta
 # instalado, lo descarga automaticamente a ~/.local/bin (solo necesita curl).
@@ -15,12 +15,14 @@ set -e
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 CERTS_DIR="$ROOT_DIR/docker/nginx/certs"
 
-# Load APP_DOMAIN and BASE_DOMAIN from .env
+# Load APP_DOMAIN, BASE_DOMAIN and TENANT_BASE_DOMAIN from .env
 if [ -f "$ROOT_DIR/.env" ]; then
     DOMAIN=$(grep -E "^APP_DOMAIN=" "$ROOT_DIR/.env" | cut -d '=' -f2)
     BASE_DOMAIN=$(grep -E "^BASE_DOMAIN=" "$ROOT_DIR/.env" | cut -d '=' -f2)
+    TENANT_BASE_DOMAIN=$(grep -E "^TENANT_BASE_DOMAIN=" "$ROOT_DIR/.env" | cut -d '=' -f2)
 fi
 DOMAIN="${1:-${DOMAIN:-localhost}}"
+TENANT_BASE_DOMAIN="${TENANT_BASE_DOMAIN:-${BASE_DOMAIN:-snakepc.test}}"
 
 # ------------------------------------------------------------- mkcert (unico)
 
@@ -72,14 +74,17 @@ echo "Generating certificate for $DOMAIN..."
     -key-file  "$CERTS_DIR/$DOMAIN-key.pem" \
     "$DOMAIN"
 
-# Wildcard para los subdominios de package (<package>.<BASE_DOMAIN>)
-# Nota: cubre un solo nivel (a.snakepc.test si, a.b.snakepc.test no) y no el apex.
+# Certificado comun para Commander y tenants. Cada wildcard cubre un solo nivel.
 if [ -n "${BASE_DOMAIN:-}" ]; then
-    echo "Generating wildcard certificate for *.$BASE_DOMAIN..."
+    WILDCARD_NAMES=("*.$BASE_DOMAIN")
+    if [ "$TENANT_BASE_DOMAIN" != "$BASE_DOMAIN" ]; then
+        WILDCARD_NAMES+=("*.$TENANT_BASE_DOMAIN")
+    fi
+    echo "Generating certificate for ${WILDCARD_NAMES[*]}..."
     "$MKCERT" \
         -cert-file "$CERTS_DIR/wildcard.$BASE_DOMAIN.pem" \
         -key-file  "$CERTS_DIR/wildcard.$BASE_DOMAIN-key.pem" \
-        "*.$BASE_DOMAIN"
+        "${WILDCARD_NAMES[@]}"
 fi
 
 echo ""
@@ -115,10 +120,9 @@ if command -v powershell.exe >/dev/null 2>&1 && command -v wslpath >/dev/null 2>
 fi
 
 # --------------------------------------------------- Resolucion de subdominios
-# El navegador necesita resolver {package}.$BASE_DOMAIN -> 127.0.0.1. Opciones:
-#   - Recomendado (wildcard, 1:1 con prod): dnsmasq/Acrylic resolviendo *.$BASE_DOMAIN.
+# El navegador necesita resolver los dominios locales a 127.0.0.1. Opciones:
+#   - Recomendado (wildcard): dnsmasq/Acrylic para ambos dominios.
 #   - Simple: anadir cada subdominio al hosts de Windows (C:\Windows\System32\drivers\etc\hosts):
 echo ""
-echo "Para abrir los subdominios en el navegador, resuelve *.$BASE_DOMAIN -> 127.0.0.1:"
-echo "  Wildcard (recomendado): dnsmasq/Acrylic con  address=/$BASE_DOMAIN/127.0.0.1"
-echo "  O al hosts de Windows:   127.0.0.1  ${DOMAIN}  commander.$BASE_DOMAIN  shop.$BASE_DOMAIN  blog.$BASE_DOMAIN  crm.$BASE_DOMAIN"
+echo "Para abrir los subdominios, resuelve *.$BASE_DOMAIN y *.$TENANT_BASE_DOMAIN a 127.0.0.1."
+echo "Hosts minimo para esta demo: 127.0.0.1  ${DOMAIN}  commander.$BASE_DOMAIN  demo.$TENANT_BASE_DOMAIN"

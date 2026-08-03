@@ -52,7 +52,7 @@ worker `provisioner`
 Petición de lector/redacción
         │
         ▼
-{cliente}.<BASE_DOMAIN>/api/v1/{paquete}
+{cliente}.<TENANT_BASE_DOMAIN>/api/v1/{paquete}
         │ resolve host + path
         ▼
 Core ── producto compartido ── overlay opcional

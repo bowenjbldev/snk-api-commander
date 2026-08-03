@@ -20,8 +20,12 @@
     <php>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_KEY" value="base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="/>
+        <!-- Nunca cargar las caches locales: RefreshDatabase debe usar SQLite, no MariaDB. -->
+        <env name="APP_CONFIG_CACHE" value="/tmp/snk-api-commander-phpunit-config.php" force="true"/>
+        <env name="APP_ROUTES_CACHE" value="/tmp/snk-api-commander-phpunit-routes.php" force="true"/>
         <!-- Vacio = modo centralizado (load-all + routing por subdominio), como en produccion. -->
         <env name="BASE_DOMAIN" value="snakepc.test"/>
+        <env name="TENANT_BASE_DOMAIN" value="kilkana.test"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>

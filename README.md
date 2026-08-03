@@ -7,11 +7,11 @@ datos.
 El direccionamiento es estable:
 
 ```text
-https://{cliente}.{BASE_DOMAIN}/api/v1/{paquete}/...
+https://{cliente}.{TENANT_BASE_DOMAIN}/api/v1/{paquete}/...
         └ cliente                         └ producto
 ```
 
-Por ejemplo, `https://elmundo.snakepc.test/api/v1/kilkana/public/posts` usa la instancia de
+Por ejemplo, `https://elmundo.kilkana.test/api/v1/kilkana/public/posts` usa la instancia de
 Kilkana de El Mundo y la base `elmundo_kilkana`.
 
 El código común de un producto vive en `src/packages/<Paquete>`; una personalización opcional
@@ -57,7 +57,8 @@ docker compose up -d
 docker compose exec -T app php artisan core:seed --force
 ```
 
-El panel queda en `https://commander.<BASE_DOMAIN>` y el health check en
+El panel queda en `https://commander.<BASE_DOMAIN>`, los tenants en
+`https://{cliente}.<TENANT_BASE_DOMAIN>` y el health check en
 `https://api.<BASE_DOMAIN>/api/v1/`. En el entorno local por defecto, el operador sembrado es
 `admin@snake.com` / `secret1234`; no uses ese secreto en producción.
 
