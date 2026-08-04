@@ -365,18 +365,28 @@ class SnkKilkanaPublicService
         ]);
     }
 
+    /**
+     * La identidad y la piel del periódico para un lector.
+     *
+     * La forma es SIEMPRE la misma, haya fila o no. Antes `tenant` salía nulo cuando la fila no
+     * existía mientras el panel, que la crea con `firstOrCreate`, no veía ese caso nunca: dos
+     * formas posibles para el mismo endpoint, y la rara solo aparecía en la salida pública.
+     *
+     * `url` no sale: el lector ya está en ella, y es un dato de configuración.
+     */
     public function site(): array
     {
-        $ajustes = SnkKilkanaSettingModel::query()->find(1);
+        $ajustes = SnkKilkanaSettingModel::query()->with('themeVariant')->find(1);
 
         return [
-            'tenant' => $ajustes ? [
-                'name' => $ajustes->tenant_name,
-                'tagline' => $ajustes->tenant_tagline,
-                'city' => $ajustes->tenant_city,
-            ] : null,
-            'theme' => $ajustes?->theme,
-            'theme_overrides' => $ajustes?->theme_overrides ?? [],
+            'tenant' => [
+                'name' => $ajustes?->tenant_name,
+                'tagline' => $ajustes?->tenant_tagline,
+                'city' => $ajustes?->tenant_city,
+            ],
+            // La variante resuelta: `base_slug` para buscar en código lo que no baja a la base
+            // —layouts, cabecera, lenguaje de bloques— y encima lo que tocó la redacción.
+            'theme' => $ajustes?->themeVariant?->payload(),
         ];
     }
 

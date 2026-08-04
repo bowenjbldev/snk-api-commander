@@ -20,7 +20,8 @@
       "Bash(wsl.exe *)",
       "Bash(npx tsc *)",
       "Bash(echo \"=== tsc EXIT: $? ===\")",
-      "Bash(npx vitest *)"
+      "Bash(npx vitest *)",
+      "Bash(rtk ls *)"
     ]
   }
 }

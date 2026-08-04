@@ -10,6 +10,7 @@ use Illuminate\Support\ServiceProvider;
 use Packages\Core\Support\CoreActivePackageSupport;
 use Packages\Kilkana\Console\Commands\SnkKilkanaEnrichMediaCommand;
 use Packages\Kilkana\Console\Commands\SnkKilkanaPublishScheduledCommand;
+use Packages\Kilkana\Console\Commands\SnkKilkanaSyncThemesCommand;
 
 class KilkanaServiceProvider extends ServiceProvider
 {
@@ -37,6 +38,7 @@ class KilkanaServiceProvider extends ServiceProvider
             $this->commands([
                 SnkKilkanaPublishScheduledCommand::class,
                 SnkKilkanaEnrichMediaCommand::class,
+                SnkKilkanaSyncThemesCommand::class,
             ]);
 
             // Scheduler editorial (cron corre schedule:run, como los del Commander).

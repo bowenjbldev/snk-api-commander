@@ -164,7 +164,7 @@ consulta [Negocio](business.md).
 
 ## Esquema Kilkana
 
-Cada base Kilkana contiene Core más veinte tablas de negocio:
+Cada base Kilkana contiene Core más veinticuatro tablas de negocio:
 
 | Agregado | Tablas |
 |---|---|
@@ -173,6 +173,7 @@ Cada base Kilkana contiene Core más veinte tablas de negocio:
 | firmas | `kilkana_authors`, `kilkana_author_slugs` |
 | artículos | `kilkana_posts`, `kilkana_post_slugs`, `kilkana_post_revisions`, `kilkana_post_views`, `kilkana_tags`, `kilkana_post_tag` |
 | composición | `kilkana_layouts`, `kilkana_layout_revisions` |
+| apariencia | `kilkana_themes`, `kilkana_theme_variants`, `kilkana_theme_categories`, `kilkana_theme_category_theme` |
 | identidad del medio | `kilkana_settings` |
 | comunidad | `kilkana_comments`, `kilkana_subscribers` |
 
@@ -197,7 +198,8 @@ media ◄────────────┘        ├──1:N── post_
   └── avatar de authors     └──N:M── tags
 
 layouts ──1:N── layout_revisions
-settings y subscribers no dependen de otros agregados
+themes  ──1:N── theme_variants ◄──RESTRICT── settings.theme_variant_id
+subscribers no depende de ningún otro agregado
 ```
 
 ## Reglas para migraciones nuevas

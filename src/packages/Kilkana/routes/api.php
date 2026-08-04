@@ -12,6 +12,7 @@ use Packages\Kilkana\Http\Controllers\SnkKilkanaMediaTaxonomiesController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaPostsController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaPublicController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaSettingsController;
+use Packages\Kilkana\Http\Controllers\SnkKilkanaThemesController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaSubscribersController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaTagsController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaUsersController;
@@ -97,6 +98,13 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::post('layouts/{layout}/revisions/{revision}/restore', [SnkKilkanaLayoutsController::class, 'restore'])->whereIn('layout', SnkKilkanaLayoutEnum::values())->middleware('can:update layouts');
     Route::get('layouts/{layout}', [SnkKilkanaLayoutsController::class, 'show'])->whereIn('layout', SnkKilkanaLayoutEnum::values())->middleware('can:show layouts');
     Route::put('layouts/{layout}', [SnkKilkanaLayoutsController::class, 'update'])->whereIn('layout', SnkKilkanaLayoutEnum::values())->middleware('can:update layouts');
+
+    // El catálogo se lee por tema (con sus variantes dentro) y se escribe por variante. No hay
+    // alta: una variante no se inventa, se adopta del catálogo y a partir de ahí es tuya.
+    Route::get('themes', [SnkKilkanaThemesController::class, 'catalog']);
+    Route::get('theme-categories', [SnkKilkanaThemesController::class, 'categories']);
+    Route::post('theme-variants/{id}/adopt', [SnkKilkanaThemesController::class, 'adopt']);
+    Route::apiResource('theme-variants', SnkKilkanaThemesController::class)->only(['update', 'destroy']);
 
     Route::get('settings', [SnkKilkanaSettingsController::class, 'show'])->middleware('can:show settings');
     Route::put('settings', [SnkKilkanaSettingsController::class, 'update'])->middleware('can:update settings');

@@ -2,32 +2,38 @@
 
 namespace Packages\Kilkana\Services;
 
-use Illuminate\Support\Facades\DB;
 use Packages\Kilkana\Models\SnkKilkanaSettingModel;
+use Packages\Kilkana\Models\SnkKilkanaThemeVariantModel;
 
 /**
- * Los ajustes del periodico: una sola fila, con columnas de verdad.
+ * Los ajustes del periódico: una sola fila, con columnas de verdad.
  *
  * Fue una bolsa JSON, y la bolsa cobraba el precio de la flexibilidad sin darla: el
- * controlador ya enumera cada clave que acepta, asi que nunca hubo claves arbitrarias. A
- * cambio se perdian los tipos —`onboarded` guardado como lo que fuera— y habia que fusionar a
- * mano, con un caso especial para `tenant` que alguien tenia que acordarse de replicar en el
- * siguiente ajuste anidado. El dia que se olvidara, una actualizacion parcial habria borrado
+ * controlador ya enumera cada clave que acepta, así que nunca hubo claves arbitrarias. A
+ * cambio se perdían los tipos —`onboarded` guardado como lo que fuera— y había que fusionar a
+ * mano, con un caso especial para `tenant` que alguien tenía que acordarse de replicar en el
+ * siguiente ajuste anidado. El día que se olvidara, una actualización parcial habría borrado
  * las claves hermanas en silencio.
  *
- * El JSON que ve la app NO cambia: sigue llegando `tenant` anidado. Lo que cambia es que
- * debajo hay columnas, y el mapeo plano ↔ anidado esta escrito aqui en vez de deducirse.
+ * El JSON que ve la app conserva `tenant` anidado. Lo que cambia es que debajo hay columnas, y
+ * el mapeo plano ↔ anidado está escrito aquí en vez de deducirse.
+ *
+ * Regla de crecimiento, para lo que venga: COLUMNA si el ajuste tiene tipo o clave foránea
+ * (`logo_media_id`); COLUMNA JSON DE GRUPO si es un grupo abierto (`comments`, `paywall`,
+ * `integrations`), normalizada al leer. Lo que no vuelve es la bolsa única con todo dentro.
  */
 class SnkKilkanaSettingService
 {
+    public function __construct(private readonly SnkKilkanaThemeAdoptionService $adoptions) {}
+
     private const SINGLETON_ID = 1;
 
     /**
      * Los campos de la identidad, planos en la base y anidados en la API.
      *
-     * `url` es la direccion publica del periodico, y no esta por completar la ficha: todo
-     * correo que sale necesita enlazar a algun sitio, y el enlace de un boletin no puede ser
-     * relativo. Sin ella, confirmar y darse de baja no tienen a donde volver.
+     * `url` es la dirección pública del periódico, y no está por completar la ficha: todo
+     * correo que sale necesita enlazar a algún sitio, y el enlace de un boletín no puede ser
+     * relativo. Sin ella, confirmar y darse de baja no tienen a dónde volver.
      */
     private const TENANT = ['name', 'tagline', 'city', 'url'];
 
@@ -37,63 +43,66 @@ class SnkKilkanaSettingService
     }
 
     /**
-     * Guarda si nadie se ha adelantado. Misma forma que la composicion, y por el mismo motivo.
+     * Guarda lo que llegue y deja el resto donde estaba.
      *
-     * Comprobar la version fuera de la transaccion no detecta nada: dos personas guardando los
-     * ajustes a la vez leen la misma, las dos pasan la comprobacion y la segunda pisa a la
-     * primera con un 200 en la mano.
+     * Aquí hubo control de concurrencia optimista y se retiró: `version` era opcional en el
+     * controlador y ningún cliente la mandaba, así que la comprobación no llegaba a ejecutarse
+     * nunca y la respuesta devolvía un número que no garantizaba nada. Peor que no tenerlo,
+     * porque parecía una garantía. Estos ajustes los toca poca gente y rara vez, así que la
+     * política es last-write-wins y está dicha en voz alta.
      *
-     * `get()` va fuera porque crea la fila la primera vez, y no se bloquea lo que no existe.
-     *
-     * @return array{row: SnkKilkanaSettingModel, conflict: bool}
+     * `kilkana_layouts` SÍ conserva la suya, y allí es obligatoria: dos personas componiendo la
+     * portada a la vez es el caso normal, no la excepción.
      */
-    public function update(array $data): array
+    public function update(array $data): SnkKilkanaSettingModel
     {
-        $this->get();
+        $fila = $this->get();
 
-        return DB::transaction(function () use ($data) {
-            $row = SnkKilkanaSettingModel::query()
-                ->whereKey(self::SINGLETON_ID)
-                ->lockForUpdate()
-                ->first();
+        $fila->fill($this->columnsFrom($data));
+        $fila->save();
 
-            if (isset($data['version']) && (int) $data['version'] !== (int) $row->version) {
-                return ['row' => $row, 'conflict' => true];
-            }
-
-            $row->fill($this->columnsFrom($data));
-            $row->version = (int) $row->version + 1;
-            $row->save();
-
-            return ['row' => $row, 'conflict' => false];
-        });
+        return $fila;
     }
 
-    public function payload(SnkKilkanaSettingModel $row): array
+    public function payload(SnkKilkanaSettingModel $fila): array
     {
+        $fila->loadMissing('themeVariant');
+
         return [
-            'theme' => $row->theme,
-            'theme_overrides' => $row->theme_overrides ?? [],
+            'theme_variant_id' => $fila->theme_variant_id,
+            // La variante resuelta viaja entera —spec incluido— para que el panel pinte sin una
+            // segunda llamada. Es siempre una copia propia del periódico: vestir un tema del
+            // catálogo lo adopta primero.
+            'theme' => $fila->themeVariant?->payload(),
             'tenant' => [
-                'name' => $row->tenant_name,
-                'tagline' => $row->tenant_tagline,
-                'city' => $row->tenant_city,
-                'url' => $row->tenant_url,
+                'name' => $fila->tenant_name,
+                'tagline' => $fila->tenant_tagline,
+                'city' => $fila->tenant_city,
+                'url' => $fila->tenant_url,
             ],
-            'onboarded' => (bool) $row->onboarded,
-            'version' => (int) $row->version,
+            'onboarded' => (bool) $fila->onboarded,
         ];
     }
 
     /**
      * Del JSON anidado de la API a las columnas planas.
      *
-     * Solo llega lo que venia: un guardado parcial toca sus campos y deja los demas donde
-     * estaban. Eso antes exigia fusionar a mano; ahora es lo que hace `fill` por su cuenta.
+     * Solo llega lo que venía: un guardado parcial toca sus campos y deja los demás donde
+     * estaban. Eso antes exigía fusionar a mano; ahora es lo que hace `fill` por su cuenta.
      */
     private function columnsFrom(array $data): array
     {
-        $columnas = collect($data)->only(['theme', 'theme_overrides', 'onboarded'])->all();
+        $columnas = collect($data)->only(['theme_variant_id', 'onboarded'])->all();
+
+        // Vestir es SIEMPRE vestir una copia propia. Si llega una variante del catálogo se
+        // adopta aquí y se guarda la copia, porque apuntar a la fila del catálogo la dejaría a
+        // merced de la siguiente sincronización — y el periódico cambiaría de aspecto solo.
+        if (isset($columnas['theme_variant_id'])) {
+            $variante = SnkKilkanaThemeVariantModel::query()->find($columnas['theme_variant_id']);
+            if ($variante) {
+                $columnas['theme_variant_id'] = $this->adoptions->adopt($variante)->id;
+            }
+        }
 
         $tenant = is_array($data['tenant'] ?? null) ? $data['tenant'] : [];
         foreach (self::TENANT as $campo) {

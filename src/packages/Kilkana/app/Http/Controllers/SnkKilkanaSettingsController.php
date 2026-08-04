@@ -9,10 +9,14 @@ use Illuminate\Http\Request;
 use Packages\Kilkana\Services\SnkKilkanaSettingService;
 
 /**
- * Ajustes del workspace (singleton, patron commander_settings): tema activo, overrides de tema,
- * identidad del periodico (tenant) y flag de onboarding. Bolsa JSON expuesta/aceptada PLANA con
- * merge parcial. theme_overrides es opaco para el server: la normalizacion fina (hex, rangos)
- * vive en el cliente (overrides.ts).
+ * Ajustes del workspace (singleton): variante de tema, identidad del periódico (tenant) y flag
+ * de onboarding. Se acepta y se expone con `tenant` anidado, y el guardado es parcial: lo que
+ * no viene se queda donde estaba.
+ *
+ * El tema ya no es una cadena con retoques en un JSON: es una clave foránea a
+ * `kilkana_theme_variants`, así que la base rechaza vestir una variante que no existe. Los
+ * colores y la densidad se editan por su propio CRUD (`theme-variants`), que es donde vive la
+ * validación de rangos.
  */
 #[Group('Settings')]
 class SnkKilkanaSettingsController extends Controller
@@ -27,25 +31,20 @@ class SnkKilkanaSettingsController extends Controller
     public function update(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'theme' => 'nullable|string|max:64',
-            'theme_overrides' => 'nullable|array',
+            // `exists` y no solo un entero: la clave foránea ya lo impediría, pero devolvería
+            // un error de motor donde toca un 422 sobre el campo.
+            'theme_variant_id' => 'nullable|integer|exists:kilkana_theme_variants,id',
             'tenant' => 'nullable|array',
             'tenant.name' => 'nullable|string|max:255',
             'tenant.tagline' => 'nullable|string|max:255',
             'tenant.city' => 'nullable|string|max:255',
-            // `url:http,https` y no `url` a secas: la direccion del periodico se pinta como
-            // enlace y sale en cada correo, asi que `javascript:` aqui es un agujero, igual
+            // `url:http,https` y no `url` a secas: la dirección del periódico se pinta como
+            // enlace y sale en cada correo, así que `javascript:` aquí es un agujero, igual
             // que lo era en la web de una firma.
             'tenant.url' => 'nullable|url:http,https|max:255',
             'onboarded' => 'nullable|boolean',
-            'version' => 'nullable|integer|min:1',
         ]);
 
-        $result = $this->settings->update($data);
-        if ($result['conflict']) {
-            return response()->json(['error' => 'Version conflict', 'version' => $result['row']->version], 409);
-        }
-
-        return response()->json($this->settings->payload($result['row']));
+        return response()->json($this->settings->payload($this->settings->update($data)));
     }
 }

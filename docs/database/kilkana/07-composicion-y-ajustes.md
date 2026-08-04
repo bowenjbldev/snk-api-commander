@@ -1,7 +1,7 @@
 # Composición y ajustes
 
-Cómo se arma la portada y qué identidad tiene el periódico. Tres tablas pequeñas y muy
-distintas del resto: no guardan contenido, guardan **configuración versionada**.
+Cómo se arma la portada, qué aspecto tiene el periódico y qué identidad publica. Cinco tablas
+pequeñas y muy distintas del resto: no guardan contenido, guardan **configuración**.
 
 ---
 
@@ -74,20 +74,145 @@ Aquí importa especialmente, porque hay operaciones que **reemplazan la composic
 
 ---
 
+## Los temas: un catálogo vendible dentro de cada periódico
+
+Qué aspecto tiene el periódico, y qué se le puede vender. Cuatro tablas: el tema, sus
+variantes, el vocabulario con el que se navega y el pivote que los une.
+
+**Un tema entero es un dato.** Los tokens, el estilo —incluidos el kicker y la tarjeta—, la
+cabecera (un enum de dos valores) y las plantillas de arranque son todo JSON, así que viven en
+`kilkana_theme_variants.spec` y publicar un tema nuevo no exige desplegar el frontend. Eso es
+lo que permite producirlos deprisa y venderlos: el código solo pone los componentes que saben
+pintar un spec.
+
+El catálogo **se replica en la base de cada periódico** y su maestro son ficheros versionados
+en `database/seeders/data/themes/`. `kilkana:sync-themes` los publica: compara por `version`,
+así que un catálogo de trescientos temas sin cambios no escribe una fila, y **nunca toca una
+fila `tenant`**.
+
+**`kilkana_themes`** — el tema vendible:
+
+| Columna | Qué es |
+|---|---|
+| `slug` **único** | Identidad estable; la clave del fichero maestro |
+| `name` · `tagline` · `description` | La tarjeta del catálogo. FULLTEXT sobre las tres |
+| `status` | `draft` · `published` · `deprecated`. Solo se ofrece lo publicado |
+| `featured` · `position` · `popularity` | Los tres órdenes curados |
+| `version` | Contra esta compara el sincronizador |
+| `thumbnail_path` · `screenshots` · `demo_url` | Assets del producto, fuera de `kilkana_media` |
+| `published_at` | Se sella al publicarlo por primera vez; ordena «novedades» |
+
+**`kilkana_theme_categories`** + **`kilkana_theme_category_theme`** — el vocabulario de
+filtrado (`news`, `anime`, `technology`…) y su pivote N:M. Es cerrado y lo publica el fichero
+maestro: una categoría que se pudiera crear al vuelo dejaría de ser un filtro y se convertiría
+en la lista de sinónimos de quien la escribió, que es justo lo que pasó con `kilkana_tags`.
+
+### `popularity` es un número curado, no medido
+
+Con el catálogo replicado por inquilino, cada base solo se ve a sí misma: **no hay dónde contar
+cuántos periódicos visten un tema**. El número lo fija quien publica. Medirlo de verdad exigiría
+un contador global en el control plane, que es la pieza que se descartó al elegir el catálogo
+por inquilino.
+
+**`kilkana_theme_variants`** — la piel aplicable:
+
+| Columna | Tipo | Nulo | Qué es |
+|---|---|---|---|
+| `id` | bigint unsigned | no | Clave primaria. Es lo que referencia `kilkana_settings`. |
+| `theme_id` | bigint unsigned | no | Su tema. **CASCADE.** |
+| `source` | enum | no · def. `catalog` | `catalog` (lo trajo el fichero) · `tenant` (lo adoptó o retocó este periódico). |
+| `origin_variant_id` | bigint unsigned | sí | De qué variante del catálogo se copió. **SET NULL.** |
+| `origin_version` | varchar(16) | sí | La versión del tema congelada al adoptar. |
+| `slug` | varchar(64) | no · **único** | Identidad estable, derivada del nombre al crear. |
+| `name` | varchar(255) | sí | Nombre visible de la variante. |
+| `spec` | longtext (JSON) | sí | **El tema entero**: `masthead`, `tokens`, `style`, `layouts`. |
+| `tokens` · `style` | longtext (JSON) | sí | Solo el retoque que puso esta redacción encima. |
+| `position` · `is_default` · `thumbnail_path` | | | Orden dentro del tema y cuál se ofrece primero. |
+| `created_at` · `updated_at` | timestamp | sí | Alta y última modificación. |
+
+### Vestir es copiar, y por eso publicar no rompe nada
+
+**Vestir un tema crea siempre una fila `tenant`** que copia el `spec` y anota `origin_version`.
+Si los ajustes apuntaran a la fila del catálogo, la siguiente sincronización la reescribiría y
+el periódico amanecería con otra portada, sin pedirlo y sin rastro.
+
+Con la copia, publicar la versión 2 de un tema deja intacto a quien lleva la 1, y comparar
+`origin_version` con la versión publicada es lo que enciende el aviso de «hay una actualización»
+— que acepta la redacción, no el catálogo.
+
+`kilkana_settings.theme_variant_id` es **RESTRICT** y apunta siempre a una fila `tenant`. Que
+sea `tenant` y no `catalog` lo impone el modelo, no la base: MariaDB no admite subconsultas en
+un `CHECK`, igual que en los dos niveles de secciones.
+
+### Qué puede tocar una redacción, y qué no
+
+El `spec` lo trae el catálogo entero. Lo que la redacción cambia encima es un subconjunto
+acotado: los 15 colores, el radio de página, el peso, la escala y el tracking del titular y la
+densidad de bloque. El lenguaje kicker/tarjeta, la cabecera y las plantillas pertenecen al tema.
+
+Los rangos (hex de seis dígitos, radio 0–12px, peso 600–800 en centenas, escala 0.8–1.1,
+tracking −0.04–0.02em, padding 10–18px) están declarados una sola vez en el modelo y los miran
+dos validaciones: la del retoque parcial que manda el inspector y la del spec completo que trae
+el catálogo. El servidor responde 422; el cliente además normaliza al leer, porque una fila
+tocada a mano en la base no debe poder tumbar la portada.
+
+### Un tema no entra si rompe la accesibilidad
+
+`kilkana:sync-themes` valida cada spec **antes de escribir nada** y falla ruidosamente con el
+par de colores en la mano. Se comprueba el contraste AA (≥4.5:1) de `text`, `textMuted`,
+`textSoft` y `accent` sobre `surface`, los rangos, que `masthead` sea uno de los que sabe pintar
+el frontend y que todos los bloques de las plantillas existan.
+
+Es la contrapartida de producir temas deprisa: un gris elegante sobre blanco se ve bien en una
+captura y deja por debajo de AA al periódico que lo instale, y este producto tiene presupuestos
+Lighthouse de 100. Un bloque desconocido tampoco se descarta aquí —el normalizador del editor sí
+lo hace, porque allí protege de composiciones viejas—: en el catálogo significa que esa banda no
+se va a pintar y nadie lo sabría.
+
+---
+
 ## `kilkana_settings` — la identidad del periódico
 
 | Columna | Tipo | Nulo | Qué es |
 |---|---|---|---|
 | `id` | tinyint unsigned | no | Clave primaria no autoincremental. **Siempre 1.** |
-| `theme` | varchar(64) | sí | La piel visual elegida. |
+| `theme_variant_id` | bigint unsigned | sí | La piel que viste. **RESTRICT.** Nula solo en una instalación recién sembrada. |
 | `tenant_name` | varchar(255) | sí | Cómo se llama el periódico. |
 | `tenant_tagline` | varchar(255) | sí | Su lema. |
 | `tenant_city` | varchar(255) | sí | Su ciudad. |
 | `tenant_url` | varchar(255) | sí | Su dirección pública. Validada `url:http,https`. |
-| `theme_overrides` | longtext (JSON) | sí | Ajustes locales sobre esa piel. |
 | `onboarded` | boolean | no · def. `false` | Si ya pasó la puesta en marcha inicial. |
-| `version` | int unsigned | no · def. 1 | Igual que en `kilkana_layouts`. |
 | `created_at` · `updated_at` | timestamp | sí | Alta y última modificación. |
+
+### Aquí hubo `theme`, `theme_overrides` y `version`
+
+Las tres se retiraron a la vez y por dos motivos distintos.
+
+`theme` era un `varchar(64)` sin lista cerrada y `theme_overrides` un mapa JSON de variante →
+retoque. Juntas eran **una tabla de variantes escrita dentro de dos columnas**, y en cuanto la
+tabla existe de verdad sobran: la variante es la fila, y la clave foránea impide vestir una que
+no existe.
+
+`version` era control de concurrencia optimista, y se fue porque **no llegaba a ejecutarse**:
+la regla del controlador era `nullable` y ningún cliente mandaba el número, así que la
+comprobación se saltaba siempre y la respuesta devolvía una versión que no garantizaba nada —
+peor que no tenerla, porque parecía una garantía. Los ajustes los toca poca gente y rara vez,
+así que la política es last-write-wins y está dicha en voz alta. `kilkana_layouts` **sí**
+conserva la suya, y allí es obligatoria: dos personas componiendo la portada a la vez es el
+caso normal.
+
+### La regla de crecimiento
+
+Esta tabla va a crecer, y no crece de cualquier manera:
+
+- **Columna** si el ajuste tiene tipo o clave foránea (`logo_media_id`, `default_og_image_id`).
+  Es lo que la base puede defender, así que que lo defienda.
+- **Columna JSON de grupo** si es un grupo abierto (`comments`, `paywall`, `integrations`),
+  normalizada al leer. Añadir una clave dentro del grupo no toca la base, que es justo lo que
+  ahorra la barrida de migraciones sobre todas las bases de inquilino.
+- **Lo que no vuelve** es la bolsa única con todo dentro, ni una tabla clave-valor: aquí la
+  clave siempre la conoce el código. El día que la elija un inquilino o una extensión, eso es
+  un registro aparte (definiciones + valores), no convertir esta tabla.
 
 **Una sola fila**, con `id = 1`. La migración añade `CHECK (id = 1)`, por lo que MariaDB rechaza
 una segunda identidad con otro id. Es una excepción histórica a la convención `$table->id()` del
@@ -132,7 +257,11 @@ texto ilegible sobre su fondo.
 
 ## Aviso al recrear la base
 
-Estas tres tablas guardan **decisiones, no contenido editorial**. El seeder repone snapshots
-base de layouts y settings, así que una instalación limpia arranca con estructura; no puede
+Estas tablas guardan **decisiones, no contenido editorial**. El seeder repone snapshots base de
+layouts, temas y settings, así que una instalación limpia arranca con estructura; no puede
 reconstruir las decisiones hechas después por una redacción. Un `--fresh` sin backup seguido de
-seed recupera los defaults, no la portada ni la identidad personalizadas.
+seed recupera los defaults, no la portada, ni las variantes propias, ni la identidad.
+
+Y arrastra algo que no está en estas tablas: **`--fresh` vacía también `users`**, y el admin del
+periódico lo crea el provisioning, no el seeder. Una base recreada a mano se queda sin cuenta
+administradora aunque el contenido demo vuelva entero.

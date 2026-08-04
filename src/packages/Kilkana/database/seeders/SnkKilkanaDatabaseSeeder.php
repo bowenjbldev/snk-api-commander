@@ -26,6 +26,9 @@ use Packages\Kilkana\Models\SnkKilkanaPostViewModel;
 use Packages\Kilkana\Models\SnkKilkanaSettingModel;
 use Packages\Kilkana\Models\SnkKilkanaSubscriberModel;
 use Packages\Kilkana\Models\SnkKilkanaTagModel;
+use Packages\Kilkana\Models\SnkKilkanaThemeVariantModel;
+use Packages\Kilkana\Services\SnkKilkanaThemeAdoptionService;
+use Packages\Kilkana\Services\SnkKilkanaThemeCatalogSyncService;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -124,6 +127,9 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     {
         $this->seedPermissions();
         $this->seedLayouts();
+        // Antes que los ajustes: la fila de settings apunta a una variante con RESTRICT, así
+        // que la variante tiene que existir para que haya a qué apuntar.
+        $this->seedThemes();
         $this->seedSettings();
 
         if (! config('kilkana.kilkana.seed_demo', false)) {
@@ -593,27 +599,53 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         }
     }
 
+    /**
+     * El paquete y las variantes que envía el producto, como PUNTEROS.
+     *
+     * Una builtin no copia el tema: guarda su `base_slug` y deja `tokens`/`style` nulos, que es
+     * lo que significa «tal como lo envía el producto». Por eso no hay un `data/themes.json` al
+     * lado de `layouts.json`: no hay datos que sembrar, solo dos filas que apuntan. Y por eso
+     * mismo, cuando el producto cambie un color, lo hereda todo inquilino que no lo tocara.
+     *
+     * Los slugs son los mismos que el catálogo del frontend (`themes/catalog.ts`). Es la única
+     * duplicación entre los dos repos y es inevitable: alguien tiene que decir de qué variante
+     * se parte, y la base no puede conocer un componente Svelte.
+     */
+    private function seedThemes(): void
+    {
+        // El catálogo no se siembra aquí: lo publica el mismo servicio que usa
+        // `kilkana:sync-themes`, desde los ficheros maestros. Duplicar la siembra habría dejado
+        // dos sitios que escriben las mismas filas y que se separan en cuanto uno se toque.
+        $resumen = app(SnkKilkanaThemeCatalogSyncService::class)->sync();
+
+        foreach ($resumen['errors'] as $error) {
+            $this->command?->getOutput()->writeln("<error>themes: {$error}</error>");
+        }
+    }
+
     /** Identidad/tema de arranque; firstOrCreate: nunca pisa lo que el tenant ya editó. */
     private function seedSettings(): void
     {
-        if (! config('kilkana.kilkana.seed_demo', false)) {
-            SnkKilkanaSettingModel::firstOrCreate(['id' => 1], [
-                'theme' => 'standard',
-                'theme_overrides' => [],
-                'onboarded' => false,
-            ]);
-
-            return;
-        }
-
-        $settings = json_decode((string) file_get_contents(__DIR__.'/data/settings.json'), true);
+        // El snapshot solo se usa con datos demo; sin ellos basta con vestir la primera
+        // variante que envía el producto.
+        $settings = config('kilkana.kilkana.seed_demo', false)
+            ? json_decode((string) file_get_contents(__DIR__.'/data/settings.json'), true)
+            : [];
         $tenant = $settings['tenant'] ?? [];
 
-        // El fichero sigue guardando la forma que ve la API —`tenant` anidado—, porque es un
-        // snapshot de lo que devuelve el endpoint. Aquí se aplana a columnas.
+        // El fichero guarda el SLUG de la variante, nunca su id: un id de una base no significa
+        // nada en otra, y este snapshot tiene que poder sembrarse en cualquiera.
+        //
+        // Y se ADOPTA, no se apunta: vestir una fila del catálogo directamente rompería el
+        // congelado, porque la siguiente sincronización le cambiaría el tema al periódico.
+        $catalogo = SnkKilkanaThemeVariantModel::query()->fromCatalog();
+        $variante = (isset($settings['theme'])
+            ? (clone $catalogo)->where('slug', $settings['theme'])->first()
+            : null)
+            ?? (clone $catalogo)->orderByDesc('is_default')->orderBy('position')->first();
+
         SnkKilkanaSettingModel::firstOrCreate(['id' => 1], [
-            'theme' => $settings['theme'] ?? null,
-            'theme_overrides' => $settings['theme_overrides'] ?? [],
+            'theme_variant_id' => $variante ? app(SnkKilkanaThemeAdoptionService::class)->adopt($variante)->id : null,
             'tenant_name' => $tenant['name'] ?? null,
             'tenant_tagline' => $tenant['tagline'] ?? null,
             'tenant_city' => $tenant['city'] ?? null,
@@ -640,7 +672,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     private function seedPermissions(): void
     {
         $names = [];
-        foreach (['posts', 'categories', 'authors', 'media', 'tags', 'comments', 'subscribers', 'layouts', 'settings'] as $resource) {
+        foreach (['posts', 'categories', 'authors', 'media', 'tags', 'comments', 'subscribers', 'layouts', 'settings', 'themes'] as $resource) {
             foreach (['index', 'show', 'create', 'update', 'delete'] as $action) {
                 $names[] = "$action $resource";
             }
@@ -670,7 +702,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             // Dirección editorial: manda en el periódico entero, incluida la portada y la
             // identidad. No administra la instalación (usuarios) — eso es otro oficio.
             'director' => [
-                ...$crud('posts', 'categories', 'authors', 'media', 'tags', 'comments', 'subscribers', 'layouts', 'settings'),
+                ...$crud('posts', 'categories', 'authors', 'media', 'tags', 'comments', 'subscribers', 'layouts', 'settings', 'themes'),
                 'publish posts', 'edit others posts',
             ],
             // Mesa de edición: publica y corrige lo de cualquiera, modera y gestiona el
@@ -734,9 +766,24 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         // El administrador lo crea el provisioning, que no sabe nada de periódicos: nace
         // con nombre y poco más. Se completa aquí —solo lo vacío— porque es la primera fila
         // del listado de usuarios y la cara de la sesión en la barra lateral.
-        $admin = CoreUserModel::query()
-            ->where('email', config('core.auth.admin_email', 'admin@snake.com'))
-            ->first();
+        $adminEmail = config('core.auth.admin_email', 'admin@snake.com');
+        $admin = CoreUserModel::query()->where('email', $adminEmail)->first();
+
+        // Con datos demo se crea si falta, y solo entonces. El administrador de un periódico de
+        // verdad lo crea el provisioning con las credenciales que se eligen en el alta; aquí lo
+        // que se cubre es el agujero de recrear la base a mano: `--fresh` vacía también `users`,
+        // así que el juego demo volvía entero pero sin ninguna cuenta con la que entrar.
+        if ($admin === null && config('kilkana.kilkana.seed_demo', false) && app()->environment(['local', 'testing'])) {
+            $admin = CoreUserModel::create([
+                'name' => 'Admin',
+                'email' => $adminEmail,
+                // En claro: `CoreUserModel` castea `password => 'hashed'` y pasarla por
+                // `Hash::make` aquí la hashearía dos veces.
+                'password' => 'secret1234',
+            ]);
+            $admin->assignRole(Role::findOrCreate('admin', 'sanctum'));
+        }
+
         if ($admin === null) {
             return;
         }

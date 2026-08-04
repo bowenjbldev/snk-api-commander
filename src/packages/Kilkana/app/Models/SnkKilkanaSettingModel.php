@@ -3,6 +3,7 @@
 namespace Packages\Kilkana\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SnkKilkanaSettingModel extends Model
 {
@@ -21,26 +22,35 @@ class SnkKilkanaSettingModel extends Model
     protected $keyType = 'int';
 
     /**
-     * Los mismos valores por defecto que la columna, pero del lado de PHP.
+     * El mismo valor por defecto que la columna, pero del lado de PHP.
      *
-     * Los pone la base, así que la fila recién creada por `firstOrCreate` no los conocería y
-     * `version` saldría a 0 en la respuesta del primer guardado — justo el número con el que
-     * el cliente decide si hay conflicto.
+     * Lo pone la base, así que la fila recién creada por `firstOrCreate` no lo conocería y
+     * `onboarded` saldría nulo en la respuesta del primer guardado.
      */
     protected $attributes = [
         'onboarded' => false,
-        'version' => 1,
     ];
 
     protected function casts(): array
     {
         return [
-            // Lo único que sigue siendo JSON, y con razón: es un mapa de variante → token →
-            // valor, abierto por definición y opaco para el servidor (lo normaliza el cliente).
-            // El resto de los ajustes son columnas: se conocen, se tipan y se validan.
-            'theme_overrides' => 'array',
             'onboarded' => 'boolean',
-            'version' => 'integer',
         ];
+    }
+
+    /**
+     * La piel que viste el periódico.
+     *
+     * Fue una cadena (`theme`) más un mapa JSON de retoques (`theme_overrides`). Las dos eran
+     * una tabla de variantes escrita dentro de dos columnas, así que ahora son una clave
+     * foránea: la base impide vestir una variante que no existe y protege con RESTRICT la que
+     * está puesta.
+     *
+     * Nula solo en una instalación recién sembrada; quien pinte cae a la primera que envía el
+     * producto, igual que hacía el catálogo del frontend.
+     */
+    public function themeVariant(): BelongsTo
+    {
+        return $this->belongsTo(SnkKilkanaThemeVariantModel::class, 'theme_variant_id');
     }
 }

@@ -1,0 +1,9 @@
+[
+ { "slug": "news", "name": "News", "position": 0 },
+ { "slug": "magazine", "name": "Magazine", "position": 1 },
+ { "slug": "minimal", "name": "Minimal", "position": 2 },
+ { "slug": "technology", "name": "Technology", "position": 3 },
+ { "slug": "anime", "name": "Anime", "position": 4 },
+ { "slug": "sports", "name": "Sports", "position": 5 },
+ { "slug": "culture", "name": "Culture", "position": 6 }
+]
