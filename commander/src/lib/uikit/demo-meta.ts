@@ -28,7 +28,24 @@ export interface DemoMeta {
 	name: string;
 	/** Una línea sobre qué decide este componente. No es documentación de API. */
 	notes?: string;
+	/**
+	 * Cuando una demo enseña un compuesto entero —una tabla con sus nueve piezas—, los ficheros
+	 * hermanos que documenta. Sin esto se asume que `Button.demo.svelte` documenta `Button.svelte`.
+	 */
+	components?: string[];
 }
+
+/** Qué es cada sección, para quien llega sin contexto. */
+export const GROUP_NOTES: Record<DemoGroup, string> = {
+	[DemoGroup.Foundations]: 'Color, tipografía y medidas. Todo lo demás sale de aquí.',
+	[DemoGroup.Actions]: 'Lo que se pulsa. Una sola acción primaria por pantalla.',
+	[DemoGroup.Fields]: 'Lo que se rellena. El rótulo va dentro de la opción siempre que quepa.',
+	[DemoGroup.Data]: 'Lo que se lee sin tocarlo: estados, cifras, muestras y leyendas.',
+	[DemoGroup.Surfaces]: 'Los planos donde se apoya el contenido.',
+	[DemoGroup.Layers]: 'Lo que flota por encima y hay que cerrar para seguir.',
+	[DemoGroup.Charts]: 'ECharts para las de tarjeta; SVG propio para lo que va por fila.',
+	[DemoGroup.Domain]: 'Lo que ningún sistema trae hecho y hubo que construir para esta consola.'
+};
 
 export interface DemoEntry extends DemoMeta {
 	component: Component;

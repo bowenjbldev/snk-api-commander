@@ -5,7 +5,8 @@
 		group: DemoGroup.Layers,
 		name: 'Cajón · Menú · Avisos',
 		notes:
-			'Lo único que lleva sombra es lo que flota. Escape cierra, el foco queda dentro y vuelve al salir. El menú se ancla a las coordenadas del clic; el aviso se apila abajo a la derecha.'
+			'Lo único que lleva sombra es lo que flota. Escape cierra, el foco queda dentro y vuelve al salir. El menú se ancla a las coordenadas del clic; el aviso se apila abajo a la derecha.',
+		components: ['Drawer', 'Menu', 'Toaster']
 	};
 </script>
 

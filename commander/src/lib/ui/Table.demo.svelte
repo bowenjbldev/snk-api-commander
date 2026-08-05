@@ -4,8 +4,17 @@
 	export const meta: DemoMeta = {
 		group: DemoGroup.Data,
 		name: 'Table',
-		notes:
-			'Cabecera, filas y esqueleto heredan las columnas por variable: no pueden descuadrarse. Sin franjas alternas, que competirían con el color de estado.'
+		notes: 'Cabecera, filas y esqueleto heredan las columnas por variable: no descuadran.',
+		components: [
+			'Table',
+			'TableHead',
+			'Th',
+			'TableRow',
+			'Td',
+			'TableSkeleton',
+			'TableEmpty',
+			'Pager'
+		]
 	};
 </script>
 
@@ -31,7 +40,7 @@
 
 	const COLUMNS = '26px minmax(140px, 1.4fr) 92px minmax(0, 1fr) 96px 30px';
 	const MODES: [Mode, string][] = [
-		['rows', 'Con filas'],
+		['rows', 'Filas'],
 		['loading', 'Cargando'],
 		['empty', 'Vacía']
 	];
@@ -53,7 +62,6 @@
 	let sort = $state(SortState.Ascending);
 	// El destello es un acuse que se ve una vez; para volver a verlo hay que remontar la fila.
 	let pushes = $state(0);
-
 	const pager = createPager(() => ROWS);
 	const middle = createPager(() => ROWS);
 	const last = createPager(() => ROWS);

@@ -39,10 +39,11 @@ export const sections: DemoSection[] = GROUP_ORDER.flatMap((group) => {
 	return entries.length ? [{ group, entries }] : [];
 });
 
-/** Ancla estable para el índice lateral: minúsculas y sin diacríticos. */
-export function anchorFor(group: DemoGroup): string {
-	return group
+/** Ancla estable: minúsculas, sin diacríticos y sin espacios. Sirve de enlace permanente. */
+export function anchor(text: string): string {
+	return text
 		.toLowerCase()
 		.normalize('NFD')
-		.replace(/[\u0300-\u036f]/g, '');
+		.replace(/[\u0300-\u036f]/g, '')
+		.replace(/[^a-z0-9]+/g, '-');
 }

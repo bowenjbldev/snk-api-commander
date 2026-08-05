@@ -46,6 +46,8 @@
 		overflow: hidden;
 	}
 
+	/* La cabecera tiene alto fijo, así que lo que no quepa se recorta en vez de derramarse sobre la
+	   tarjeta de al lado. El que cede es el título: el mando de la derecha nunca se parte. */
 	header {
 		display: flex;
 		align-items: center;
@@ -53,6 +55,8 @@
 		height: var(--h-card-head);
 		padding: 0 12px;
 		border-bottom: 1px solid var(--bd2);
+		overflow: hidden;
+		white-space: nowrap;
 	}
 
 	/* En el plano de relleno para que se lea como parte de la cabecera, no como el primer dato. */
@@ -66,12 +70,17 @@
 	}
 
 	.title {
+		flex: 0 1 auto;
+		min-width: 0;
 		font-size: var(--fs-card);
 		font-weight: var(--fw-bold);
 		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.note {
+		flex: 0 0 auto;
 		font-size: var(--fs-small);
 		color: var(--tx3);
 		white-space: nowrap;

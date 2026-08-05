@@ -18,7 +18,7 @@
 <div class="grid">
 	<Card title="Peticiones por instancia" note="agregados de hace 4 min">
 		{#snippet aside()}
-			<span class="hint">Gobierna lecturas y gráficas</span>
+			<span class="hint">apunte a la derecha</span>
 		{/snippet}
 		<div class="placeholder">cuerpo con relleno de 12</div>
 	</Card>
