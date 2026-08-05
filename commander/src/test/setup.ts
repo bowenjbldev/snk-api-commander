@@ -1,24 +1,26 @@
-import '@testing-library/jest-dom/vitest'
-import { vi } from 'vitest'
+import '@testing-library/jest-dom/vitest';
 
-// jsdom doesn't implement these; Carbon components touch them.
-if (!window.matchMedia) {
-  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  }))
+// jsdom no trae ResizeObserver y ECharts lo usa para redimensionar. Un doble vacío basta: los
+// tests que importan una gráfica comprueban las opciones, no el pintado.
+if (!('ResizeObserver' in globalThis)) {
+	Object.defineProperty(globalThis, 'ResizeObserver', {
+		writable: true,
+		value: class {
+			observe(): void {}
+			unobserve(): void {}
+			disconnect(): void {}
+		}
+	});
 }
 
-class ResizeObserverStub {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
+if (!('matchMedia' in globalThis)) {
+	Object.defineProperty(globalThis, 'matchMedia', {
+		writable: true,
+		value: (query: string) => ({
+			matches: false,
+			media: query,
+			addEventListener: () => {},
+			removeEventListener: () => {}
+		})
+	});
 }
-// @ts-expect-error assign stub
-window.ResizeObserver = window.ResizeObserver ?? ResizeObserverStub

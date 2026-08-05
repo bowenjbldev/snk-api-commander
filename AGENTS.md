@@ -86,10 +86,18 @@ Commander:
 
 ```bash
 cd commander
-npm test
+npm run check      # svelte-check estricto
+npm run lint       # eslint strict type-checked
+npm run ds-check   # reglas del design system
+npm test           # vitest
 npm run build
-npm run lint
 ```
+
+La guía viva de las primitivas está en `https://commander.<BASE_DOMAIN>/uikit`, sin sesión.
+
+**Al renombrar `commander/`, recrea el contenedor**: un bind mount se ata al inodo, no a la ruta,
+así que `docker compose restart commander-web` sigue sirviendo el directorio antiguo. Hace falta
+`docker compose up -d --force-recreate commander-web`.
 
 Migraciones y rutas cuando apliquen:
 

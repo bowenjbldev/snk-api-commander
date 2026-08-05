@@ -1,0 +1,45 @@
+/*
+ * Las dos familias, y la regla que las reparte:
+ *
+ *   Si es un dato que el sistema generó, va en mono.
+ *   Si es lenguaje que escribimos nosotros, va en la familia de interfaz.
+ *
+ * Mono: identificadores, slugs, rutas, URLs, importes, cifras, porcentajes, marcas de tiempo,
+ * cuentas atrás, SHA, IP, códigos de estado, claves de métrica, motivos internos, valores de
+ * política, glifos de tecla. Interfaz: títulos, rótulos de columna, etiquetas de estado (son
+ * nuestra palabra, no un valor del sistema), nombres, botones, cuerpos de modal, errores, vacíos.
+ */
+:root {
+	--font-ui: 'Public Sans Variable', system-ui, sans-serif;
+	--font-mono: 'DM Mono', ui-monospace, monospace;
+
+	/* Escala. Nada fuera de estos seis pasos. */
+	--fs-micro: 10px; /* versalitas de rótulo, etiquetas de estado, marcas de eje */
+	--fs-small: 11px; /* dato secundario, mono de tabla, notas al pie de tarjeta */
+	--fs-body: 12px; /* cuerpo, celdas, controles, botones */
+	--fs-card: 13px; /* título de tarjeta */
+	--fs-title: 15px; /* título de pantalla y de capa */
+	--fs-read: 20px; /* lectura grande */
+
+	/* Dos pesos y nada más. El 700 es solo el anagrama. */
+	--fw: 400;
+	--fw-bold: 600;
+
+	--ls-caps: 0.05em; /* versalitas */
+	--ls-title: -0.01em; /* título de pantalla */
+}
+
+/* Toda lectura generada por el sistema. Las cifras tabulares van incluidas: si algo es mono,
+   sus cifras cuadran en vertical. No hay forma de pedir una sin la otra. */
+.mono {
+	font-family: var(--font-mono);
+	font-variant-numeric: tabular-nums;
+}
+
+/* Rótulo de columna y de sección. */
+.caps {
+	font-size: var(--fs-micro);
+	letter-spacing: var(--ls-caps);
+	text-transform: uppercase;
+	color: var(--tx2);
+}

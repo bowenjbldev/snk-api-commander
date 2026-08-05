@@ -40,7 +40,7 @@ existe en esta rama y separa explícitamente lo implementado de la dirección de
 Navegador del operador
         │
         ▼
-commander.<BASE_DOMAIN> ── SPA `commander/`
+commander.<BASE_DOMAIN> ── SPA `commander/` (SvelteKit)
         │ Bearer
         ▼
 paquete Commander ──────── base `commander`

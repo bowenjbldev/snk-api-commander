@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="robots" content="noindex, nofollow" />
+		<link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
+		<title>Commander</title>
+		<script>
+			// El único sitio del proyecto donde la clave de almacenamiento se escribe a mano: este
+			// script corre antes del bundle, así que no puede importar StorageKey. Si cambia allí,
+			// cambia aquí. Sin esto, la consola parpadea en claro antes de pintarse en oscuro.
+			try {
+				var t = localStorage.getItem('commander.theme');
+				if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t;
+			} catch (e) {
+				/* almacenamiento bloqueado: se queda en claro */
+			}
+		</script>
+		%sveltekit.head%
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">%sveltekit.body%</div>
+	</body>
+</html>

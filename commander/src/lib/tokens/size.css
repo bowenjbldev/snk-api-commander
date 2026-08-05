@@ -1,0 +1,28 @@
+/*
+ * Alturas en pasos de 4 y radios. La densidad es una propiedad del producto, no una preferencia
+ * por pantalla: estas alturas valen en toda la consola.
+ */
+:root {
+	--h-row: 32px; /* fila de tabla */
+	--h-row-dense: 28px; /* fila compacta: registros, caudal */
+	--h-ctl: 28px; /* control */
+	/* Control dentro de una barra que ya tiene fondo propio: la barra de selección, el
+	   segmentado del cajón, el pie de la paleta. Ni el 28 de fuera ni el 24 de una fila. */
+	--h-ctl-bar: 26px;
+	--h-ctl-dense: 24px; /* control compacto */
+	--h-tag: 18px; /* etiqueta */
+	--h-tab: 32px; /* pestaña */
+	--h-foot: 32px; /* pie de tabla */
+	--h-card-head: 40px; /* cabecera de tarjeta */
+	--h-app-head: 48px; /* cabecera de aplicación */
+	--h-shell-foot: 26px; /* pie del armazón */
+	--w-rail: 48px; /* raíl de navegación */
+
+	--r: 4px; /* radio general: aprieta sin caer en la esquina recta */
+	--r-tag: 2px; /* etiquetas */
+	--r-line: 1px; /* línea de suministro */
+
+	--sp: 4px; /* unidad de espaciado */
+
+	--content-max: 1360px; /* ancho máximo de contenido */
+}

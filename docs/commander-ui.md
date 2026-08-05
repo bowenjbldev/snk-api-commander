@@ -2,217 +2,151 @@
 
 ## Propósito
 
-`commander/` es la SPA del operador de SnakeCloud. Controla clientes, productos, instancias,
-planes, suscripciones, facturas, cuotas, uso y estado. No genera código ni despliega contenedores;
-opera sobre la API real de `src/packages/Commander`.
+`commander/` es la SPA del operador. Controla clientes, productos, instancias, planes,
+suscripciones, facturas, cuotas, uso y estado. No genera código ni despliega contenedores: opera
+sobre la API real de `src/packages/Commander`.
 
-En producción se sirve en `commander.<BASE_DOMAIN>`. En desarrollo, Vite usa una API
-same-origin `/api/v1` y la proxifica al backend.
+En producción se sirve en `commander.<BASE_DOMAIN>`. El nginx del compose enruta `^~ /api/` al
+Laravel y todo lo demás a esta SPA, así que **comparten origen**: no hay CORS ni proxy de Vite que
+mantener.
+
+La SPA anterior (React 19 + Carbon + ECharts + zustand) se conserva en `commander-react/` como
+referencia. De ella sobreviven las decisiones de dominio, no el código.
 
 ## Stack
 
-- React 19, React Router 7, TypeScript 5.9 y Vite 7.
-- IBM Carbon Design System v11 y `@carbon/ibm-products`.
-- ECharts 6 para gráficos canvas.
-- Zustand para datos y autenticación.
-- IBM Plex Sans y Plex Mono self-hosted.
-- Vitest, Testing Library y jsdom.
-
-Comandos:
+- SvelteKit 2 y Svelte 5 (runas), TypeScript y Vite, en modo **SPA pura**
+  (`adapter-static` con `fallback: index.html`, `ssr: false`).
+- ECharts 6 para las gráficas de tarjeta; SVG propio para las tendencias por fila.
+- Public Sans Variable y DM Mono, autoalojadas con `@fontsource`.
+- Vitest, ESLint *strict type-checked*, Prettier y `scripts/ds-check.mjs`.
 
 ```bash
 cd commander
-npm install
-npm run dev
-npm test
-npm run build
-npm run lint
+npm run dev        # o docker compose up -d commander-web
+npm run check      # svelte-check estricto
+npm run lint       # eslint strict type-checked
+npm run ds-check   # reglas del design system
+npm test           # vitest
+npm run build      # → build/
+npm run screenshots
 ```
 
 ## Arquitectura del frontend
 
 ```text
-src/
-├── app/             shell, header, side nav, breadcrumbs y avisos
-├── components/      primitivas reutilizables, tablas, gráficas, paneles y modales
-├── hooks/           carga, first-load y focus trap
-├── lib/api.ts       fetch tipado, Bearer, ApiError y handler de 401
-├── lib/             formato, tiempo, charts y helpers de dominio
-├── pages/           páginas y tabs de detalle
-├── providers/       acciones, tema, reloj y toasts
-├── store/           auth, datos, tipos, transiciones y fixtures de test
-├── styles/          Carbon, tokens y estilos compartidos
-└── router.tsx       tabla de rutas lazy
+src/lib/
+├── tokens/     variables CSS (único hex del proyecto) + enum CssVar
+├── ui/         primitivas sin dominio: no saben qué es una instancia
+├── domain/     lo que ningún sistema trae hecho: SupplyLine, Meter, AttentionTray
+├── viz/        EChart + puente de tema + options/ + svg/Sparkline
+├── api/        client (Bearer, 401) · endpoints · decode · resources
+├── model/      types de commander_* · enums · situation · assertNever
+├── format/     n · k · eur · pct · rel · cd · stamp · date · mb
+├── table/      pager con runas
+├── state/      session · data · clock · theme · toasts · storage
+├── shell/      raíl, cabecera, pie, paleta ⌘K, PageHeader
+├── nav/        routes (el único fichero que navega) + nav
+└── uikit/      registro de la guía viva
+src/routes/
+├── login/            entrada
+├── uikit/            guía viva, sin sesión
+└── (app)/            armazón + pantallas
 ```
 
-Dashboard se carga eager; el resto de páginas usa `React.lazy`. El shell contiene el fallback de
-Suspense.
+### Las reglas del design system
+
+Comprobadas por `npm run ds-check`, no recordadas:
+
+1. **Ningún hex fuera de `tokens/`.** En TypeScript, ni siquiera `'var(--ok)'`: se usa `CssVar`.
+2. **`style=` en línea solo para geometría calculada.** El resto va en el `<style>` del componente.
+3. **Techo de líneas por capa**, midiendo lógica (script + marcado) y total por separado: un SFC
+   lleva las dos cosas y un techo plano castigaría el CSS. Hoy: ui 80/160, dominio 130/240,
+   rutas 150/260. Están calibrados contra los ficheros reales. Las excepciones van **con nombre y
+   motivo** en `TOTAL_EXCEPTIONS`, nunca subiendo el techo de la capa: subirlo para que quepa un
+   fichero se lo regala a los otros cuarenta. Hoy hay una, `Button`, y solo en `total`.
+4. **`ui/` no importa de `domain/`, `api/`, `nav/` ni `state/`.** La dependencia va en un sentido.
+5. **Toda primitiva sale en `/uikit`**, por demo propia o dentro de la de su compuesto. Hoy son 34
+   primitivas en 31 demos, descubiertas por glob: crear una la hace aparecer sin tocar ningún
+   índice, y borrarla la quita.
+
+### Tipado
+
+`strict` completo más `noUncheckedIndexedAccess` y `exactOptionalPropertyTypes`. Todo dominio
+cerrado es un `enum` en `model/enums.ts`, y cinco enums más matan las cadenas que se escapan de los
+tipos: `Endpoint`, `Route`, `StorageKey`, `QueryParam` y `CssVar`. Todo `switch` cierra con
+`assertNever`.
+
+**El borde valida.** La API no usa `JsonResource`: son modelos Eloquent crudos. `api/decode.ts` es
+la única frontera donde existe `string` suelto, y rechaza un valor de enum desconocido con el campo
+en el mensaje. También coacciona los agregados numéricos: MySQL devuelve los `SUM` como cadena y
+sumarlos sin coaccionar los **concatena**.
+
+### Variante y tono son ejes distintos
+
+Un mando no tiene «variante peligro». La **variante** dice cuánta caja tiene —primaria rellena,
+secundaria con borde, acento con el primario en tinta— y el **tono** dice de qué color es: el
+preaviso es ámbar, el corte rojo, restablecer verde. Los mismos tres colores que la línea de
+suministro de la fila, para que el mando se lea sin abrir nada.
+
+Mezclarlos obligaba a inventar una variante por cada color del prototipo, así que un eje sustituyó
+a una variante y la pieza encogió. `tokens/tone.css` deja `--sem`, `--sem-bg` y `--sem-bd` puestos
+a partir de `data-tone`; cada componente decide qué hace con ellos —teñir la letra, rellenar la
+caja, pintar una barra— y añadir un tono es una entrada, no seis.
+
+**El neutro no declara nada a propósito**: la ausencia de tono no es el mismo gris en una etiqueta
+que en un botón.
+
+## Las tres piezas propias
+
+- **Línea de suministro** (`domain/supply.ts`): devuelve forma y tono, no colores. Aquí vive el
+  cuarto estado, el que no está en los datos: cuando vence el preaviso el backend trata la
+  instancia como cortada aunque la columna siga diciendo `grace`, así que lo deduce el reloj.
+- **Contador con umbral** (`domain/meter.ts`): una cuota no es un porcentaje. Relleno neutro por
+  debajo del 80 %, ámbar hasta el límite, rojo por encima con el exceso saliendo del carril; la
+  marca del umbral siempre visible y la política dentro del instrumento. Límite vacío = ilimitado.
+- **Bandeja de atención** (`domain/attention.ts` + `attention-rules.ts`): la cola de trabajo del
+  operador, derivada de los datos en cada lectura. Solo se persiste lo descartado.
 
 ## Datos y autenticación
 
-El store arranca vacío. `loadData()` obtiene en paralelo clientes, paquetes, suscripciones,
-facturas, cuotas, planes, actividad, commits y settings. Los fixtures solo se usan en tests.
+Token Sanctum Bearer en `localStorage['commander_token']`; cualquier `401` cierra la sesión. Al
+arrancar se valida con `auth/me`.
 
-El login de operador devuelve un token Sanctum Bearer, guardado en `localStorage`. Al arrancar se
-valida con `/auth/me`; cualquier `401` limpia la sesión. `useCan()` oculta acciones sin permiso,
-pero es solo UX: cada controller vuelve a comprobar el permiso y el backend decide.
+La carga inicial trae en paralelo clientes, productos, suscripciones, facturas, cuotas, planes y
+actividad. **Ninguna lista de la API admite paginación, búsqueda, orden ni filtro por parámetro**:
+devuelven la tabla entera, así que filtrar, ordenar y paginar se hace en el navegador.
 
-Las mutaciones son optimistas con reconciliación:
+`session.can()` oculta lo que no procede, pero **no es una frontera de seguridad**: el permiso real
+lo comprueba cada controlador.
 
-1. el store aplica el cambio local;
-2. llama a la API;
-3. si responde bien, sustituye con la entidad autoritativa;
-4. si falla, muestra toast y recarga datos.
+## Huecos conocidos
 
-Las operaciones de instancia usan su id numérico y un sequence guard para ignorar respuestas
-antiguas que lleguen fuera de orden. Entidades recién creadas se reconcilian por handle mientras
-la BD asigna el id: cliente por `slug`, plan por `slug`, factura por `number`.
-
-### Forma de Package
-
-`Package` refleja una fila de `commander_packages`:
-
-- catálogo: `name`, `label`, `description`, `listing_status`, `on_disk`, `plan_count`;
-- pendiente: `client_id` presente y `provisioned_at` nulo;
-- viva: `provisioned_at` presente, cliente, suscripción, estado y KPIs;
-- de-provisionada: conserva la fila pero vuelve a columnas operativas nulas.
-
-No existe `Deployment`, `subdomain` en la instancia ni un objeto anidado separado. El host se
-deriva de `package.client.slug`; el producto del path es `package.slug`.
-
-## Rutas y páginas
-
-Navegación: Dashboard, Clients, Packages, Invoices, Usage, Request Logs y Settings.
-
-| Ruta | Función |
-|---|---|
-| `/dashboard` | KPIs, requests, error rate, frecuencia de código y actividad reciente |
-| `/clients` | clientes con MRR, tráfico, cuota y riesgo |
-| `/clients/:id` | ficha editable, instancias y facturas del cliente |
-| `/packages` | catálogo, pending y flota viva; CTA **Provision instance** |
-| `/packages/:id/overview` | metadatos, estado, cliente, plan, URL y cuotas |
-| `/packages/:id/plans` | planes del tipo lógico de producto |
-| `/packages/:id/quotas` | uso, límite y política de la instancia |
-| `/packages/:id/usage` | rollups, latencia, errores y transferencia |
-| `/packages/:id/logs` | logs de request de la instancia |
-| `/packages/:id/insights` | heatmap Git, code frequency y commits |
-| `/packages/:id/settings` | acciones/configuración contextual |
-| `/invoices` | ledger y enforcement por impago |
-| `/usage` | agregados de toda la plataforma |
-| `/request-logs` | explorador read-only |
-| `/settings` | perfil y preferencias del operador |
-
-`ProvisionModal` recibe un plan ya creado, cliente nuevo o existente y las credenciales del admin
-tenant. La API responde `202`; la UI representa como pending una fila con cliente pero sin
-`provisioned_at`. Commander no crea una carpeta de producto.
-
-## Flujos UI
-
-### Estado
-
-Transiciones válidas: active a grace/suspended, grace a active/suspended y suspended a active.
-
-- Suspend pide motivo y mensaje client-facing, pero no confirmación tipeada porque es reversible.
-- Grace usa deadline explícito o duración por defecto y muestra countdown vivo.
-- Resume devuelve a active.
-- De-provision exige escribir el identificador porque destruye BD y storage.
-
-### Facturas
-
-- Marcar overdue abre opciones Keep running, Grace o Suspend.
-- Marcar paid puede ofrecer Resume si el impago causó la suspensión.
-- Billing y estado se muestran juntos, pero son campos distintos.
-
-### Creación y edición
-
-- Clientes y planes usan `CreateSidePanel` de Carbon.
-- Facturas usan side panel desde cliente y modal desde la lista.
-- Provisioning usa `ProvisionModal`.
-- El detalle de cliente es un formulario editable in situ con Save flotante; Discard aparece solo
-  cuando hay cambios.
-- Las acciones primarias de colección van a la derecha, en `PageHeader` o al final del toolbar.
-
-## Contrato visual
-
-La dirección es enterprise sobria y de ingeniería:
-
-- Carbon real y sus tokens antes que componentes o CSS propios.
-- Esquinas rectas; solo tags, pills, dots y toggles son redondos.
-- Bordes de 1 px entre capas.
-- Color reservado para estado, enlaces, series y una acción primaria por pantalla.
-- IBM Plex Mono para ids, slugs, emails, rutas, cifras y timestamps.
-- Fechas relativas con fecha absoluta en tooltip.
-- Desktop-first con tablas scrollables; los formularios pasan de dos a una columna bajo 600 px.
-
-### Temas
-
-Hay g100 oscuro —por defecto— y g10 claro, persistidos en `localStorage`. Se aplica la clase de
-zona Carbon al `body`; el header permanece g100 en ambos. ECharts no hereda tokens y reconstruye
-sus options con la paleta activa.
-
-Semántica mínima:
-
-| Estado | Color/Tag | Texto |
-|---|---|---|
-| active | verde | Operational |
-| grace | ámbar custom | Grace + countdown |
-| suspended | rojo | Suspended |
-| paid | verde | Paid |
-| pending | ámbar | Pending |
-| overdue | rojo | Overdue |
-
-En g100: background `#161616`, layer `#262626`, border `#393939`, text `#f4f4f4`, link
-`#78a9ff`. En g10: background `#f4f4f4`, layer `#ffffff`, border `#e0e0e0`, text `#161616`,
-link `#0f62fe`. La acción primaria usa IBM Blue 60 `#0f62fe` en ambos.
-
-### Componentes y rendimiento
-
-- `DataTableShell` unifica búsqueda, filtros, selección, paginación y skeletons.
-- `Card`, `ChartCard`, `KpiCluster`, `QuotaBar`, `RelativeTime`, `Sparkline` y `StatusTag` son
-  primitivas compartidas.
-- Un solo `TickProvider` actualiza countdowns y tiempos relativos; las tablas no se rerenderizan
-  cada segundo.
-- Las minitendencias por fila son SVG/CSS, no una instancia ECharts por fila.
-- Las cards de tablas comparten header, filas fijas, divisores y footer informativo.
-- Las gráficas se construyen desde datos reales; no se inventa un delta si no existe ventana
-  anterior.
-
-### Accesibilidad
-
-- contraste WCAG AA en ambos temas;
-- focus visible y navegación por teclado;
-- `aria-current` en navegación y `aria-sort` en cabeceras;
-- `aria-live` para notificaciones;
-- skeletons con la misma altura para evitar saltos;
-- modales/paneles con gestión de foco;
-- Command Palette accesible con `⌘K`.
-
-## Correspondencia API
-
-Todas las rutas salvo login requieren Sanctum y viven bajo
-`https://commander.<BASE_DOMAIN>/api/v1`.
-
-| Recurso | Endpoints principales |
-|---|---|
-| auth | `POST auth/login`, `GET auth/me`, `POST auth/logout` |
-| CRUD | `clients`, `plans`, `users`, `subscriptions`, `invoices` |
-| provisioning | `POST provisioning` |
-| packages | `GET packages`, `GET/PATCH/DELETE packages/{id}` |
-| estado/plan | `POST packages/{id}/suspend|grace|resume|change-plan` |
-| instancia | `GET packages/{id}/usage|logs|insights` |
-| cuotas | `GET quotas`, `GET quotas/{id}`, `PATCH quotas/{id}` |
-| plataforma | `GET usage/platform`, `GET logs`, `GET commits`, `GET code-frequency` |
-| actividad | `GET activity` |
-| settings | `GET settings`, `PUT settings` |
-
-No vuelvas a usar `{name}` en llamadas de instancia: `name = Kilkana` se comparte entre clientes;
-el id es la identidad operativa.
+- Las situaciones «sin desplegar» y «sin dar de alta» de `backend-catalogo.md` no se pueden deducir:
+  no hay `POST /packages` ni columnas `source`/`deployed`. `model/situation.ts` está preparado para
+  producirlas el día que existan; hoy la Flota trabaja con cuatro.
+- `GET logs` limita a 500 filas, así que no hay virtualización ni hace falta.
+- No hay endpoint de KPIs ni de MRR: se derivan en el cliente de suscripciones, productos y facturas.
+- La actividad de código depende de `commander:git:sync`; sin repositorio sincronizado la pestaña lo
+  dice en vez de fingir una gráfica vacía.
+- Pendiente: la ficha de cliente (`/clients/[slug]`), los formularios de alta —cliente, tarifa,
+  provisionar instancia— y que los mandos de suministro de la cabecera llamen a la API en vez de
+  quedarse en el marcado.
 
 ## Build y despliegue
 
-`npm run build` genera `commander/dist`. `commander/nginx.conf` aplica fallback SPA a
-`index.html` y cache inmutable a assets con hash. El Dockerfile hace build Node y sirve estático
-con nginx; el compose de desarrollo usa Vite con HMR.
+`npm run build` genera `commander/build`. `commander/nginx.conf` aplica fallback SPA a `index.html`
+y caché inmutable a `/_app/immutable/`. El Dockerfile hace build con Node y sirve estático con
+nginx; el compose de desarrollo monta el código y corre Vite con HMR.
 
-Para producción, configura `VITE_API_BASE` si el frontend no comparte origen con Commander. El
-backend sigue siendo la autoridad de CORS, auth y permisos.
+**Al renombrar la carpeta, recrea el contenedor**: un bind mount se ata al inodo, no a la ruta, así
+que un `restart` sigue sirviendo el directorio antiguo. Hace falta
+`docker compose up -d --force-recreate commander-web`.
+
+**El contenedor tiene sus propios `node_modules` y `.svelte-kit`**, en volúmenes anónimos que tapan
+los del host. Sin eso, el `npm install` del contenedor y el del host se pisan las dependencias
+nativas opcionales y el host se queda sin poder compilar. Vite escucha en 5173 y nginx proxifica
+ahí; el HMR viaja por el 443 que termina TLS (`COMMANDER_HMR_CLIENT_PORT`).
+
+Para producción, `VITE_API_BASE` solo hace falta si el frontend deja de compartir origen con la API.
+El backend sigue siendo la autoridad de CORS, auth y permisos.

@@ -1,122 +1,69 @@
-// Headless screenshot capture of every Commander screen.
-// Uses playwright-core driving the system google-chrome against the running
-// commander-web container (https://commander.snakepc.test:8443). Writes PNGs to
-// <repo>/.screenshots. Run: npm run screenshots
-import { chromium } from 'playwright-core'
-import { fileURLToPath } from 'node:url'
-import { dirname, resolve } from 'node:path'
-import { mkdirSync, rmSync, readdirSync } from 'node:fs'
+#!/usr/bin/env node
+// Capturas de las pantallas en los dos temas, contra un dev server ya levantado.
+//
+//   npm run dev                                  (o docker compose up -d commander-web)
+//   COMMANDER_URL=http://localhost:5174 npm run screenshots
+//
+// Usa el Chrome del sistema por playwright-core: no descarga un navegador propio. Además falla
+// si alguna página deja un error en consola, así que sirve de humo, no solo de álbum.
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const OUT = resolve(__dirname, '../../.screenshots')
-const BASE = process.env.COMMANDER_URL || 'https://commander.snakepc.test:8443'
-const EMAIL = process.env.ADMIN_EMAIL || 'admin@snake.com'
-const PASS = process.env.ADMIN_PASSWORD || 'secret1234'
-const CHROME = process.env.CHROME_BIN || '/usr/bin/google-chrome'
-const PKG = process.env.PKG || 'Crm' // provisioned package used for detail tabs
+import { mkdir } from 'node:fs/promises';
+import { chromium } from 'playwright-core';
 
-// route -> filename (no extension). Captured logged-in unless noted.
-const ROUTES = [
-  ['/dashboard', '01-dashboard'],
-  ['/clients', '02-clients'],
-  ['/packages', '03-packages'],
-  [`/packages/${PKG}/overview`, '04-package-overview'],
-  [`/packages/${PKG}/plans`, '05-package-plans'],
-  [`/packages/${PKG}/quotas`, '06-package-quotas'],
-  [`/packages/${PKG}/usage`, '07-package-usage'],
-  [`/packages/${PKG}/logs`, '08-package-logs'],
-  [`/packages/${PKG}/settings`, '09-package-settings'],
-  ['/invoices', '10-invoices'],
-  ['/usage', '11-usage'],
-  ['/request-logs', '12-request-logs'],
-  ['/settings', '13-settings'],
-]
-// also capture these in light theme (g10)
-const G10 = new Set(['01-dashboard', '03-packages', '04-package-overview'])
+const URL_BASE = process.env.COMMANDER_URL ?? 'http://localhost:5174';
+const CHROME = process.env.CHROME_BIN ?? '/usr/bin/google-chrome';
+const OUT = process.env.COMMANDER_SHOTS ?? '.screenshots';
+const THEME_KEY = 'commander.theme';
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+const PAGES = [
+	{ name: 'uikit', path: '/uikit' },
+	{ name: 'login', path: '/login' },
+	// Las pantallas de dentro exigen sesión; sin backend redirigen a la entrada, que también es
+	// un resultado válido que comprobar.
+	{ name: 'fleet', path: '/fleet' },
+	{ name: 'overview', path: '/overview' }
+];
 
-async function settle(page, ms = 900) {
-  try {
-    await page.waitForLoadState('networkidle', { timeout: 8000 })
-  } catch {}
-  await sleep(ms)
+// Ruido del entorno de desarrollo, no de la consola.
+const IGNORED = /websocket|favicon|\[vite\]/i;
+
+await mkdir(OUT, { recursive: true });
+
+const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox'] });
+let failures = 0;
+
+for (const theme of ['light', 'dark']) {
+	for (const target of PAGES) {
+		const page = await browser.newPage({
+			viewport: { width: 1440, height: 1000 },
+			deviceScaleFactor: 2
+		});
+		const problems = [];
+		page.on('console', (m) => {
+			if (m.type() === 'error' && !IGNORED.test(m.text())) problems.push(m.text());
+		});
+		page.on('pageerror', (e) => {
+			if (!IGNORED.test(String(e))) problems.push(String(e.stack ?? e));
+		});
+
+		await page.addInitScript(
+			([key, value]) => localStorage.setItem(key, value),
+			[THEME_KEY, theme]
+		);
+		const response = await page.goto(`${URL_BASE}${target.path}`, { waitUntil: 'networkidle' });
+		await page.screenshot({ path: `${OUT}/${target.name}-${theme}.png`, fullPage: true });
+
+		const status = response?.status() ?? 0;
+		const ok = status === 200 && problems.length === 0;
+		if (!ok) failures++;
+		console.log(
+			`${ok ? '✔' : '✘'} ${target.name}-${theme}  ${status}` +
+				(problems.length ? `\n    ${problems.slice(0, 3).join('\n    ')}` : '')
+		);
+		await page.close();
+	}
 }
 
-async function main() {
-  // fresh output dir
-  try {
-    for (const f of readdirSync(OUT)) {
-      if (f.endsWith('.png')) rmSync(resolve(OUT, f))
-    }
-  } catch {}
-  mkdirSync(OUT, { recursive: true })
-
-  const browser = await chromium.launch({
-    executablePath: CHROME,
-    headless: true,
-    args: [
-      '--host-resolver-rules=MAP commander.snakepc.test 127.0.0.1',
-      '--no-sandbox',
-      '--force-color-profile=srgb',
-    ],
-  })
-  const context = await browser.newContext({
-    ignoreHTTPSErrors: true,
-    viewport: { width: 1440, height: 1024 },
-    deviceScaleFactor: 2,
-  })
-  const page = await context.newPage()
-
-  // ---- login page (logged out) ----
-  await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded' })
-  await settle(page, 600)
-  await page.screenshot({ path: resolve(OUT, '00-login.png') })
-
-  // ---- authenticate via the form ----
-  await page.fill('#login-email', EMAIL)
-  await page.fill('#login-password', PASS)
-  await Promise.all([
-    page.click('button[type="submit"]'),
-    page.waitForResponse((r) => r.url().includes('/auth/login'), { timeout: 15000 }).catch(() => {}),
-  ])
-  await sleep(1500)
-  const token = await page.evaluate(() => localStorage.getItem('commander_token'))
-  if (!token) throw new Error('login failed: no commander_token in localStorage')
-  console.log('authenticated, token present')
-
-  for (const theme of ['g100', 'g10']) {
-    await page.evaluate((t) => localStorage.setItem('commander.theme', t), theme)
-    for (const [route, name] of ROUTES) {
-      if (theme === 'g10' && !G10.has(name)) continue
-      const file = theme === 'g10' ? `${name}-g10.png` : `${name}.png`
-      await page.goto(`${BASE}${route}`, { waitUntil: 'domcontentloaded' })
-      const charty = /usage|dashboard/.test(route)
-      await settle(page, charty ? 1600 : 800)
-      await page.screenshot({ path: resolve(OUT, file), fullPage: true })
-      console.log('captured', file)
-
-      // clients: also open the row drawer (g100 only)
-      if (name === '02-clients' && theme === 'g100') {
-        try {
-          await page.click('table tbody tr:first-child', { timeout: 3000 })
-          await sleep(700)
-          await page.screenshot({ path: resolve(OUT, '02b-clients-drawer.png') })
-          console.log('captured 02b-clients-drawer.png')
-          await page.keyboard.press('Escape')
-          await sleep(300)
-        } catch (e) {
-          console.log('drawer capture skipped:', e.message)
-        }
-      }
-    }
-  }
-
-  await browser.close()
-  console.log('done ->', OUT)
-}
-
-main().catch((e) => {
-  console.error(e)
-  process.exit(1)
-})
+await browser.close();
+console.log(`\nCapturas en ${OUT}/`);
+process.exit(failures ? 1 : 0);

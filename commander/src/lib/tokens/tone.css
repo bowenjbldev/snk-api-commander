@@ -1,0 +1,34 @@
+/*
+ * El tono, declarado una sola vez.
+ *
+ * Etiqueta, aviso, chip, menú, modal y botón mapeaban todos «este tono» a «este trío de colores»,
+ * repitiendo la misma tabla seis veces. Aquí `data-tone` deja `--sem`, `--sem-bg` y `--sem-bd`
+ * puestos, y cada componente solo decide QUÉ hace con ellos: teñir la letra, rellenar la caja o
+ * pintar una barra. Añadir un tono es una entrada, no seis.
+ *
+ * El neutro a propósito no declara nada: la ausencia de tono no es el mismo gris en una etiqueta
+ * que en un botón, y forzarla aquí obligaría a deshacerla abajo.
+ */
+[data-tone='ok'] {
+	--sem: var(--ok);
+	--sem-bg: var(--ok-bg);
+	--sem-bd: var(--ok-bd);
+}
+
+[data-tone='warn'] {
+	--sem: var(--wn);
+	--sem-bg: var(--wn-bg);
+	--sem-bd: var(--wn-bd);
+}
+
+[data-tone='error'] {
+	--sem: var(--er);
+	--sem-bg: var(--er-bg);
+	--sem-bd: var(--er-bd);
+}
+
+[data-tone='info'] {
+	--sem: var(--in);
+	--sem-bg: var(--in-bg);
+	--sem-bd: var(--in-bd);
+}

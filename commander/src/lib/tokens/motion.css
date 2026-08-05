@@ -1,0 +1,17 @@
+/*
+ * Tres movimientos, ninguno decorativo:
+ *   1. conexión y corte — la línea de suministro transiciona de color y forma al cambiar de
+ *      estado. Es el único momento con gracia de la consola, y es semántico.
+ *   2. llegada acumulada — el contador de novedades incrementa con un pulso. Las filas no se
+ *      inyectan: nunca se mueve el suelo bajo el cursor.
+ *   3. entrada de capa — modales, cajones y menús.
+ *
+ * Con movimiento reducido, app.css desactiva los tres.
+ */
+:root {
+	--t-fast: 80ms; /* controles: una herramienta de uso diario no debe hacer esperar */
+	--t-layer: 160ms; /* entrada de capa */
+	--t-supply: 400ms; /* conexión y corte */
+	--t-pulse: 120ms; /* pulso del contador de novedades */
+	--ease: cubic-bezier(0.2, 0, 0.2, 1);
+}

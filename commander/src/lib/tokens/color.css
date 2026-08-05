@@ -1,0 +1,113 @@
+/*
+ * Semillas de color. Único sitio del proyecto donde se escribe un hex.
+ *
+ * El primario significa «esto se toca»: botón, enlace, pestaña activa, fila seleccionada, foco.
+ * El semántico significa «esto es así»: suministro, salud de contador, clase HTTP, retraso de
+ * cobro. Nunca al revés y nunca los dos en el mismo elemento. El iris está lejos en matiz del
+ * verde, el ámbar y el rojo justamente para que un control no pueda leerse como una medida.
+ */
+:root {
+	--bg-app: #f3f3f6;
+	--bg-card: #ffffff;
+	--bg-elev: #ffffff;
+	--bg-fill: #fafafa;
+	--bg-fill2: #eeeef2;
+	--bg-hover: #f7f7fa;
+	--bg-sel: #f1effb;
+
+	--bd: #d7d7de;
+	--bd2: #ececf1;
+
+	--tx: rgba(16, 16, 22, 0.88);
+	--tx2: rgba(16, 16, 22, 0.6);
+	--tx3: rgba(16, 16, 22, 0.42);
+	--tx4: rgba(16, 16, 22, 0.22);
+
+	--pri: #5b4fd6;
+	--pri-h: #6f64e0;
+	--pri-a: #4a3ec0;
+	--pri-bg: #f0eefb;
+	--pri-bd: #cac4f2;
+	/* Texto sobre el primario. Es un token para que ningún componente escriba #fff. */
+	--on-pri: #ffffff;
+
+	--ok: #1f9d62;
+	--ok-bg: #e9f6ef;
+	--ok-bd: #a9ddc3;
+
+	--wn: #c8860d;
+	--wn-bg: #fdf6e6;
+	--wn-bd: #eed6a0;
+
+	--er: #c4443a;
+	--er-bg: #fbeeec;
+	--er-bd: #ecbdb8;
+
+	--in: #3d77c2;
+	--in-bg: #ebf2fb;
+	--in-bd: #b6cdea;
+
+	/* Paleta de series. Cuando una serie representa un estado usa el semántico, no esto. */
+	--s1: #4b79c4;
+	--s2: #3aa6a0;
+	--s3: #3f9e6b;
+	--s4: #c08a2e;
+	--s5: #b85a4f;
+
+	--sh: 0 6px 16px rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12);
+	/* Levanta la acción primaria un milímetro del plano. No es una capa flotante. */
+	--sh-pri: 0 1px 2px rgba(0, 0, 0, 0.18);
+	/* Velo de las capas que flotan: modal, cajón, paleta. */
+	--scrim: rgba(8, 8, 12, 0.42);
+}
+
+[data-theme='dark'] {
+	--bg-app: #0c0c0f;
+	--bg-card: #15151a;
+	--bg-elev: #1d1d23;
+	--bg-fill: #1a1a20;
+	--bg-fill2: #26262e;
+	--bg-hover: #1e1e25;
+	--bg-sel: #241f3d;
+
+	--bd: #3a3a44;
+	--bd2: #28282f;
+
+	--tx: rgba(255, 255, 255, 0.86);
+	--tx2: rgba(255, 255, 255, 0.58);
+	--tx3: rgba(255, 255, 255, 0.4);
+	--tx4: rgba(255, 255, 255, 0.22);
+
+	--pri: #8b80ee;
+	--pri-h: #9d94f2;
+	--pri-a: #7368e0;
+	--pri-bg: #221d3a;
+	--pri-bd: #413a6b;
+	--on-pri: #ffffff;
+
+	--ok: #3fbe84;
+	--ok-bg: #12291f;
+	--ok-bd: #255c42;
+
+	--wn: #e0a52a;
+	--wn-bg: #2b2210;
+	--wn-bd: #5c4718;
+
+	--er: #e2695e;
+	--er-bg: #2c1715;
+	--er-bd: #66302b;
+
+	--in: #5d96dc;
+	--in-bg: #111e2d;
+	--in-bd: #2c4a6e;
+
+	--s1: #6e97d8;
+	--s2: #4fbfb8;
+	--s3: #57b681;
+	--s4: #d5a342;
+	--s5: #d07568;
+
+	--sh: 0 6px 20px rgba(0, 0, 0, 0.5), 0 3px 8px -4px rgba(0, 0, 0, 0.6);
+	--sh-pri: 0 1px 2px rgba(0, 0, 0, 0.4);
+	--scrim: rgba(0, 0, 0, 0.6);
+}

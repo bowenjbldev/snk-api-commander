@@ -36,7 +36,8 @@ Los agentes deben empezar por [`AGENTS.md`](AGENTS.md).
 ## Estructura
 
 ```text
-commander/                 SPA React + TypeScript + Carbon
+commander/                 SPA SvelteKit 2 + Svelte 5 + TypeScript
+commander-react/           SPA anterior (React + Carbon), conservada de referencia
 docs/                      documentación canónica
 src/
 ├── packages/Core/         infraestructura compartida
@@ -66,7 +67,7 @@ El panel queda en `https://commander.<BASE_DOMAIN>`, los tenants en
 
 ```bash
 docker compose exec -T app php artisan test
-cd commander && npm test && npm run build
+cd commander && npm run check && npm run lint && npm run ds-check && npm test && npm run build
 ```
 
 Consulta [Operación](docs/operations.md) antes de migrar tenants, provisionar manualmente o

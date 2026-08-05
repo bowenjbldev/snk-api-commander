@@ -120,10 +120,18 @@ services:
     working_dir: /app
     volumes:
       - ./commander:/app
-    # Runs as root (vite binds the privileged port 80), so `npm install` would create root-owned
-    # files in the bind-mounted node_modules. chown it back to the host user (uid 1000) after install
-    # so the host tooling can read/write it.
-    command: sh -c "npm install && chown -R 1000:1000 node_modules && npm run dev -- --host 0.0.0.0 --port 80"
+      # Volúmenes anónimos que TAPAN los del host: si se compartieran, el `npm install` del
+      # contenedor y el del host se pisarían las dependencias nativas opcionales y el host se
+      # quedaría sin poder compilar. Cada uno con lo suyo.
+      - /app/node_modules
+      - /app/.svelte-kit
+    # Escucha en 5173 (nginx proxifica ahí) y corre como root, que es quien puede escribir en los
+    # volúmenes anónimos de arriba. Da igual: esos volúmenes TAPAN los del host, así que nada de lo
+    # que genera el contenedor sale con dueño root en el árbol de trabajo.
+    environment:
+      # El HMR viaja por el nginx que termina TLS en 443, no por el puerto interno.
+      COMMANDER_HMR_CLIENT_PORT: "443"
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
     restart: unless-stopped
     networks:
       - app-network

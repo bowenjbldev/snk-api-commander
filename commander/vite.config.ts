@@ -1,53 +1,34 @@
 /// <reference types="vitest/config" />
-import { defineConfig } from 'vitest/config'
-import react from '@vitejs/plugin-react'
-import { fileURLToPath, URL } from 'node:url'
+import { sveltekit } from '@sveltejs/kit/vite';
+import { defineConfig } from 'vitest/config';
 
-// https://vite.dev/config/
+// En docker, nginx termina TLS en 443 y proxifica el websocket de HMR hacia commander-web:80
+// (docker/nginx/conf.d/commander.conf.template). El cliente de Vite tiene que apuntar al puerto
+// público, no al interno del contenedor. Fuera de docker: COMMANDER_HMR_CLIENT_PORT=5173.
+const hmrClientPort = Number(process.env.COMMANDER_HMR_CLIENT_PORT ?? 443);
+
 export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
-    },
-  },
-  server: {
-    port: 5174,
-    allowedHosts: ['commander.snakepc.test'],
-    // Same-origin /api → backend HTTPS (self-signed). Avoids CORS + cert prompts in dev.
-    proxy: {
-      '/api': { target: 'https://localhost:8443', changeOrigin: true, secure: false },
-    },
-  },
-  css: {
-    preprocessorOptions: {
-      scss: {
-        // Modern Dart Sass compiler. loadPaths replaces the deprecated includePaths,
-        // letting Carbon's bare `@use '@carbon/styles'` resolve from node_modules.
-        loadPaths: ['node_modules'],
-        // Carbon's SCSS still trips Dart Sass deprecations; silence node_modules noise.
-        quietDeps: true,
-        silenceDeprecations: ['global-builtin', 'import', 'legacy-js-api'],
-      },
-    },
-  },
-  build: {
-    rollupOptions: {
-      output: {
-        // Split heavy vendors into cacheable chunks instead of one ~1MB file.
-        manualChunks(id) {
-          if (!id.includes('node_modules')) return
-          if (id.includes('echarts') || id.includes('zrender')) return 'charts'
-          if (id.includes('@carbon')) return 'carbon'
-          if (/[\\/]node_modules[\\/](react|react-dom|react-router|scheduler)[\\/]/.test(id)) return 'react'
-        },
-      },
-    },
-  },
-  test: {
-    environment: 'jsdom',
-    globals: true,
-    setupFiles: ['./src/test/setup.ts'],
-    css: false,
-  },
-})
+	plugins: [sveltekit()],
+	server: {
+		host: true,
+		allowedHosts: ['commander.snakepc.test'],
+		hmr: { clientPort: hmrClientPort }
+	},
+	build: {
+		rollupOptions: {
+			output: {
+				// ECharts pesa lo que pesa: en su propio chunk para que no lastre el arranque.
+				manualChunks: (id: string) =>
+					/node_modules[\\/](echarts|zrender)[\\/]/.test(id) ? 'charts' : undefined
+			}
+		}
+	},
+	test: {
+		// Los módulos con runas tienen que pasar por el compilador de Svelte, y eso solo ocurre con
+		// la extensión `.svelte.ts`. Sus tests la llevan también.
+		include: ['src/**/*.test.ts', 'src/**/*.test.svelte.ts'],
+		environment: 'jsdom',
+		globals: true,
+		setupFiles: ['./src/test/setup.ts']
+	}
+});
