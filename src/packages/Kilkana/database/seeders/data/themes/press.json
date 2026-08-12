@@ -8,7 +8,10 @@
  "featured": true,
  "position": 0,
  "popularity": 100,
- "categories": ["news", "minimal"],
+ "categories": [
+  "news",
+  "minimal"
+ ],
  "variants": [
   {
    "slug": "standard",
@@ -54,48 +57,79 @@
       "tracking": "0.02em",
       "size": "11px"
      },
-     "card": { "bg": "transparent", "border": "none", "pad": "0", "radius": "0", "shadow": "none" }
+     "card": {
+      "bg": "transparent",
+      "border": "none",
+      "pad": "0",
+      "radius": "0",
+      "shadow": "none"
+     }
     },
     "layouts": {
      "front": [
-      { "type": "hero", "header": null },
+      {
+       "type": "lead-story",
+       "header": null
+      },
       {
        "cols": [
         {
-         "type": "list",
+         "type": "river",
          "header": "Live",
          "config": {
           "preset": "timeline",
           "showExcerpt": false,
-          "data": { "mode": "auto", "category": "featured", "count": 6, "sort": "recent" }
+          "data": {
+           "mode": "auto",
+           "category": "featured",
+           "count": 6,
+           "sort": "recent"
+          }
          }
         },
-        { "type": "mostread", "header": "Most read", "config": { "preset": "numbered", "window": "day" } }
+        {
+         "type": "most-read",
+         "header": "Most read",
+         "config": {
+          "preset": "numbered",
+          "window": "day"
+         }
+        }
        ]
       },
       {
-       "type": "grid",
+       "type": "three-up",
        "header": "International",
        "config": {
         "preset": "mosaic",
-        "data": { "mode": "auto", "category": "international", "count": 5, "sort": "recent" }
+        "data": {
+         "mode": "auto",
+         "category": "international",
+         "count": 5,
+         "sort": "recent"
+        }
        }
       },
       {
-       "type": "carousel",
+       "type": "photo-essay",
        "header": "In depth",
        "config": {
         "preset": "overlay",
         "slides": 3,
         "arrows": false,
-        "data": { "mode": "auto", "category": "politics", "count": 3, "sort": "recent" }
+        "data": {
+         "mode": "auto",
+         "category": "politics",
+         "count": 3,
+         "sort": "recent"
+        }
        }
       },
       {
        "header": "Economy",
        "cols": [
         {
-         "type": "post",
+         "type": "lead-story",
          "config": {
           "preset": "card",
           "data": {
@@ -103,17 +137,24 @@
            "category": "economy",
            "count": 1,
            "sort": "manualOrder",
-           "pinnedPostIds": ["p43"]
+           "pinnedPostIds": [
+            "p43"
+           ]
           }
          }
         },
         {
-         "type": "list",
+         "type": "river",
          "config": {
           "preset": "headlines",
           "numbered": false,
           "showMeta": false,
-          "data": { "mode": "auto", "category": "economy", "count": 5, "sort": "recent" }
+          "data": {
+           "mode": "auto",
+           "category": "economy",
+           "count": 5,
+           "sort": "recent"
+          }
          }
         }
        ]
@@ -121,58 +162,107 @@
       {
        "cols": [
         {
-         "type": "list",
+         "type": "river",
          "header": "Technology",
          "config": {
           "preset": "thumbnail",
           "showExcerpt": false,
           "showMeta": false,
-          "data": { "mode": "auto", "category": "technology", "count": 4, "sort": "recent" }
+          "data": {
+           "mode": "auto",
+           "category": "technology",
+           "count": 4,
+           "sort": "recent"
+          }
          }
         },
         {
-         "type": "list",
+         "type": "river",
          "header": "Culture",
          "config": {
           "showExcerpt": false,
           "showMeta": false,
-          "data": { "mode": "auto", "category": "culture", "count": 4, "sort": "recent" }
+          "data": {
+           "mode": "auto",
+           "category": "culture",
+           "count": 4,
+           "sort": "recent"
+          }
          }
         }
        ]
       },
       {
-       "type": "grid",
+       "type": "three-up",
        "header": "Society",
        "config": {
         "preset": "featured",
-        "data": { "mode": "auto", "category": "society", "count": 5, "sort": "recent" }
+        "data": {
+         "mode": "auto",
+         "category": "society",
+         "count": 5,
+         "sort": "recent"
+        }
        }
       },
       {
-       "type": "grid",
+       "type": "three-up",
        "header": "Sports",
        "config": {
         "preset": "overlay",
-        "data": { "mode": "auto", "category": "sports", "count": 3, "sort": "recent" }
+        "data": {
+         "mode": "auto",
+         "category": "sports",
+         "count": 3,
+         "sort": "recent"
+        }
        }
       },
-      { "type": "opinion", "header": "Opinion", "config": { "preset": "strip" } }
+      {
+       "type": "opinion-strip",
+       "header": "Opinion",
+       "config": {
+        "preset": "strip"
+       }
+      }
      ],
      "section": [
       {
        "cols": [
         {
-         "type": "list",
+         "type": "river",
          "header": "Breaking news",
-         "config": { "preset": "headlines", "numbered": true }
+         "config": {
+          "preset": "headlines",
+          "numbered": true
+         }
         },
-        { "type": "mostread", "header": "Most read", "config": { "preset": "thumbnail" } }
+        {
+         "type": "most-read",
+         "header": "Most read",
+         "config": {
+          "preset": "thumbnail"
+         }
+        }
        ]
       },
-      { "type": "post", "header": null, "config": { "preset": "card" } },
-      { "type": "grid", "header": "More news", "config": { "preset": "mosaic" } },
-      { "type": "newsletter" }
+      {
+       "type": "lead-story",
+       "header": null,
+       "config": {
+        "preset": "card"
+       }
+      },
+      {
+       "type": "three-up",
+       "header": "More news",
+       "config": {
+        "preset": "mosaic"
+       }
+      },
+      {
+       "type": "newsletter-card"
+      }
      ]
     }
    }
@@ -221,75 +311,136 @@
       "tracking": "0.02em",
       "size": "11px"
      },
-     "card": { "bg": "transparent", "border": "none", "pad": "0", "radius": "0", "shadow": "none" }
+     "card": {
+      "bg": "transparent",
+      "border": "none",
+      "pad": "0",
+      "radius": "0",
+      "shadow": "none"
+     }
     },
     "layouts": {
      "front": [
-      { "type": "banner", "config": { "slot": "front-top", "format": "leaderboard" } },
-      { "type": "hero", "header": null, "config": { "layout": "dual", "leadExcerpt": true } },
       {
-       "cols": [
-        {
-         "type": "list",
-         "header": "Live",
-         "config": {
-          "preset": "headlines",
-          "numbered": true,
-          "data": { "mode": "auto", "category": "featured", "count": 7, "sort": "recent" }
-         }
-        },
-        {
-         "type": "list",
-         "header": "International",
-         "config": {
-          "preset": "headlines",
-          "data": { "mode": "auto", "category": "international", "count": 7, "sort": "recent" }
-         }
-        },
-        { "type": "mostread", "header": "Most read", "config": { "preset": "thumbnail" } }
-       ]
+       "type": "ad-slot",
+       "config": {
+        "slot": "front-top",
+        "format": "leaderboard"
+       }
       },
       {
-       "type": "grid",
-       "header": "Latest",
+       "type": "lead-story",
+       "header": null,
        "config": {
-        "preset": "mosaic",
-        "data": { "mode": "auto", "category": "featured", "count": 6, "sort": "recent" }
+        "layout": "dual",
+        "leadExcerpt": true
        }
       },
       {
        "cols": [
         {
-         "type": "list",
-         "header": "Economy",
+         "type": "river",
+         "header": "Live",
          "config": {
           "preset": "headlines",
-          "data": { "mode": "auto", "category": "economy", "count": 6, "sort": "recent" }
+          "numbered": true,
+          "data": {
+           "mode": "auto",
+           "category": "featured",
+           "count": 7,
+           "sort": "recent"
+          }
          }
         },
         {
-         "type": "list",
-         "header": "Politics",
+         "type": "river",
+         "header": "International",
          "config": {
           "preset": "headlines",
-          "data": { "mode": "auto", "category": "politics", "count": 6, "sort": "recent" }
+          "data": {
+           "mode": "auto",
+           "category": "international",
+           "count": 7,
+           "sort": "recent"
+          }
+         }
+        },
+        {
+         "type": "most-read",
+         "header": "Most read",
+         "config": {
+          "preset": "thumbnail"
          }
         }
        ]
       },
       {
-       "type": "grid",
-       "header": "Technology",
+       "type": "three-up",
+       "header": "Latest",
        "config": {
-        "cols": "4",
-        "data": { "mode": "auto", "category": "technology", "count": 8, "sort": "recent" }
+        "preset": "mosaic",
+        "data": {
+         "mode": "auto",
+         "category": "featured",
+         "count": 6,
+         "sort": "recent"
+        }
        }
       },
-      { "type": "opinion", "header": "Opinion", "config": { "preset": "strip" } },
       {
        "cols": [
         {
-         "type": "post",
+         "type": "river",
+         "header": "Economy",
+         "config": {
+          "preset": "headlines",
+          "data": {
+           "mode": "auto",
+           "category": "economy",
+           "count": 6,
+           "sort": "recent"
+          }
+         }
+        },
+        {
+         "type": "river",
+         "header": "Politics",
+         "config": {
+          "preset": "headlines",
+          "data": {
+           "mode": "auto",
+           "category": "politics",
+           "count": 6,
+           "sort": "recent"
+          }
+         }
+        }
+       ]
+      },
+      {
+       "type": "three-up",
+       "header": "Technology",
+       "config": {
+        "cols": "4",
+        "data": {
+         "mode": "auto",
+         "category": "technology",
+         "count": 8,
+         "sort": "recent"
+        }
+       }
+      },
+      {
+       "type": "opinion-strip",
+       "header": "Opinion",
+       "config": {
+        "preset": "strip"
+       }
+      },
+      {
+       "cols": [
+        {
+         "type": "lead-story",
          "config": {
           "preset": "card",
           "data": {
@@ -297,7 +448,9 @@
            "category": "economy",
            "count": 1,
            "sort": "manualOrder",
-           "pinnedPostIds": ["p43"]
+           "pinnedPostIds": [
+            "p43"
+           ]
           }
          }
         },
@@ -314,60 +467,113 @@
       {
        "cols": [
         {
-         "type": "list",
+         "type": "river",
          "header": "Culture",
          "config": {
           "preset": "headlines",
-          "data": { "mode": "auto", "category": "culture", "count": 6, "sort": "recent" }
+          "data": {
+           "mode": "auto",
+           "category": "culture",
+           "count": 6,
+           "sort": "recent"
+          }
          }
         },
         {
-         "type": "list",
+         "type": "river",
          "header": "Sports",
          "config": {
           "preset": "headlines",
-          "data": { "mode": "auto", "category": "sports", "count": 6, "sort": "recent" }
+          "data": {
+           "mode": "auto",
+           "category": "sports",
+           "count": 6,
+           "sort": "recent"
+          }
          }
         },
         {
-         "type": "list",
+         "type": "river",
          "header": "Society",
          "config": {
           "preset": "headlines",
-          "data": { "mode": "auto", "category": "society", "count": 6, "sort": "recent" }
+          "data": {
+           "mode": "auto",
+           "category": "society",
+           "count": 6,
+           "sort": "recent"
+          }
          }
         }
        ]
       },
       {
-       "type": "carousel",
+       "type": "photo-essay",
        "header": "In depth",
        "cat": "politics",
-       "config": { "preset": "overlay", "slides": 3 }
+       "config": {
+        "preset": "overlay",
+        "slides": 3
+       }
       },
-      { "type": "newsletter" },
-      { "type": "divider", "header": null },
       {
-       "type": "button",
-       "header": null,
-       "config": { "label": "All news", "href": "#", "variant": "outline", "align": "center" }
+       "type": "newsletter-card"
       },
-      { "type": "paywall" }
+      {
+       "type": "divider",
+       "header": null
+      },
+      {
+       "type": "ad-slot",
+       "header": null,
+       "config": {
+        "label": "All news",
+        "href": "#",
+        "variant": "outline",
+        "align": "center"
+       }
+      },
+      {
+       "type": "paywall"
+      }
      ],
      "section": [
       {
        "cols": [
         {
-         "type": "list",
+         "type": "river",
          "header": "Breaking news",
-         "config": { "preset": "headlines", "numbered": true }
+         "config": {
+          "preset": "headlines",
+          "numbered": true
+         }
         },
-        { "type": "mostread", "header": "Most read", "config": { "preset": "thumbnail" } }
+        {
+         "type": "most-read",
+         "header": "Most read",
+         "config": {
+          "preset": "thumbnail"
+         }
+        }
        ]
       },
-      { "type": "post", "header": null, "config": { "preset": "card" } },
-      { "type": "grid", "header": "More news", "config": { "preset": "mosaic" } },
-      { "type": "newsletter" }
+      {
+       "type": "lead-story",
+       "header": null,
+       "config": {
+        "preset": "card"
+       }
+      },
+      {
+       "type": "three-up",
+       "header": "More news",
+       "config": {
+        "preset": "mosaic"
+       }
+      },
+      {
+       "type": "newsletter-card"
+      }
      ]
     }
    }

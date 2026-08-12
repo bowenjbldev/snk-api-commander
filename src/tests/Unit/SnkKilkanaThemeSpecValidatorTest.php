@@ -43,8 +43,8 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
                 'card' => ['bg' => 'transparent', 'border' => 'none', 'pad' => '0', 'radius' => '0', 'shadow' => 'none'],
             ],
             'layouts' => [
-                'front' => [['type' => 'hero', 'header' => null]],
-                'section' => [['type' => 'post'], ['cols' => [['type' => 'list'], ['type' => 'mostread']]]],
+                'front' => [['type' => 'lead-story', 'header' => null]],
+                'section' => [['type' => 'lead-story'], ['cols' => [['type' => 'river'], ['type' => 'most-read']]]],
             ],
         ];
 

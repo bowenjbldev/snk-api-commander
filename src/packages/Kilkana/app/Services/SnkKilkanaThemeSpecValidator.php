@@ -24,18 +24,26 @@ class SnkKilkanaThemeSpecValidator
     public const MASTHEADS = ['compact', 'daily'];
 
     /**
-     * Los tipos de bloque del editor.
+     * Los tipos de bloque del editor: las doce filas de portada y los diez del cuerpo.
      *
-     * Duplica la lista de `kilkana.app/src/lib/editor/schema/types.ts`, y es duplicación
-     * asumida: el backend no puede leer un tipo de TypeScript. Un tipo desconocido en una
-     * plantilla no se descarta como hace el normalizador del editor —ahí es defensa contra
-     * datos viejos—; aquí es un tema mal hecho y tiene que doler al publicarlo.
+     * Duplica la lista de `kilkana.app/src/lib/themes/spec.ts`, y es duplicación asumida:
+     * el backend no puede leer un tipo de TypeScript. Un tipo desconocido en una plantilla
+     * no se descarta como hace el normalizador del editor —ahí es defensa contra datos
+     * viejos—; aquí es un tema mal hecho y tiene que doler al publicarlo.
+     *
+     * **La lista manda desde el frontend.** La anterior —`hero`, `grid`, `carousel`,
+     * `gallery`— era de un diseño temprano; el vocabulario se afinó después en el editor de
+     * portada y esto lo sigue. Quien dibuja es quien nombra: un tipo que el editor no sabe
+     * pintar no debería poder guardarse en una plantilla.
      */
     public const BLOCK_TYPES = [
-        'hero', 'list', 'grid', 'carousel', 'post', 'mostread', 'opinion',
-        'text', 'image', 'button', 'divider', 'embed',
-        'gallery', 'quote', 'video', 'paywall',
-        'banner', 'newsletter',
+        // Portada y sección
+        'lead-story', 'two-up', 'three-up', 'river', 'photo-essay', 'opinion-strip',
+        'most-read', 'latest-in-category', 'live-ticker',
+        'newsletter-card', 'ad-slot', 'agenda',
+        // Cuerpo del artículo
+        'paragraph', 'heading', 'image', 'quote', 'list', 'embed',
+        'divider', 'paywall', 'factbox', 'related',
     ];
 
     /**
