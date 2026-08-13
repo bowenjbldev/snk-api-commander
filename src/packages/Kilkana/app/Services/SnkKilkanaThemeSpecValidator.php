@@ -548,12 +548,32 @@ class SnkKilkanaThemeSpecValidator
                         if ($i < 2) {
                             $pliegue += $n;
                         }
+
+                        $errores = [
+                            ...$errores,
+                            ...$this->checkSection(
+                                $bloque['config']['data']['section'] ?? null,
+                                "{$donde}.blocks.data.section"
+                            ),
+                        ];
                     }
                 }
 
+                $errores = [...$errores, ...$this->checkSection($fila['section'] ?? null, "{$donde}.section")];
+
                 $rotulo = is_array($fila['header'] ?? null) ? $fila['header'] : null;
-                if ($rotulo !== null && trim((string) ($rotulo['text'] ?? '')) === '') {
-                    $errores[] = "{$donde}.header: el rótulo no puede ir vacío";
+                if ($rotulo !== null) {
+                    // Un rótulo derivado necesita de dónde derivarlo. En el documento de
+                    // sección la fuente es la que se estrena; en la portada la declara la fila,
+                    // o el rótulo sale vacío y la banda pierde la mitad de lo que la separa de
+                    // la de al lado.
+                    if (($rotulo['from'] ?? null) === 'section') {
+                        if ($documento !== 'section' && ! isset($fila['section'])) {
+                            $errores[] = "{$donde}.header: deriva de la sección y la fila no declara ninguna";
+                        }
+                    } elseif (trim((string) ($rotulo['text'] ?? '')) === '') {
+                        $errores[] = "{$donde}.header: el rótulo no puede ir vacío";
+                    }
                 }
 
                 foreach ((array) ($fila['skin'] ?? []) as $clave => $valor) {
@@ -580,6 +600,28 @@ class SnkKilkanaThemeSpecValidator
         return $tiene > self::BUDGET[$tope]
             ? ["layouts.{$documento}: {$que} {$tiene}, el presupuesto es ".self::BUDGET[$tope]." ({$metrica})"]
             : [];
+    }
+
+    /**
+     * La sección que alimenta una fila o un bloque, **por posición y no por nombre**.
+     *
+     * Un tema se replica en la base de cada periódico, así que no puede conocer sus
+     * secciones: pedir una por su nombre es pedir la de la redacción para la que se
+     * compuso, y en cualquier otra ese bloque se queda sin nada. `nth` pide la enésima
+     * sección viva, en el orden del menú del propio periódico, y un menú no llega a
+     * veinticuatro entradas.
+     */
+    private function checkSection(mixed $ref, string $donde): array
+    {
+        if ($ref === null) {
+            return [];
+        }
+
+        $nth = is_array($ref) ? ($ref['nth'] ?? null) : null;
+
+        return is_int($nth) && $this->inRange($nth, 'columns')
+            ? []
+            : ["{$donde}.nth: entero entre 1 y 24, uno-indexado"];
     }
 
     /** Cuántas fotos dibuja un bloque, con lo que el tema haya pedido encima. */
