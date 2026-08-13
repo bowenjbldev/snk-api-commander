@@ -81,6 +81,30 @@ class SnkKilkanaThemeSpecValidator
      * cuatro piezas y UNA sola foto —los satélites son titulares— y el río crece con su cuenta
      * hasta doce. Un bloque que no está aquí no dibuja ninguna.
      */
+    /**
+     * Las piezas que dibuja cada bloque cuando está lleno.
+     *
+     * Es lo que acota el mínimo que un tema puede declarar: pedir cinco piezas a un bloque
+     * que dibuja dos es un bloque que no sale nunca, y eso no se ve mirando el JSON —se ve
+     * echando de menos una banda en la calle meses después—. El mobiliario no está: no lleva
+     * piezas, y por eso se dibuja siempre.
+     */
+    private const BLOCK_SLOTS = [
+        'lead-story' => [1, 1],
+        'lead-briefs' => [4, 4],
+        'two-up' => [2, 2],
+        'three-up' => [3, 3],
+        'four-up' => [4, 4],
+        'mosaic' => [5, 5],
+        'photo-essay' => [2, 2],
+        'opinion-strip' => [3, 3],
+        'river' => [12, 4],
+        'brief-list' => [12, 6],
+        'most-read' => [12, 5],
+        'latest-in-category' => [12, 5],
+        'live-ticker' => [12, 3],
+    ];
+
     private const BLOCK_IMAGES = [
         'lead-story' => [1, 1],
         'lead-briefs' => [1, 1],
@@ -484,11 +508,16 @@ class SnkKilkanaThemeSpecValidator
     private function checkLayouts(array $spec): array
     {
         $errores = [];
-        $conocidos = SnkKilkanaLayoutEnum::values();
+        // Los que una redacción compone, y por tanto los que la base guarda.
+        $obligatorios = SnkKilkanaLayoutEnum::values();
+        // Más el de arranque, que es del TEMA y no se guarda: sirve para que un periódico
+        // recién montado no reciba una composición con más huecos vacíos que artículos, y
+        // en cuanto se aplica deja de existir. Por eso no está en el enum.
+        $conocidos = [...$obligatorios, 'starter'];
         $total = $this->gridSize($this->arr($spec, 'grid'));
         $layouts = $this->arr($spec, 'layouts');
 
-        foreach ($conocidos as $documento) {
+        foreach ($obligatorios as $documento) {
             if (! is_array($layouts[$documento] ?? null)) {
                 $errores[] = "layouts.{$documento}: falta la plantilla de arranque";
             }
@@ -555,6 +584,7 @@ class SnkKilkanaThemeSpecValidator
                                 $bloque['config']['data']['section'] ?? null,
                                 "{$donde}.blocks.data.section"
                             ),
+                            ...$this->checkMin($bloque, $donde),
                         ];
                     }
                 }
@@ -622,6 +652,35 @@ class SnkKilkanaThemeSpecValidator
         return is_int($nth) && $this->inRange($nth, 'columns')
             ? []
             : ["{$donde}.nth: entero entre 1 y 24, uno-indexado"];
+    }
+
+    /**
+     * El mínimo de piezas por debajo del cual un bloque no se dibuja en la calle.
+     *
+     * Un bloque sabe cuántas necesita para parecerse a lo que es: un río con dos entradas es
+     * un río corto, y un mosaico con dos no es un mosaico. Esa diferencia no se deduce
+     * contando columnas —es un juicio de quien diseñó la banda—, así que la declara el tema y
+     * por omisión es una, que es lo que hace que el primer artículo de un periódico salga en
+     * portada.
+     */
+    private function checkMin(array $bloque, string $donde): array
+    {
+        $min = $bloque['config']['min'] ?? null;
+        if ($min === null) {
+            return [];
+        }
+
+        $rango = self::BLOCK_SLOTS[$bloque['type']] ?? null;
+        $piezas = 0;
+        if ($rango !== null) {
+            [$tope, $base] = $rango;
+            $pedidas = $bloque['config']['data']['count'] ?? null;
+            $piezas = is_int($pedidas) && $pedidas > 0 ? min($pedidas, $tope) : $base;
+        }
+
+        return is_int($min) && $min >= 1 && $min <= $piezas
+            ? []
+            : ["{$donde}: «{$bloque['type']}» pide un mínimo de {$min} y dibuja {$piezas} piezas"];
     }
 
     /** Cuántas fotos dibuja un bloque, con lo que el tema haya pedido encima. */
