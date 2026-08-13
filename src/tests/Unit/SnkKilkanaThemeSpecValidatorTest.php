@@ -6,15 +6,15 @@ use Packages\Kilkana\Services\SnkKilkanaThemeSpecValidator;
 use Tests\TestCase;
 
 /**
- * La puerta de entrada del catalogo, contra el contrato v2.
+ * La puerta de entrada del catalogo.
  *
  * Estos casos son los que permiten producir temas deprisa sin que el catalogo se llene de temas
  * inservibles: un gris elegante que no llega al contraste minimo se ve bien en una captura y
  * arruina la accesibilidad del periodico que lo instale.
  *
- * La v2 anade tres clases de fallo que la v1 no podia ver: una rejilla cuyos `span` no cuadran,
- * una plantilla que se pasa del presupuesto de rendimiento, y dos variantes que dicen ser el
- * mismo paquete sin serlo.
+ * Tres clases de fallo se paran solo aqui, porque ninguna revienta al pintar: una rejilla cuyos
+ * `span` no cuadran, una plantilla que se pasa del presupuesto de rendimiento, y dos variantes
+ * que dicen ser el mismo paquete sin serlo.
  */
 class SnkKilkanaThemeSpecValidatorTest extends TestCase
 {
@@ -23,7 +23,7 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
         return new SnkKilkanaThemeSpecValidator;
     }
 
-    /** Los diez peldanos, que en la v2 son obligatorios los diez. */
+    /** Los diez peldanos de la escala, obligatorios los diez. */
     private function steps(): array
     {
         $base = ['weight' => 700, 'tracking' => '-0.01em', 'leading' => 1.2];
@@ -218,11 +218,7 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
         $this->assertStringContainsString('exactamente uno', implode(' ', $this->validator()->validate($spec)));
     }
 
-    /**
-     * Una fila que no llena la rejilla deja un hueco que nadie pidio.
-     *
-     * Es el fallo que la v1 no podia ver, porque una banda era una lista de bloques sin anchos.
-     */
+    /** Una fila que no llena la rejilla deja un hueco que nadie pidio, y no se ve hasta pintarla. */
     public function test_it_refuses_a_row_whose_spans_do_not_fill_the_grid(): void
     {
         $spec = $this->spec();
@@ -261,7 +257,8 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
     }
 
     /**
-     * Los cinco bloques nuevos de la v2 tienen que entrar.
+     * Los cinco bloques compuestos tienen que entrar: `lead-briefs`, `brief-list`, `four-up`,
+     * `mosaic` y `topic-strip`.
      *
      * La banda va la tercera y no la segunda a proposito: `lead-briefs` mas `four-up` mas
      * `mosaic` son diez fotos, y sobre el pliegue eso es justo lo que el presupuesto para.

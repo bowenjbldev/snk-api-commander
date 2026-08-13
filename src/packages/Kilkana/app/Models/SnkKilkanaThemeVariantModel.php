@@ -17,15 +17,14 @@ use Packages\Kilkana\Services\SnkKilkanaThemeSpecValidator;
  * que esta redacción cambió encima. Los dos nulos significan «tal como la envía el producto»,
  * así que actualizar el producto actualiza a todos los inquilinos.
  *
- * **`style` es un nombre de la v1 y lo que guarda es de la v2**: el retoque que no es de color,
- * o sea `density` y el peldaño `hero`. La columna no se renombra porque el nombre no cambia lo
- * que hace y una migración de rename sobre datos de inquilinos cuesta más que el despiste.
+ * **`style` guarda el retoque que no es de color**: `density` y el peldaño `hero`. El nombre es
+ * más ancho que lo que hay dentro y se queda así: una migración de rename sobre datos de
+ * inquilinos cuesta más que el despiste.
  *
- * Los rangos **se leen del validador de spec**, que es quien define el contrato. Estaban
- * copiados aquí y ya habían divergido: el tracking se acotaba en −0,04em y el contrato admite
- * hasta −0,06, así que un tema publicado podía traer un valor que su propio inspector no dejaba
- * escribir. El cliente aplica los mismos límites al leer, y la diferencia está en qué hace cada
- * uno con un valor fuera de banda —el cliente lo descarta en silencio, el servidor responde
+ * Los rangos **se leen del validador de spec**, que es quien define el contrato, y no se copian:
+ * dos copias divergen, y entonces un tema publicado trae un valor que su propio inspector no
+ * deja escribir. El cliente aplica los mismos límites al leer, y la diferencia está en qué hace
+ * cada uno con un valor fuera de banda —el cliente lo descarta en silencio, el servidor responde
  * 422—, porque una API que se traga lo que le mandas sin decirlo deja a quien integra sin saber
  * por qué su color no se aplicó.
  */
@@ -50,8 +49,7 @@ class SnkKilkanaThemeVariantModel extends Model
      * RETOQUE parcial que manda una redacción y el validador valida el tema COMPLETO que trae
      * el catálogo —dos entradas con reglas distintas, una acepta ausencias y la otra las
      * rechaza— pero los límites tienen que ser los mismos, o un tema publicado traería un valor
-     * que su propio inspector no deja escribir. Antes estaban copiados y ya divergían: el
-     * tracking se acotaba aquí en −0,04em y el contrato admite hasta −0,06.
+     * que su propio inspector no deja escribir.
      *
      * Cada entrada es [unidad, clave del rango en el validador].
      */
@@ -181,8 +179,7 @@ class SnkKilkanaThemeVariantModel extends Model
             'tokens' => 'nullable|array',
             'style' => 'nullable|array',
             'tokens.pageRadius' => ['nullable', 'string', self::inUnit('pageRadius')],
-            // El aire, en px y como número: en la v2 `density` sustituye a `blockPadX`/`padY`,
-            // que viajaban con unidad dentro de `style`.
+            // El aire, en px y como número: `density` viaja dentro de `style` y sin unidad.
             'style.density.rowGap' => ['nullable', 'integer', $entre('gap')],
             'style.density.blockGap' => ['nullable', 'integer', $entre('gap')],
             'style.density.padX' => ['nullable', 'integer', $entre('pad')],

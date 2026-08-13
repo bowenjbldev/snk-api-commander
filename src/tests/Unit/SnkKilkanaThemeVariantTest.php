@@ -15,7 +15,7 @@ use Tests\TestCase;
  * Estos casos no tocan la base a proposito: las migraciones de negocio de Kilkana no se cargan
  * en la conexion por defecto (ver `CoreServiceProvider::boot`) y la suite corre sobre sqlite,
  * que no admite el `ALTER TABLE ... ADD CONSTRAINT CHECK` con el que se declara el singleton.
- * Lo que si es comprobable aqui es justo lo nuevo: que un valor fuera de banda no entre.
+ * Lo que si es comprobable aqui, y es lo que importa, es que un valor fuera de banda no entre.
  */
 class SnkKilkanaThemeVariantTest extends TestCase
 {
@@ -125,9 +125,9 @@ class SnkKilkanaThemeVariantTest extends TestCase
     /**
      * Con retoque, el resuelto lo aplica encima y el suelto sigue viajando aparte.
      *
-     * En la v2 el retoque que no es de color son dos cosas: el aire (`density`) y la APERTURA
-     * (`hero`). Los otros nueve peldanos son la escala del paquete, y tocarlos uno a uno seria
-     * redisenar el tema en vez de vestirlo.
+     * El retoque que no es de color son dos cosas: el aire (`density`) y la APERTURA (`hero`).
+     * Los otros nueve peldanos son la escala del paquete, y tocarlos uno a uno seria redisenar
+     * el tema en vez de vestirlo.
      */
     public function test_the_resolved_spec_layers_the_newsroom_tweak_on_top(): void
     {
@@ -164,8 +164,8 @@ class SnkKilkanaThemeVariantTest extends TestCase
     /**
      * El payload de ajustes: plano en la base, anidado en la API, y con la variante resuelta.
      *
-     * `version` ya no sale. Era control optimista opcional que ningun cliente mandaba, asi que
-     * el numero no garantizaba nada; quien lea esto y lo eche de menos, esa es la razon.
+     * `version` no viaja: un control optimista que ningun cliente manda no protege de nada, y
+     * el numero solo daria la impresion de que si.
      */
     public function test_settings_payload_nests_the_tenant_and_resolves_the_variant(): void
     {

@@ -41,13 +41,11 @@ class SnkKilkanaThemeSpecValidator
     /**
      * Los peldaños de la escala tipográfica: diez, y los diez obligatorios.
      *
-     * Sustituyen a los tres campos sueltos de la v1 —`headlineWeight`, `headlineTracking` y
-     * `headlineScale`—, que no daban para escribir un periódico: el tracking va POR PELDAÑO y
-     * no por variante, porque El País ajusta −0,031em a 54 px y cero en el rótulo de banda.
+     * **El tracking va POR PELDAÑO y no por variante**, porque un periódico no lo ajusta una
+     * sola vez: El País pide −0,031em a 54 px y cero en el rótulo de banda.
      *
-     * `masthead` y `nav` son los dos nuevos, y son los que impiden que trescientas cabeceras
-     * distintas salgan todas al mismo tamaño: la cabecera es tipografía del tema, no del
-     * componente.
+     * `masthead` y `nav` están en la escala para que trescientas cabeceras distintas no salgan
+     * todas al mismo tamaño: la cabecera es tipografía del tema, no del componente.
      */
     public const TYPE_STEPS = [
         'hero', 'lead', 'card', 'brief', 'kicker',
@@ -60,11 +58,10 @@ class SnkKilkanaThemeSpecValidator
     /**
      * Los tipos de bloque del editor: los diecisiete de portada y los diez del cuerpo.
      *
-     * Cinco más que la v1 —`lead-briefs`, `four-up`, `mosaic`, `brief-list` y `topic-strip`—,
-     * y ninguno inventado: salen de contar las formas de trece portadas reales medidas. Un
-     * tipo desconocido en una plantilla no se descarta como hace el normalizador del editor
-     * —ahí es defensa contra datos viejos—; aquí es un tema mal hecho y tiene que doler al
-     * publicarlo.
+     * Ninguno inventado: salen de contar las formas de trece portadas reales medidas. Un tipo
+     * desconocido en una plantilla no se descarta como hace el normalizador del editor —ahí es
+     * defensa contra composiciones guardadas hace meses—; aquí es un tema mal hecho y tiene que
+     * doler al publicarlo.
      */
     public const BLOCK_TYPES = [
         // Portada y sección
@@ -116,11 +113,11 @@ class SnkKilkanaThemeSpecValidator
     /**
      * Los pares que tienen que llegar a AA (4.5:1).
      *
-     * **Es lo único que un tema no puede saltarse**, y no ha cambiado ni una línea entre la v1
-     * y la v2: todo lo demás es libertad artística y esto es el derecho del lector a leer. Son
-     * el texto corriente, los dos grises que pintan cabecera y metas, y el acento, que es el
-     * color del antetítulo sobre el papel. `textFaint` NO está: es el gris de los sellos de
-     * hora, y exigirle 4,5:1 lo dejaría indistinguible del texto normal.
+     * **Es lo único que un tema no puede saltarse**: todo lo demás es libertad artística y esto
+     * es el derecho del lector a leer. Son el texto corriente, los dos grises que pintan cabecera
+     * y metas, y el acento, que es el color del antetítulo sobre el papel. `textFaint` NO está:
+     * es el gris de los sellos de hora, y exigirle 4,5:1 lo dejaría indistinguible del texto
+     * normal.
      */
     private const CONTRAST_PAIRS = [
         ['text', 'surface'],
@@ -269,7 +266,7 @@ class SnkKilkanaThemeSpecValidator
     }
 
     /**
-     * La rejilla, que en la v1 no existía: era un ancho suelto en la cabecera del tema.
+     * La rejilla de la hoja, que es sobre la que se reparten los `span` de cada fila.
      *
      * `columns` para las iguales —lo más común— y `tracks` para las desiguales, que existen y
      * no son raras: AS reparte 272/272/172/302. Son EXCLUYENTES porque con las dos no se sabe
@@ -408,9 +405,9 @@ class SnkKilkanaThemeSpecValidator
     /**
      * Los cinco recortes, en forma `ancho/alto`.
      *
-     * Kilkana daba por hecho el apaisado y las referencias dicen que no: El Confidencial usa
-     * cuadrado, AS vídeo vertical y en ¡HOLA! la relación la manda la sección. Son obligatorios
-     * porque son lo que declara la altura de cada foto antes de cargarla, y de ahí sale el CLS.
+     * El apaisado no se da por hecho: El Confidencial usa cuadrado, AS vídeo vertical y en
+     * ¡HOLA! la relación la manda la sección. Son obligatorios porque son lo que declara la
+     * altura de cada foto antes de cargarla, y de ahí sale el CLS.
      */
     private function checkMedia(array $media): array
     {
@@ -426,7 +423,7 @@ class SnkKilkanaThemeSpecValidator
         return $errores;
     }
 
-    /** El aire, en px y como número: sustituye a `style.blockPadX`/`blockPadY`, que iban con unidad. */
+    /** El aire, en px y como número: la unidad la pone quien emite el CSS, no el tema. */
     private function checkDensity(array $density): array
     {
         if ($density === []) {
@@ -450,7 +447,7 @@ class SnkKilkanaThemeSpecValidator
     }
 
     /**
-     * Lo que queda de `style`: CSS libre para el antetítulo y la tarjeta.
+     * CSS libre para el antetítulo y la tarjeta.
      *
      * No se acotan los valores —son CSS— pero sí que estén y que sean cadenas, porque un nulo
      * aquí sale a la hoja como la cadena «null» y rompe el color de algo.
@@ -479,11 +476,10 @@ class SnkKilkanaThemeSpecValidator
     /**
      * Las plantillas de arranque: **fila → columnas → bloques**.
      *
-     * En la v1 una banda era «un bloque suelto o una fila de columnas, cada columna un bloque»,
-     * y por eso el raíl no se podía escribir: el pozo de nueve columnas de El País lleva su
-     * apertura mientras el raíl de tres corre en paralelo con su destacado, sus dos tarjetas y
-     * su anuncio. Ahora una banda a todo el ancho es una fila con UNA columna, y no hay dos
-     * formas de decir lo mismo.
+     * Las tres alturas son las que hacen escribible un raíl: el pozo de nueve columnas de El
+     * País lleva su apertura mientras el raíl de tres corre en paralelo con su destacado, sus
+     * dos tarjetas y su anuncio. Una banda a todo el ancho es una fila con UNA columna, y no
+     * hay dos formas de decir lo mismo.
      */
     private function checkLayouts(array $spec): array
     {
