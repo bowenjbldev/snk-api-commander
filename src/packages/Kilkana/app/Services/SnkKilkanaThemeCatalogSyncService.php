@@ -115,6 +115,14 @@ class SnkKilkanaThemeCatalogSyncService
             }
         }
 
+        // Y que las variantes sean el mismo periódico. El `spec` es autosuficiente —copiarlo lo
+        // dibuja— y el precio de esa autonomía es que la rejilla y las tipografías se repiten en
+        // cada una. Repetido y sin comprobar sería una promesa rota: una variante con otro ancho
+        // de hoja ya no es la misma cabecera, y entonces no son dos pieles, son dos temas.
+        foreach ($this->validator->validateFamily($variantes) as $error) {
+            $problemas[] = "{$fichero}: {$error}";
+        }
+
         $categorias = $this->resolveCategories($datos['categories'] ?? [], $fichero, $problemas);
 
         if ($problemas !== []) {

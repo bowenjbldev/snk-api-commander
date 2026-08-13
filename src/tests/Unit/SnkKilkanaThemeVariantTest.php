@@ -28,7 +28,10 @@ class SnkKilkanaThemeVariantTest extends TestCase
     {
         $validator = $this->validate([
             'tokens' => ['brand' => '#1A1A1A', 'pageRadius' => '10px'],
-            'style' => ['headlineWeight' => 700, 'headlineScale' => 0.9, 'headlineTracking' => '-0.02em', 'blockPadX' => '14px'],
+            'style' => [
+                'density' => ['rowGap' => 44, 'padX' => 28],
+                'hero' => ['size' => 54, 'weight' => 700, 'tracking' => '-0.02em', 'leading' => 1.1],
+            ],
         ]);
 
         $this->assertFalse($validator->fails(), (string) $validator->errors());
@@ -38,7 +41,10 @@ class SnkKilkanaThemeVariantTest extends TestCase
     {
         $validator = $this->validate([
             'tokens' => ['pageRadius' => '0px'],
-            'style' => ['headlineWeight' => 600, 'headlineScale' => 0.8, 'headlineTracking' => '-0.04em', 'blockPadY' => '18px'],
+            'style' => [
+                'density' => ['rowGap' => 240, 'blockGap' => 0, 'padX' => 80, 'padY' => 0],
+                'hero' => ['size' => 120, 'weight' => 900, 'tracking' => '-0.06em', 'leading' => 0.9],
+            ],
         ]);
 
         $this->assertFalse($validator->fails(), (string) $validator->errors());
@@ -61,10 +67,12 @@ class SnkKilkanaThemeVariantTest extends TestCase
     public function test_it_rejects_values_outside_their_range(): void
     {
         foreach ([
-            'style.headlineScale' => ['style' => ['headlineScale' => 3]],
-            'style.headlineWeight' => ['style' => ['headlineWeight' => 650]],
-            'style.blockPadX' => ['style' => ['blockPadX' => '99px']],
-            'style.headlineTracking' => ['style' => ['headlineTracking' => '-1em']],
+            'style.hero.size' => ['style' => ['hero' => ['size' => 300]]],
+            'style.hero.weight' => ['style' => ['hero' => ['weight' => 650]]],
+            'style.hero.leading' => ['style' => ['hero' => ['leading' => 4]]],
+            'style.hero.tracking' => ['style' => ['hero' => ['tracking' => '-1em']]],
+            'style.density.padX' => ['style' => ['density' => ['padX' => 99]]],
+            'style.density.rowGap' => ['style' => ['density' => ['rowGap' => 400]]],
             'tokens.pageRadius' => ['tokens' => ['pageRadius' => '40px']],
         ] as $campo => $datos) {
             $validator = $this->validate($datos);
@@ -77,7 +85,7 @@ class SnkKilkanaThemeVariantTest extends TestCase
     /** Un numero sin unidad no es un valor CSS, y `themeVars()` lo emitiria tal cual. */
     public function test_it_rejects_a_css_value_without_its_unit(): void
     {
-        $validator = $this->validate(['style' => ['blockPadX' => '14']]);
+        $validator = $this->validate(['style' => ['hero' => ['tracking' => '-0.02']]]);
 
         $this->assertTrue($validator->fails());
     }
@@ -114,22 +122,43 @@ class SnkKilkanaThemeVariantTest extends TestCase
         $this->assertSame('#121212', $payload['spec']->tokens['brand']);
     }
 
-    /** Con retoque, el resuelto lo aplica encima y el suelto sigue viajando aparte. */
+    /**
+     * Con retoque, el resuelto lo aplica encima y el suelto sigue viajando aparte.
+     *
+     * En la v2 el retoque que no es de color son dos cosas: el aire (`density`) y la APERTURA
+     * (`hero`). Los otros nueve peldanos son la escala del paquete, y tocarlos uno a uno seria
+     * redisenar el tema en vez de vestirlo.
+     */
     public function test_the_resolved_spec_layers_the_newsroom_tweak_on_top(): void
     {
         $variante = new SnkKilkanaThemeVariantModel([
             'slug' => 'verano',
             'source' => SnkKilkanaThemeSourceEnum::Tenant->value,
-            'spec' => ['tokens' => ['brand' => '#121212', 'accent' => '#d32f2f'], 'style' => ['headlineScale' => 1]],
+            'spec' => [
+                'tokens' => ['brand' => '#121212', 'accent' => '#d32f2f'],
+                'density' => ['rowGap' => 44, 'blockGap' => 18],
+                'type' => [
+                    'display' => 'Georgia, serif',
+                    'steps' => [
+                        'hero' => ['size' => 54, 'weight' => 700, 'leading' => 1.09],
+                        'card' => ['size' => 20, 'weight' => 700, 'leading' => 1.18],
+                    ],
+                ],
+            ],
             'tokens' => ['brand' => '#0000ff'],
-            'style' => ['headlineScale' => 0.9],
+            'style' => ['density' => ['rowGap' => 60], 'hero' => ['size' => 64]],
         ]);
 
         $resuelto = $variante->resolvedSpec();
 
         $this->assertSame('#0000ff', $resuelto['tokens']['brand']);
         $this->assertSame('#d32f2f', $resuelto['tokens']['accent'], 'lo que no se toca se hereda del spec');
-        $this->assertSame(0.9, $resuelto['style']['headlineScale']);
+        $this->assertSame(60, $resuelto['density']['rowGap']);
+        $this->assertSame(18, $resuelto['density']['blockGap'], 'lo que no se toca se hereda del spec');
+        $this->assertSame(64, $resuelto['type']['steps']['hero']['size']);
+        $this->assertSame(700, $resuelto['type']['steps']['hero']['weight'], 'el peldano se mezcla, no se sustituye');
+        $this->assertSame(20, $resuelto['type']['steps']['card']['size'], 'los otros peldanos no se tocan');
+        $this->assertSame('Georgia, serif', $resuelto['type']['display']);
     }
 
     /**

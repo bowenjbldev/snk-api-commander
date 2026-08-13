@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 use Packages\Kilkana\Enums\SnkKilkanaThemeSourceEnum;
+use Packages\Kilkana\Services\SnkKilkanaThemeSpecValidator;
 
 /**
  * La variante que viste el periódico: puntero + diferencia.
@@ -16,12 +17,17 @@ use Packages\Kilkana\Enums\SnkKilkanaThemeSourceEnum;
  * que esta redacción cambió encima. Los dos nulos significan «tal como la envía el producto»,
  * así que actualizar el producto actualiza a todos los inquilinos.
  *
- * Los rangos de abajo son los mismos que aplica `kilkana.app/src/lib/themes/overrides.ts` al
- * leer. Están en los dos lados a propósito y no es duplicación ociosa: el cliente los usa para
- * no pintar basura y el servidor para no guardarla. La diferencia está en qué hace cada uno
- * con un valor fuera de banda —el cliente lo descarta en silencio, el servidor responde 422—,
- * porque una API que se traga lo que le mandas sin decirlo deja a quien integra sin saber por
- * qué su color no se aplicó.
+ * **`style` es un nombre de la v1 y lo que guarda es de la v2**: el retoque que no es de color,
+ * o sea `density` y el peldaño `hero`. La columna no se renombra porque el nombre no cambia lo
+ * que hace y una migración de rename sobre datos de inquilinos cuesta más que el despiste.
+ *
+ * Los rangos **se leen del validador de spec**, que es quien define el contrato. Estaban
+ * copiados aquí y ya habían divergido: el tracking se acotaba en −0,04em y el contrato admite
+ * hasta −0,06, así que un tema publicado podía traer un valor que su propio inspector no dejaba
+ * escribir. El cliente aplica los mismos límites al leer, y la diferencia está en qué hace cada
+ * uno con un valor fuera de banda —el cliente lo descarta en silencio, el servidor responde
+ * 422—, porque una API que se traga lo que le mandas sin decirlo deja a quien integra sin saber
+ * por qué su color no se aplicó.
  */
 class SnkKilkanaThemeVariantModel extends Model
 {
@@ -38,27 +44,21 @@ class SnkKilkanaThemeVariantModel extends Model
     ];
 
     /**
-     * Los rangos, en un solo sitio, porque los miran dos validaciones distintas.
+     * Las unidades que lleva el retoque, con su rango sacado del contrato.
      *
-     * `shapeRules()` valida el RETOQUE parcial que manda una redacción; el validador de spec
-     * valida el tema COMPLETO que trae el catálogo. Son dos entradas con reglas distintas
-     * —una acepta ausencias, la otra las rechaza— pero los límites tienen que ser los mismos,
-     * o un tema publicado podría traer un valor que su propio inspector no deja escribir.
+     * **Los límites no se escriben aquí: se leen del validador.** `shapeRules()` valida el
+     * RETOQUE parcial que manda una redacción y el validador valida el tema COMPLETO que trae
+     * el catálogo —dos entradas con reglas distintas, una acepta ausencias y la otra las
+     * rechaza— pero los límites tienen que ser los mismos, o un tema publicado traería un valor
+     * que su propio inspector no deja escribir. Antes estaban copiados y ya divergían: el
+     * tracking se acotaba aquí en −0,04em y el contrato admite hasta −0,06.
      *
-     * Cada entrada es [unidad, mínimo, máximo].
+     * Cada entrada es [unidad, clave del rango en el validador].
      */
-    public const UNIT_RANGES = [
-        'pageRadius' => ['px', 0, 12],
-        'headlineTracking' => ['em', -0.04, 0.02],
-        'blockPadX' => ['px', 10, 18],
-        'blockPadY' => ['px', 10, 18],
+    public const UNITS = [
+        'pageRadius' => ['px', 'pageRadius'],
+        'tracking' => ['em', 'tracking'],
     ];
-
-    /** Peso de titular: centenas entre 600 y 800. */
-    public const WEIGHT_RANGE = [600, 800];
-
-    /** Escala de titular: multiplica el tamaño de toda la gama tipográfica. */
-    public const SCALE_RANGE = [0.8, 1.1];
 
     protected function casts(): array
     {
@@ -104,12 +104,31 @@ class SnkKilkanaThemeVariantModel extends Model
     public function resolvedSpec(): array
     {
         $spec = $this->spec ?? [];
+        $retoque = $this->style ?? [];
 
-        return [
+        $resuelto = [
             ...$spec,
             'tokens' => [...($spec['tokens'] ?? []), ...($this->tokens ?? [])],
-            'style' => [...($spec['style'] ?? []), ...($this->style ?? [])],
         ];
+
+        if (is_array($retoque['density'] ?? null)) {
+            $resuelto['density'] = [...($spec['density'] ?? []), ...$retoque['density']];
+        }
+
+        // El retoque tipográfico llega solo a la APERTURA, que es el peldaño con el que se
+        // decide si un tema se ve grande o pequeño. Los otros nueve son la escala del paquete
+        // y tocarlos uno a uno sería rediseñar el tema, no vestirlo.
+        if (is_array($retoque['hero'] ?? null) && is_array($spec['type'] ?? null)) {
+            $resuelto['type'] = [
+                ...$spec['type'],
+                'steps' => [
+                    ...($spec['type']['steps'] ?? []),
+                    'hero' => [...($spec['type']['steps']['hero'] ?? []), ...$retoque['hero']],
+                ],
+            ];
+        }
+
+        return $resuelto;
     }
 
     /**
@@ -152,18 +171,27 @@ class SnkKilkanaThemeVariantModel extends Model
      */
     public static function shapeRules(): array
     {
-        [$pesoMin, $pesoMax] = self::WEIGHT_RANGE;
-        [$escalaMin, $escalaMax] = self::SCALE_RANGE;
+        $entre = function (string $rango): string {
+            [$min, $max] = SnkKilkanaThemeSpecValidator::RANGES[$rango];
+
+            return "between:{$min},{$max}";
+        };
 
         $reglas = [
             'tokens' => 'nullable|array',
             'style' => 'nullable|array',
-            'tokens.pageRadius' => ['nullable', 'string', self::inUnit(...self::UNIT_RANGES['pageRadius'])],
-            'style.headlineWeight' => "nullable|integer|between:{$pesoMin},{$pesoMax}|multiple_of:100",
-            'style.headlineScale' => "nullable|numeric|between:{$escalaMin},{$escalaMax}",
-            'style.headlineTracking' => ['nullable', 'string', self::inUnit(...self::UNIT_RANGES['headlineTracking'])],
-            'style.blockPadX' => ['nullable', 'string', self::inUnit(...self::UNIT_RANGES['blockPadX'])],
-            'style.blockPadY' => ['nullable', 'string', self::inUnit(...self::UNIT_RANGES['blockPadY'])],
+            'tokens.pageRadius' => ['nullable', 'string', self::inUnit('pageRadius')],
+            // El aire, en px y como número: en la v2 `density` sustituye a `blockPadX`/`padY`,
+            // que viajaban con unidad dentro de `style`.
+            'style.density.rowGap' => ['nullable', 'integer', $entre('gap')],
+            'style.density.blockGap' => ['nullable', 'integer', $entre('gap')],
+            'style.density.padX' => ['nullable', 'integer', $entre('pad')],
+            'style.density.padY' => ['nullable', 'integer', $entre('pad')],
+            // Y la apertura, que es el peldaño con el que se decide si un tema se ve grande.
+            'style.hero.size' => ['nullable', 'integer', $entre('size')],
+            'style.hero.weight' => ['nullable', 'integer', $entre('weight'), 'multiple_of:100'],
+            'style.hero.leading' => ['nullable', 'numeric', $entre('leading')],
+            'style.hero.tracking' => ['nullable', 'string', self::inUnit('tracking')],
         ];
 
         foreach (self::COLOR_KEYS as $clave) {
@@ -212,8 +240,11 @@ class SnkKilkanaThemeVariantModel extends Model
      * properties. Validar el rango exige separar número y unidad, y eso es justo lo que un
      * `regex` por sí solo no puede hacer.
      */
-    private static function inUnit(string $unidad, float $min, float $max): Closure
+    private static function inUnit(string $clave): Closure
     {
+        [$unidad, $rango] = self::UNITS[$clave];
+        [$min, $max] = SnkKilkanaThemeSpecValidator::RANGES[$rango];
+
         return function (string $atributo, mixed $valor, Closure $fallar) use ($unidad, $min, $max) {
             if (! is_string($valor) || ! preg_match('/^(-?\d+(?:\.\d+)?)'.$unidad.'$/', $valor, $partes)) {
                 $fallar("The {$atributo} must be a number followed by {$unidad}.");
