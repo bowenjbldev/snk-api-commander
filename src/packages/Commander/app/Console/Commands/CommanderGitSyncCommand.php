@@ -8,22 +8,22 @@ use Packages\Commander\Services\CommanderGitSyncService;
 class CommanderGitSyncCommand extends Command
 {
     protected $signature = 'commander:git:sync
-        {--package= : Limita a un package (name StudlyCase o slug)}';
+        {--application= : Limit to an application package name or slug}';
 
-    protected $description = 'Sincroniza el historial git por package (commits + rollup diario) para los insights';
+    protected $description = 'Synchronize git history by application';
 
     public function handle(CommanderGitSyncService $service): int
     {
-        $summary = $service->sync($this->option('package') ?: null);
+        $summary = $service->sync($this->option('application') ?: null);
 
         if ($summary === []) {
-            $this->warn('No hay packages provisionados que sincronizar.');
+            $this->warn('No available applications to synchronize.');
 
             return self::SUCCESS;
         }
 
         foreach ($summary as $row) {
-            $this->info("[{$row['package']}] {$row['commits']} commits nuevos, {$row['days']} dias actualizados.");
+            $this->info("[{$row['application']}] {$row['commits']} new commits, {$row['days']} updated days.");
         }
 
         return self::SUCCESS;

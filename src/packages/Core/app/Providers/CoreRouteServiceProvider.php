@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Packages\Core\Http\Middleware\CoreEnsureActiveMiddleware;
 use Packages\Core\Http\Middleware\CoreMeteringMiddleware;
-use Packages\Core\Http\Middleware\CoreResolvePackageFromHostMiddleware;
-use Packages\Core\Support\CoreActivePackageSupport;
+use Packages\Core\Http\Middleware\CoreResolveInstanceFromHostMiddleware;
+use Packages\Core\Support\CoreActiveInstanceSupport;
 use Packages\Core\Support\CorePackageDiscoverySupport;
 use Packages\Core\Support\CorePackageSelectorSupport;
 
@@ -32,14 +32,14 @@ class CoreRouteServiceProvider extends ServiceProvider
         // API consumers may fan out several requests, so the per-user budget is generous and
         // environment-tunable.
         RateLimiter::for('api', function (Request $request) {
-            $tenant = $this->app->make(CoreActivePackageSupport::class)->id() ?? 'control';
+            $tenant = $this->app->make(CoreActiveInstanceSupport::class)->id() ?? 'control';
             $actor = $request->user()?->getAuthIdentifier() ?? $request->ip();
 
             return Limit::perMinute((int) env('CORE_API_RATE_LIMIT', 240))->by("{$tenant}:{$actor}");
         });
 
         RateLimiter::for('login', function (Request $request) {
-            $tenant = $this->app->make(CoreActivePackageSupport::class)->id() ?? 'control';
+            $tenant = $this->app->make(CoreActiveInstanceSupport::class)->id() ?? 'control';
 
             return Limit::perMinute((int) env('CORE_LOGIN_RATE_LIMIT', 10))->by("{$tenant}:{$request->ip()}");
         });
@@ -51,8 +51,8 @@ class CoreRouteServiceProvider extends ServiceProvider
 
         // El override de config por package YA NO es global pre-routing: con subdominio = cliente
         // (varios packages comparten host), el package solo se conoce con el slug del path. El
-        // override vive ahora dentro del resolutor (CoreResolvePackageFromHostMiddleware), una vez
-        // resuelto (cliente, slug) -> package. API stateless (sin sesión), así que no necesita
+        // override vive ahora dentro del resolutor de instancia, una vez resuelto
+        // (cliente, slug) -> instancia. API stateless (sin sesión), así que no necesita
         // aplicarse antes del StartSession.
 
         $router->pushMiddlewareToGroup('api', 'throttle:api');
@@ -129,7 +129,7 @@ class CoreRouteServiceProvider extends ServiceProvider
                 Route::domain($clientSubdomain.'.'.$tenantBase)
                     ->prefix('api/v1/'.$packageSlug)
                     ->name($namePrefix)
-                    ->middleware([CoreResolvePackageFromHostMiddleware::class.':'.$packageSlug, 'api'])
+                    ->middleware([CoreResolveInstanceFromHostMiddleware::class.':'.$packageSlug, 'api'])
                     ->group($routeFile);
                 $this->removeEmptyGroupNames($namePrefix);
             }
@@ -146,7 +146,7 @@ class CoreRouteServiceProvider extends ServiceProvider
                 Route::domain('{client}.'.$tenantBase)
                     ->prefix('api/v1/'.$packageSlug)
                     ->name($namePrefix)
-                    ->middleware([CoreResolvePackageFromHostMiddleware::class.':'.$packageSlug, 'api'])
+                    ->middleware([CoreResolveInstanceFromHostMiddleware::class.':'.$packageSlug, 'api'])
                     ->group($routeFile);
                 $this->removeEmptyGroupNames($namePrefix);
             }

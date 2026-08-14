@@ -5,7 +5,7 @@ namespace Packages\Commander\Git;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Process;
 use Packages\Commander\Contracts\CommanderPackageGitSource;
-use Packages\Commander\Models\CommanderPackageRepoModel;
+use Packages\Commander\Models\CommanderApplicationRepoModel;
 use Packages\Commander\Support\CommanderGitCommitData;
 
 /**
@@ -22,10 +22,9 @@ class CommanderLocalGitSource implements CommanderPackageGitSource
         private readonly string $gitDir,
         private readonly string $workTree,
         private readonly string $binary = 'git',
-    ) {
-    }
+    ) {}
 
-    public function fetchCommits(CommanderPackageRepoModel $repo, ?string $sinceSha): iterable
+    public function fetchCommits(CommanderApplicationRepoModel $repo, ?string $sinceSha): iterable
     {
         $path = (string) $repo->path_prefix;
 

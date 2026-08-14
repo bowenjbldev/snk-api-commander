@@ -2,7 +2,7 @@
 
 namespace Packages\Commander\Contracts;
 
-use Packages\Commander\Models\CommanderPackageRepoModel;
+use Packages\Commander\Models\CommanderApplicationRepoModel;
 use Packages\Commander\Support\CommanderGitCommitData;
 
 /**
@@ -19,5 +19,5 @@ interface CommanderPackageGitSource
      *
      * @return iterable<CommanderGitCommitData>
      */
-    public function fetchCommits(CommanderPackageRepoModel $repo, ?string $sinceSha): iterable;
+    public function fetchCommits(CommanderApplicationRepoModel $repo, ?string $sinceSha): iterable;
 }

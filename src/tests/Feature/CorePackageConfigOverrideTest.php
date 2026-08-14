@@ -5,10 +5,12 @@ namespace Tests\Feature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Packages\Commander\Models\CommanderAccountModel;
+use Packages\Commander\Models\CommanderApplicationModel;
 use Packages\Commander\Models\CommanderClientModel;
-use Packages\Commander\Models\CommanderPackageModel;
-use Packages\Core\Http\Middleware\CoreResolvePackageFromHostMiddleware;
-use Packages\Core\Support\CoreActivePackageSupport;
+use Packages\Commander\Models\CommanderInstanceModel;
+use Packages\Core\Http\Middleware\CoreResolveInstanceFromHostMiddleware;
+use Packages\Core\Support\CoreActiveInstanceSupport;
 use Packages\Core\Support\CorePackageSelectorSupport;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\TestCase;
@@ -21,17 +23,25 @@ class CorePackageConfigOverrideTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function provisionedPackage(string $clientSlug, string $slug): void
+    private function readyInstance(string $clientSlug, string $slug): void
     {
+        $account = CommanderAccountModel::create([
+            'name' => strtoupper($clientSlug), 'email' => "ops@{$clientSlug}.test",
+        ]);
         $client = CommanderClientModel::create([
-            'slug' => $clientSlug, 'name' => strtoupper($clientSlug), 'email' => "ops@{$clientSlug}.test", 'status' => 'active',
+            'account_id' => $account->id, 'slug' => $clientSlug,
+            'name' => strtoupper($clientSlug), 'email' => "ops@{$clientSlug}.test", 'status' => 'active',
+        ]);
+        $application = CommanderApplicationModel::create([
+            'package_name' => Str::studly($slug), 'name' => Str::headline($slug), 'slug' => $slug,
+            'status' => 'active', 'code_status' => 'available',
         ]);
 
-        CommanderPackageModel::create([
-            'name' => 'Shop', 'slug' => $slug,
+        CommanderInstanceModel::create([
             'database' => CorePackageSelectorSupport::databaseName($clientSlug, $slug),
             'database_username' => 'tenant_1', 'database_password' => 'runtime-secret',
-            'client_id' => $client->id, 'status' => 'active', 'provisioned_at' => now(),
+            'client_id' => $client->id, 'application_id' => $application->id,
+            'service_status' => 'active', 'provisioning_status' => 'ready', 'provisioned_at' => now(),
         ]);
     }
 
@@ -41,7 +51,7 @@ class CorePackageConfigOverrideTest extends TestCase
         $request = Request::create("https://{$host}/api/v1/{$slug}/x", 'GET');
         $seen = [];
 
-        app(CoreResolvePackageFromHostMiddleware::class)->handle($request, function () use (&$seen, $slug) {
+        app(CoreResolveInstanceFromHostMiddleware::class)->handle($request, function () use (&$seen, $slug) {
             $packageConfigKey = strtolower(Str::studly($slug));
             $seen = [
                 'app_name' => config('app.name'),
@@ -57,7 +67,7 @@ class CorePackageConfigOverrideTest extends TestCase
 
     public function test_package_overrides_apply_in_resolver(): void
     {
-        $this->provisionedPackage('acme', 'shop');
+        $this->readyInstance('acme', 'shop');
         $originalName = config('app.name');
         $originalLifetime = config('session.lifetime');
         config([
@@ -72,12 +82,12 @@ class CorePackageConfigOverrideTest extends TestCase
         $this->assertSame(999, $seen['session_lifetime']);
         $this->assertSame($originalName, config('app.name'));
         $this->assertSame($originalLifetime, config('session.lifetime'));
-        $this->assertNull(app(CoreActivePackageSupport::class)->current());
+        $this->assertNull(app(CoreActiveInstanceSupport::class)->current());
     }
 
     public function test_hyphenated_client_overlay_merges_package_config_and_is_restored(): void
     {
-        $this->provisionedPackage('el-mundo', 'news-room');
+        $this->readyInstance('el-mundo', 'news-room');
         $originalName = config('app.name');
         config([
             'newsroom.app' => ['name' => 'Shared newsroom'],
@@ -104,7 +114,7 @@ class CorePackageConfigOverrideTest extends TestCase
 
     public function test_client_domain_parameter_is_not_forwarded_to_the_controller(): void
     {
-        $this->provisionedPackage('demo', 'kilkana');
+        $this->readyInstance('demo', 'kilkana');
         $request = Request::create('https://demo.kilkana.test/api/v1/kilkana/public/layouts/front', 'GET');
         $route = app('router')->getRoutes()->match($request);
         $request->setRouteResolver(fn () => $route);
@@ -112,7 +122,7 @@ class CorePackageConfigOverrideTest extends TestCase
         $this->assertSame(['client' => 'demo', 'layout' => 'front'], $route->parameters());
         $parameters = null;
 
-        app(CoreResolvePackageFromHostMiddleware::class)->handle(
+        app(CoreResolveInstanceFromHostMiddleware::class)->handle(
             $request,
             function () use ($request, &$parameters) {
                 $parameters = $request->route()?->parameters();

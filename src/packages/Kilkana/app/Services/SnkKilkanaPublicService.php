@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
-use Packages\Core\Support\CoreActivePackageSupport;
 use Packages\Core\Support\CorePackageSelectorSupport;
 use Packages\Kilkana\Enums\SnkKilkanaConsentSourceEnum;
 use Packages\Kilkana\Enums\SnkKilkanaSubscriberStatusEnum;
@@ -28,8 +27,6 @@ use Packages\Kilkana\Models\SnkKilkanaSubscriberModel;
 class SnkKilkanaPublicService
 {
     private const AUTHOR_PUBLIC = 'author:id,user_id,alias,slug,noindex';
-
-    public function __construct(private readonly CoreActivePackageSupport $active) {}
 
     public function posts(array $filters)
     {

@@ -1,7 +1,8 @@
 # Contexto para agentes
 
 Este repositorio es el backend Laravel y el control plane de una plataforma SaaS multi-tenant.
-Antes de cambiar código, lee [`docs/README.md`](docs/README.md) y después el documento de tu área.
+Antes de cambiar código, lee [`docs/README.md`](docs/README.md),
+[`docs/commander-model.md`](docs/commander-model.md) y después el documento de tu área.
 
 ## Lectura por tarea
 
@@ -9,22 +10,24 @@ Antes de cambiar código, lee [`docs/README.md`](docs/README.md) y después el d
 |---|---|
 | Core, routing, paquetes u overlays | [`docs/architecture.md`](docs/architecture.md) y [`docs/flows.md`](docs/flows.md) |
 | provisioning, de-provisioning, estado o cuotas | [`docs/flows.md`](docs/flows.md) y [`docs/database.md`](docs/database.md) |
-| migraciones o modelos Commander | [`docs/database.md`](docs/database.md) |
+| migraciones o modelos Commander | [`docs/commander-model.md`](docs/commander-model.md) y [`docs/database.md`](docs/database.md) |
 | Kilkana | [`docs/business.md`](docs/business.md) y [`docs/database/kilkana/README.md`](docs/database/kilkana/README.md) |
 | comandos, Docker, tests o deploy | [`docs/operations.md`](docs/operations.md) |
 
 ## Invariantes
 
 - Una app sirve todos los clientes. Cliente = subdominio; producto = segmento tras `/api/v1`.
-- SnakePC es el ámbito local/portfolio y `commander.snakepc.test` su control plane. La dirección
-  futura de Kilkana es `{cliente}.kilkana.test`, sin `commander.kilkana.test`; aún no está
-  implementada porque hoy todo deriva de un único `BASE_DOMAIN`. Lee
-  [`docs/architecture.md`](docs/architecture.md#ámbitos-de-dominio-snakepc-y-kilkana) antes de
-  cambiar dominios.
+- SnakePC es el ámbito local/portfolio y `commander.snakepc.test` su control plane. Kilkana usa
+  `{cliente}.kilkana.test`, sin `commander.kilkana.test`; `BASE_DOMAIN` y `TENANT_BASE_DOMAIN`
+  gobiernan ambos ámbitos.
 - Cada par `(cliente, producto)` provisionado tiene una BD propia `{cliente}_{producto}`.
-- Todo cliente pertenece obligatoriamente a una `commander_account`: el alta normal crea una
-  cuenta 1:1 y un grupo reutiliza una cuenta 1:N. El cliente sigue siendo subdominio, tenant y
-  frontera de BD; no agregues datos tenant ni cuotas dentro de la cuenta.
+- Cuenta = pagador/contrato; cliente = tenant/subdominio; aplicación = producto; instancia = par
+  cliente-aplicación. Todo cliente pertenece a una cuenta: el alta normal crea una 1:1 y un grupo
+  reutiliza una 1:N. No agregues datos tenant ni cuotas dentro de la cuenta.
+- El catálogo de aplicaciones es code-first y se actualiza con `commander:applications:sync`,
+  nunca como efecto lateral de un GET. Un package es implementación, no contrato ni instancia.
+- Un plan pertenece a una aplicación. Una suscripción pertenece a cuenta+aplicación y sus ítems
+  asignan el plan operativo de cada instancia. El precio negociado no se recalcula al cambiar plan.
 - `commander` es la única base de control; los modelos `commander_*` están fijados a esa conexión.
 - Producto compartido: `src/packages/<Paquete>`. Overlay opcional:
   `src/packages/<Cliente>/<Paquete>` con solo diferencias.
@@ -34,9 +37,11 @@ Antes de cambiar código, lee [`docs/README.md`](docs/README.md) y después el d
 - Una implementación necesita `routes/api.php` para ser descubrible. Un overlay de config puede
   existir sin rutas solo cuando ya hay producto compartido.
 - Providers compartidos sí; providers de overlay no se cargan globalmente.
-- `provisioned_at` no nulo es la frontera para enrutar. Pending no sirve tráfico.
-- Las acciones de instancia usan `commander_packages.id` numérico, no `name` ni slug global.
-- La conexión tenant, la config runtime y `CoreActivePackageSupport` se restauran en `finally`.
+- Solo `commander_instances.provisioning_status = ready` enruta. Pending/failed/deprovisioned no.
+- Las acciones usan `commander_instances.id` numérico, no nombre ni slug global.
+- Un fallo conserva instancia y `last_error`; retry reutiliza el mismo ID y exige credenciales
+  admin explícitas.
+- La conexión tenant, la config runtime y `CoreActiveInstanceSupport` se restauran en `finally`.
 - El worker `provisioner` es el único con DDL. El usuario runtime solo tiene CRUD sobre una BD.
 - Un token pertenece a la base que lo contiene; no añadas bypasses de aislamiento por token/id.
 - La conmutación global soporta PHP-FPM y workers secuenciales, no concurrencia Octane/Swoole.
@@ -94,11 +99,11 @@ cambios contra MariaDB. Reporta test, build y lint por separado: uno verde no im
 
 ## Riesgos conocidos
 
-- `commander_packages` mezcla catálogo y ciclo de vida; no inventes estados implícitos nuevos.
-- Enqueue sin outbox puede dejar pending; de-provisioning puede dejar recursos si falla el worker.
-- El único nullable de catálogo permite una carrera de duplicados.
-- La suscripción vigente se garantiza en código, no con constraint parcial de BD.
-- Git Insights puede duplicar actividad del código compartido por instancia.
+- Enqueue sin outbox puede dejar pending/failed; de-provisioning puede dejar recursos si falla el
+  worker. No ocultes esos estados creando otra instancia.
+- Las igualdades cross-relation (métrica/plan/aplicación y cuenta/contrato/cliente) se garantizan en
+  la API, no todas mediante constraints simples.
+- Los límites de plan son plantillas: editarlos no reescribe instancias existentes.
 - De-provisioning solo conoce el storage `media/{database}`.
 
 Los detalles y las condiciones de mejora están documentados en

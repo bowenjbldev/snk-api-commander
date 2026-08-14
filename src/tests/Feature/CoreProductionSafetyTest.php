@@ -9,14 +9,16 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
-use Packages\Commander\Jobs\CommanderDeprovisionPackageJob;
-use Packages\Commander\Jobs\CommanderProvisionPackageJob;
+use Packages\Commander\Jobs\CommanderDeprovisionInstanceJob;
+use Packages\Commander\Jobs\CommanderProvisionInstanceJob;
+use Packages\Commander\Models\CommanderAccountModel;
+use Packages\Commander\Models\CommanderApplicationModel;
 use Packages\Commander\Models\CommanderClientModel;
-use Packages\Commander\Models\CommanderPackageModel;
+use Packages\Commander\Models\CommanderInstanceModel;
 use Packages\Core\Database\Seeders\CoreDatabaseSeeder;
 use Packages\Core\Http\Middleware\CoreEnsureActiveMiddleware;
-use Packages\Core\Services\CorePackageStateService;
-use Packages\Core\Support\CoreActivePackageSupport;
+use Packages\Core\Services\CoreInstanceStateService;
+use Packages\Core\Support\CoreActiveInstanceSupport;
 use Tests\TestCase;
 
 class CoreProductionSafetyTest extends TestCase
@@ -48,17 +50,16 @@ class CoreProductionSafetyTest extends TestCase
         $this->assertTrue(URL::hasValidSignature(Request::create($url)));
     }
 
-    public function test_queue_visibility_and_package_locks_cover_destructive_jobs(): void
+    public function test_queue_visibility_and_instance_locks_cover_destructive_jobs(): void
     {
-        $provision = new CommanderProvisionPackageJob(
+        $provision = new CommanderProvisionInstanceJob(
             42,
             'acme',
             'Shop',
-            null,
             'admin@acme.test',
             Crypt::encryptString('unique-password'),
         );
-        $deprovision = new CommanderDeprovisionPackageJob(42);
+        $deprovision = new CommanderDeprovisionInstanceJob(42);
 
         $this->assertGreaterThan($provision->timeout, config('queue.connections.database.retry_after'));
         $this->assertGreaterThan($deprovision->timeout, config('queue.connections.database.retry_after'));
@@ -70,10 +71,10 @@ class CoreProductionSafetyTest extends TestCase
 
     public function test_tenant_state_check_fails_closed(): void
     {
-        $state = \Mockery::mock(CorePackageStateService::class);
+        $state = \Mockery::mock(CoreInstanceStateService::class);
         $state->shouldReceive('current')->once()->andThrow(new \RuntimeException('cache unavailable'));
-        $active = new CoreActivePackageSupport;
-        $active->set((new CommanderPackageModel)->forceFill(['id' => 42]));
+        $active = new CoreActiveInstanceSupport;
+        $active->set((new CommanderInstanceModel)->forceFill(['id' => 42]));
 
         $response = (new CoreEnsureActiveMiddleware($state, $active))->handle(
             Request::create('/api/v1/kilkana/posts'),
@@ -86,17 +87,26 @@ class CoreProductionSafetyTest extends TestCase
 
     public function test_all_tenant_migration_fails_closed_for_incomplete_registry_entry(): void
     {
+        $account = CommanderAccountModel::create(['name' => 'Broken', 'email' => 'ops@broken.test']);
         $client = CommanderClientModel::create([
+            'account_id' => $account->id,
             'slug' => 'broken',
             'name' => 'Broken',
             'email' => 'ops@broken.test',
             'status' => 'active',
         ]);
-        CommanderPackageModel::create([
-            'name' => 'Shop',
+        $application = CommanderApplicationModel::create([
+            'package_name' => 'Shop',
             'slug' => 'shop',
-            'client_id' => $client->id,
+            'name' => 'Shop',
             'status' => 'active',
+            'code_status' => 'available',
+        ]);
+        CommanderInstanceModel::create([
+            'client_id' => $client->id,
+            'application_id' => $application->id,
+            'service_status' => 'active',
+            'provisioning_status' => 'ready',
             'provisioned_at' => now(),
         ]);
 

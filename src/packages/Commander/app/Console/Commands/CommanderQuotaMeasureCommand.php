@@ -10,20 +10,21 @@ class CommanderQuotaMeasureCommand extends Command
     protected $signature = 'commander:quota:measure
         {--dry-run : Mide y muestra sin persistir ni aplicar acciones}';
 
-    protected $description = 'Mide las metricas de cuota y aplica on_exceed (warn/suspend)';
+    protected $description = 'Measure instance quotas and apply their configured action';
 
     public function handle(CommanderQuotaMeasurerService $service): int
     {
         $dryRun = (bool) $this->option('dry-run');
-        $results = $service->measureAll(persist: !$dryRun, enforce: !$dryRun);
+        $results = $service->measureAll(persist: ! $dryRun, enforce: ! $dryRun);
 
         $this->table(
-            ['Metrica', 'Valor', 'Limite', 'on_exceed', 'Estado'],
+            ['Instance', 'Metric', 'Value', 'Limit', 'Action', 'State'],
             array_map(fn ($r) => [
-                $r['metric']->metric_key,
+                $r['quota']->instance_id,
+                $r['quota']->metric->key,
                 $r['value'] ?? 'n/a',
-                $r['metric']->limit_value ?? 'sin limite',
-                $r['metric']->on_exceed,
+                $r['quota']->limit_value ?? 'unlimited',
+                $r['quota']->action,
                 $r['over'] ? 'OVER' : 'OK',
             ], $results)
         );

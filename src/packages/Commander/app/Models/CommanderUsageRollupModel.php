@@ -3,6 +3,7 @@
 namespace Packages\Commander\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CommanderUsageRollupModel extends Model
 {
@@ -17,5 +18,10 @@ class CommanderUsageRollupModel extends Model
         return [
             'period_start' => 'datetime',
         ];
+    }
+
+    public function instance(): BelongsTo
+    {
+        return $this->belongsTo(CommanderInstanceModel::class, 'instance_id');
     }
 }

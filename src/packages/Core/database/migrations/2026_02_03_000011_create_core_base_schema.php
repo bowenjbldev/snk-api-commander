@@ -18,7 +18,7 @@ return new class extends Migration
         Schema::dropIfExists('users');
 
         // Aislamiento FISICO por BD: cada package tiene su propia tabla users en su propia BD,
-        // y la commander tiene la del operador. Sin package_id (lo reemplaza la separacion de BD).
+        // y la commander tiene la del operador. Sin instance_id: la separación es física por BD.
         // EXACTAMENTE la de Laravel, sin una columna de mas. Lo que necesite cada package
         // —nombre completo, organizacion, telefono, foto— lo anade EL, con su propia
         // migracion en su propio path: `packages/Commander/…` para el operador y

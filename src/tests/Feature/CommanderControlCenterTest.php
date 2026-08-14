@@ -4,11 +4,15 @@ namespace Tests\Feature;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Str;
 use Packages\Commander\Database\Seeders\CommanderDatabaseSeeder;
+use Packages\Commander\Metrics\CommanderBuiltInMetricMeasurer;
+use Packages\Commander\Models\CommanderAccountModel;
 use Packages\Commander\Models\CommanderActivityEventModel;
+use Packages\Commander\Models\CommanderApplicationMetricModel;
+use Packages\Commander\Models\CommanderApplicationModel;
 use Packages\Commander\Models\CommanderClientModel;
-use Packages\Commander\Models\CommanderPackageModel;
+use Packages\Commander\Models\CommanderInstanceModel;
+use Packages\Commander\Models\CommanderMetricMeasurementModel;
 use Packages\Commander\Models\CommanderPlanModel;
 use Packages\Commander\Models\CommanderQuotaModel;
 use Packages\Commander\Models\CommanderRequestLogModel;
@@ -17,16 +21,348 @@ use Packages\Commander\Models\CommanderUsageRollupModel;
 use Packages\Commander\Services\CommanderQuotaMeasurerService;
 use Packages\Core\Database\Seeders\CoreDatabaseSeeder;
 use Packages\Core\Models\CoreUserModel;
-use Packages\Core\Support\CoreActivePackageSupport;
+use Packages\Kilkana\Metrics\SnkKilkanaMetricMeasurer;
 use Tests\CommanderTestCase;
 
-/**
- * Cobertura de settings persistidos, propagación de cuotas al enforcement real, logs globales y
- * validación de packages desplegados en planes.
- */
 class CommanderControlCenterTest extends CommanderTestCase
 {
     use RefreshDatabase;
+
+    public function test_settings_and_quota_policy_are_persisted_by_the_control_plane(): void
+    {
+        $admin = $this->admin();
+        config(['core.quotas.grace_hours' => 96]);
+        $this->actingAs($admin, 'sanctum')->getJson('/api/v1/settings')
+            ->assertOk()->assertJsonPath('default_grace_hours', 96);
+        $this->actingAs($admin, 'sanctum')->putJson('/api/v1/settings', [
+            'operator_name' => 'Jorge',
+            'operator_email' => 'ops@snakepc.test',
+            'default_grace_hours' => 120,
+        ])->assertOk()->assertJsonPath('default_grace_hours', 120);
+
+        [$instance, $metric] = $this->instanceWithMetric('requests_day');
+        $quota = CommanderQuotaModel::create([
+            'instance_id' => $instance->id,
+            'metric_id' => $metric->id,
+            'limit_value' => 1000,
+            'action' => 'warn',
+        ]);
+        $this->actingAs($admin, 'sanctum')->patchJson("/api/v1/quotas/{$quota->id}", [
+            'limit_value' => 500,
+            'warning_percent' => 80,
+            'action' => 'suspend',
+        ])->assertOk();
+
+        $this->assertSame(500, $quota->fresh()->limit_value);
+        $this->assertSame('suspend', $quota->fresh()->action);
+    }
+
+    public function test_plan_limits_only_accept_metrics_from_the_same_application(): void
+    {
+        $admin = $this->admin();
+        $shop = CommanderApplicationModel::create([
+            'package_name' => 'Shop', 'slug' => 'shop', 'name' => 'Shop',
+            'status' => 'active', 'code_status' => 'available',
+        ]);
+        $blog = CommanderApplicationModel::create([
+            'package_name' => 'Blog', 'slug' => 'blog', 'name' => 'Blog',
+            'status' => 'active', 'code_status' => 'available',
+        ]);
+        $shopMetric = CommanderApplicationMetricModel::create([
+            'application_id' => $shop->id, 'key' => 'orders', 'name' => 'Orders',
+            'unit' => 'count', 'kind' => 'counter', 'window' => 'month', 'measurer' => 'x',
+        ]);
+        $blogMetric = CommanderApplicationMetricModel::create([
+            'application_id' => $blog->id, 'key' => 'posts', 'name' => 'Posts',
+            'unit' => 'count', 'kind' => 'counter', 'window' => 'month', 'measurer' => 'x',
+        ]);
+
+        $this->actingAs($admin, 'sanctum')->postJson('/api/v1/plans', [
+            'application_id' => $shop->id,
+            'slug' => 'pro',
+            'name' => 'Pro',
+            'price_monthly' => 30,
+            'limits' => [[
+                'metric_id' => $shopMetric->id,
+                'limit_value' => 1000,
+                'warning_percent' => 80,
+                'action' => 'warn',
+            ]],
+        ])->assertCreated()
+            ->assertJsonPath('application.id', $shop->id)
+            ->assertJsonPath('limits.0.metric.key', 'orders');
+
+        $this->actingAs($admin, 'sanctum')->postJson('/api/v1/plans', [
+            'application_id' => $shop->id,
+            'slug' => 'invalid',
+            'name' => 'Invalid',
+            'price_monthly' => 10,
+            'limits' => [['metric_id' => $blogMetric->id, 'limit_value' => 10]],
+        ])->assertUnprocessable()->assertJsonValidationErrors('limits');
+    }
+
+    public function test_request_quota_enters_grace_and_records_the_instance_activity(): void
+    {
+        [$instance, $metric] = $this->instanceWithMetric('requests_day');
+        CommanderQuotaModel::create([
+            'instance_id' => $instance->id,
+            'metric_id' => $metric->id,
+            'limit_value' => 5,
+            'warning_percent' => 80,
+            'action' => 'suspend',
+        ]);
+        for ($i = 0; $i < 8; $i++) {
+            CommanderRequestLogModel::create([
+                'instance_id' => $instance->id,
+                'method' => 'GET',
+                'route' => '/api/v1/x',
+                'path' => 'api/v1/x',
+                'status' => 200,
+                'duration_ms' => 1,
+            ]);
+        }
+
+        app(CommanderQuotaMeasurerService::class)->measureAll();
+
+        $this->assertSame('grace', $instance->fresh()->getRawOriginal('service_status'));
+        $this->assertDatabaseHas('commander_activity_events', [
+            'instance_id' => $instance->id,
+            'kind' => 'quota_warning',
+            'reason' => 'quota:requests_day',
+        ]);
+        $this->assertDatabaseHas('commander_activity_events', [
+            'instance_id' => $instance->id,
+            'kind' => 'grace',
+            'reason' => 'quota_exceeded:requests_day',
+        ]);
+    }
+
+    public function test_kilkana_recommends_upgrade_only_after_two_sustained_monthly_evaluations(): void
+    {
+        [$instance] = $this->instanceWithMetric('requests_day');
+        $metric = CommanderApplicationMetricModel::create([
+            'application_id' => $instance->application_id,
+            'key' => 'reads_month',
+            'name' => 'Reads',
+            'unit' => 'count',
+            'kind' => 'counter',
+            'window' => 'month',
+            'measurer' => SnkKilkanaMetricMeasurer::class,
+        ]);
+        $quota = CommanderQuotaModel::create([
+            'instance_id' => $instance->id,
+            'metric_id' => $metric->id,
+            'current_value' => 130,
+            'limit_value' => 100,
+            'warning_percent' => 80,
+            'action' => 'recommend',
+            'consecutive_periods' => 2,
+        ])->load('metric');
+
+        try {
+            CarbonImmutable::setTestNow('2026-04-01 00:00:00');
+            foreach (['2026-01-31', '2026-02-28', '2026-03-31'] as $day) {
+                CommanderMetricMeasurementModel::create([
+                    'quota_id' => $quota->id,
+                    'bucket_date' => $day,
+                    'value' => 120,
+                    'measured_at' => $day.' 23:59:00',
+                ]);
+            }
+            app(CommanderQuotaMeasurerService::class)->enforce($quota, CarbonImmutable::parse('2026-03-31'));
+            $this->assertSame(1, $quota->fresh()->consecutive_exceeded);
+            $this->assertNull($quota->fresh()->upgrade_recommended_at);
+
+            CommanderMetricMeasurementModel::create([
+                'quota_id' => $quota->id,
+                'bucket_date' => '2026-04-30',
+                'value' => 140,
+                'measured_at' => '2026-04-30 23:59:00',
+            ]);
+            CarbonImmutable::setTestNow('2026-05-01 00:00:00');
+            $quota = $quota->fresh()->load('metric');
+            app(CommanderQuotaMeasurerService::class)->enforce($quota, CarbonImmutable::parse('2026-04-30'));
+
+            $this->assertSame(2, $quota->fresh()->consecutive_exceeded);
+            $this->assertNotNull($quota->fresh()->upgrade_recommended_at);
+            $this->assertSame('active', $instance->fresh()->getRawOriginal('service_status'));
+            $this->assertSame(1, CommanderActivityEventModel::where('kind', 'upgrade_recommended')->count());
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
+    }
+
+    public function test_a_broken_metric_does_not_stop_the_other_instance_metrics(): void
+    {
+        [$instance, $requests] = $this->instanceWithMetric('requests_day');
+        $broken = CommanderApplicationMetricModel::create([
+            'application_id' => $instance->application_id,
+            'key' => 'broken',
+            'name' => 'Broken',
+            'unit' => 'count',
+            'kind' => 'gauge',
+            'window' => 'current',
+            'measurer' => \stdClass::class,
+        ]);
+        foreach ([$broken, $requests] as $metric) {
+            CommanderQuotaModel::create([
+                'instance_id' => $instance->id,
+                'metric_id' => $metric->id,
+            ]);
+        }
+        CommanderRequestLogModel::create([
+            'instance_id' => $instance->id,
+            'method' => 'GET',
+            'route' => '/api/v1/x',
+            'path' => 'api/v1/x',
+            'status' => 200,
+            'duration_ms' => 1,
+        ]);
+
+        $values = collect(app(CommanderQuotaMeasurerService::class)->measureAll(false, false))
+            ->mapWithKeys(fn (array $result) => [$result['quota']->metric->key => $result['value']]);
+
+        $this->assertNull($values['broken']);
+        $this->assertSame(1, $values['requests_day']);
+    }
+
+    public function test_plan_change_replaces_operational_limits_without_changing_contract_price(): void
+    {
+        $admin = $this->admin();
+        [$instance, $metric, $currentPlan, $contract] = $this->instanceWithMetric('requests_day');
+        $currentPlan->limits()->create([
+            'metric_id' => $metric->id,
+            'limit_value' => 100,
+            'action' => 'warn',
+        ]);
+        CommanderQuotaModel::create([
+            'instance_id' => $instance->id,
+            'metric_id' => $metric->id,
+            'limit_value' => 100,
+            'action' => 'warn',
+        ]);
+        $next = CommanderPlanModel::create([
+            'application_id' => $instance->application_id,
+            'slug' => 'pro',
+            'name' => 'Pro',
+            'price_monthly' => 99,
+        ]);
+        $next->limits()->create([
+            'metric_id' => $metric->id,
+            'limit_value' => 1000,
+            'warning_percent' => 75,
+            'action' => 'suspend',
+        ]);
+
+        $this->actingAs($admin, 'sanctum')->postJson("/api/v1/instances/{$instance->id}/change-plan", [
+            'plan_id' => $next->id,
+        ])->assertOk()->assertJsonPath('subscription_item.plan.id', $next->id);
+
+        $this->assertSame(1000, $instance->quotas()->firstOrFail()->limit_value);
+        $this->assertSame('suspend', $instance->quotas()->firstOrFail()->action);
+        $this->assertSame(15.0, $contract->fresh()->monthly_amount);
+    }
+
+    public function test_logs_and_platform_usage_keep_instance_identity(): void
+    {
+        $admin = $this->admin();
+        [$instance] = $this->instanceWithMetric('requests_day');
+        CommanderRequestLogModel::create([
+            'instance_id' => $instance->id,
+            'method' => 'GET',
+            'route' => '/api/v1/products',
+            'path' => 'api/v1/products',
+            'status' => 200,
+            'duration_ms' => 7,
+        ]);
+        $bucket = CarbonImmutable::now('UTC')->startOfHour();
+        foreach ([['2xx', 80, 0], ['5xx', 20, 20]] as [$class, $count, $errors]) {
+            CommanderUsageRollupModel::create([
+                'instance_id' => $instance->id,
+                'period' => 'hour',
+                'period_start' => $bucket,
+                'route' => '/a',
+                'method' => 'GET',
+                'status_class' => $class,
+                'request_count' => $count,
+                'error_count' => $errors,
+                'avg_duration_ms' => 10,
+                'p95_duration_ms' => 20,
+            ]);
+        }
+
+        $this->actingAs($admin, 'sanctum')->getJson('/api/v1/logs')
+            ->assertOk()
+            ->assertJsonPath('data.0.instance_id', $instance->id)
+            ->assertJsonPath('data.0.application', 'shop')
+            ->assertJsonPath('data.0.client', 'tenant');
+        $this->actingAs($admin, 'sanctum')->getJson('/api/v1/usage/platform?period=hour&hours=48')
+            ->assertOk()
+            ->assertJsonPath('data.0.instance_id', $instance->id)
+            ->assertJsonPath('data.0.request_count', 100)
+            ->assertJsonPath('data.0.error_count', 20);
+    }
+
+    /** @return array{CommanderInstanceModel, CommanderApplicationMetricModel, CommanderPlanModel, CommanderSubscriptionModel} */
+    private function instanceWithMetric(string $key): array
+    {
+        $account = CommanderAccountModel::create(['name' => 'Tenant', 'email' => 'tenant@test.test']);
+        $client = CommanderClientModel::create([
+            'account_id' => $account->id,
+            'slug' => 'tenant',
+            'name' => 'Tenant',
+            'email' => 'tenant@test.test',
+        ]);
+        $application = CommanderApplicationModel::create([
+            'package_name' => 'Shop',
+            'slug' => 'shop',
+            'name' => 'Shop',
+            'status' => 'active',
+            'code_status' => 'available',
+        ]);
+        $metric = CommanderApplicationMetricModel::create([
+            'application_id' => $application->id,
+            'key' => $key,
+            'name' => $key,
+            'unit' => 'count',
+            'kind' => 'counter',
+            'window' => 'day',
+            'measurer' => CommanderBuiltInMetricMeasurer::class,
+        ]);
+        $plan = CommanderPlanModel::create([
+            'application_id' => $application->id,
+            'slug' => 'basic',
+            'name' => 'Basic',
+            'price_monthly' => 15,
+        ]);
+        $contract = CommanderSubscriptionModel::create([
+            'account_id' => $account->id,
+            'application_id' => $application->id,
+            'name' => 'Tenant Shop',
+            'pricing_mode' => 'catalog',
+            'monthly_amount' => 15,
+            'currency' => 'EUR',
+            'status' => 'active',
+            'max_instances' => 1,
+        ]);
+        $instance = CommanderInstanceModel::create([
+            'client_id' => $client->id,
+            'application_id' => $application->id,
+            'database' => 'tenant_shop',
+            'database_username' => 'tenant_1',
+            'database_password' => 'runtime-password',
+            'provisioning_status' => 'ready',
+            'service_status' => 'active',
+            'provisioned_at' => now(),
+        ]);
+        $contract->items()->create([
+            'instance_id' => $instance->id,
+            'plan_id' => $plan->id,
+            'status' => 'active',
+        ]);
+
+        return [$instance, $metric, $plan, $contract];
+    }
 
     private function admin(): CoreUserModel
     {
@@ -34,355 +370,5 @@ class CommanderControlCenterTest extends CommanderTestCase
         $this->seed(CommanderDatabaseSeeder::class);
 
         return CoreUserModel::where('email', 'admin@snake.com')->firstOrFail();
-    }
-
-    /** Provisiona la instancia viva (1:1): la fila commander_packages ES la entidad operativa. */
-    private function package(): CommanderPackageModel
-    {
-        $client = CommanderClientModel::create(['slug' => 'c', 'name' => 'C', 'email' => 'c@c.test', 'status' => 'active']);
-
-        return CommanderPackageModel::create([
-            'name' => 'Shop', 'label' => 'Shop', 'listing_status' => 'active',
-            'slug' => 'shop', 'database' => 'c_shop', 'status' => 'active',
-            'client_id' => $client->id, 'changed_at' => now(),
-            'provisioned_at' => now(),
-        ]);
-    }
-
-    public function test_settings_singleton_defaults_from_config_then_persists(): void
-    {
-        $admin = $this->admin();
-        config(['core.quotas.grace_hours' => 96]);
-
-        // GET crea el singleton sembrando el grace por defecto desde la config de Core.
-        $this->actingAs($admin, 'sanctum')->getJson('/api/v1/settings')
-            ->assertOk()
-            ->assertJsonPath('default_grace_hours', 96)
-            ->assertJsonPath('notify_on_suspend', true);
-
-        // PUT persiste el perfil + preferencias.
-        $this->actingAs($admin, 'sanctum')->putJson('/api/v1/settings', [
-            'operator_name' => 'Jorge', 'operator_email' => 'ops@snakepc.test',
-            'default_grace_hours' => 120, 'notify_on_overdue' => false,
-        ])->assertOk()->assertJsonPath('operator_name', 'Jorge');
-
-        $this->actingAs($admin, 'sanctum')->getJson('/api/v1/settings')
-            ->assertOk()
-            ->assertJsonPath('operator_name', 'Jorge')
-            ->assertJsonPath('default_grace_hours', 120)
-            ->assertJsonPath('notify_on_overdue', false);
-    }
-
-    public function test_quota_update_persists_limit_and_policy_for_enforcement(): void
-    {
-        $admin = $this->admin();
-        $pkg = $this->package();
-
-        // Tabla única: la fila que edita la API ES la que mide/aplica el motor (sin propagación).
-        $quota = CommanderQuotaModel::create([
-            'package_id' => $pkg->id, 'metric_key' => 'requests_day',
-            'current_value' => 0, 'limit_value' => 1000, 'on_exceed' => 'warn', 'unit' => 'count',
-        ]);
-
-        $this->actingAs($admin, 'sanctum')->patchJson("/api/v1/quotas/{$quota->id}", [
-            'limit_value' => 500, 'on_exceed' => 'suspend',
-        ])->assertOk();
-
-        $fresh = CommanderQuotaModel::find($quota->id);
-        $this->assertSame(500, (int) $fresh->limit_value);
-        $this->assertSame('suspend', $fresh->on_exceed);
-    }
-
-    public function test_quota_enforcement_records_activity_event(): void
-    {
-        $admin = $this->admin();
-        $pkg = $this->package(); // package Shop (subdomain shop, active)
-        $pid = $pkg->id;
-
-        // Cuota requests_day con limite 5 / suspend; y 8 logs hoy => supera el limite.
-        CommanderQuotaModel::create([
-            'package_id' => $pid, 'metric_key' => 'requests_day',
-            'limit_value' => 5, 'current_value' => 0, 'on_exceed' => 'suspend', 'unit' => 'count',
-        ]);
-        for ($i = 0; $i < 8; $i++) {
-            CommanderRequestLogModel::create([
-                'package_id' => $pid, 'created_at' => now(), 'method' => 'GET',
-                'route' => '/api/v1/x', 'path' => 'api/v1/x', 'status' => 200,
-                'duration_ms' => 1, 'request_bytes' => 0, 'response_bytes' => 1, 'memory_kb' => 1,
-            ]);
-        }
-
-        app(CommanderQuotaMeasurerService::class)->measureAll();
-
-        // El medidor lo movio a grace…
-        $this->assertSame('grace', CommanderPackageModel::find($pid)->getRawOriginal('status'));
-
-        // …y dejo rastro en el feed de actividad (el origen cuota se reconoce por el reason).
-        $event = CommanderActivityEventModel::where('package_id', $pid)->where('kind', 'grace')->first();
-        $this->assertNotNull($event);
-        $this->assertSame('grace', $event->kind);
-        $this->assertSame('quota_exceeded:requests_day', $event->reason);
-    }
-
-    public function test_quota_measurement_does_not_reuse_or_leak_tenant_context(): void
-    {
-        $pkg = $this->package();
-        $catalog = CommanderPackageModel::create([
-            'name' => 'Kilkana', 'label' => 'Kilkana', 'listing_status' => 'active',
-        ]);
-        CommanderQuotaModel::create([
-            'package_id' => $pkg->id, 'metric_key' => 'users_total',
-            'limit_value' => 100, 'current_value' => 7, 'on_exceed' => 'warn', 'unit' => 'count',
-        ]);
-
-        $active = app(CoreActivePackageSupport::class);
-        $active->set($catalog);
-        $originalTenantConfig = config('database.connections.tenant');
-
-        $results = app(CommanderQuotaMeasurerService::class)->measureAll(persist: false, enforce: false);
-
-        $this->assertNull($results[0]['value']);
-        $this->assertSame($originalTenantConfig, config('database.connections.tenant'));
-        $this->assertTrue($catalog->is($active->current()));
-    }
-
-    public function test_quota_auto_heal_waits_until_every_metric_is_below_limit(): void
-    {
-        $pkg = $this->package();
-        $pkg->forceFill([
-            'status' => 'grace',
-            'reason' => 'quota_exceeded:requests_day',
-            'grace_until' => now()->addHour(),
-        ])->save();
-        $metric = CommanderQuotaModel::create([
-            'package_id' => $pkg->id, 'metric_key' => 'requests_day',
-            'limit_value' => 100, 'current_value' => 10, 'on_exceed' => 'suspend', 'unit' => 'count',
-        ]);
-        $active = app(CoreActivePackageSupport::class);
-        $active->set($pkg);
-        $service = app(CommanderQuotaMeasurerService::class);
-
-        $service->enforce($metric, anotherMetricIsOver: true);
-        $this->assertSame('grace', $pkg->fresh()->getRawOriginal('status'));
-
-        $service->enforce($metric, anotherMetricIsOver: false);
-        $this->assertSame('active', $pkg->fresh()->getRawOriginal('status'));
-    }
-
-    public function test_global_logs_tag_each_row_with_package(): void
-    {
-        $admin = $this->admin();
-        $pkg = $this->package();
-
-        CommanderRequestLogModel::create([
-            'package_id' => $pkg->id, 'created_at' => now(), 'method' => 'GET',
-            'route' => '/api/v1/products', 'path' => 'api/v1/products', 'status' => 200,
-            'duration_ms' => 7, 'user_id' => null, 'token_id' => 'tok_x', 'ip' => '127.0.0.1',
-            'request_bytes' => 0, 'response_bytes' => 12, 'memory_kb' => 2,
-        ]);
-
-        $res = $this->actingAs($admin, 'sanctum')->getJson('/api/v1/logs')->assertOk();
-        $res->assertJsonCount(1, 'data');
-        // Cada fila se etiqueta con el name (StudlyCase), el slug, y el subdominio = slug del CLIENTE.
-        $this->assertSame('Shop', $res->json('data.0.package'));
-        $this->assertSame('shop', $res->json('data.0.slug'));
-        $this->assertSame('c', $res->json('data.0.subdomain')); // subdominio ES el del cliente
-        $this->assertSame(200, $res->json('data.0.status'));
-    }
-
-    public function test_platform_usage_aggregates_rollups_by_bucket(): void
-    {
-        $admin = $this->admin();
-        $pkg = $this->package();
-        $bucket = CarbonImmutable::now('UTC')->startOfHour();
-
-        // Dos rollups en el mismo bucket (distinta ruta/clase) -> /usage/platform debe sumarlos.
-        CommanderUsageRollupModel::create([
-            'package_id' => $pkg->id, 'period' => 'hour', 'period_start' => $bucket,
-            'route' => '/a', 'method' => 'GET', 'status_class' => '2xx',
-            'request_count' => 80, 'error_count' => 0, 'avg_duration_ms' => 10, 'p95_duration_ms' => 20,
-        ]);
-        CommanderUsageRollupModel::create([
-            'package_id' => $pkg->id, 'period' => 'hour', 'period_start' => $bucket,
-            'route' => '/a', 'method' => 'GET', 'status_class' => '5xx',
-            'request_count' => 20, 'error_count' => 20, 'avg_duration_ms' => 30, 'p95_duration_ms' => 50,
-        ]);
-
-        $res = $this->actingAs($admin, 'sanctum')->getJson('/api/v1/usage/platform?period=hour&hours=48')->assertOk();
-        $res->assertJsonCount(1, 'data');
-        $this->assertSame($pkg->id, $res->json('data.0.package_id'));
-        $this->assertSame(100, (int) $res->json('data.0.request_count'));
-        $this->assertSame(20, (int) $res->json('data.0.error_count'));
-    }
-
-    public function test_plan_rejects_package_without_code_on_disk(): void
-    {
-        $admin = $this->admin();
-
-        // Ni 'Ghostpkg' (inexistente) ni 'Commander' (framework, no per-cliente) son packages de
-        // negocio desplegados bajo algún cliente -> el catálogo no acepta un plan para ellos.
-        $this->actingAs($admin, 'sanctum')->postJson('/api/v1/plans', [
-            'slug' => 'ghost-basic', 'package' => 'Ghostpkg', 'name' => 'Basic', 'price_monthly' => 10,
-        ])->assertStatus(422)->assertJsonValidationErrors('package');
-
-        $this->actingAs($admin, 'sanctum')->postJson('/api/v1/plans', [
-            'slug' => 'cmd-basic', 'package' => 'Commander', 'name' => 'Basic', 'price_monthly' => 10,
-        ])->assertStatus(422)->assertJsonValidationErrors('package');
-
-        // 'Kilkana' existe como package compartido -> pasa el guard de código desplegado.
-        $this->actingAs($admin, 'sanctum')->postJson('/api/v1/plans', [
-            'slug' => 'kilkana-basic', 'package' => 'kilkana', 'name' => 'Basic', 'price_monthly' => 10,
-        ])->assertStatus(201);
-        $this->assertSame('Kilkana', CommanderPlanModel::where('slug', 'kilkana-basic')->value('package'));
-    }
-
-    public function test_packages_registry_lists_enriched_and_excludes_core_commander(): void
-    {
-        $admin = $this->admin();
-
-        // index() sincroniza desde disco y devuelve filas de registro enriquecidas (array, no {data}).
-        $packages = $this->actingAs($admin, 'sanctum')->getJson('/api/v1/packages')->assertOk()->json();
-        $this->assertIsArray($packages);
-
-        $names = array_column($packages, 'name');
-        $this->assertNotContains('Core', $names);
-        $this->assertNotContains('Commander', $names);
-
-        foreach ($packages as $p) {
-            $this->assertArrayHasKey('listing_status', $p);
-            $this->assertArrayHasKey('on_disk', $p);
-            $this->assertArrayHasKey('plan_count', $p);
-            $this->assertArrayHasKey('provisioned_at', $p);
-        }
-    }
-
-    public function test_package_metadata_persists(): void
-    {
-        $admin = $this->admin();
-        $row = CommanderPackageModel::create(['name' => 'Shop', 'label' => 'Shop', 'listing_status' => 'active']);
-
-        // Los metadatos de catalogo (label/description/listing_status) se editan sobre la fila unica.
-        $this->actingAs($admin, 'sanctum')->patchJson("/api/v1/packages/{$row->id}", [
-            'label' => 'Tienda', 'description' => 'Mi tienda online', 'listing_status' => 'inactive',
-        ])->assertOk()->assertJsonPath('label', 'Tienda')->assertJsonPath('listing_status', 'inactive');
-
-        $row->refresh();
-        $this->assertSame('Tienda', $row->label);
-        $this->assertSame('inactive', $row->listing_status);
-    }
-
-    // ── change-plan (historial 1:N de subscripciones) ──────────────────────────────
-
-    private function planFor(string $package, string $name, float $price = 100, string $status = 'active'): CommanderPlanModel
-    {
-        return CommanderPlanModel::create([
-            'slug' => Str::slug("{$package} {$name}").'-'.uniqid(),
-            'package' => $package, 'name' => $name, 'price_monthly' => $price, 'status' => $status,
-        ]);
-    }
-
-    private function currentTerm(CommanderPackageModel $pkg, CommanderPlanModel $plan, bool $autoSuspend = true): CommanderSubscriptionModel
-    {
-        $sub = CommanderSubscriptionModel::create([
-            'client_id' => $pkg->client_id, 'package_id' => $pkg->id, 'plan_id' => $plan->id,
-            'plan' => $plan->name, 'price_monthly' => $plan->price_monthly,
-            'billing_status' => 'paid', 'auto_suspend' => $autoSuspend, 'started_at' => now(), 'ended_at' => null,
-        ]);
-        $pkg->forceFill(['subscription_id' => $sub->id])->save();
-
-        return $sub;
-    }
-
-    public function test_change_plan_closes_current_term_and_opens_new(): void
-    {
-        $admin = $this->admin();
-        $pkg = $this->package();
-        $basic = $this->planFor('Shop', 'Basic', 50);
-        $pro = $this->planFor('Shop', 'Pro', 290);
-        $current = $this->currentTerm($pkg, $basic, true);
-
-        $this->actingAs($admin, 'sanctum')
-            ->postJson("/api/v1/packages/{$pkg->id}/change-plan", ['plan_id' => $pro->id])
-            ->assertOk()
-            ->assertJsonPath('subscription.plan', 'Pro');
-
-        // El término anterior queda cerrado; el nuevo es el único vigente y snapshotea el plan elegido.
-        $this->assertNotNull($current->fresh()->ended_at);
-        $open = CommanderSubscriptionModel::where('package_id', $pkg->id)->whereNull('ended_at')->get();
-        $this->assertCount(1, $open);
-        $new = $open->first();
-        $this->assertSame('Pro', $new->plan);
-        $this->assertSame($pro->id, $new->plan_id);
-        $this->assertSame(290.0, (float) $new->price_monthly);
-        $this->assertSame('pending', $new->billing_status);
-        $this->assertTrue((bool) $new->auto_suspend); // heredado del término anterior
-        $this->assertSame($new->id, $pkg->fresh()->subscription_id); // package repunta al vigente
-
-        $this->assertNotNull(
-            CommanderActivityEventModel::where('package_id', $pkg->id)->where('kind', 'change_plan')->first()
-        );
-    }
-
-    public function test_change_plan_rejects_plan_of_other_package(): void
-    {
-        $admin = $this->admin();
-        $pkg = $this->package();
-        $this->currentTerm($pkg, $this->planFor('Shop', 'Basic', 50));
-        $other = $this->planFor('Blog', 'Pro', 100);
-
-        $this->actingAs($admin, 'sanctum')
-            ->postJson("/api/v1/packages/{$pkg->id}/change-plan", ['plan_id' => $other->id])
-            ->assertStatus(422);
-    }
-
-    public function test_change_plan_rejects_inactive_plan(): void
-    {
-        $admin = $this->admin();
-        $pkg = $this->package();
-        $this->currentTerm($pkg, $this->planFor('Shop', 'Basic', 50));
-        $inactive = $this->planFor('Shop', 'Old', 100, 'inactive');
-
-        $this->actingAs($admin, 'sanctum')
-            ->postJson("/api/v1/packages/{$pkg->id}/change-plan", ['plan_id' => $inactive->id])
-            ->assertStatus(422);
-    }
-
-    public function test_change_plan_rejects_same_plan(): void
-    {
-        $admin = $this->admin();
-        $pkg = $this->package();
-        $basic = $this->planFor('Shop', 'Basic', 50);
-        $this->currentTerm($pkg, $basic);
-
-        $this->actingAs($admin, 'sanctum')
-            ->postJson("/api/v1/packages/{$pkg->id}/change-plan", ['plan_id' => $basic->id])
-            ->assertStatus(422);
-    }
-
-    public function test_change_plan_requires_provisioned_package(): void
-    {
-        $admin = $this->admin();
-        // Fila solo-catálogo (sin provisioned_at): no es instancia viva.
-        $pkg = CommanderPackageModel::create(['name' => 'Ghost', 'label' => 'Ghost', 'listing_status' => 'active']);
-        $plan = $this->planFor('Ghost', 'Pro', 100);
-
-        $this->actingAs($admin, 'sanctum')
-            ->postJson("/api/v1/packages/{$pkg->id}/change-plan", ['plan_id' => $plan->id])
-            ->assertStatus(404);
-    }
-
-    public function test_change_plan_requires_control_permission(): void
-    {
-        $this->seed(CoreDatabaseSeeder::class);
-        $this->seed(CommanderDatabaseSeeder::class);
-        $pkg = $this->package();
-        $plan = $this->planFor('Shop', 'Pro', 100);
-        $user = CoreUserModel::create([
-            'email' => 'noperm@snake.com', 'name' => 'No Perm', 'full_name' => 'No Perm', 'password' => 'secret1234',
-        ]);
-
-        $this->actingAs($user, 'sanctum')
-            ->postJson("/api/v1/packages/{$pkg->id}/change-plan", ['plan_id' => $plan->id])
-            ->assertStatus(403);
     }
 }

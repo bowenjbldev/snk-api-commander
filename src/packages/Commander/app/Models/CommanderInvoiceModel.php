@@ -4,6 +4,7 @@ namespace Packages\Commander\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CommanderInvoiceModel extends Model
 {
@@ -17,21 +18,20 @@ class CommanderInvoiceModel extends Model
     {
         return [
             'id' => 'integer',
-            'client_id' => 'integer',
-            'package_id' => 'integer',
-            'amount' => 'float',
+            'account_id' => 'integer',
+            'total_amount' => 'float',
             'issued_at' => 'datetime',
             'due_at' => 'datetime',
         ];
     }
 
-    public function client(): BelongsTo
+    public function account(): BelongsTo
     {
-        return $this->belongsTo(CommanderClientModel::class, 'client_id');
+        return $this->belongsTo(CommanderAccountModel::class, 'account_id');
     }
 
-    public function package(): BelongsTo
+    public function lines(): HasMany
     {
-        return $this->belongsTo(CommanderPackageModel::class, 'package_id');
+        return $this->hasMany(CommanderInvoiceLineModel::class, 'invoice_id');
     }
 }

@@ -3,21 +3,207 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Packages\Commander\Database\Seeders\CommanderDatabaseSeeder;
+use Packages\Commander\Jobs\CommanderDeprovisionInstanceJob;
+use Packages\Commander\Models\CommanderAccountModel;
+use Packages\Commander\Models\CommanderApplicationMetricModel;
+use Packages\Commander\Models\CommanderApplicationModel;
 use Packages\Commander\Models\CommanderClientModel;
+use Packages\Commander\Models\CommanderInstanceModel;
+use Packages\Commander\Models\CommanderPlanModel;
 use Packages\Commander\Models\CommanderQuotaModel;
 use Packages\Commander\Models\CommanderRequestLogModel;
 use Packages\Commander\Models\CommanderSubscriptionModel;
+use Packages\Commander\Services\CommanderApplicationRegistryService;
 use Packages\Core\Database\Seeders\CoreDatabaseSeeder;
-use Packages\Commander\Models\CommanderPackageModel;
 use Packages\Core\Models\CoreUserModel;
 use Tests\CommanderTestCase;
-use Illuminate\Support\Facades\Queue;
-use Packages\Commander\Jobs\CommanderDeprovisionPackageJob;
 
 class CommanderApiTest extends CommanderTestCase
 {
     use RefreshDatabase;
+
+    public function test_control_plane_authentication_and_token_policy_are_server_owned(): void
+    {
+        $this->getJson('/api/v1/applications')->assertUnauthorized();
+        $admin = $this->admin();
+
+        $response = $this->postJson('/api/v1/auth/login', [
+            'email' => $admin->email,
+            'password' => 'secret1234',
+            'name' => 'attacker',
+            'abilities' => ['*'],
+            'expires_at' => now()->addYears(10)->toIso8601String(),
+        ])->assertOk();
+
+        $token = $admin->tokens()->findOrFail($response->json('token_id'));
+        $this->assertSame('login', $token->name);
+        $this->assertSame(['api'], $token->abilities);
+        $this->assertTrue($token->expires_at->isBefore(now()->addMinutes(1441)));
+    }
+
+    public function test_application_catalog_only_changes_through_explicit_sync(): void
+    {
+        $admin = $this->admin();
+
+        $this->actingAs($admin, 'sanctum')->getJson('/api/v1/applications')->assertOk()->assertExactJson([]);
+        app(CommanderApplicationRegistryService::class)->sync();
+
+        $response = $this->actingAs($admin, 'sanctum')->getJson('/api/v1/applications?with=metrics')->assertOk();
+        $this->assertContains('Kilkana', array_column($response->json(), 'package_name'));
+        $response->assertJsonFragment(['key' => 'editorial_seats'])->assertJsonFragment(['key' => 'reads_month']);
+    }
+
+    public function test_instance_state_actions_are_scoped_by_numeric_instance_id(): void
+    {
+        $admin = $this->admin();
+        [$first, $second] = [$this->makeInstance('one'), $this->makeInstance('two')];
+
+        $this->actingAs($admin, 'sanctum')->postJson("/api/v1/instances/{$first->id}/suspend", [
+            'reason' => 'payment_overdue',
+            'message' => 'Contact billing',
+        ])->assertOk()
+            ->assertJsonPath('service_status', 'suspended')
+            ->assertJsonPath('reason', 'payment_overdue');
+
+        $this->assertSame('suspended', $first->fresh()->getRawOriginal('service_status'));
+        $this->assertSame('active', $second->fresh()->getRawOriginal('service_status'));
+
+        $this->actingAs($admin, 'sanctum')->postJson("/api/v1/instances/{$first->id}/resume")
+            ->assertOk()->assertJsonPath('service_status', 'active');
+    }
+
+    public function test_deprovision_preserves_identity_and_commercial_history(): void
+    {
+        $admin = $this->admin();
+        $instance = $this->makeInstance('soft');
+        $metric = CommanderApplicationMetricModel::create([
+            'application_id' => $instance->application_id,
+            'key' => 'requests_day',
+            'name' => 'Requests',
+            'unit' => 'count',
+            'kind' => 'counter',
+            'window' => 'day',
+            'measurer' => 'x',
+        ]);
+        $quota = CommanderQuotaModel::create([
+            'instance_id' => $instance->id,
+            'metric_id' => $metric->id,
+            'current_value' => 120,
+            'limit_value' => 100,
+            'action' => 'warn',
+            'consecutive_exceeded' => 2,
+        ]);
+        CommanderRequestLogModel::create([
+            'instance_id' => $instance->id,
+            'method' => 'GET',
+            'route' => '/api/v1/x',
+            'path' => 'api/v1/x',
+            'status' => 200,
+            'duration_ms' => 1,
+        ]);
+        Queue::fake();
+
+        $this->actingAs($admin, 'sanctum')->deleteJson("/api/v1/instances/{$instance->id}")
+            ->assertAccepted()->assertJsonPath('status', 'deprovisioning');
+        Queue::assertPushed(CommanderDeprovisionInstanceJob::class, fn ($job) => $job->instanceId === $instance->id);
+
+        $job = new CommanderDeprovisionInstanceJob($instance->id);
+        $job->handle();
+
+        $fresh = $instance->fresh();
+        $this->assertNotNull($fresh);
+        $this->assertSame('deprovisioned', $fresh->provisioning_status);
+        $this->assertNotNull($fresh->deprovisioned_at);
+        $this->assertSame(0, CommanderRequestLogModel::where('instance_id', $fresh->id)->count());
+        $this->assertSame(0, $quota->fresh()->current_value);
+        $this->assertSame(0, $quota->fresh()->consecutive_exceeded);
+        $this->assertSame('ended', $fresh->subscriptionItem->status);
+        $this->assertSame('canceled', $fresh->subscriptionItem->subscription->status);
+        $this->assertSame(1, CommanderSubscriptionModel::count());
+        $job->handle();
+        $this->assertSame('deprovisioned', $instance->fresh()->provisioning_status);
+    }
+
+    public function test_invoice_lines_must_belong_to_the_invoice_account_and_total_is_computed(): void
+    {
+        $admin = $this->admin();
+        $instance = $this->makeInstance('invoice');
+        $subscription = $instance->subscriptionItem->subscription;
+
+        $this->actingAs($admin, 'sanctum')->postJson('/api/v1/invoices', [
+            'account_id' => $instance->client->account_id,
+            'number' => 'INV-2026-001',
+            'status' => 'pending',
+            'lines' => [[
+                'subscription_id' => $subscription->id,
+                'subscription_item_id' => $instance->subscriptionItem->id,
+                'description' => 'Monthly service',
+                'quantity' => 3,
+                'unit_amount' => 59.90,
+            ]],
+        ])->assertCreated()
+            ->assertJsonPath('total_amount', 179.7)
+            ->assertJsonPath('lines.0.amount', 179.7);
+
+        $otherAccount = CommanderAccountModel::create(['name' => 'Other', 'email' => 'other@test.test']);
+        $this->actingAs($admin, 'sanctum')->postJson('/api/v1/invoices', [
+            'account_id' => $otherAccount->id,
+            'number' => 'INV-2026-002',
+            'lines' => [[
+                'subscription_id' => $subscription->id,
+                'description' => 'Wrong account',
+                'unit_amount' => 10,
+            ]],
+        ])->assertUnprocessable()->assertJsonValidationErrors('lines.0.subscription_id');
+    }
+
+    private function makeInstance(string $slug): CommanderInstanceModel
+    {
+        $account = CommanderAccountModel::create(['name' => ucfirst($slug), 'email' => "{$slug}@test.test"]);
+        $client = CommanderClientModel::create([
+            'account_id' => $account->id,
+            'slug' => $slug,
+            'name' => ucfirst($slug),
+            'email' => "{$slug}@test.test",
+        ]);
+        $application = CommanderApplicationModel::firstOrCreate(
+            ['package_name' => 'Shop'],
+            ['slug' => 'shop', 'name' => 'Shop', 'status' => 'active', 'code_status' => 'available'],
+        );
+        $plan = CommanderPlanModel::firstOrCreate(
+            ['application_id' => $application->id, 'slug' => 'basic'],
+            ['name' => 'Basic', 'price_monthly' => 15],
+        );
+        $subscription = CommanderSubscriptionModel::create([
+            'account_id' => $account->id,
+            'application_id' => $application->id,
+            'name' => ucfirst($slug).' Shop',
+            'pricing_mode' => 'catalog',
+            'monthly_amount' => 15,
+            'currency' => 'EUR',
+            'status' => 'active',
+            'max_instances' => 1,
+        ]);
+        $instance = CommanderInstanceModel::create([
+            'client_id' => $client->id,
+            'application_id' => $application->id,
+            'database' => "{$slug}_shop",
+            'database_username' => 'tenant_'.$client->id,
+            'database_password' => 'runtime-password',
+            'provisioning_status' => 'ready',
+            'service_status' => 'active',
+            'provisioned_at' => now(),
+        ]);
+        $subscription->items()->create([
+            'instance_id' => $instance->id,
+            'plan_id' => $plan->id,
+            'status' => 'active',
+        ]);
+
+        return $instance->load(['client.account', 'application', 'subscriptionItem.subscription']);
+    }
 
     private function admin(): CoreUserModel
     {
@@ -26,191 +212,4 @@ class CommanderApiTest extends CommanderTestCase
 
         return CoreUserModel::where('email', 'admin@snake.com')->firstOrFail();
     }
-
-    public function test_registry_requires_authentication(): void
-    {
-        $this->getJson('/api/v1/packages')->assertStatus(401);
-    }
-
-    public function test_settings_require_explicit_permission(): void
-    {
-        $this->seed(CoreDatabaseSeeder::class);
-        $this->seed(CommanderDatabaseSeeder::class);
-        $user = CoreUserModel::create([
-            'email' => 'limited@snake.com', 'name' => 'Limited', 'full_name' => 'Limited', 'password' => 'secret1234',
-        ]);
-
-        $this->actingAs($user, 'sanctum')->getJson('/api/v1/settings')->assertForbidden();
-        $this->actingAs($user, 'sanctum')->putJson('/api/v1/settings', ['operator_name' => 'Hijacked'])->assertForbidden();
-    }
-
-    public function test_login_ignores_client_controlled_token_policy(): void
-    {
-        $this->admin();
-
-        $response = $this->postJson('/api/v1/auth/login', [
-            'email' => 'admin@snake.com',
-            'password' => 'secret1234',
-            'name' => 'attacker',
-            'abilities' => ['*'],
-            'expires_at' => now()->addYears(10)->toIso8601String(),
-        ])->assertOk();
-
-        $token = CoreUserModel::firstOrFail()->tokens()->findOrFail($response->json('token_id'));
-        $this->assertSame('login', $token->name);
-        $this->assertSame(['api'], $token->abilities);
-        $this->assertTrue($token->expires_at->isBefore(now()->addMinutes(1441)));
-    }
-
-    public function test_registry_starts_with_no_provisioned_package_then_lists_created_records(): void
-    {
-        $admin = $this->admin();
-
-        // Demo-free seeder: la tabla puede listar packages de disco (solo-catalogo), pero NINGUNO esta
-        // provisionado (provisioned_at == null en todos) y no hay clientes.
-        $packages = $this->actingAs($admin, 'sanctum')->getJson('/api/v1/packages')->assertOk()->json();
-        $this->assertCount(0, array_filter($packages, fn ($p) => ($p['provisioned_at'] ?? null) !== null));
-        $this->assertCount(0, $this->actingAs($admin, 'sanctum')->getJson('/api/v1/clients')->json());
-
-        CommanderClientModel::create([
-            'slug' => 'acme', 'name' => 'Acme', 'company' => 'Acme', 'email' => 'ops@acme.test', 'status' => 'active',
-        ]);
-
-        $this->assertCount(1, $this->actingAs($admin, 'sanctum')->getJson('/api/v1/clients')->json());
-    }
-
-    public function test_package_shape_matches_api_contract(): void
-    {
-        $admin = $this->admin();
-
-        $client = CommanderClientModel::create([
-            'slug' => 'kestrel', 'name' => 'Kestrel Logistics', 'company' => 'Kestrel Logistics Co',
-            'email' => 'it@kestrel.test', 'status' => 'active',
-        ]);
-
-        // Instancia viva 1:1 por (cliente, package): el subdominio ES el del cliente (kestrel), el slug
-        // del package va en el path. Plana (provisioned_at no nulo).
-        $package = CommanderPackageModel::create([
-            'name' => 'TrackingApi', 'label' => 'TrackingApi', 'listing_status' => 'active',
-            'slug' => 'tracking-api', 'database' => 'kestrel_tracking_api',
-            'client_id' => $client->id, 'status' => 'grace',
-            'reason' => 'payment_overdue', 'message' => null,
-            'grace_until' => now()->addHours(48), 'changed_at' => now(),
-            'provisioned_at' => now(),
-        ]);
-
-        foreach (['requests_day', 'disk_db_mb', 'disk_storage_mb', 'users_total'] as $metric) {
-            CommanderQuotaModel::create([
-                'package_id' => $package->id, 'metric_key' => $metric,
-                'current_value' => 1, 'limit_value' => 100, 'on_exceed' => 'none',
-                'unit' => str_ends_with($metric, '_mb') ? 'mb' : 'count',
-            ]);
-        }
-
-        $res = $this->actingAs($admin, 'sanctum')->getJson("/api/v1/packages/{$package->id}");
-        $res->assertOk();
-        $body = $res->json();
-
-        // La fila unificada llega plana (identidad + estado + relaciones), no anidada bajo `package`.
-        $this->assertSame('TrackingApi', $body['name']);
-        $this->assertSame('tracking-api', $body['slug']);            // slug del package (path)
-        $this->assertSame('kestrel', $body['client']['slug']);      // el subdominio ES el del cliente
-        $this->assertSame('grace', $body['status']);
-        $this->assertSame('payment_overdue', $body['reason']);
-        $this->assertNotNull($body['grace_until']);
-        $this->assertNotNull($body['provisioned_at']);
-
-        // Relations resolve.
-        $this->assertSame('Kestrel Logistics', $body['client']['name']);
-        $this->assertCount(4, $body['quotas']);
-    }
-
-    public function test_state_actions_write_packages_in_process(): void
-    {
-        $admin = $this->admin();
-
-        $client = CommanderClientModel::create(['slug' => 'c', 'name' => 'C', 'email' => 'c@c.test', 'status' => 'active']);
-        $package = CommanderPackageModel::create([
-            'name' => 'Shop', 'label' => 'Shop', 'listing_status' => 'active',
-            'slug' => 'shop', 'database' => 'c_shop',
-            'client_id' => $client->id, 'status' => 'active', 'provisioned_at' => now(),
-        ]);
-        $otherClient = CommanderClientModel::create(['slug' => 'd', 'name' => 'D', 'email' => 'd@d.test', 'status' => 'active']);
-        $otherPackage = CommanderPackageModel::create([
-            'name' => 'Shop', 'label' => 'Shop', 'listing_status' => 'active',
-            'slug' => 'shop', 'database' => 'd_shop',
-            'client_id' => $otherClient->id, 'status' => 'active', 'provisioned_at' => now(),
-        ]);
-
-        // Suspend → writes the commander_packages row directly (addressed by PK); response is the flat row.
-        $this->actingAs($admin, 'sanctum')
-            ->postJson("/api/v1/packages/{$package->id}/suspend", ['reason' => 'payment_overdue', 'message' => 'pay up'])
-            ->assertOk()
-            ->assertJsonPath('status', 'suspended')
-            ->assertJsonPath('reason', 'payment_overdue');
-        $this->assertSame('suspended', $package->fresh()->getRawOriginal('status'));
-        $this->assertSame('active', $otherPackage->fresh()->getRawOriginal('status'));
-
-        // Resume → back to active.
-        $this->actingAs($admin, 'sanctum')
-            ->postJson("/api/v1/packages/{$package->id}/resume")
-            ->assertOk()
-            ->assertJsonPath('status', 'active');
-        $this->assertSame('active', $package->fresh()->getRawOriginal('status'));
-    }
-
-    public function test_deprovision_is_soft_and_clears_operational_rows(): void
-    {
-        $admin = $this->admin();
-        Queue::fake();
-
-        $client = CommanderClientModel::create(['slug' => 'c', 'name' => 'C', 'email' => 'c@c.test', 'status' => 'active']);
-        $package = CommanderPackageModel::create([
-            'name' => 'Shop', 'label' => 'Shop', 'listing_status' => 'active',
-            'slug' => 'shop', 'database' => 'c_shop',
-            'client_id' => $client->id, 'status' => 'active', 'provisioned_at' => now(),
-        ]);
-        CommanderQuotaModel::create([
-            'package_id' => $package->id, 'metric_key' => 'requests_day',
-            'current_value' => 0, 'limit_value' => 100, 'on_exceed' => 'suspend', 'unit' => 'count',
-        ]);
-        CommanderRequestLogModel::create([
-            'package_id' => $package->id, 'created_at' => now(), 'method' => 'GET',
-            'route' => '/api/v1/x', 'path' => 'api/v1/x', 'status' => 200,
-            'duration_ms' => 1, 'request_bytes' => 0, 'response_bytes' => 1, 'memory_kb' => 1,
-        ]);
-        // Término de subscripción vigente (historial de billing): debe conservarse pero quedar cerrado.
-        $sub = CommanderSubscriptionModel::create([
-            'client_id' => $client->id, 'package_id' => $package->id, 'plan_id' => null,
-            'plan' => 'Pro', 'price_monthly' => 99, 'billing_status' => 'paid',
-            'auto_suspend' => false, 'started_at' => now(), 'ended_at' => null,
-        ]);
-        $package->forceFill(['subscription_id' => $sub->id])->save();
-
-        // De-provision SOFT: en MariaDB hace DROP DATABASE; borra metering + cuotas y ANULA las columnas
-        // operativas, pero conserva la fila (catalogo) y el historial de billing (cierra el término).
-        $this->actingAs($admin, 'sanctum')->deleteJson("/api/v1/packages/{$package->id}")->assertStatus(202);
-        Queue::assertPushed(CommanderDeprovisionPackageJob::class, fn ($job) => $job->packageId === $package->id);
-
-        (new CommanderDeprovisionPackageJob($package->id))->handle();
-
-        $fresh = CommanderPackageModel::find($package->id);
-        $this->assertNotNull($fresh);                 // la fila persiste (catalogo)
-        $this->assertNull($fresh->provisioned_at);    // ya no es instancia viva
-        $this->assertNull($fresh->slug);              // identidad (client_id, slug) liberada
-        $this->assertNull($fresh->getRawOriginal('client_id'));
-        $this->assertNull($fresh->getRawOriginal('subscription_id'));
-        $this->assertSame('Shop', $fresh->label);     // catalogo conservado
-
-        $this->assertCount(0, CommanderRequestLogModel::where('package_id', $package->id)->get());
-        $this->assertCount(0, CommanderQuotaModel::where('package_id', $package->id)->get());
-        // El término de subscripción se conserva (historial) pero queda cerrado.
-        $closed = CommanderSubscriptionModel::find($sub->id);
-        $this->assertNotNull($closed);
-        $this->assertNotNull($closed->ended_at);
-    }
-
-    // Nota: el aislamiento operador↔tenant ya no necesita middleware: con BD por package, el token
-    // de un tenant vive en SU BD y no existe en la commander -> 401 automatico. Se verifica en vivo
-    // (no se puede modelar con una sola sqlite en tests).
 }

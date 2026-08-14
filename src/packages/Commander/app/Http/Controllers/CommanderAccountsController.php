@@ -21,10 +21,11 @@ class CommanderAccountsController extends CoreBaseApiController
 
     protected string $destroyPermission = 'delete accounts';
 
-    protected array $allowedWith = ['clients', 'clients.packages'];
+    protected array $allowedWith = ['clients', 'clients.instances.application', 'subscriptions.application', 'subscriptions.items.instance', 'invoices.lines'];
 
     protected array $validationRulesStore = [
         'name' => 'required|string|max:255',
+        'status' => 'sometimes|required|in:active,inactive',
         'email' => 'required|email|max:255',
         'billing_email' => 'nullable|email|max:255',
         'phone' => 'nullable|string|max:50',
@@ -40,6 +41,7 @@ class CommanderAccountsController extends CoreBaseApiController
 
     protected array $validationRulesUpdate = [
         'name' => 'nullable|string|max:255',
+        'status' => 'sometimes|required|in:active,inactive',
         'email' => 'nullable|email|max:255',
         'billing_email' => 'nullable|email|max:255',
         'phone' => 'nullable|string|max:50',

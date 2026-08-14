@@ -3,6 +3,8 @@
 namespace Packages\Commander\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CommanderPlanModel extends Model
 {
@@ -16,22 +18,23 @@ class CommanderPlanModel extends Model
     {
         return [
             'id' => 'integer',
+            'application_id' => 'integer',
             'price_monthly' => 'float',
-            'q_requests_day' => 'integer',
-            'q_disk_db_mb' => 'integer',
-            'q_disk_storage_mb' => 'integer',
-            'q_users_total' => 'integer',
         ];
     }
 
-    /** The four quota limits keyed by the deploy's metric_key (null = unlimited). */
-    public function quotaLimits(): array
+    public function application(): BelongsTo
     {
-        return [
-            'requests_day' => $this->q_requests_day,
-            'disk_db_mb' => $this->q_disk_db_mb,
-            'disk_storage_mb' => $this->q_disk_storage_mb,
-            'users_total' => $this->q_users_total,
-        ];
+        return $this->belongsTo(CommanderApplicationModel::class, 'application_id');
+    }
+
+    public function limits(): HasMany
+    {
+        return $this->hasMany(CommanderPlanLimitModel::class, 'plan_id');
+    }
+
+    public function subscriptionItems(): HasMany
+    {
+        return $this->hasMany(CommanderSubscriptionItemModel::class, 'plan_id');
     }
 }

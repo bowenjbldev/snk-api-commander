@@ -22,4 +22,14 @@ class CommanderAccountModel extends Model
     {
         return $this->hasMany(CommanderClientModel::class, 'account_id');
     }
+
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(CommanderSubscriptionModel::class, 'account_id');
+    }
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(CommanderInvoiceModel::class, 'account_id');
+    }
 }

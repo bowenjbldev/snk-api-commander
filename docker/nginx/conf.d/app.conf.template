@@ -1,6 +1,6 @@
 # Centralizado: UN solo vhost sirve el dominio privado, los tenants
 # (*.${TENANT_BASE_DOMAIN}) y el dominio principal (${APP_DOMAIN}). El package se resuelve
-# por Host DENTRO de Laravel (CoreResolvePackageFromHostMiddleware), no por vhost.
+# por host y path dentro de Laravel (CoreResolveInstanceFromHostMiddleware), no por vhost.
 # El host exacto commander.${BASE_DOMAIN} lo gana commander.conf (server_name exacto
 # tiene prioridad sobre el wildcard). default_server: hosts no provisionados caen aqui
 # y Laravel responde 404.

@@ -60,6 +60,9 @@ php artisan config:clear
 echo "Running commander migrations..."
 php artisan core:migrate --force
 
+# El catálogo es code-first: sincroniza aplicaciones y métricas declaradas por los packages.
+php artisan commander:applications:sync
+
 # Limpiar cache (requiere DB, va después de migrate)
 echo "Clearing application cache..."
 php artisan cache:clear

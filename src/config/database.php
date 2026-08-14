@@ -116,9 +116,9 @@ return [
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
 
-        // ── Multi-tenant: una BD por package + una commander ───────────────────
+        // ── Multi-tenant: una BD por instancia + una commander ────────────────
         // 'commander': registro, metering y operador (commander_*) + la base del operador.
-        // Necesita un usuario con acceso a todas las BD + CREATE DATABASE (local: root).
+        // El usuario HTTP solo opera la base de control; no tiene DDL tenant.
         'commander' => [
             'driver' => env('COMMANDER_DB_DRIVER', 'mysql'), // sqlite en tests
             'host' => env('DB_HOST', '127.0.0.1'),
@@ -135,8 +135,7 @@ return [
             'engine' => null,
         ],
 
-        // 'tenant': BD del package activo; 'database' se fija en runtime
-        // (CoreResolvePackageFromHostMiddleware / provisioning). El valor aqui es solo placeholder.
+        // 'tenant': BD de la instancia activa; 'database' y credenciales se fijan en runtime.
         'tenant' => [
             'driver' => env('TENANT_DB_DRIVER', env('COMMANDER_DB_DRIVER', 'mysql')),
             'host' => env('DB_HOST', '127.0.0.1'),

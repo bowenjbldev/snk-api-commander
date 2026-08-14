@@ -3,10 +3,11 @@
 namespace Packages\Core\Providers;
 
 use Illuminate\Contracts\Debug\ExceptionHandler as ExceptionHandlerContract;
+use Illuminate\Contracts\Foundation\CachesConfiguration;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
-use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Arr;
-use Packages\Core\Support\CoreActivePackageSupport;
+use Illuminate\Support\ServiceProvider;
+use Packages\Core\Support\CoreActiveInstanceSupport;
 use Packages\Core\Support\CorePackageDiscoverySupport;
 
 class CoreServiceProvider extends ServiceProvider
@@ -18,12 +19,12 @@ class CoreServiceProvider extends ServiceProvider
         // 1. Active package config must exist before any discovery runs.
         $this->mergeConfigFrom(base_path('packages/Core/config/core.php'), 'core');
 
-        // Per-request active package (set by CoreResolvePackageFromHostMiddleware), shared by
+        // Per-request active instance (set by CoreResolveInstanceFromHostMiddleware), shared by
         // the state service, metering and quota measurer. Singleton = one value per request.
-        $this->app->singleton(CoreActivePackageSupport::class);
+        $this->app->singleton(CoreActiveInstanceSupport::class);
 
         // Multi-tenant: la cache de permisos de Spatie es por-request ('array'), no persistente.
-        // Con BD por package, una cache compartida (file) filtraria los permisos de un tenant a
+        // Con BD por instancia, una cache compartida (file) filtraria los permisos de un tenant a
         // otra conexion; 'array' fuerza recargar de la conexion activa en cada request.
         config(['permission.cache.store' => 'array']);
 
@@ -43,6 +44,7 @@ class CoreServiceProvider extends ServiceProvider
             foreach (Arr::wrap($paths) as $path) {
                 if ($this->isGlobalConfigKey($key)) {
                     $this->overrideConfigFrom($path, $key);
+
                     continue;
                 }
 
@@ -78,7 +80,7 @@ class CoreServiceProvider extends ServiceProvider
     }
 
     /**
-     * @return array<class-string<\Illuminate\Support\ServiceProvider>>
+     * @return array<class-string<ServiceProvider>>
      */
     private function discoverPackageProviders(): array
     {
@@ -95,7 +97,7 @@ class CoreServiceProvider extends ServiceProvider
 
     private function overrideConfigFrom(string $path, string $key): void
     {
-        if ($this->app instanceof \Illuminate\Contracts\Foundation\CachesConfiguration &&
+        if ($this->app instanceof CachesConfiguration &&
             $this->app->configurationIsCached()) {
             return;
         }
@@ -127,6 +129,6 @@ class CoreServiceProvider extends ServiceProvider
 
     private function isGlobalConfigKey(string $key): bool
     {
-        return !str_contains($key, '.');
+        return ! str_contains($key, '.');
     }
 }

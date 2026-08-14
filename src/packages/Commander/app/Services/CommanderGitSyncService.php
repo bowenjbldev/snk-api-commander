@@ -3,179 +3,113 @@
 namespace Packages\Commander\Services;
 
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Str;
 use Packages\Commander\Contracts\CommanderPackageGitSource;
-use Packages\Commander\Models\CommanderPackageActivityDailyModel;
-use Packages\Commander\Models\CommanderPackageCommitModel;
-use Packages\Commander\Models\CommanderPackageModel;
-use Packages\Commander\Models\CommanderPackageRepoModel;
+use Packages\Commander\Models\CommanderApplicationActivityDailyModel;
+use Packages\Commander\Models\CommanderApplicationCommitModel;
+use Packages\Commander\Models\CommanderApplicationModel;
+use Packages\Commander\Models\CommanderApplicationRepoModel;
 use Packages\Commander\Support\CommanderGitCommitData;
 
-/**
- * Sincroniza el historial git por package para los insights: por cada package provisionado pide los
- * commits NUEVOS a su CommanderPackageGitSource, los upserta en commander_package_commits (raw) y
- * recalcula los buckets diarios afectados en commander_package_activity_daily (heatmap + code
- * frequency). Idempotente: el cursor (last_synced_sha) acota cada pasada; los upserts no duplican.
- * Mismo patrón raw->rollup que CommanderUsageRollupService.
- */
 class CommanderGitSyncService
 {
     public function __construct(private readonly CommanderPackageGitSource $source) {}
 
-    /**
-     * @return array<int, array{package: string, commits: int, days: int}>
-     */
+    /** @return array<int, array{application: string, commits: int, days: int}> */
     public function sync(?string $only = null): array
     {
-        $query = CommanderPackageModel::query()->provisioned()->with('client');
-
+        $query = CommanderApplicationModel::query()->where('code_status', 'available');
         if ($only !== null && $only !== '') {
-            $query->where(fn ($q) => $q->where('name', $only)->orWhere('slug', $only));
+            $query->where(fn ($q) => $q->where('package_name', $only)->orWhere('slug', $only));
         }
 
-        $summary = [];
-
-        foreach ($query->get() as $package) {
-            $summary[] = $this->syncPackage($package);
-        }
-
-        return $summary;
+        return $query->get()->map(fn ($application) => $this->syncApplication($application))->all();
     }
 
-    /**
-     * @return array{package: string, commits: int, days: int}
-     */
-    private function syncPackage(CommanderPackageModel $package): array
+    /** @return array{application: string, commits: int, days: int} */
+    private function syncApplication(CommanderApplicationModel $application): array
     {
-        $repo = $this->ensureRepo($package);
-        $label = "{$package->client?->slug}/{$package->slug}";
-
-        /** @var array<int, CommanderGitCommitData> $new */
-        $new = [];
+        $repo = $this->ensureRepo($application);
+        $commits = [];
         foreach ($this->source->fetchCommits($repo, $repo->last_synced_sha) as $commit) {
-            $new[] = $commit;
+            $commits[] = $commit;
         }
-
         $now = CarbonImmutable::now();
 
-        if ($new === []) {
+        if ($commits === []) {
             $repo->forceFill(['last_synced_at' => $now])->save();
 
-            return ['package' => $label, 'commits' => 0, 'days' => 0];
+            return ['application' => $application->slug, 'commits' => 0, 'days' => 0];
         }
 
-        $this->upsertCommits($package->id, $new, $now);
-        $days = $this->rollupAffectedDays($package->id, $new, $now);
+        $this->upsertCommits($application->id, $commits, $now);
+        $days = $this->rollupAffectedDays($application->id, $commits, $now);
+        $newest = collect($commits)->sortByDesc(fn (CommanderGitCommitData $commit) => $commit->committedAt)->first();
+        $repo->forceFill(['last_synced_sha' => $newest->sha, 'last_synced_at' => $now])->save();
 
-        // Cursor = el commit más reciente por fecha (independiente del orden de salida).
-        $newest = collect($new)->sortByDesc(fn (CommanderGitCommitData $c) => $c->committedAt)->first();
-        $repo->forceFill([
-            'last_synced_sha' => $newest->sha,
-            'last_synced_at' => $now,
-        ])->save();
-
-        return ['package' => $label, 'commits' => count($new), 'days' => $days];
+        return ['application' => $application->slug, 'commits' => count($commits), 'days' => $days];
     }
 
-    /**
-     * @param  array<int, CommanderGitCommitData>  $commits
-     */
-    private function upsertCommits(int $packageId, array $commits, CarbonImmutable $now): void
+    /** @param array<int, CommanderGitCommitData> $commits */
+    private function upsertCommits(int $applicationId, array $commits, CarbonImmutable $now): void
     {
-        $nowStr = $now->format('Y-m-d H:i:s');
-        $rows = [];
+        $rows = array_map(fn (CommanderGitCommitData $commit) => [
+            'application_id' => $applicationId,
+            'sha' => $commit->sha,
+            'committed_at' => $commit->committedAt->format('Y-m-d H:i:s'),
+            'author_name' => $commit->authorName,
+            'author_email' => $commit->authorEmail,
+            'message' => $commit->message,
+            'additions' => $commit->additions,
+            'deletions' => $commit->deletions,
+            'files_changed' => $commit->filesChanged,
+            'created_at' => $now->format('Y-m-d H:i:s'),
+            'updated_at' => $now->format('Y-m-d H:i:s'),
+        ], $commits);
 
-        foreach ($commits as $c) {
-            $rows[] = [
-                'package_id' => $packageId,
-                'sha' => $c->sha,
-                'committed_at' => $c->committedAt->format('Y-m-d H:i:s'),
-                'author_name' => $c->authorName,
-                'author_email' => $c->authorEmail,
-                'message' => $c->message,
-                'additions' => $c->additions,
-                'deletions' => $c->deletions,
-                'files_changed' => $c->filesChanged,
-                'created_at' => $nowStr,
-                'updated_at' => $nowStr,
-            ];
-        }
-
-        CommanderPackageCommitModel::query()->upsert(
+        CommanderApplicationCommitModel::query()->upsert(
             $rows,
-            ['package_id', 'sha'],
+            ['application_id', 'sha'],
             ['committed_at', 'author_name', 'author_email', 'message', 'additions', 'deletions', 'files_changed', 'updated_at'],
         );
     }
 
-    /**
-     * Recalcula (desde la tabla cruda) los buckets diarios de los días tocados por los commits nuevos.
-     *
-     * @param  array<int, CommanderGitCommitData>  $commits
-     * @return int días actualizados
-     */
-    private function rollupAffectedDays(int $packageId, array $commits, CarbonImmutable $now): int
+    /** @param array<int, CommanderGitCommitData> $commits */
+    private function rollupAffectedDays(int $applicationId, array $commits, CarbonImmutable $now): int
     {
-        $days = [];
-        foreach ($commits as $c) {
-            $days[$c->committedAt->toDateString()] = true;
-        }
-
-        $nowStr = $now->format('Y-m-d H:i:s');
-        $rows = [];
-
-        foreach (array_keys($days) as $day) {
+        $days = collect($commits)->map(fn (CommanderGitCommitData $commit) => $commit->committedAt->toDateString())->unique();
+        $rows = $days->map(function (string $day) use ($applicationId, $now): array {
             $bucket = CarbonImmutable::parse($day);
-
-            $stats = CommanderPackageCommitModel::query()
-                ->where('package_id', $packageId)
+            $stats = CommanderApplicationCommitModel::query()
+                ->where('application_id', $applicationId)
                 ->whereBetween('committed_at', [$bucket->startOfDay(), $bucket->endOfDay()])
                 ->get(['additions', 'deletions', 'files_changed']);
 
-            $rows[] = [
-                'package_id' => $packageId,
+            return [
+                'application_id' => $applicationId,
                 'day' => $day,
                 'commit_count' => $stats->count(),
                 'additions' => (int) $stats->sum('additions'),
                 'deletions' => (int) $stats->sum('deletions'),
                 'files_changed' => (int) $stats->sum('files_changed'),
-                'created_at' => $nowStr,
-                'updated_at' => $nowStr,
+                'created_at' => $now->format('Y-m-d H:i:s'),
+                'updated_at' => $now->format('Y-m-d H:i:s'),
             ];
-        }
+        })->all();
 
-        CommanderPackageActivityDailyModel::query()->upsert(
+        CommanderApplicationActivityDailyModel::query()->upsert(
             $rows,
-            ['package_id', 'day'],
+            ['application_id', 'day'],
             ['commit_count', 'additions', 'deletions', 'files_changed', 'updated_at'],
         );
 
         return count($rows);
     }
 
-    /** Fila repo 1:1: usa el overlay si existe y, si no, el package compartido. */
-    private function ensureRepo(CommanderPackageModel $package): CommanderPackageRepoModel
+    private function ensureRepo(CommanderApplicationModel $application): CommanderApplicationRepoModel
     {
-        $customPath = 'src/packages/'.Str::studly((string) $package->client?->slug).'/'.$package->name;
-        $sharedPath = 'src/packages/'.$package->name;
-        $customDirectory = base_path(substr($customPath, 4));
-        $path = is_dir($customDirectory) ? $customPath : $sharedPath;
-
-        // `provider` no se setea aqui: lo aporta el default de la columna (el unico sitio que nombra
-        // el proveedor). El servicio es agnostico.
-        $repo = CommanderPackageRepoModel::firstOrCreate(
-            ['package_id' => $package->id],
-            [
-                'path_prefix' => $path,
-                'default_branch' => 'main',
-            ],
+        return CommanderApplicationRepoModel::firstOrCreate(
+            ['application_id' => $application->id],
+            ['path_prefix' => 'src/packages/'.$application->package_name, 'default_branch' => 'main'],
         );
-
-        // Corrige automáticamente el path zero-config antiguo tras mover un package a compartido.
-        if ($repo->path_prefix === $customPath && $path === $sharedPath) {
-            $repo->forceFill(['path_prefix' => $sharedPath])->save();
-        }
-
-        return $repo;
     }
 }

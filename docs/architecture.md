@@ -2,205 +2,163 @@
 
 ## Forma del sistema
 
-Snake API Commander es un monolito modular y multi-tenant por base de datos. Un despliegue
-Laravel carga la infraestructura y todos los productos disponibles, pero resuelve la instancia
-activa en cada petición.
+Snake API Commander es un monolito Laravel modular, multi-tenant por base de datos.
 
-| Pieza | Responsabilidad | Ubicación |
+| Módulo | Responsabilidad | Ruta |
 |---|---|---|
-| Core | descubrimiento, rutas, auth base, permisos, conexión tenant, metering, estado y comandos | `src/packages/Core` |
-| Commander | control plane: cuentas comerciales, clientes, planes, provisioning, billing, cuotas y observabilidad | `src/packages/Commander` |
-| Kilkana | producto editorial compartido y sus migraciones | `src/packages/Kilkana` |
-| Overlay | diferencias de un cliente sobre un producto compartido | `src/packages/<Cliente>/<Paquete>` |
+| Core | descubrimiento, routing, auth base, conexión tenant, estado y comandos | `src/packages/Core` |
+| Commander | control plane, provisioning, billing, cuotas y observabilidad | `src/packages/Commander` |
+| Kilkana | producto editorial compartido | `src/packages/Kilkana` |
+| overlay | diferencias de un cliente sobre un producto | `src/packages/<Cliente>/<Paquete>` |
 
-La carpeta `src/app` es el shell mínimo de Laravel. La lógica de plataforma o de negocio vive
-en `src/packages`.
+`src/app` es solo el shell de Laravel. El [modelo de Commander](commander-model.md) define la
+semántica de cuenta, cliente, aplicación, instancia y contrato.
 
-## Identidad y direccionamiento
-
-Una instancia se identifica por el par `(cliente, paquete)`:
+## Identidad y routing
 
 ```text
-Host:  elmundo.example.com       → commander_clients.slug = elmundo
-Path:  /api/v1/kilkana/...       → commander_packages.slug = kilkana
-Fila:  commander_packages.id     → identidad operativa estable
-BD:    elmundo_kilkana           → datos aislados de la instancia
+Host:  diario-norte.kilkana.test        → client.slug = diario-norte
+Path:  /api/v1/kilkana/public/posts     → application.slug = kilkana
+Fila:  commander_instances.id           → identidad operativa estable
+BD:    diario_norte_kilkana             → frontera de datos
+Código src/packages/Kilkana             → application.package_name = Kilkana
 ```
 
-Una `commander_account` es la identidad comercial superior obligatoria. En el caso normal tiene
-una cabecera; en un grupo puede contener varias. No interviene en el host, el nombre de BD ni la
-resolución:
+Existe como máximo una instancia por `(client_id, application_id)`. Estado, plan, cuotas, logs y
+jobs usan su ID numérico.
+
+Los hosts reservados son `api`, `commander` y `www`. El cliente es un único label DNS de hasta 63
+caracteres. Base y usuario se validan siempre contra `[a-z0-9_]{1,64}` antes de usarse en DDL.
+
+### Dominios
+
+El control plane privado usa `commander.<BASE_DOMAIN>`. Los tenants usan
+`{cliente}.<TENANT_BASE_DOMAIN>`; si el segundo no existe, cae a `BASE_DOMAIN`.
+
+En local:
 
 ```text
-account Grupo Demo
-├── client diario-norte  → diario-norte.<dominio>  → diario_norte_kilkana
-├── client diario-centro → diario-centro.<dominio> → diario_centro_kilkana
-└── client diario-sur    → diario-sur.<dominio>    → diario_sur_kilkana
+commander.snakepc.test       control plane
+diario-norte.kilkana.test    tenant Kilkana
 ```
 
-No existen clientes sin `account_id`. Si el alta recibe un cliente nuevo sin una cuenta existente,
-Commander crea una cuenta 1:1 con sus datos comerciales. Las cuotas, estado, suscripción y
-credenciales continúan perteneciendo a cada fila de instancia, no a la cuenta agrupadora.
+No existe `commander.kilkana.test`. Actualmente hay un único dominio tenant por despliegue; un
+futuro segundo SaaS con dominio propio requerirá un mapa aplicación→dominio.
 
-Los subdominios `api`, `commander` y `www` están reservados. El slug de cliente acepta un único
-nivel DNS, de 1 a 63 caracteres, con letras minúsculas, números y guiones. El nombre de la base
-se normaliza a `[a-z0-9_]{1,64}`.
+## Aplicaciones, packages y overlays
 
-`name` identifica el tipo lógico en StudlyCase (`Kilkana`); `slug` identifica su segmento de
-ruta (`kilkana`); `id` identifica una fila concreta. Las acciones de estado, uso, logs, plan y
-de-provisioning usan siempre el `id` numérico para no confundir dos instancias del mismo producto.
+Una aplicación es provisionable si su implementación compartida o específica contiene
+`routes/api.php`.
 
-### Ámbitos de dominio: SnakePC y Kilkana
-
-`snakepc.test` representa el entorno local y portfolio técnico del propietario. Commander forma
-parte de ese ámbito y su URL actual es `commander.snakepc.test`.
-
-Kilkana es un SaaS con identidad propia. La estructura local actual es:
-
-```text
-commander.snakepc.test          control plane privado
-elmundo.kilkana.test            instancia Kilkana de El Mundo
-elconfidencial.kilkana.test     instancia Kilkana de El Confidencial
-```
-
-No existe `commander.kilkana.test`: Commander administra Kilkana, pero no pertenece a su marca
-pública. `BASE_DOMAIN` gobierna el control plane y `TENANT_BASE_DOMAIN` las rutas tenant; Core,
-nginx y TLS respetan esa separación. Si `TENANT_BASE_DOMAIN` no está definido, Core cae a
-`BASE_DOMAIN` para mantener compatibles los despliegues anteriores.
-
-El límite deliberado actual es un dominio tenant por despliegue. Cuando exista un segundo SaaS
-con dominio de marca propio, se sustituirá por un mapa producto → dominio; no se anticipa hasta
-que aparezca ese segundo caso.
-
-## Productos compartidos y overlays
-
-Hay tres formas válidas de implementar un producto:
-
-| Código desplegado | Resultado para el cliente |
+| Código | Resultado |
 |---|---|
-| `packages/Kilkana` | implementación compartida |
-| compartido + `packages/ElMundo/Kilkana` | compartido con diferencias de El Mundo |
+| `packages/Kilkana` | producto compartido para cualquier cliente |
+| anterior + `packages/ElMundo/Kilkana` | base compartida con diferencias de El Mundo |
 | solo `packages/Acme/Shop` | producto exclusivo de Acme |
-| ninguno | no provisionable; respuesta `422` |
+| ninguno | alta `422` |
 
-El overlay no es una copia del producto. Debe contener únicamente rutas, configuración,
-migraciones, seeders o clases que cambian. Sus clases pueden extender las compartidas.
-
-Para que una implementación sea descubrible debe existir `routes/api.php` en el compartido o en
-el producto exclusivo. Un directorio que solo contiene configuración no crea un producto nuevo;
-sí puede actuar como overlay de un producto compartido que ya tiene rutas.
-
-### Orden de composición
-
-El orden es siempre base y después overlay:
+El orden de composición es:
 
 ```text
-migraciones: Core → producto compartido → overlay
-seeders:      Core → producto compartido → overlay
-config:       producto compartido → overlay
-rutas:        overlay exacto → compartido wildcard como fallback
+migraciones: Core → package compartido → overlay
+seeders:      Core → package compartido → overlay
+config:       compartida → overlay
+rutas:        overlay exacto → compartida wildcard como fallback
 ```
 
-Las rutas del overlay se registran primero para su dominio exacto. La ruta compartida se registra
-después sobre `{client}.<TENANT_BASE_DOMAIN>`. Si el overlay no redefine un endpoint, la petición llega a
-la ruta compartida.
+Los providers compartidos pueden cargarse globalmente. Los providers de overlay no se cargan:
+un binding global de un cliente contaminaría a los demás.
 
-Los service providers de productos compartidos se cargan globalmente. Los providers de overlays
-se omiten deliberadamente: un binding global de El Mundo podría contaminar una petición de El
-Confidencial. Un overlay entra por sus rutas y clases acotadas, no mediante bindings globales.
+`commander:applications:sync` registra una aplicación por package de negocio y sincroniza sus
+métricas. El comando marca como `missing` el código que desaparece; no borra historia. Las lecturas
+de API no hacen sync ni escriben en la base.
 
-## Resolución de una petición tenant
+## Resolución tenant
 
-`CoreResolvePackageFromHostMiddleware` realiza la frontera multi-tenant:
+`CoreResolveInstanceFromHostMiddleware`:
 
-1. Extrae un cliente válido del `Host` y recibe el slug del producto desde la ruta registrada.
-2. Busca una fila de `commander_packages` con `provisioned_at` no nulo, ese slug y un cliente
-   activo.
-3. Rechaza con `404` si la instancia no existe o aún está pendiente.
-4. Valida que nombre de base, usuario y contraseña runtime estén disponibles; si no, responde
-   `503`.
-5. Configura la conexión `tenant`, la convierte en conexión por defecto y fija la instancia en
-   `CoreActivePackageSupport`.
-6. Fusiona la configuración compartida y la del overlay.
-7. Ejecuta la ruta y restaura conexión, configuración y contexto en un `finally`.
+1. extrae el cliente del host y recibe el slug de aplicación de la ruta;
+2. busca una instancia `ready` con cliente/aplicación activos y código disponible;
+3. valida base, usuario y contraseña runtime;
+4. fija `CoreActiveInstanceSupport`;
+5. configura y selecciona la conexión `tenant`;
+6. aplica overrides de configuración compartidos y del overlay;
+7. ejecuta la ruta;
+8. restaura conexión, configuración y contexto en `finally`.
 
-La fila de Commander se consulta siempre mediante el modelo fijado a la conexión `commander`, de
-modo que cambiar la conexión por defecto no cambia el control plane.
+Pending, failed, deprovisioning y deprovisioned responden `404`; credenciales incompletas en una
+fila ready responden `503`.
 
-Core y el health check son globales. Commander usa `commander.<BASE_DOMAIN>` y nunca pasa por el
-resolutor tenant; los productos usan `{client}.<TENANT_BASE_DOMAIN>`.
+Los modelos Commander fijan `protected $connection = 'commander'`, por lo que siguen leyendo la
+base de control después de cambiar la conexión por defecto.
 
-## Configuración
-
-Durante el boot, solo Core puede fusionar claves globales de Laravel. Los productos se cargan bajo
-namespaces:
+## Aislamiento y autenticación
 
 ```text
-kilkana.kilkana.*                 configuración compartida
-elmundo.kilkana.kilkana.*         configuración del overlay
+commander
+├── operador Commander y sus tokens
+└── tablas commander_*
+
+diario_norte_kilkana
+├── usuarios, roles y tokens de Diario Norte
+└── tablas kilkana_*
+
+diario_sur_kilkana
+└── identidades y datos distintos
 ```
 
-En una petición tenant, un fichero cuyo nombre coincide con una clave del skeleton (`app.php`,
-`mail.php`, `session.php`, etc.) puede modificar esa clave solo durante la petición. El resolutor
-restaura después el valor anterior. La configuración propia del overlay se expone en el namespace
-compartido para que el código base la consuma sin conocer al cliente.
+No hay `tenant_id` ni bypass por token. Sanctum busca el token en la base activa. El mismo correo
+en dos diarios son dos usuarios locales y dos tokens independientes.
 
-## Aislamiento de datos y credenciales
+El proceso HTTP usa el usuario de control solo sobre `commander`. El worker `provisioner` recibe
+la credencial DDL y crea un usuario runtime por instancia con únicamente `SELECT`, `INSERT`,
+`UPDATE` y `DELETE` sobre su base. La contraseña se cifra en Commander y nunca se serializa.
 
-La separación principal es física:
+## Estado y middleware
 
-- `commander`: operador, cuentas, clientes, catálogo, planes, billing, estado, cuotas y métricas.
-- `{cliente}_{paquete}`: usuarios, tokens, roles y tablas de negocio de una instancia.
+`CoreEnsureActiveMiddleware` consulta `service_status` por instancia:
 
-Un usuario o token de Kilkana no existe en la base de otra instancia ni en Commander. Sanctum
-devuelve `401` de forma natural al buscarlo en la conexión activa; no hay un `tenant_id` que pueda
-olvidarse en una consulta.
+- `active`: respuesta normal;
+- `grace`: respuesta normal con `X-Instance-*`;
+- `suspended` o grace vencida: `402`;
+- error al verificar estado: `503` fail-closed.
 
-El proceso HTTP usa un usuario restringido para Commander. El worker `provisioner` es el único que
-recibe credenciales DDL. Crea un usuario runtime por instancia y le concede solo `SELECT`, `INSERT`,
-`UPDATE` y `DELETE` sobre su base. La contraseña se guarda cifrada mediante el cast de Eloquent y
-se oculta de la serialización API.
+Rate limit y login incluyen `instance_id` en su clave. `CoreMeteringMiddleware` captura esa misma
+identidad antes de que el resolutor restaure el contexto y escribe el log al terminar la respuesta.
+Un fallo de metering nunca modifica la respuesta.
 
-Los ficheros de Kilkana se separan por nombre de base en
-`storage/app/public/media/{database}`. Esta convención evita cruces entre sus instancias, aunque no
-es todavía un contrato genérico de almacenamiento para productos futuros.
+## Procesos
 
-## Estado, límites y observabilidad
+| Proceso | Credenciales y función |
+|---|---|
+| `app` | HTTP y comandos sin DDL tenant |
+| `provisioner` | cola `provisioning`, creación/borrado de bases y usuarios |
+| `scheduler` | mediciones, rollups, Git y tareas Kilkana |
+| `nginx` | TLS, wildcard tenant y proxy |
+| `db` | MariaDB con `commander` y bases por instancia |
 
-`commander_packages.status` implementa `active | grace | suspended`.
+La conmutación de conexión/configuración es estado global mutable. Está soportada en PHP-FPM y
+workers secuenciales. No debe usarse con requests concurrentes dentro del mismo proceso
+(Octane/Swoole) sin contexto aislado por coroutine.
 
-- `active`: la API sirve normalmente.
-- `grace`: sirve y añade cabeceras `X-Package-*`.
-- `suspended`: el kill-switch devuelve `402` en rutas tenant.
-- si el estado de un tenant no puede verificarse, el middleware falla cerrado con `503`.
+## Invariantes de implementación
 
-El metering se ejecuta al terminar la respuesta y escribe en `commander_request_logs`. No rompe la
-respuesta si falla. Los rollups alimentan los gráficos y las cuotas. Rate limits y límites de
-login incluyen `commander_packages.id` en su clave para que dos tenants con la misma IP o usuario
-no compartan presupuesto.
+- Solo `provisioning_status = ready` enruta.
+- El worker provisioner es el único con DDL.
+- Las credenciales admin tenant son explícitas en cada alta o retry.
+- Commander nunca genera ni clona código de producto.
+- Cuenta agrupa contratos; cliente/instancia siguen siendo las fronteras de datos y operación.
+- La conexión tenant, config runtime y contexto activo se restauran en `finally`.
+- Storage tenant conocido usa `storage/app/public/media/{database}`.
+- Los enlaces firmados tenant incluyen el host del cliente.
 
-Los enlaces firmados de Kilkana incluyen el host del cliente; no dependen de `APP_URL`. Los
-comandos programados recorren solo instancias Kilkana provisionadas, con cliente activo y estado
-operativo o grace vigente, y restauran la conexión entre tenants.
+## Riesgos conocidos
 
-## Modelo de proceso soportado
-
-La conmutación usa configuración y conexión por defecto mutables. Es segura con PHP-FPM y con
-workers que procesan una unidad cada vez, porque el estado se restaura en `finally`. No se debe
-activar concurrencia de requests dentro del mismo proceso —por ejemplo Octane/Swoole concurrente—
-sin sustituir ese estado global por contexto aislado por coroutine/request.
-
-## Límites conocidos
-
-- El ciclo de vida catálogo/pending/live/de-provisioned comparte una tabla y no tiene estado de
-  provisioning explícito; se detalla en [Base de datos](database.md).
-- Un fallo al publicar el job después de confirmar el registro puede dejar una fila pending sin
-  consumidor. De-provisioning tiene el caso simétrico. Falta reconciliación/outbox.
-- Los providers de overlay no están soportados. Si una personalización necesita bindings, debe
-  resolverse por clases/rutas tenant o requerirá otro mecanismo de contenedor acotado.
-- Git Insights se asocia a cada fila de instancia. Varias instancias que apuntan al mismo código
-  compartido pueden contabilizar la misma actividad más de una vez si se configuran igual.
-- El borrado de almacenamiento presupone `media/{database}`. Un producto que escriba en otra ruta
-  necesita declarar y limpiar su propio almacenamiento antes de generalizar el de-provisioning.
-- Las clases de Kilkana conservan el prefijo histórico `SnkKilkana*` aunque el namespace vigente es
-  `Packages\Kilkana`; es deuda de naming, no aislamiento por cliente.
+- La publicación de jobs no usa outbox. Se despacha después del commit y existe estado `failed` +
+  retry estable, pero no reconciliador automático.
+- Una baja puede dejar recursos si el worker falla; la instancia queda `failed` con `last_error`.
+- La restricción “plan/métrica/contrato pertenecen a la misma aplicación/cuenta” se valida en la
+  API; no todas son expresables con una FK simple.
+- Los tests SQLite no validan DDL, permisos, collation ni `information_schema` de MariaDB.
+- El borrado solo conoce el storage `media/{database}`.
+- Las clases Kilkana conservan el prefijo histórico `SnkKilkana*`; no afecta al aislamiento.

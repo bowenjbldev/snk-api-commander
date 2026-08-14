@@ -3,6 +3,7 @@
 namespace Packages\Commander\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Log crudo por request (metering). Lo ESCRIBE CoreMeteringMiddleware por query builder
@@ -18,4 +19,9 @@ class CommanderRequestLogModel extends Model
     protected $connection = 'commander';
 
     protected $guarded = [];
+
+    public function instance(): BelongsTo
+    {
+        return $this->belongsTo(CommanderInstanceModel::class, 'instance_id');
+    }
 }

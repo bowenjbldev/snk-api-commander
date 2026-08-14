@@ -12,8 +12,7 @@ services:
     working_dir: /var/www/src
     volumes:
       - ./src:/var/www/src
-      # Historial git (solo lectura) para los insights por package: commander:git:sync lee
-      # `git log --git-dir=/var/www/.git` acotado al path del package. No necesita work-tree.
+      # Historial Git (solo lectura) para insights por aplicación, acotado al package compartido.
       - ./.git:/var/www/.git:ro
       - /var/www/src/bootstrap/cache
     environment:
@@ -60,7 +59,7 @@ services:
     restart: unless-stopped
     working_dir: /var/www/src
     entrypoint: ["sh", "-c"]
-    command: ["php artisan commander:secure-tenants && exec php artisan queue:work --queue=provisioning --tries=1 --timeout=600"]
+    command: ["php artisan commander:secure-tenants && exec php artisan queue:work --queue=provisioning --tries=3 --timeout=600"]
     volumes:
       - ./src:/var/www/src
       - /var/www/src/bootstrap/cache
@@ -125,13 +124,12 @@ services:
     networks:
       - app-network
 
-  # MariaDB Service — UNA base de datos compartida para TODOS los packages (centralizado).
+  # MariaDB: una base de control y una base aislada por instancia.
   db:
     image: mariadb:latest
     restart: unless-stopped
     environment:
-      # Root sin password (SOLO local): la app conecta como root para acceder a TODAS las BD de
-      # los packages y poder CREATE/DROP DATABASE al provisionar. En init crea la BD commander.
+      # Root sin password (SOLO local): únicamente el provisioner recibe estas credenciales DDL.
       MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "yes"
       MARIADB_DATABASE: commander
       MARIADB_USER: ${COMMANDER_DB_USERNAME:-commander_app}

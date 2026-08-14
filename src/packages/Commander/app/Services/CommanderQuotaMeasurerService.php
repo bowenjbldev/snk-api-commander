@@ -5,266 +5,256 @@ namespace Packages\Commander\Services;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Packages\Commander\Contracts\CommanderMetricMeasurer;
 use Packages\Commander\Models\CommanderActivityEventModel;
-use Packages\Commander\Models\CommanderPackageModel;
+use Packages\Commander\Models\CommanderInstanceModel;
+use Packages\Commander\Models\CommanderMetricMeasurementModel;
 use Packages\Commander\Models\CommanderQuotaModel;
-use Packages\Commander\Models\CommanderRequestLogModel;
-use Packages\Core\Enums\CorePackageStatusEnum;
-use Packages\Core\Services\CorePackageStateService;
-use Packages\Core\Support\CoreActivePackageSupport;
+use Packages\Core\Enums\CoreServiceStatusEnum;
+use Packages\Core\Services\CoreInstanceStateService;
+use Packages\Core\Support\CoreActiveInstanceSupport;
 use Packages\Core\Support\CorePackageSelectorSupport;
 
-/**
- * Mide las metricas de cuota POR package y aplica la accion on_exceed. La unica via de
- * suspension es CorePackageStateService; el auto-heal solo revierte suspensiones causadas
- * por la propia metrica (reason quota_exceeded:<key>), nunca pisa una suspension manual
- * o del Commander. Cada metrica se mide acotada a su package (conmutando a su BD).
- */
 class CommanderQuotaMeasurerService
 {
     public function __construct(
-        private readonly CorePackageStateService $stateService,
-        private readonly CoreActivePackageSupport $active,
+        private readonly CoreInstanceStateService $state,
+        private readonly CoreActiveInstanceSupport $active,
     ) {}
 
-    public function measure(
-        string $metricKey,
-        ?CommanderPackageModel $package = null,
-        bool $tenantConnected = false,
-    ): ?int {
-        $packageId = $package?->getKey();
-
-        return match ($metricKey) {
-            'disk_db_mb' => $this->measureDatabaseSizeMb($package, $tenantConnected),
-            'disk_storage_mb' => $this->measureStorageSizeMb($package),
-            'requests_day' => $this->measureRequestsToday($packageId),
-            // users del package = todos los users de SU BD (la conexion 'tenant' ya apunta a ella).
-            'users_total' => $tenantConnected
-                ? (int) DB::connection('tenant')->table('users')->count()
-                : null,
-            default => null,
-        };
-    }
-
-    /**
-     * @return array<int, array{metric: CommanderQuotaModel, value: ?int, over: bool}>
-     */
+    /** @return array<int, array{quota: CommanderQuotaModel, value: ?int, over: bool}> */
     public function measureAll(bool $persist = true, bool $enforce = true): array
     {
         $results = [];
         $originalTenantConfig = config('database.connections.tenant');
-        $originalActivePackage = $this->active->current();
-
-        // Agrupa por package: fija el contexto activo de cada grupo para que enforce()
-        // (state->set/current) apunte a la fila packages correcta.
-        $byPackage = CommanderQuotaModel::query()
-            ->orderBy('package_id')
-            ->orderBy('metric_key')
+        $originalActive = $this->active->current();
+        $groups = CommanderQuotaModel::query()
+            ->with(['metric', 'instance'])
+            ->orderBy('instance_id')
             ->get()
-            ->groupBy('package_id');
+            ->groupBy('instance_id');
 
         try {
-            foreach ($byPackage as $packageId => $metrics) {
-                $package = $packageId !== null ? CommanderPackageModel::query()->find($packageId) : null;
-                $this->active->set($package);
-
-                // Nunca permite que un registro incompleto reutilice la conexion del tenant anterior.
-                config(['database.connections.tenant' => $originalTenantConfig]);
-                DB::purge('tenant');
-                $tenantConnected = $this->configureTenantConnection($package);
-                $measuredMetrics = [];
-
-                foreach ($metrics as $metric) {
-                    $value = $this->measure($metric->metric_key, $package, $tenantConnected);
-
-                    // Set the measured value in memory first so enforce() always sees fresh data; only the DB
-                    // write is gated on $persist (enforcing on a stale current_value would mis-decide suspend/heal).
-                    if ($value !== null) {
-                        $metric->current_value = $value;
-                        $measuredMetrics[] = $metric;
-
-                        if ($persist) {
-                            $metric->measured_at = now();
-                            $metric->save();
-                        }
-                    }
-
-                    $over = $value !== null && $metric->limit_value !== null && $value > $metric->limit_value;
-
-                    $results[] = ['metric' => $metric, 'value' => $value, 'over' => $over];
+            foreach ($groups as $instanceId => $quotas) {
+                $instance = CommanderInstanceModel::query()->find($instanceId);
+                if ($instance === null || $instance->provisioning_status !== 'ready') {
+                    continue;
                 }
 
-                if ($enforce) {
-                    foreach ($measuredMetrics as $metric) {
-                        $anotherMetricIsOver = $metrics->contains(
-                            fn (CommanderQuotaModel $other): bool => ! $other->is($metric) && $other->isOverLimit(),
+                $this->active->set($instance);
+                config(['database.connections.tenant' => $originalTenantConfig]);
+                DB::purge('tenant');
+                try {
+                    $tenantConnected = $this->configureTenant($instance);
+                } catch (\Throwable $error) {
+                    report($error);
+                    foreach ($quotas as $quota) {
+                        $results[] = ['quota' => $quota, 'value' => null, 'over' => false];
+                    }
+
+                    continue;
+                }
+
+                foreach ($quotas as $quota) {
+                    if ($quota->metric->status !== 'active') {
+                        continue;
+                    }
+                    $previousMeasuredAt = $quota->measured_at?->toImmutable();
+                    try {
+                        $measurer = app($quota->metric->measurer);
+                        if (! $measurer instanceof CommanderMetricMeasurer) {
+                            throw new \RuntimeException("Metric measurer [{$quota->metric->measurer}] is invalid.");
+                        }
+                        $value = $measurer->measure($instance, $quota->metric, $tenantConnected);
+                    } catch (\Throwable $error) {
+                        report($error);
+                        $results[] = ['quota' => $quota, 'value' => null, 'over' => false];
+
+                        continue;
+                    }
+                    $over = $value !== null && $quota->limit_value !== null && $value > $quota->limit_value;
+                    $results[] = ['quota' => $quota, 'value' => $value, 'over' => $over];
+                    if ($value === null) {
+                        continue;
+                    }
+
+                    $quota->current_value = $value;
+                    if ($persist) {
+                        $quota->measured_at = now();
+                        $quota->save();
+                        CommanderMetricMeasurementModel::updateOrCreate(
+                            ['quota_id' => $quota->id, 'bucket_date' => now()->toDateString()],
+                            ['value' => $value, 'measured_at' => now()],
                         );
-                        $this->enforce($metric, $anotherMetricIsOver);
+                    }
+
+                    if ($enforce) {
+                        $this->enforce($quota, $previousMeasuredAt);
                     }
                 }
             }
         } finally {
             config(['database.connections.tenant' => $originalTenantConfig]);
             DB::purge('tenant');
-            $this->active->set($originalActivePackage);
+            $this->active->set($originalActive);
         }
 
         return $results;
     }
 
-    public function enforce(CommanderQuotaModel $metric, bool $anotherMetricIsOver = false): void
+    public function enforce(CommanderQuotaModel $quota, ?CarbonImmutable $previousMeasuredAt = null): void
     {
-        $reason = "quota_exceeded:{$metric->metric_key}";
-        $state = $this->stateService->current();
+        if ($quota->limit_value === null) {
+            return;
+        }
 
-        if ($metric->isOverLimit()) {
-            if ($metric->exceeded_at === null) {
-                $metric->exceeded_at = now();
-                $metric->save();
-            }
+        $threshold = (int) ceil($quota->limit_value * $quota->warning_percent / 100);
+        if ($quota->current_value >= $threshold && $quota->threshold_reached_at === null) {
+            $quota->threshold_reached_at = now();
+            $quota->save();
+            $this->recordActivity($quota->instance_id, 'quota_warning', "quota:{$quota->metric->key}", null);
+        } elseif ($quota->current_value < $threshold && $quota->threshold_reached_at !== null) {
+            $quota->threshold_reached_at = null;
+            $quota->save();
+        }
 
-            if ($metric->on_exceed === 'warn') {
-                Log::warning("Quota [{$metric->metric_key}] excedida: {$metric->current_value} > {$metric->limit_value}");
+        if ($quota->action === 'recommend' && $this->enteredNewMonth($previousMeasuredAt)) {
+            $this->evaluateUpgradeRecommendation($quota);
+        }
 
-                return;
-            }
-
-            if ($metric->on_exceed !== 'suspend') {
-                return;
-            }
-
-            if ($state->status === CorePackageStatusEnum::Active) {
-                $message = "A usage limit was exceeded. Your service will be suspended if usage isn't reduced.";
-                $this->stateService->set(
-                    CorePackageStatusEnum::Grace,
-                    $reason,
-                    $message,
-                    CarbonImmutable::now()->addHours((int) config('core.quotas.grace_hours', 72)),
-                );
-                $this->recordActivity($metric->package_id, 'grace', $reason, $message);
-
-                return;
-            }
-
-            // Grace propio vencido => escalar a suspension definitiva
-            if ($state->status === CorePackageStatusEnum::Grace
-                && $state->reason === $reason
-                && $state->effectiveStatus() === CorePackageStatusEnum::Suspended) {
-                $message = 'A usage limit was exceeded and the grace period has ended.';
-                $this->stateService->set(
-                    CorePackageStatusEnum::Suspended,
-                    $reason,
-                    $message,
-                    null,
-                );
-                $this->recordActivity($metric->package_id, 'suspend', $reason, $message);
-            }
+        if (! $quota->isOverLimit()) {
+            $quota->exceeded_at = null;
+            $quota->save();
+            $this->healSuspension($quota);
 
             return;
         }
 
-        // De vuelta bajo el limite
-        if ($metric->exceeded_at !== null) {
-            $metric->exceeded_at = null;
-            $metric->save();
-        }
+        $quota->exceeded_at ??= now();
+        $quota->save();
 
-        // Auto-heal: solo si la suspension/grace la causo ESTA metrica
-        if (! $anotherMetricIsOver
-            && $state->status !== CorePackageStatusEnum::Active
-            && $state->reason === $reason) {
-            $this->stateService->set(CorePackageStatusEnum::Active, null, null, null);
-            $this->recordActivity($metric->package_id, 'resume', null, null);
+        if ($quota->action === 'warn') {
+            Log::warning("Quota [{$quota->metric->key}] exceeded on instance [{$quota->instance_id}].");
+        } elseif ($quota->action === 'suspend') {
+            $this->suspend($quota);
         }
     }
 
-    /**
-     * Registra el cambio de estado AUTOMATICO en el feed de actividad (commander_activity_events),
-     * igual que las acciones manuales del operador. El origen (cuota vs operador) se distingue por
-     * el `reason` (quota_exceeded:<key>), no por una columna de actor.
-     */
-    private function recordActivity(int $packageId, string $kind, ?string $reason, ?string $message): void
+    private function evaluateUpgradeRecommendation(CommanderQuotaModel $quota): void
     {
-        CommanderActivityEventModel::create([
-            'kind' => $kind,
-            'package_id' => $packageId,
-            'invoice_id' => null,
-            'reason' => $reason,
-            'message' => $message,
-        ]);
+        $value = $quota->metric->key === 'reads_month'
+            ? $this->threeMonthAverage($quota)
+            : $this->lastCompletedMonthValue($quota);
+        if ($value === null) {
+            return;
+        }
+
+        $quota->consecutive_exceeded = $value > $quota->limit_value
+            ? min(255, $quota->consecutive_exceeded + 1)
+            : 0;
+        if ($quota->consecutive_exceeded >= $quota->consecutive_periods
+            && $quota->upgrade_recommended_at === null) {
+            $quota->upgrade_recommended_at = now();
+            $this->recordActivity($quota->instance_id, 'upgrade_recommended', "quota:{$quota->metric->key}", null);
+        }
+        $quota->save();
     }
 
-    private function configureTenantConnection(?CommanderPackageModel $package): bool
+    private function enteredNewMonth(?CarbonImmutable $previous): bool
     {
-        if (empty($package?->database)
-            || empty($package->database_username)
-            || empty($package->database_password)) {
+        return $previous !== null && ! $previous->isSameMonth(CarbonImmutable::now());
+    }
+
+    private function threeMonthAverage(CommanderQuotaModel $quota): ?int
+    {
+        $values = [];
+        for ($monthsAgo = 1; $monthsAgo <= 3; $monthsAgo++) {
+            $month = CarbonImmutable::now()->subMonthsNoOverflow($monthsAgo);
+            $value = $quota->measurements()
+                ->whereBetween('bucket_date', [$month->startOfMonth()->toDateString(), $month->endOfMonth()->toDateString()])
+                ->orderByDesc('bucket_date')
+                ->value('value');
+            if ($value === null) {
+                return null;
+            }
+            $values[] = (int) $value;
+        }
+
+        return (int) round(array_sum($values) / 3);
+    }
+
+    private function lastCompletedMonthValue(CommanderQuotaModel $quota): ?int
+    {
+        $month = CarbonImmutable::now()->subMonthNoOverflow();
+        $value = $quota->measurements()
+            ->whereBetween('bucket_date', [$month->startOfMonth()->toDateString(), $month->endOfMonth()->toDateString()])
+            ->orderByDesc('bucket_date')
+            ->value('value');
+
+        return $value === null ? null : (int) $value;
+    }
+
+    private function suspend(CommanderQuotaModel $quota): void
+    {
+        $reason = "quota_exceeded:{$quota->metric->key}";
+        $state = $this->state->current();
+        if ($state->status === CoreServiceStatusEnum::Active) {
+            $message = 'A usage limit was exceeded. The service will be suspended after the grace period.';
+            $this->state->set(
+                CoreServiceStatusEnum::Grace,
+                $reason,
+                $message,
+                CarbonImmutable::now()->addHours((int) config('core.quotas.grace_hours', 72)),
+            );
+            $this->recordActivity($quota->instance_id, 'grace', $reason, $message);
+        } elseif ($state->status === CoreServiceStatusEnum::Grace
+            && $state->reason === $reason
+            && $state->effectiveStatus() === CoreServiceStatusEnum::Suspended) {
+            $this->state->set(CoreServiceStatusEnum::Suspended, $reason, 'Usage grace period ended.');
+            $this->recordActivity($quota->instance_id, 'suspend', $reason, null);
+        }
+    }
+
+    private function healSuspension(CommanderQuotaModel $quota): void
+    {
+        $reason = "quota_exceeded:{$quota->metric->key}";
+        $anotherOver = CommanderQuotaModel::query()
+            ->where('instance_id', $quota->instance_id)
+            ->where('id', '!=', $quota->id)
+            ->whereNotNull('limit_value')
+            ->whereColumn('current_value', '>', 'limit_value')
+            ->exists();
+        $state = $this->state->current();
+        if (! $anotherOver && $state->status !== CoreServiceStatusEnum::Active && $state->reason === $reason) {
+            $this->state->set(CoreServiceStatusEnum::Active);
+            $this->recordActivity($quota->instance_id, 'resume', null, null);
+        }
+    }
+
+    private function configureTenant(CommanderInstanceModel $instance): bool
+    {
+        if (empty($instance->database) || empty($instance->database_username) || empty($instance->database_password)) {
             return false;
         }
 
         config([
-            'database.connections.tenant.database' => CorePackageSelectorSupport::validatedDatabaseIdentifier($package->database),
-            'database.connections.tenant.username' => CorePackageSelectorSupport::validatedDatabaseIdentifier($package->database_username),
-            'database.connections.tenant.password' => $package->database_password,
+            'database.connections.tenant.database' => CorePackageSelectorSupport::validatedDatabaseIdentifier($instance->database),
+            'database.connections.tenant.username' => CorePackageSelectorSupport::validatedDatabaseIdentifier($instance->database_username),
+            'database.connections.tenant.password' => $instance->database_password,
         ]);
-
         DB::purge('tenant');
 
         return true;
     }
 
-    private function measureDatabaseSizeMb(?CommanderPackageModel $package, bool $tenantConnected): ?int
+    private function recordActivity(int $instanceId, string $kind, ?string $reason, ?string $message): void
     {
-        if ($package === null || ! $tenantConnected) {
-            return null;
-        }
-
-        // El usuario runtime solo puede ver su BD; DATABASE() evita consultar metadatos de otro tenant.
-        if (DB::connection('tenant')->getDriverName() === 'sqlite') {
-            return null;
-        }
-
-        $row = DB::connection('tenant')->selectOne(
-            'SELECT ROUND(SUM(data_length + index_length) / 1048576) AS mb
-             FROM information_schema.tables WHERE table_schema = DATABASE()'
-        );
-
-        return (int) ($row->mb ?? 0);
-    }
-
-    private function measureStorageSizeMb(?CommanderPackageModel $package): ?int
-    {
-        if (empty($package?->database)) {
-            return null;
-        }
-
-        $database = CorePackageSelectorSupport::validatedDatabaseIdentifier($package->database);
-        $base = storage_path("app/public/media/{$database}");
-
-        if (! is_dir($base)) {
-            return 0;
-        }
-
-        $bytes = 0;
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($base, \FilesystemIterator::SKIP_DOTS)
-        );
-
-        foreach ($iterator as $file) {
-            if ($file->isFile()) {
-                $bytes += $file->getSize();
-            }
-        }
-
-        return (int) round($bytes / 1048576);
-    }
-
-    private function measureRequestsToday(?int $packageId): int
-    {
-        // Nota: con sample_rate < 1 esto infra-cuenta; escalar 1/sample_rate si se usa sampling.
-        return (int) CommanderRequestLogModel::query()
-            ->where('created_at', '>=', CarbonImmutable::now('UTC')->startOfDay())
-            ->when($packageId !== null, fn ($q) => $q->where('package_id', $packageId))
-            ->count();
+        CommanderActivityEventModel::create([
+            'instance_id' => $instanceId,
+            'invoice_id' => null,
+            'kind' => $kind,
+            'reason' => $reason,
+            'message' => $message,
+        ]);
     }
 }

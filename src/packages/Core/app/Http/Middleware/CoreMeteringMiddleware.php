@@ -6,7 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Packages\Commander\Models\CommanderRequestLogModel;
-use Packages\Core\Support\CoreActivePackageSupport;
+use Packages\Core\Support\CoreActiveInstanceSupport;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -24,9 +24,9 @@ class CoreMeteringMiddleware
         // Fallback de inicio si LARAVEL_START no estuviese definido
         $request->attributes->set('core_metering_start', microtime(true));
 
-        // El package activo ya lo fijo CoreResolvePackageFromHostMiddleware (que va antes).
-        // Se captura aqui (no en terminate) para registrar el package resuelto del request.
-        $request->attributes->set('core_metering_package_id', app(CoreActivePackageSupport::class)->id());
+        // La instancia activa ya la fijó el resolutor (que va antes). Se captura aquí,
+        // no en terminate, para conservar la identidad resuelta del request.
+        $request->attributes->set('core_metering_instance_id', app(CoreActiveInstanceSupport::class)->id());
 
         return $next($request);
     }
@@ -34,7 +34,7 @@ class CoreMeteringMiddleware
     public function terminate(Request $request, Response $response): void
     {
         try {
-            if (!config('core.metering.enabled', true)) {
+            if (! config('core.metering.enabled', true)) {
                 return;
             }
 
@@ -50,10 +50,10 @@ class CoreMeteringMiddleware
                 return;
             }
 
-            $packageId = $request->attributes->get('core_metering_package_id');
+            $instanceId = $request->attributes->get('core_metering_instance_id');
 
-            // Sin package resuelto (control plane / apex) no es tráfico tenant: no se mide.
-            if ($packageId === null) {
+            // Sin instancia resuelta (control plane / apex) no es tráfico tenant: no se mide.
+            if ($instanceId === null) {
                 return;
             }
 
@@ -66,7 +66,7 @@ class CoreMeteringMiddleware
             $now = now('UTC');
 
             CommanderRequestLogModel::query()->insert([
-                'package_id' => $packageId,
+                'instance_id' => $instanceId,
                 // Insert por query builder: Eloquent no estampa, se setean a mano.
                 'created_at' => $now,
                 'updated_at' => $now,

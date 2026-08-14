@@ -3,13 +3,13 @@
 namespace Packages\Kilkana\Services;
 
 use Illuminate\Support\Facades\DB;
-use Packages\Commander\Models\CommanderPackageModel;
+use Packages\Commander\Models\CommanderInstanceModel;
 use Packages\Core\Support\CorePackageSelectorSupport;
 
 /**
  * Corre un trabajo dentro de CADA Kilkana aprovisionado, y devuelve la conexion como estaba.
  *
- * Es el mismo patron de conmutacion que `CoreResolvePackageFromHostMiddleware`, pero
+ * Es el mismo patron de conmutacion que `CoreResolveInstanceFromHostMiddleware`, pero
  * recorriendo el registro del Commander en vez de resolver por host: un comando de consola
  * no tiene peticion de la que sacar el subdominio.
  *
@@ -30,15 +30,15 @@ class SnkKilkanaTenantRunnerService
      */
     public function each(callable $work): array
     {
-        $instances = CommanderPackageModel::query()
-            ->provisioned()
-            ->where('slug', 'kilkana')
+        $instances = CommanderInstanceModel::query()
+            ->ready()
+            ->whereHas('application', fn ($query) => $query->where('slug', 'kilkana'))
             ->whereNotNull('database')
             ->whereHas('client', fn ($query) => $query->where('status', 'active'))
             ->where(function ($query) {
-                $query->where('status', 'active')
+                $query->where('service_status', 'active')
                     ->orWhere(function ($query) {
-                        $query->where('status', 'grace')
+                        $query->where('service_status', 'grace')
                             ->where(fn ($query) => $query
                                 ->whereNull('grace_until')
                                 ->orWhere('grace_until', '>', now()));

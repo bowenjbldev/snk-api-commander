@@ -2,14 +2,12 @@
 
 namespace Packages\Commander\Models;
 
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * Un término de subscripción de un package (1:N = historial de planes). El vigente es el de
- * `ended_at IS NULL`; los cerrados son historial. `plan`/`price_monthly` son snapshots congelados;
- * `plan_id` es solo trazabilidad al catálogo.
+ * Contrato comercial de una cuenta para una aplicación. Los ítems asignan planes a instancias.
  */
 class CommanderSubscriptionModel extends Model
 {
@@ -23,35 +21,33 @@ class CommanderSubscriptionModel extends Model
     {
         return [
             'id' => 'integer',
-            'client_id' => 'integer',
-            'package_id' => 'integer',
-            'plan_id' => 'integer',
-            'price_monthly' => 'float',
-            'auto_suspend' => 'boolean',
+            'account_id' => 'integer',
+            'application_id' => 'integer',
+            'monthly_amount' => 'float',
+            'max_instances' => 'integer',
+            'trial_ends_at' => 'datetime',
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
         ];
     }
 
-    /** Solo los términos vigentes (sin cerrar). */
-    public function scopeCurrent(Builder $query): Builder
+    public function account(): BelongsTo
     {
-        return $query->whereNull('ended_at');
+        return $this->belongsTo(CommanderAccountModel::class, 'account_id');
     }
 
-    public function client(): BelongsTo
+    public function application(): BelongsTo
     {
-        return $this->belongsTo(CommanderClientModel::class, 'client_id');
+        return $this->belongsTo(CommanderApplicationModel::class, 'application_id');
     }
 
-    public function package(): BelongsTo
+    public function items(): HasMany
     {
-        return $this->belongsTo(CommanderPackageModel::class, 'package_id');
+        return $this->hasMany(CommanderSubscriptionItemModel::class, 'subscription_id');
     }
 
-    /** Catálogo del que salió este término (trazabilidad; los snapshots mandan en billing). */
-    public function plan(): BelongsTo
+    public function invoiceLines(): HasMany
     {
-        return $this->belongsTo(CommanderPlanModel::class, 'plan_id');
+        return $this->hasMany(CommanderInvoiceLineModel::class, 'subscription_id');
     }
 }

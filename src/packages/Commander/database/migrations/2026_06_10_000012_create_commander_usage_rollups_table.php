@@ -1,0 +1,40 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('commander_usage_rollups', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('instance_id')->constrained('commander_instances')->cascadeOnDelete();
+            $table->string('period', 8);
+            $table->timestamp('period_start');
+            $table->string('route', 191)->default('');
+            $table->string('method', 8);
+            $table->string('status_class', 3);
+            $table->unsignedBigInteger('request_count');
+            $table->unsignedBigInteger('error_count');
+            $table->decimal('avg_duration_ms', 10, 2);
+            $table->unsignedInteger('p95_duration_ms');
+            $table->unsignedBigInteger('total_request_bytes')->default(0);
+            $table->unsignedBigInteger('total_response_bytes')->default(0);
+            $table->unsignedInteger('unique_users')->default(0);
+            $table->timestamps();
+
+            $table->unique(
+                ['instance_id', 'period', 'period_start', 'route', 'method', 'status_class'],
+                'commander_usage_rollups_bucket_unique'
+            );
+            $table->index(['period', 'period_start']);
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('commander_usage_rollups');
+    }
+};

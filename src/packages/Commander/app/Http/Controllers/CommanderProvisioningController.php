@@ -2,7 +2,6 @@
 
 namespace Packages\Commander\Http\Controllers;
 
-use Carbon\CarbonImmutable;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -10,34 +9,24 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
-use Packages\Commander\Jobs\CommanderProvisionPackageJob;
+use Packages\Commander\Jobs\CommanderProvisionInstanceJob;
+use Packages\Commander\Models\CommanderAccountModel;
 use Packages\Commander\Models\CommanderClientModel;
-use Packages\Commander\Models\CommanderPackageModel;
+use Packages\Commander\Models\CommanderInstanceModel;
 use Packages\Commander\Models\CommanderPlanModel;
 use Packages\Commander\Models\CommanderQuotaModel;
+use Packages\Commander\Models\CommanderSubscriptionItemModel;
 use Packages\Commander\Models\CommanderSubscriptionModel;
-use Packages\Commander\Services\CommanderPackageRegistryService;
+use Packages\Commander\Services\CommanderApplicationRegistryService;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Core\Support\CorePackageSelectorSupport;
 
-/**
- * Client-first provisioning: registra CLIENTE + PLAN, prepara instancia/suscripcion/cuotas y
- * encola el DDL. El worker migra y siembra la BD; solo entonces fija provisioned_at.
- */
 #[Group('Provisioning')]
 class CommanderProvisioningController extends CoreBaseApiController
 {
-    private const PROVISION_PERMISSION = 'provision packages';
+    private const PROVISION_PERMISSION = 'provision instances';
 
-    /** metric_key → unit, for the quota rows mirrored from a plan. */
-    private const QUOTA_UNITS = [
-        'requests_day' => 'count',
-        'disk_db_mb' => 'mb',
-        'disk_storage_mb' => 'mb',
-        'users_total' => 'count',
-    ];
-
-    public function __construct(private readonly CommanderPackageRegistryService $registry) {}
+    public function __construct(private readonly CommanderApplicationRegistryService $registry) {}
 
     public function store(Request $request): JsonResponse
     {
@@ -47,187 +36,178 @@ class CommanderProvisioningController extends CoreBaseApiController
 
         $data = $request->validate([
             'plan_id' => 'required|integer|exists:commander_plans,id',
+            'subscription_id' => 'nullable|integer|exists:commander_subscriptions,id',
             'admin_email' => 'required|email|max:255',
             'admin_password' => ['required', 'string', 'max:255', Password::min(12)->letters()->numbers()],
-            // Existing client …
             'client_id' => 'nullable|integer|exists:commander_clients,id',
-            // … or a new client object (required unless client_id given). client.slug = handle legible;
-            // el id (bigint) lo asigna la BD.
             'client' => 'nullable|array',
             'client.account_id' => 'sometimes|required|integer|exists:commander_accounts,id',
-            'client.slug' => ['required_without:client_id', 'string', 'max:63', 'regex:/\A[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\z/'],
+            'client.slug' => ['required_without:client_id', 'string', 'max:63', 'regex:/\A[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\z/', 'not_in:api,commander,www'],
             'client.name' => 'required_without:client_id|string|max:255',
             'client.email' => 'required_without:client_id|email|max:255',
-            'client.company' => 'nullable|string|max:255',
-            'client.phone' => 'nullable|string|max:50',
+            'client.notes' => 'nullable|string',
             'client.billing_email' => 'nullable|email|max:255',
+            'client.phone' => 'nullable|string|max:50',
             'client.tax_id' => 'nullable|string|max:64',
+            'client.payment_terms' => 'nullable|in:prepaid,net_15,net_30,net_60',
             'client.address_line1' => 'nullable|string|max:255',
             'client.address_line2' => 'nullable|string|max:255',
             'client.city' => 'nullable|string|max:128',
             'client.postal_code' => 'nullable|string|max:32',
             'client.country' => 'nullable|string|size:2',
-            'client.payment_terms' => 'nullable|in:prepaid,net_15,net_30,net_60',
         ]);
 
         if (empty($data['client_id']) && empty($data['client'])) {
             return response()->json(['error' => 'Provide client_id or a client object.'], 422);
         }
 
-        $plan = CommanderPlanModel::findOrFail($data['plan_id']);
-        if ($plan->status !== 'active') {
-            return response()->json(['error' => 'The selected plan is inactive.'], 422);
+        $plan = CommanderPlanModel::query()->with(['application.metrics', 'limits.metric'])->findOrFail($data['plan_id']);
+        if ($plan->status !== 'active' || $plan->application->status !== 'active'
+            || $plan->application->code_status !== 'available') {
+            return response()->json(['error' => 'The selected plan or application is inactive.'], 422);
         }
 
-        $package = Str::studly($plan->package);          // Shop
-        $slug = CorePackageSelectorSupport::packageToSubdomain($package); // shop (segmento de path)
-
-        // El cliente se resuelve PRIMERO: su slug forma la carpeta de código anidada y la BD.
-        $existingClient = ! empty($data['client_id'])
-            ? CommanderClientModel::query()->find($data['client_id'])
-            : null;
-        if ($existingClient !== null && $existingClient->status !== 'active') {
+        $client = ! empty($data['client_id']) ? CommanderClientModel::find($data['client_id']) : null;
+        if ($client !== null && $client->status !== 'active') {
             return response()->json(['error' => 'The selected client is inactive.'], 422);
         }
 
-        $clientSlug = $existingClient?->slug ?? ($data['client']['slug'] ?? null);
-
-        if ($clientSlug === null) {
-            return response()->json(['error' => 'Could not resolve client slug.'], 422);
+        $clientSlug = $client?->slug ?? ($data['client']['slug'] ?? null);
+        if (! is_string($clientSlug) || ! CorePackageSelectorSupport::isValidClientSubdomain($clientSlug)) {
+            return response()->json(['error' => 'Client slug is not a valid tenant subdomain.'], 422);
+        }
+        if (! $this->registry->hasImplementation($clientSlug, $plan->application->package_name)) {
+            return response()->json(['error' => 'Application code is not deployed for this client.'], 422);
+        }
+        if ($client === null && CommanderClientModel::query()->where('slug', $clientSlug)->exists()) {
+            return response()->json(['error' => "Client '{$clientSlug}' already exists."], 422);
+        }
+        if ($client !== null && CommanderInstanceModel::query()
+            ->where('client_id', $client->id)
+            ->where('application_id', $plan->application_id)
+            ->exists()) {
+            return response()->json(['error' => 'Client already has this application instance.'], 409);
         }
 
-        if (! CorePackageSelectorSupport::isValidClientSubdomain($clientSlug)) {
-            return response()->json(['error' => "Client slug '{$clientSlug}' is not a valid tenant subdomain."], 422);
-        }
-
-        $database = CorePackageSelectorSupport::databaseName($clientSlug, $package); // acme_shop
-
+        $database = CorePackageSelectorSupport::databaseName($clientSlug, $plan->application->package_name);
         if (strlen($database) > 64) {
-            return response()->json(['error' => 'Client and package produce a database name longer than 64 characters.'], 422);
+            return response()->json(['error' => 'Client and application produce a database name longer than 64 characters.'], 422);
         }
-        try {
-            CorePackageSelectorSupport::validatedDatabaseIdentifier($database);
-        } catch (\RuntimeException) {
-            return response()->json(['error' => 'Client and package produce an invalid database name.'], 422);
-        }
+        CorePackageSelectorSupport::validatedDatabaseIdentifier($database);
 
-        if (! $this->registry->hasImplementation($clientSlug, $package)) {
-            return response()->json(['error' => "Package code '{$package}' is not deployed as shared or client-specific code."], 422);
-        }
+        $instance = DB::connection('commander')->transaction(function () use ($data, $plan, $client, $clientSlug, $database) {
+            $client ??= $this->createClient($data['client']);
+            $subscription = isset($data['subscription_id'])
+                ? CommanderSubscriptionModel::query()->lockForUpdate()->findOrFail($data['subscription_id'])
+                : $this->createCatalogSubscription($client, $plan);
 
-        // Conflicto: ese cliente ya tiene esta instancia viva o preparandose.
-        if (! empty($data['client_id'])
-            && CommanderPackageModel::query()
-                ->where('client_id', $data['client_id'])
-                ->where('slug', $slug)
-                ->exists()) {
-            return response()->json(['error' => "Client already has package '{$slug}' registered."], 409);
-        }
+            $this->validateSubscription($subscription, $client, $plan);
 
-        if (! empty($data['client']) && CommanderClientModel::where('slug', $data['client']['slug'])->exists()) {
-            return response()->json(['error' => "Client '{$data['client']['slug']}' already exists."], 422);
-        }
-
-        $provisioning = DB::connection('commander')->transaction(function () use ($data, $plan, $package, $slug, $database) {
-            $now = CarbonImmutable::now();
-
-            $clientId = $data['client_id'] ?? null;
-            $createdClientId = null;
-            $createdAccountId = null;
-            if ($clientId === null) {
-                $c = $data['client'];
-                $createsAccount = empty($c['account_id']);
-                $client = CommanderClientModel::create(array_merge(
-                    ['slug' => $c['slug'], 'name' => $c['name'], 'email' => $c['email'], 'status' => 'active'],
-                    array_intersect_key($c, array_flip([
-                        'account_id', 'company', 'phone', 'billing_email', 'tax_id', 'address_line1',
-                        'address_line2', 'city', 'postal_code', 'country', 'payment_terms',
-                    ])),
-                ));
-                $clientId = $client->id; // bigint asignado por la BD
-                $createdClientId = $clientId;
-                $createdAccountId = $createsAccount ? $client->account_id : null;
-            }
-
-            // La UNIQUE(client_id, slug) serializa intentos concurrentes del mismo alta.
-            $commanderPackage = new CommanderPackageModel;
-            $commanderPackage->name = $package;
-            $commanderPackage->label = $commanderPackage->label ?? $package;
-            $commanderPackage->listing_status = $commanderPackage->listing_status ?? 'active';
-            $commanderPackage->forceFill([
+            $instance = CommanderInstanceModel::create([
+                'client_id' => $client->id,
+                'application_id' => $plan->application_id,
                 'database' => $database,
-                'database_username' => null,
-                'database_password' => null,
-                'client_id' => $clientId,
-                'slug' => $slug,
-                'status' => 'active',
-                'reason' => null,
-                'message' => null,
-                'grace_until' => null,
-                'changed_at' => $now,
-                'requests_24h' => 0,
-                'quota_health' => 0,
-                'last_seen' => null,
-                // El resolutor ignora esta fila hasta que BD, migraciones y seed terminen bien.
-                'provisioned_at' => null,
+                'provisioning_status' => 'pending',
+                'service_status' => 'active',
+                'requested_at' => now(),
+                'changed_at' => now(),
             ]);
-            $commanderPackage->save();
-            $commanderPackage->forceFill([
-                'database_username' => 'tenant_'.$commanderPackage->id,
+            $instance->forceFill([
+                'database_username' => 'tenant_'.$instance->id,
                 'database_password' => Str::random(48),
             ])->save();
 
-            // Primer término de subscripción (vigente: ended_at null). package_id es la relación
-            // autoritativa; plan_id traza el catálogo; plan/price_monthly son snapshots congelados.
-            $subscription = CommanderSubscriptionModel::create([
-                'client_id' => $clientId,
-                'package_id' => $commanderPackage->id,
+            CommanderSubscriptionItemModel::create([
+                'subscription_id' => $subscription->id,
+                'instance_id' => $instance->id,
                 'plan_id' => $plan->id,
-                'plan' => $plan->name,
-                'price_monthly' => $plan->price_monthly,
-                'billing_status' => 'pending',
-                'auto_suspend' => false,
-                'started_at' => $now,
-                'ended_at' => null,
+                'status' => 'active',
+                'started_at' => now(),
             ]);
-            $commanderPackage->subscription_id = $subscription->id;
-            $commanderPackage->save();
-
-            foreach ($plan->quotaLimits() as $metric => $limit) {
-                // Tabla única: una fila por métrica, que la API edita y el medidor mide/aplica.
+            $limits = $plan->limits->keyBy('metric_id');
+            foreach ($plan->application->metrics->where('status', 'active') as $metric) {
+                $limit = $limits->get($metric->id);
                 CommanderQuotaModel::create([
-                    'package_id' => $commanderPackage->id,
-                    'metric_key' => $metric,
+                    'instance_id' => $instance->id,
+                    'metric_id' => $metric->id,
                     'current_value' => 0,
-                    'limit_value' => $limit,
-                    'on_exceed' => $limit !== null ? 'suspend' : 'none',
-                    'unit' => self::QUOTA_UNITS[$metric] ?? 'count',
+                    'limit_value' => $limit?->limit_value,
+                    'warning_percent' => $limit?->warning_percent ?? 80,
+                    'action' => $limit?->action ?? 'none',
+                    'consecutive_periods' => $limit?->consecutive_periods ?? 1,
                 ]);
             }
 
-            return [
-                'package' => $commanderPackage,
-                'subscription_id' => $subscription->id,
-                'created_client_id' => $createdClientId,
-                'created_account_id' => $createdAccountId,
-            ];
+            CommanderProvisionInstanceJob::dispatch(
+                $instance->id,
+                $clientSlug,
+                $plan->application->package_name,
+                $data['admin_email'],
+                Crypt::encryptString($data['admin_password']),
+            )->afterCommit();
+
+            return $instance;
         });
 
-        /** @var CommanderPackageModel $commanderPackage */
-        $commanderPackage = $provisioning['package'];
-
-        CommanderProvisionPackageJob::dispatch(
-            $commanderPackage->id,
-            $clientSlug,
-            $package,
-            $provisioning['created_client_id'],
-            $data['admin_email'],
-            Crypt::encryptString($data['admin_password']),
-            $provisioning['created_account_id'],
-        );
-
         return response()->json([
-            'package' => $commanderPackage->fresh()->load(['client.account', 'subscription', 'quotas']),
+            'instance' => $instance->fresh()->load([
+                'client.account', 'application', 'subscriptionItem.subscription', 'subscriptionItem.plan', 'quotas.metric',
+            ]),
         ], 202);
+    }
+
+    /** @param array<string, mixed> $data */
+    private function createClient(array $data): CommanderClientModel
+    {
+        $accountId = $data['account_id'] ?? CommanderAccountModel::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'billing_email' => $data['billing_email'] ?? null,
+            'phone' => $data['phone'] ?? null,
+            'tax_id' => $data['tax_id'] ?? null,
+            'payment_terms' => $data['payment_terms'] ?? null,
+            'address_line1' => $data['address_line1'] ?? null,
+            'address_line2' => $data['address_line2'] ?? null,
+            'city' => $data['city'] ?? null,
+            'postal_code' => $data['postal_code'] ?? null,
+            'country' => $data['country'] ?? null,
+        ])->id;
+
+        return CommanderClientModel::create([
+            'account_id' => $accountId,
+            'slug' => $data['slug'],
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'notes' => $data['notes'] ?? null,
+            'status' => 'active',
+        ]);
+    }
+
+    private function createCatalogSubscription(CommanderClientModel $client, CommanderPlanModel $plan): CommanderSubscriptionModel
+    {
+        return CommanderSubscriptionModel::create([
+            'account_id' => $client->account_id,
+            'application_id' => $plan->application_id,
+            'name' => $client->name.' · '.$plan->application->name,
+            'pricing_mode' => 'catalog',
+            'monthly_amount' => $plan->price_monthly,
+            'currency' => 'EUR',
+            'status' => 'active',
+            'max_instances' => 1,
+            'started_at' => now(),
+        ]);
+    }
+
+    private function validateSubscription(
+        CommanderSubscriptionModel $subscription,
+        CommanderClientModel $client,
+        CommanderPlanModel $plan,
+    ): void {
+        abort_if($subscription->account_id !== $client->account_id, 422, 'Subscription belongs to another account.');
+        abort_if($subscription->application_id !== $plan->application_id, 422, 'Subscription belongs to another application.');
+        abort_if(! in_array($subscription->status, ['active', 'trialing'], true), 422, 'Subscription is not active.');
+
+        $activeItems = $subscription->items()->where('status', 'active')->count();
+        abort_if($subscription->max_instances !== null && $activeItems >= $subscription->max_instances, 422, 'Subscription has no available instance slots.');
     }
 }

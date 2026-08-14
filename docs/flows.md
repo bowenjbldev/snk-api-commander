@@ -1,267 +1,238 @@
 # Flujos
 
-## Petición tenant
-
-Ejemplo: `GET https://elmundo.kilkana.test/api/v1/kilkana/public/posts`.
+## Request tenant
 
 ```text
-nginx
-  → ruta compartida Kilkana o ruta exacta del overlay
-  → resolver host=elmundo + slug=kilkana
-  → buscar fila viva en commander_packages
-  → configurar conexión tenant con credenciales de esa fila
-  → aplicar config Kilkana + ElMundo/Kilkana
-  → throttle → kill-switch → auth de la ruta → controller
-  → responder
-  → metering terminable
+GET https://diario-norte.kilkana.test/api/v1/kilkana/public/posts
+  → host: client diario-norte
+  → path: application kilkana
+  → instance única (diario-norte, Kilkana), status ready
+  → conexión diario_norte_kilkana
+  → overlay exacto si existe; package compartido como fallback
+  → estado, auth, endpoint y metering
   → restaurar conexión/config/contexto
 ```
 
 Resultados de resolución:
 
-| Condición | Respuesta |
+| Condición | Resultado |
 |---|---|
-| host fuera de `TENANT_BASE_DOMAIN`, subdominio reservado o multinivel | la ruta tenant no coincide / `404` |
-| cliente inexistente o inactivo | `404` |
-| fila sin `provisioned_at` | `404` |
-| credenciales o identificador de BD inválidos | `503` |
-| estado no verificable | `503` fail-closed |
-| instancia suspendida | `402` con motivo y mensaje |
-| grace vigente | respuesta normal con cabeceras `X-Package-*` |
+| cliente/aplicación/instancia inexistente o no ready | `404` |
+| código de aplicación missing/inactivo | `404` |
+| credenciales runtime incompletas en ready | `503` |
+| verificación de estado falla | `503` |
+| instancia suspended o grace vencida | `402` |
+| grace vigente | respuesta normal con `X-Instance-*` |
 
-La consulta de la instancia ocurre antes de cambiar la conexión. Tras el cambio, los modelos de
-negocio, Sanctum y Spatie leen exclusivamente la base tenant; los modelos Commander siguen fijados
-a `commander`.
+El resolutor consume el parámetro wildcard `{client}` para que no llegue como argumento al
+controller. Sanctum y Spatie consultan después la base tenant activa.
 
-`{client}` pertenece únicamente al wildcard del dominio: el resolutor lo consume y lo elimina de
-los parámetros antes del dispatch. Así, `{layout}`, `{slug}`, `{post}` y demás argumentos de path
-llegan al controlador en su posición real.
+## Sincronización de aplicaciones
 
-## Fallback de implementación
-
-El fallback es de código y rutas, no de datos:
-
-```text
-ElMundo/Kilkana define GET custom-report
-  → esa ruta usa el overlay
-
-ElMundo/Kilkana no define GET public/posts
-  → cae en la ruta de packages/Kilkana
-  → sigue usando elmundo_kilkana, nunca una BD compartida
-
-ElConfidencial no tiene carpeta propia
-  → todas sus rutas usan packages/Kilkana
-  → siguen usando elconfidencial_kilkana
+```bash
+php artisan commander:applications:sync
 ```
 
-Una fila creada en Commander no inventa una implementación. Para crear un plan, el producto debe
-estar desplegado como compartido o existir para algún cliente. Al provisionar, debe existir el
-compartido o la implementación específica del cliente elegido; si no, se devuelve `422`.
+El comando:
 
-## Sincronización de catálogo y planes
+1. descubre packages de negocio compartidos o específicos con `routes/api.php`;
+2. excluye Core y Commander;
+3. upserta `commander_applications` por `package_name`;
+4. sincroniza métricas técnicas y las declaradas por el package;
+5. marca `missing` lo que ya no está desplegado;
+6. conserva planes, instancias e historia.
 
-`GET /api/v1/packages` en Commander:
+El entrypoint lo ejecuta después de migrar. `GET /applications` es solo lectura.
 
-1. descubre directorios de producto que contienen `routes/api.php`;
-2. excluye Core, Commander y paraguas vacíos de cliente;
-3. crea, si falta, una fila catálogo por nombre lógico;
-4. devuelve todas las filas —catálogo, pendientes, vivas y dadas de baja— enriquecidas con
-   `on_disk` y número de planes.
+## Crear un plan
 
-Crear o cambiar un plan valida que `package` siga disponible en disco y normaliza el nombre a
-StudlyCase. Un plan inactivo no se puede usar para una nueva alta. `listing_status` pertenece a la
-presentación del catálogo; el provisioning actual no lo usa como kill-switch.
+`POST /api/v1/plans` recibe `application_id`, metadatos e `limits[]`. Cada límite referencia una
+métrica de la misma aplicación. Un plan activo puede usarse en altas; uno inactivo conserva las
+instancias existentes, pero no acepta nuevas.
 
-## Provisioning
+Los límites son plantillas. No se propagan al editar el plan: se materializan cuando una instancia
+se provisiona o cambia de plan.
 
-Endpoint de operador: `POST https://commander.<BASE_DOMAIN>/api/v1/provisioning`.
+## Provisioning de cliente normal
 
-Payload esencial:
+Endpoint privado: `POST /api/v1/provisioning`.
 
 ```json
 {
   "plan_id": 7,
-  "admin_email": "admin@elmundo.example",
-  "admin_password": "una-clave-de-12-o-mas",
-  "client_id": 12
-}
-```
-
-Para crear una cabecera dentro de una cuenta comercial existente, el objeto nuevo acepta
-`account_id`:
-
-```json
-{
-  "plan_id": 7,
-  "admin_email": "admin@diario-norte.example",
+  "admin_email": "admin@acme.test",
   "admin_password": "una-clave-de-12-o-mas",
   "client": {
-    "account_id": 3,
-    "slug": "diario-norte",
-    "name": "Diario Norte",
-    "email": "redaccion@diario-norte.example"
+    "slug": "acme",
+    "name": "Acme",
+    "email": "contacto@acme.test",
+    "billing_email": "facturas@acme.test",
+    "tax_id": "ESA12345678"
   }
 }
 ```
 
-La cuenta no cambia la URL ni la BD: siguen derivándose de `client.slug`. Las siguientes
-cabeceras de la misma cuenta repiten el flujo con otro cliente y otra base.
+### Parte síncrona
 
-En lugar de `client_id` puede enviarse un objeto `client` con `slug`, `name`, `email` y datos
-opcionales de contacto/billing. Si omite `account_id`, Commander crea automáticamente su cuenta
-comercial 1:1. Un `account_id` existente se usa solo para añadir la cabecera a ese grupo; nunca se
-deduce por coincidencia de nombre o correo.
+1. exige `provision instances`;
+2. valida plan/aplicación activos, código desplegado, slug, base y credenciales admin;
+3. crea una cuenta 1:1 con los datos comerciales;
+4. crea el cliente;
+5. crea un contrato `catalog`, con precio del plan y `max_instances = 1`;
+6. crea la instancia `pending` y credenciales runtime cifradas;
+7. crea el ítem que une contrato, instancia y plan;
+8. crea una cuota por cada métrica activa; métricas sin límite quedan en `none`;
+9. registra todo en una transacción;
+10. despacha `CommanderProvisionInstanceJob` después del commit y responde `202`.
 
-### Fase síncrona
+También puede recibirse `client_id` para añadir otra aplicación a un cliente existente.
 
-El controller:
+### Worker privilegiado
 
-1. exige permiso `provision packages`;
-2. valida plan activo, cliente activo, slug DNS, longitud de la BD y contraseña del admin;
-3. resuelve código compartido y/o específico;
-4. rechaza otro `(client_id, slug)` registrado;
-5. dentro de una transacción Commander crea la cuenta 1:1 cuando haga falta, el cliente, la fila
-   de instancia, el término de suscripción y cuatro cuotas;
-6. genera `database_username = tenant_<package_id>` y una contraseña aleatoria cifrada;
-7. deja `provisioned_at = null`;
-8. cifra temporalmente la contraseña del admin para el job, encola en `provisioning` y responde
-   `202`.
+El job usa un lock `tenant-instance:{id}`, un intento y timeout de 600 segundos:
 
-La fila pending no puede recibir tráfico aunque ya exista su host y su ruta.
+1. marca `provisioning`;
+2. crea base y usuario sin privilegios;
+3. configura `tenant` con la credencial provisioner;
+4. ejecuta migraciones Core, package compartido y overlay;
+5. crea el admin tenant con el email/contraseña explícitos;
+6. ejecuta seeders y asigna rol `admin`;
+7. concede CRUD al usuario runtime;
+8. marca `ready`, `active` y `provisioned_at`;
+9. restaura siempre conexión y config.
 
-### Fase privilegiada
+Ante excepción intenta borrar base/usuario, marca `failed`, conserva `last_error` y relanza. No
+borra cuenta, cliente, contrato ni instancia.
 
-`CommanderProvisionPackageJob` usa un lock compartido por `package_id`, un solo intento y timeout
-de 600 segundos:
+## Provisioning de grupo
 
-1. crea la base con `utf8mb4_unicode_ci`;
-2. crea el usuario runtime sin permisos iniciales;
-3. ejecuta migraciones Core, compartidas y overlay con la credencial provisioner;
-4. crea el admin tenant elegido;
-5. ejecuta seeders Core, compartidos y overlay;
-6. asigna el rol `admin` al usuario elegido;
-7. concede al usuario runtime solo CRUD sobre su base;
-8. marca `status = active` y `provisioned_at = now()`;
-9. restaura siempre conexión y configuración global.
+Primero se crea una cuenta y un contrato negociado:
 
-Si algo falla, intenta borrar la base y el usuario y elimina cuotas, término e instancia. Si el
-cliente se creó para ese alta y no tiene otra fila de paquete, también lo elimina; la cuenta 1:1
-creada automáticamente se elimina si quedó sin clientes. Una cuenta de grupo nunca se borra desde
-ese rollback. Después relanza la excepción para que quede registrada como job fallido.
+```json
+{
+  "account_id": 3,
+  "application_id": 1,
+  "name": "Kilkana Grupo 2026",
+  "pricing_mode": "negotiated",
+  "monthly_amount": 180,
+  "currency": "EUR",
+  "max_instances": 3,
+  "status": "active"
+}
+```
 
-### Hueco operativo actual
+Cada cabecera repite provisioning con `subscription_id` y un cliente nuevo que usa el mismo
+`account_id`. Commander valida:
 
-La transacción termina antes de publicar el job. Si el enqueue falla, queda una fila pending sin
-trabajo. No hay outbox ni reconciliador que la reencole o la marque `failed`. Hasta añadirlo, una
-fila con `client_id` y sin `provisioned_at` exige inspeccionar la cola y los jobs fallidos antes de
-decidir si reintentar o limpiar.
+- contrato y cliente pertenecen a la misma cuenta;
+- contrato y plan pertenecen a la misma aplicación;
+- contrato activo/trialing;
+- capacidad `max_instances` disponible.
+
+La cuarta cabecera de un contrato con capacidad tres responde `422` y la transacción no deja un
+cliente huérfano.
+
+## Retry
+
+`POST /api/v1/instances/{id}/retry` acepta únicamente `failed` o `deprovisioned`, exige nuevas
+credenciales admin y comprueba de nuevo el código.
+
+- reutiliza el mismo ID, base derivada y relaciones;
+- regenera credenciales runtime si la baja las anuló;
+- reactiva ítem y contrato de catálogo;
+- vuelve a `pending` y encola el job.
+
+No se crea una segunda instancia para esconder un fallo.
 
 ## Cambio de plan
 
-`POST /api/v1/packages/{id}/change-plan`:
+`POST /api/v1/instances/{id}/change-plan`:
 
-1. exige una instancia viva y un plan activo del mismo producto;
-2. bloquea el término vigente con `lockForUpdate`;
-3. si ya usa ese plan, responde `422` sin cambios;
-4. cierra el término actual y abre otro con snapshot de nombre/precio;
-5. actualiza el puntero `subscription_id`;
-6. crea o ajusta cuotas según el plan nuevo;
-7. escribe un evento `change_plan`.
+1. valida plan activo de la misma aplicación;
+2. cambia `subscription_item.plan_id`;
+3. aplica la plantilla de límites a todas las métricas activas;
+4. crea cuotas para métricas nuevas;
+5. deja métricas retiradas sin límite, conservando su historia;
+6. escribe `plan_changed`.
 
-No hay prorrateo ni cargo automático. El nuevo término empieza con billing `pending`.
+El importe del contrato no cambia. Esto es esencial en grupos: plan operativo y precio negociado
+son decisiones distintas. No hay prorrateo.
 
-## Estado manual y facturación
-
-Acciones operativas:
+## Estado manual
 
 ```text
-POST /packages/{id}/grace
-POST /packages/{id}/suspend
-POST /packages/{id}/resume
+POST /instances/{id}/grace
+POST /instances/{id}/suspend
+POST /instances/{id}/resume
 ```
 
-Todas exigen una fila viva y escriben un evento. Grace recibe una fecha o duración; si no, usa la
-duración configurada. Al vencer, `effectiveStatus()` la trata como suspendida aunque la columna
-siga diciendo `grace` hasta que otro proceso la actualice.
+Las acciones usan el ID numérico, escriben la instancia y crean un evento. Grace usa `hours` o el
+default de Core. `effectiveStatus()` trata una grace vencida como suspended sin necesitar una
+escritura en la ruta de lectura.
 
-Las facturas pueden quedar `paid`, `pending` u `overdue`. Commander permite aplicar grace o
-suspensión al marcar un impago y ofrecer resume al cobrar, pero billing y estado siguen siendo
-decisiones del operador: no hay cobro ni conciliación externos.
+## Medición de cuotas
 
-## Medición y enforcement de cuotas
+`commander:quota:measure` recorre cuotas agrupadas por instancia ready:
 
-El scheduler ejecuta `commander:quota:measure` cada seis horas.
+1. fija contexto e instancia;
+2. configura credenciales runtime tenant;
+3. resuelve la clase medidora declarada por la métrica;
+4. persiste valor actual y muestra diaria;
+5. registra warning al alcanzar el porcentaje configurado;
+6. aplica `none`, `warn`, `suspend` o `recommend`;
+7. aísla el fallo de una métrica y continúa;
+8. restaura contexto y conexión en `finally`.
 
-Por cada `package_id`, el medidor:
+`suspend` entra primero en grace y solo suspende al vencer. Al bajar todas las cuotas que causaron
+ese estado puede hacer auto-resume; nunca cura una suspensión manual o por billing.
 
-1. restaura la configuración tenant base y purga la conexión anterior;
-2. configura la conexión con las credenciales runtime de esa instancia;
-3. mide todas sus métricas y actualiza sus filas;
-4. evalúa enforcement en una segunda pasada, ya con todos los valores frescos;
-5. restaura conexión y contexto al terminar.
+Para `recommend`, una evaluación mensual puede incrementar o reiniciar
+`consecutive_exceeded`. Kilkana usa media de tres meses completos para lecturas y última muestra
+del mes completo para asientos. Al alcanzar el número configurado crea `upgrade_recommended`, sin
+cambiar plan ni servicio.
 
-Política:
+## Logs y rollups
 
-| Estado de la métrica | `on_exceed` | Acción |
-|---|---|---|
-| bajo límite | cualquiera | limpia `exceeded_at`; auto-resume solo si esa métrica causó el estado y ninguna otra excede |
-| excedida | `none` | registra medición, sin transición |
-| excedida | `warn` | warning en log |
-| excedida desde active | `suspend` | entra en grace por `quota_exceeded:<metric>` |
-| misma grace vencida | `suspend` | pasa a suspended |
+`CoreMeteringMiddleware` inserta por `instance_id` método, ruta, status, duración, actor, IP, bytes
+y memoria. Captura también `402` y `429`; excluye tráfico sin instancia.
 
-Una suspensión manual o por impago no se cura por bajar una cuota.
+`commander:usage:rollup --prune` agrega buckets cerrados de hora/día. `commander:refresh` actualiza
+`requests_24h`, `quota_health` y `last_seen`. La API puede filtrar logs por instancia, aplicación o
+cuenta.
 
-## Metering y rollups
+Git se sincroniza por aplicación con `commander:git:sync`; el mismo código compartido no se duplica
+por cada instancia.
 
-`CoreMeteringMiddleware` captura la instancia resuelta y, al terminar la respuesta, inserta método,
-ruta, status, duración, usuario/token, IP, bytes y memoria. Incluye `402` y `429`; excluye requests
-sin instancia tenant. Cualquier error se reporta, pero nunca cambia la respuesta del cliente.
+## Factura
 
-`commander:usage:rollup --prune` agrega logs por hora/día, ruta, método y clase HTTP. La vista de
-plataforma suma esos rollups al vuelo. `commander:refresh` actualiza cada diez minutos
-`requests_24h`, `quota_health` y `last_seen`.
+`POST /api/v1/invoices` recibe cuenta y líneas. El servidor valida pertenencia de contratos/ítems,
+calcula cada importe y suma `total_amount`. Una línea sin item factura el contrato consolidado; con
+item identifica una instancia.
 
-## De-provisioning
+Cambiar estado de factura no ejecuta cobro ni suspensión automática.
 
-`DELETE /api/v1/packages/{id}`:
+## Deprovisioning
 
-1. exige confirmación en la UI y permiso de borrado;
-2. pone `provisioned_at = null` antes de encolar, cortando tráfico de inmediato;
-3. encola `CommanderDeprovisionPackageJob` con el mismo lock de provisioning;
-4. el worker elimina base y usuario runtime;
-5. borra `storage/app/public/media/{database}`;
-6. elimina logs, cuotas y rollups; cierra el término vigente;
-7. anula columnas de cliente, slug, conexión, estado y KPIs;
-8. conserva la fila, metadatos de catálogo y billing histórico.
+`DELETE /api/v1/instances/{id}`:
 
-Si el job falla, la instancia ya no enruta pero puede conservar recursos. No existe todavía un
-estado `deprovision_failed` ni reconciliación automática; se revisan jobs fallidos y MariaDB antes
-de reintentarlo.
+1. marca `deprovisioning` y encola un job con el mismo lock;
+2. borra base y usuario runtime;
+3. elimina `media/{database}` y logs crudos;
+4. reinicia estado actual de cuotas, pero conserva muestras y rollups;
+5. termina el ítem;
+6. cancela el contrato si era catálogo 1:1; deja vivo un contrato negociado de grupo;
+7. anula credenciales y marca `deprovisioned`;
+8. conserva IDs, cliente, aplicación, billing y auditoría.
 
-## Despliegue de código y migraciones
+Si falla, queda `failed` con `last_error` para inspección y retry.
 
-El código llega por git, no por Commander:
+## Deploy y migración
 
-1. se despliega el commit nuevo;
-2. se instala Composer y se recachea configuración/rutas;
-3. `core:migrate --force` actualiza `commander`;
-4. `core:migrate --all-tenants --force` carga todas las instancias y hace preflight completo;
-5. si falta cliente, nombre, BD, credenciales o implementación, aborta antes del primer DDL;
-6. si el preflight pasa, migra cada tenant en orden de id.
+1. despliega código e instala dependencias;
+2. `core:migrate --force` migra `commander`;
+3. `commander:applications:sync` sincroniza catálogo/métricas;
+4. recachea config y rutas;
+5. desde el provisioner ejecuta `core:migrate --all-tenants --force`;
+6. el comando hace preflight completo antes del primer DDL.
 
-`BASE_DOMAIN` y `TENANT_BASE_DOMAIN` quedan horneados en `route:cache`; hay que regenerarlo si
-cambia cualquiera de los dos o las rutas.
-
-## Trabajos programados
-
-| Frecuencia | Comando | Alcance |
-|---|---|---|
-| cada minuto | `kilkana:publish-scheduled` | instancias Kilkana activas o grace vigente |
-| cada 10 min | `commander:refresh` | KPIs de Commander |
-| cada hora | `commander:usage:rollup --prune` | logs y retención |
-| cada hora | `commander:git:sync` | commits e insights |
-| cada 6 h | `commander:quota:measure` | medición y enforcement |
-
-El servicio Docker `scheduler` ejecuta `schedule:work`. Un tenant roto se registra y no impide que
-los comandos Kilkana continúen con los demás.
+No se combina `--all-tenants` con fresh, rollback, seed, client o package.

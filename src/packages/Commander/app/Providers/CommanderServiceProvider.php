@@ -4,12 +4,13 @@ namespace Packages\Commander\Providers;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\ServiceProvider;
+use Packages\Commander\Console\Commands\CommanderApplicationsSyncCommand;
 use Packages\Commander\Console\Commands\CommanderGitSyncCommand;
-use Packages\Commander\Console\Commands\CommanderRefreshCommand;
 use Packages\Commander\Console\Commands\CommanderQuotaMeasureCommand;
+use Packages\Commander\Console\Commands\CommanderRefreshCommand;
+use Packages\Commander\Console\Commands\CommanderSecureTenantsCommand;
 use Packages\Commander\Console\Commands\CommanderStatusCommand;
 use Packages\Commander\Console\Commands\CommanderUsageRollupCommand;
-use Packages\Commander\Console\Commands\CommanderSecureTenantsCommand;
 use Packages\Commander\Contracts\CommanderPackageGitSource;
 use Packages\Commander\Git\CommanderLocalGitSource;
 
@@ -30,6 +31,7 @@ class CommanderServiceProvider extends ServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->commands([
+                CommanderApplicationsSyncCommand::class,
                 CommanderRefreshCommand::class,
                 CommanderStatusCommand::class,
                 CommanderUsageRollupCommand::class,

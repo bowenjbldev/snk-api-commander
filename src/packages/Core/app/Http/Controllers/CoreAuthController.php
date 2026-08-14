@@ -7,10 +7,10 @@ use Dedoc\Scramble\Attributes\BodyParameter;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\Response;
-use Packages\Core\Models\CoreUserModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Packages\Core\Models\CoreUserModel;
 
 #[Group('Auth')]
 class CoreAuthController extends Controller
@@ -32,13 +32,13 @@ class CoreAuthController extends Controller
         ]);
 
         // Aislamiento por BD: el login corre contra la BD del subdominio (conexion ya conmutada por
-        // CoreResolvePackageFromHostMiddleware) o la commander (operador). Solo busca por email.
+        // CoreResolveInstanceFromHostMiddleware) o la commander (operador). Solo busca por email.
         /** @var CoreUserModel|null $user */
         $user = CoreUserModel::query()->where('email', $data['email'])->first();
 
         $hash = $user?->password;
 
-        if ($user === null || $hash === null || $hash === '' || !Hash::check($data['password'], (string) $hash)) {
+        if ($user === null || $hash === null || $hash === '' || ! Hash::check($data['password'], (string) $hash)) {
             return response()->json(['error' => 'Invalid credentials'], 401);
         }
 
@@ -78,7 +78,7 @@ class CoreAuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         $user = $request->user();
-        
+
         if ($user) {
             $user->setAttribute('all_permissions', $user->getAllPermissions()->pluck('name'));
             $user->setAttribute('role_names', $user->roles()->pluck('name'));

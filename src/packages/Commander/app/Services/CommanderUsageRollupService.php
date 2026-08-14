@@ -18,6 +18,7 @@ use Packages\Commander\Models\CommanderUsageRollupModel;
 class CommanderUsageRollupService
 {
     private const CHUNK = 2000;
+
     private const PRUNE_BATCH = 5000;
 
     /**
@@ -25,7 +26,7 @@ class CommanderUsageRollupService
      */
     public function rollup(string $period): int
     {
-        if (!in_array($period, ['hour', 'day'], true)) {
+        if (! in_array($period, ['hour', 'day'], true)) {
             throw new \InvalidArgumentException("Periodo invalido [$period]: usa hour|day.");
         }
 
@@ -85,7 +86,7 @@ class CommanderUsageRollupService
     {
         $bucketEnd = $this->advance($bucket, $period);
 
-        /** @var array<string, array{route: string, method: string, status_class: string, count: int, errors: int, dur_sum: int, durations: int[], req_bytes: int, resp_bytes: int, users: array<int|string, true>}> $groups */
+        /** @var array<string, array{instance_id: int, route: string, method: string, status_class: string, count: int, errors: int, dur_sum: int, durations: int[], req_bytes: int, resp_bytes: int, users: array<int|string, true>}> $groups */
         $groups = [];
 
         CommanderRequestLogModel::query()
@@ -95,12 +96,12 @@ class CommanderUsageRollupService
             ->chunkById(self::CHUNK, function ($rows) use (&$groups): void {
                 foreach ($rows as $row) {
                     $route = $row->route ?? '';
-                    $class = intdiv((int) $row->status, 100) . 'xx';
-                    $packageId = $row->package_id;
-                    $key = ($packageId ?? '') . '|' . $route . '|' . $row->method . '|' . $class;
+                    $class = intdiv((int) $row->status, 100).'xx';
+                    $instanceId = $row->instance_id;
+                    $key = $instanceId.'|'.$route.'|'.$row->method.'|'.$class;
 
                     $groups[$key] ??= [
-                        'package_id' => $packageId,
+                        'instance_id' => $instanceId,
                         'route' => $route,
                         'method' => $row->method,
                         'status_class' => $class,
@@ -139,7 +140,7 @@ class CommanderUsageRollupService
             $p95 = $g['durations'][(int) floor(0.95 * (count($g['durations']) - 1))];
 
             $rows[] = [
-                'package_id' => $g['package_id'],
+                'instance_id' => $g['instance_id'],
                 'period' => $period,
                 'period_start' => $bucket,
                 'route' => $g['route'],
@@ -159,7 +160,7 @@ class CommanderUsageRollupService
 
         CommanderUsageRollupModel::query()->upsert(
             $rows,
-            ['package_id', 'period', 'period_start', 'route', 'method', 'status_class'],
+            ['instance_id', 'period', 'period_start', 'route', 'method', 'status_class'],
             [
                 'request_count', 'error_count', 'avg_duration_ms', 'p95_duration_ms',
                 'total_request_bytes', 'total_response_bytes', 'unique_users', 'updated_at',

@@ -4,75 +4,67 @@ namespace Packages\Commander\Console\Commands;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
-use Packages\Core\Enums\CorePackageStatusEnum;
-use Packages\Commander\Models\CommanderQuotaModel;
-use Packages\Core\Services\CorePackageStateService;
+use Packages\Commander\Models\CommanderInstanceModel;
+use Packages\Core\Enums\CoreServiceStatusEnum;
+use Packages\Core\Services\CoreInstanceStateService;
 
 class CommanderStatusCommand extends Command
 {
     protected $signature = 'commander:status
-        {--set= : Nuevo estado (active|grace|suspended)}
-        {--reason= : Codigo de motivo (ej. manual, payment_overdue)}
-        {--message= : Mensaje para el cliente (se devuelve en el 402)}
-        {--grace-until= : Limite de gracia (ISO-8601 o relativo, ej. "+72 hours")}';
+        {instance? : Numeric instance id}
+        {--set= : active|grace|suspended}
+        {--reason= : State reason}
+        {--message= : Client-facing message}
+        {--grace-until= : ISO-8601 or relative date}';
 
-    protected $description = 'Muestra o cambia el estado del deploy (kill-switch local)';
+    protected $description = 'Show or change an instance service state';
 
-    public function handle(CorePackageStateService $stateService): int
+    public function handle(CoreInstanceStateService $stateService): int
     {
-        $set = $this->option('set');
-
-        if (is_string($set) && $set !== '') {
-            $status = CorePackageStatusEnum::tryFrom($set);
-
-            if ($status === null) {
-                $this->error("Estado invalido [{$set}]: usa active|grace|suspended.");
-                return self::FAILURE;
-            }
-
-            $graceUntil = null;
-
-            if ($status === CorePackageStatusEnum::Grace) {
-                $raw = $this->option('grace-until');
-                $graceUntil = is_string($raw) && $raw !== ''
-                    ? CarbonImmutable::parse($raw)
-                    : CarbonImmutable::now()->addHours((int) config('core.quotas.grace_hours', 72));
-            }
-
-            $stateService->set(
-                $status,
-                $this->option('reason') ?: ($status === CorePackageStatusEnum::Active ? null : 'manual'),
-                $this->option('message') ?: null,
-                $graceUntil,
+        $id = $this->argument('instance');
+        if ($id === null) {
+            $this->table(
+                ['ID', 'Client', 'Application', 'Provisioning', 'Service'],
+                CommanderInstanceModel::query()->with(['client', 'application'])->get()->map(fn ($instance) => [
+                    $instance->id,
+                    $instance->client->slug,
+                    $instance->application->slug,
+                    $instance->provisioning_status,
+                    $instance->service_status->value,
+                ]),
             );
 
-            $this->info("Estado actualizado a [{$status->value}].");
+            return self::SUCCESS;
         }
 
-        $state = $stateService->current();
+        $instance = CommanderInstanceModel::query()->find($id);
+        if ($instance === null) {
+            $this->error("Instance [{$id}] not found.");
 
-        $this->table(['Campo', 'Valor'], [
+            return self::FAILURE;
+        }
+
+        if (is_string($this->option('set')) && $this->option('set') !== '') {
+            $status = CoreServiceStatusEnum::tryFrom($this->option('set'));
+            if ($status === null) {
+                $this->error('Invalid state: use active|grace|suspended.');
+
+                return self::FAILURE;
+            }
+            $graceUntil = $status === CoreServiceStatusEnum::Grace
+                ? CarbonImmutable::parse($this->option('grace-until') ?: '+72 hours')
+                : null;
+            $stateService->set($status, $this->option('reason') ?: null, $this->option('message') ?: null, $graceUntil, $instance->id);
+        }
+
+        $state = $stateService->current($instance->id);
+        $this->table(['Field', 'Value'], [
             ['status', $state->status->value],
             ['effective_status', $state->effectiveStatus()->value],
             ['reason', $state->reason ?? '-'],
             ['message', $state->message ?? '-'],
             ['grace_until', $state->graceUntil?->toIso8601String() ?? '-'],
         ]);
-
-        $quotas = CommanderQuotaModel::query()->orderBy('metric_key')->get();
-
-        if ($quotas->isNotEmpty()) {
-            $this->table(
-                ['Metrica', 'Actual', 'Limite', 'on_exceed', 'Estado'],
-                $quotas->map(fn ($m) => [
-                    $m->metric_key,
-                    $m->current_value,
-                    $m->limit_value ?? 'sin limite',
-                    $m->on_exceed,
-                    $m->isOverLimit() ? 'OVER' : 'OK',
-                ])
-            );
-        }
 
         return self::SUCCESS;
     }

@@ -5,7 +5,7 @@ namespace Packages\Core\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
-use Packages\Commander\Models\CommanderPackageModel;
+use Packages\Commander\Models\CommanderInstanceModel;
 use Packages\Core\Support\CorePackageDiscoverySupport;
 use Packages\Core\Support\CorePackageSelectorSupport;
 
@@ -106,41 +106,42 @@ class CoreMigrateCommand extends Command
 
     private function migrateAllTenants(): int
     {
-        $packages = CommanderPackageModel::query()
-            ->provisioned()
-            ->with('client:id,slug')
+        $instances = CommanderInstanceModel::query()
+            ->ready()
+            ->with(['client:id,slug', 'application:id,package_name'])
             ->orderBy('id')
             ->get();
         $discovery = $this->discovery();
 
         // Preflight completo antes del primer DDL: un registro roto no deja el despliegue a medias.
-        foreach ($packages as $package) {
-            if (! $package->client?->slug || ! $package->name || ! $package->database
-                || ! $package->database_username || ! $package->database_password) {
-                $this->error("Tenant [{$package->id}] tiene un registro de provisioning incompleto.");
+        foreach ($instances as $instance) {
+            if (! $instance->client?->slug || ! $instance->application?->package_name || ! $instance->database
+                || ! $instance->database_username || ! $instance->database_password) {
+                $this->error("Tenant [{$instance->id}] tiene un registro de provisioning incompleto.");
 
                 return self::FAILURE;
             }
             try {
-                CorePackageSelectorSupport::validatedDatabaseIdentifier($package->database);
+                CorePackageSelectorSupport::validatedDatabaseIdentifier($instance->database);
             } catch (\RuntimeException $e) {
-                $this->error("Tenant [{$package->id}]: {$e->getMessage()}");
+                $this->error("Tenant [{$instance->id}]: {$e->getMessage()}");
 
                 return self::FAILURE;
             }
-            if (! $discovery->hasImplementation($package->client->slug, $package->name)) {
-                $this->error("Tenant [{$package->id}] no tiene código compartido ni específico desplegado.");
+            if (! $discovery->hasImplementation($instance->client->slug, $instance->application->package_name)) {
+                $this->error("Tenant [{$instance->id}] no tiene código compartido ni específico desplegado.");
 
                 return self::FAILURE;
             }
         }
 
-        foreach ($packages as $package) {
-            $client = $package->client->slug;
-            $this->configureTenant($package->database);
-            $this->info("Migrating tenant [{$client}/{$package->name}]...");
+        foreach ($instances as $instance) {
+            $client = $instance->client->slug;
+            $package = $instance->application->package_name;
+            $this->configureTenant($instance->database);
+            $this->info("Migrating tenant [{$client}/{$package}]...");
             $status = Artisan::call('migrate', [
-                '--path' => $this->tenantMigrationPaths($discovery, $client, $package->name),
+                '--path' => $this->tenantMigrationPaths($discovery, $client, $package),
                 '--realpath' => true,
                 '--database' => 'tenant',
                 '--force' => (bool) $this->option('force'),

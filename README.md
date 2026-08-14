@@ -24,6 +24,7 @@ La documentación canónica está en [`docs/`](docs/README.md):
 
 | Documento | Contenido |
 |---|---|
+| [Modelo de Commander](docs/commander-model.md) | Negocio, entidades, cardinalidades, contratos, cuotas y ejemplos simple/Grupo. |
 | [Arquitectura](docs/architecture.md) | Componentes, descubrimiento de paquetes, resolución de tenants, overlays y límites de seguridad. |
 | [Negocio](docs/business.md) | Kilkana como SaaS, planes objetivo y diferencias entre la visión comercial y lo implementado. |
 | [Base de datos](docs/database.md) | Topología, tablas Core/Commander y mapa del esquema Kilkana. |
@@ -41,7 +42,7 @@ src/
 ├── packages/Commander/    control plane y API del operador
 ├── packages/Kilkana/      producto Kilkana compartido
 └── packages/<Cliente>/    overlays o productos exclusivos
-scripts/                   utilidades de entorno y simulación
+scripts/                   utilidades de TLS y DNS local
 docker-compose.yml         app, scheduler, provisioner, nginx, MariaDB y Commander
 ```
 

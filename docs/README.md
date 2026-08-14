@@ -1,76 +1,41 @@
 # Documentación de Snake API Commander
 
-Este directorio es la fuente canónica de contexto del repositorio. Describe el código que
-existe en esta rama y separa explícitamente lo implementado de la dirección de producto.
+Este directorio describe el backend y el control plane que existen en esta rama. El repositorio
+no contiene un cliente web.
 
 ## Mapa de lectura
 
-| Si necesitas… | Lee… |
+| Necesidad | Documento |
 |---|---|
-| entender el sistema completo | [Arquitectura](architecture.md) |
-| decidir cómo encaja Kilkana como SaaS | [Negocio](business.md) |
-| tocar migraciones, modelos o relaciones | [Base de datos](database.md) y el [detalle de Kilkana](database/kilkana/README.md) |
-| seguir una petición, un alta o una baja | [Flujos](flows.md) |
+| entender negocio, entidades y cardinalidades | [Modelo de Commander](commander-model.md) |
+| entender routing, packages, overlays y aislamiento | [Arquitectura](architecture.md) |
+| entender la propuesta comercial de Kilkana | [Negocio](business.md) |
+| tocar migraciones, modelos o relaciones | [Base de datos](database.md) y [Kilkana](database/kilkana/README.md) |
+| seguir un alta, request, cuota o baja | [Flujos](flows.md) |
 | ejecutar, probar, migrar o desplegar | [Operación](operations.md) |
 
-## Modelo mental en un minuto
+## Modelo mental
 
-- Hay una aplicación Laravel y un control plane llamado **Commander**.
-- El subdominio identifica al cliente y el primer segmento tras `/api/v1` identifica al
-  producto: `{cliente}.dom/api/v1/{paquete}`.
-- La base `commander` guarda cuentas comerciales, clientes, catálogo, instancias, planes, billing, cuotas,
-  observabilidad y el operador.
-- Todo cliente pertenece a una cuenta comercial. En el caso normal es 1:1; una cuenta de grupo
-  puede agrupar varias cabeceras. El cliente sigue siendo la cabecera cuyo slug identifica el
-  subdominio.
-- Cada par `(cliente, producto)` provisionado tiene otra base aislada con Core y sus tablas de
-  negocio. No hay `tenant_id` en esas tablas.
-- Un producto compartido vive en `src/packages/<Paquete>`. Un overlay opcional vive en
-  `src/packages/<Cliente>/<Paquete>` y contiene solo diferencias.
-- Para una ruta concreta gana el overlay; lo que no personaliza cae en el producto compartido.
-- Commander crea registros y bases de datos, pero no genera ni clona código de producto.
-- `provisioned_at` es la frontera de exposición: una fila pendiente no recibe tráfico.
-- Las acciones operativas de Commander se direccionan por `commander_packages.id`, nunca por el
-  nombre compartido del producto.
+- Commander guarda cuentas, clientes, aplicaciones, instancias, contratos, billing, cuotas y
+  observabilidad en la base `commander`.
+- Cuenta es el pagador; cliente es el tenant/subdominio; aplicación es el producto; instancia es
+  el par único cliente-aplicación.
+- Cada instancia `ready` tiene una base `{cliente}_{package}` con usuarios, tokens y datos de
+  negocio aislados.
+- El host identifica al cliente y el primer segmento tras `/api/v1` a la aplicación:
+  `{cliente}.dom/api/v1/{aplicación}`.
+- La aplicación se descubre desde `src/packages/<Paquete>`; un overlay opcional en
+  `src/packages/<Cliente>/<Paquete>` contiene solo diferencias.
+- Un plan pertenece a una aplicación. Un contrato pertenece a cuenta+aplicación y sus ítems
+  asignan un plan operativo a cada instancia.
+- Una cuenta normal tiene un cliente; una cuenta de grupo puede tener varias cabeceras sin
+  compartir sus bases ni usuarios.
 
-## Componentes
-
-```text
-Petición al control plane
-        │
-        ▼
-commander.<BASE_DOMAIN>/api/v1
-        │
-        ▼
-paquete Commander ──────── base `commander`
-        │                         │
-        │ encola DDL              ├─ catálogo, clientes, planes y billing
-        ▼                         └─ estado, cuotas, logs y rollups
-worker `provisioner`
-
-Petición de lector/redacción
-        │
-        ▼
-{cliente}.<TENANT_BASE_DOMAIN>/api/v1/{paquete}
-        │ resolve host + path
-        ▼
-Core ── producto compartido ── overlay opcional
-        │
-        ▼
-base aislada `{cliente}_{paquete}`
-```
-
-## Prioridad cuando algo discrepa
+## Prioridad si algo discrepa
 
 1. Migraciones, rutas, modelos y servicios ejecutables.
 2. Tests que fijan el contrato.
 3. Esta documentación.
 4. Comentarios históricos y documentos externos.
 
-Si el código y la documentación divergen, corrige la documentación en el mismo cambio. Los
-Markdown del proyecto deben vivir aquí, salvo el `README.md` de entrada y `AGENTS.md`.
-
-## Alcance
-
-Este repositorio contiene únicamente el backend y el control plane API. Los consumidores de la
-API viven fuera de este árbol y no forman parte de su contrato verificable.
+Los Markdown del proyecto viven aquí, salvo el `README.md` de entrada y `AGENTS.md`.

@@ -1,116 +1,100 @@
 # Operación
 
-## Requisitos y configuración
-
-Para el entorno completo solo se necesita Docker. Hay dos ficheros de entorno:
-
-| Fichero | Dueño | Contenido principal |
-|---|---|---|
-| `.env` | Docker Compose | puertos, dominios, usuario Commander y credencial del provisioner |
-| `src/.env` | Laravel | dominios, app key, conexiones, queue, mail, seed demo y rate limits |
-
-Créelos desde sus ejemplos y mantén iguales `BASE_DOMAIN` y `TENANT_BASE_DOMAIN`:
+## Arranque local
 
 ```bash
 cp .env.example .env
 cp src/.env.example src/.env
 bash scripts/setup-ssl.sh
 docker compose up -d
+docker compose exec -T app php artisan core:seed --force
 ```
 
-El entrypoint instala Composer si falta, genera `APP_KEY`, crea el enlace de storage y ejecuta
-`core:migrate --force` sobre `commander`. No migra bases tenant al arrancar.
+El entrypoint:
+
+1. instala Composer si falta y genera `APP_KEY`;
+2. prepara storage y cachés;
+3. ejecuta `core:migrate --force` sobre `commander`;
+4. ejecuta `commander:applications:sync`;
+5. limpia la caché de aplicación.
+
+No migra automáticamente las bases tenant existentes.
 
 ## Servicios Docker
 
 | Servicio | Función |
 |---|---|
-| `app` | PHP-FPM y comandos no privilegiados |
+| `app` | PHP-FPM y comandos sin DDL tenant |
 | `scheduler` | `php artisan schedule:work` |
-| `provisioner` | asegura usuarios runtime y consume solo la cola `provisioning` con DDL |
-| `nginx` | vhost wildcard, proxy a Laravel y reserva del origen web de Commander |
-| `commander-web` | conexión opcional para un futuro cliente web; perfil `spa` |
-| `db` | MariaDB: `commander` más una BD por instancia |
-| `db-init` | crea/actualiza el usuario no privilegiado de Commander |
-| `mailpit` | SMTP de pruebas y UI en el puerto 8025 |
+| `provisioner` | asegura usuarios runtime y consume la cola `provisioning` con DDL |
+| `nginx` | TLS, wildcard tenant y proxy |
+| `db` | MariaDB: `commander` más una base por instancia |
+| `db-init` | usuario no privilegiado de Commander |
+| `mailpit` | SMTP local de pruebas |
+| `commander-web` | perfil opt-in vacío para un futuro cliente web |
 
-El MariaDB local permite root sin contraseña para que el provisioner cree bases. Esa configuración
-es solo de desarrollo y no debe copiarse a producción.
+MariaDB local permite root sin contraseña para el provisioner. No copies esa configuración a
+producción.
 
-## DNS y TLS locales
-
-El sistema necesita subdominios reales porque el host forma parte del routing y de las firmas.
+## DNS, TLS y URLs
 
 ```bash
 bash scripts/setup-ssl.sh
 bash scripts/dns-wildcard.sh
 ```
 
-El DNS recomendado resuelve `*.<BASE_DOMAIN>` y `*.<TENANT_BASE_DOMAIN>` a `127.0.0.1`. Si no
-puedes instalar un resolver wildcard, añade al hosts de Windows/Linux `api`, `commander` y cada
-slug de cliente. El fichero hosts no admite `*`.
+Resuelve `*.<BASE_DOMAIN>` y `*.<TENANT_BASE_DOMAIN>` a `127.0.0.1`. El fichero hosts no admite
+wildcards; en ese caso añade `api`, `commander` y cada cliente.
 
-Para probar sin DNS:
+| Recurso | URL local |
+|---|---|
+| API Commander | `https://commander.snakepc.test/api/v1` |
+| tenant Kilkana | `https://{cliente}.kilkana.test/api/v1/kilkana` |
+| health | `https://api.snakepc.test/api/v1/` |
+| OpenAPI | `https://api.snakepc.test/api/v1/docs.json` |
+| Mailpit | `http://localhost:8025` |
+
+Prueba sin DNS:
 
 ```bash
 curl -k --resolve api.snakepc.test:8443:127.0.0.1 \
   https://api.snakepc.test:8443/api/v1/
-
-curl -k --resolve demo.kilkana.test:8443:127.0.0.1 \
-  https://demo.kilkana.test:8443/api/v1/kilkana/
 ```
 
-Rutas locales habituales:
-
-| Recurso | URL |
-|---|---|
-| API Commander | `https://commander.snakepc.test/api/v1` o `:8443/api/v1` |
-| tenant Kilkana demo | `https://demo.kilkana.test` o `:8443` |
-| health Core | `https://api.snakepc.test/api/v1/` |
-| spec OpenAPI | `https://api.snakepc.test/api/v1/docs.json` |
-| Mailpit | `http://localhost:8025` |
-
-Para que Laravel envíe a Mailpit en vez de escribir al log, configura en `src/.env`:
-
-```env
-MAIL_MAILER=smtp
-MAIL_HOST=mailpit
-MAIL_PORT=1025
-```
-
-## Admins y seeders
-
-El operador de Commander y el admin de cada tenant son identidades distintas.
+## Operador y admins tenant
 
 ```bash
-# Commander: roles, permisos y operador
 docker compose exec -T app php artisan core:seed --force
-
-# Tenant manual: roles y seeders Core + producto + overlay
-docker compose exec -T provisioner php artisan core:seed \
-  --client=elmundo --package=Kilkana --force
 ```
 
-En desarrollo, el operador cae a `admin@snake.com` / `secret1234` si no se configura otra cosa.
-En producción, `CORE_ADMIN_PASSWORD` es obligatorio. El provisioning crea el admin tenant con el
-email y la contraseña recibidos; un seed tenant nunca copia el operador.
+En local, el operador por defecto es `admin@snake.com` / `secret1234`. Producción exige una
+contraseña configurada. El admin de cada tenant es distinto: provisioning y retry exigen su email
+y contraseña explícitos. Un seed tenant nunca copia el operador Commander.
 
-`KILKANA_SEED_DEMO=false` es el valor seguro. Solo al ponerlo a `true` se crean contenido y lector
-demo; `KILKANA_DEMO_READER_PASSWORD` debe estar definido para ese caso.
+`KILKANA_SEED_DEMO=false` es el valor seguro. Si se activa, configura también
+`KILKANA_DEMO_READER_PASSWORD`.
 
-El seeder de Kilkana restaura también los snapshots de layouts y settings. Tras un `--fresh`,
-ejecuta seed o la portada puede quedar sin composición.
+## Catálogo de aplicaciones
+
+```bash
+docker compose exec -T app php artisan commander:applications:sync
+```
+
+Ejecuta el comando tras añadir, quitar o renombrar un package/overlay descubrible. Es idempotente;
+marca código ausente como `missing` y no borra historia. Nunca dependas de un `GET` para hacer el
+sync.
 
 ## Migraciones
 
-### Control plane
+### Commander
 
 ```bash
 docker compose exec -T app php artisan core:migrate --force
+docker compose exec -T app php artisan commander:applications:sync
 docker compose exec -T app php artisan core:seed --force
 ```
 
-Sin `--client` y `--package`, el destino es `commander` y se ejecutan Core + Commander.
+Sin `--client` y `--package`, `core:migrate` ejecuta Core + Commander sobre la conexión de control.
 
 ### Una instancia
 
@@ -122,55 +106,60 @@ docker compose exec -T provisioner php artisan core:seed \
   --client=elmundo --package=Kilkana --force
 ```
 
-Los dos flags son inseparables. El destino se deriva como `elmundo_kilkana` y el orden es Core,
-producto compartido y overlay.
+Los flags son inseparables. El orden es Core, package compartido y overlay.
 
-### Todas las instancias tras un deploy
-
-```bash
-docker compose exec -T provisioner php artisan core:migrate \
-  --all-tenants --force
-```
-
-El comando hace preflight de todas las filas vivas antes del primer DDL. No admite combinar
-`--all-tenants` con `--client`, `--package`, `--seed`, `--fresh` ni `--rollback`.
-
-### Operaciones destructivas
-
-`--fresh` elimina todas las tablas de la base elegida. Úsalo solo sobre un destino local resuelto y
-nunca con variables o globs ambiguos:
+### Todas tras un deploy
 
 ```bash
-docker compose exec -T provisioner php artisan core:migrate \
-  --client=demo --package=Kilkana --fresh --force
+docker compose exec -T provisioner php artisan core:migrate --all-tenants --force
 ```
 
-Confirma primero la base derivada y ejecuta después `core:seed`. Para producción, una evolución de
-esquema debe ser una migración forward, no un `fresh`.
+El comando carga instancias ready y hace preflight de cliente, aplicación, código, base y
+credenciales antes del primer DDL. No combina `--all-tenants` con client, package, seed, fresh o
+rollback.
 
-## Provisioning normal
+### Fresh local
 
-El camino normal no es ejecutar migraciones a mano:
+El esquema Commander de esta rama parte limpio y no mantiene compatibilidad con datos anteriores.
+Para reconstruir un entorno local:
 
-1. despliega el código del producto;
-2. usa la API Commander para sincronizar packages;
-3. crea un plan;
-4. usa **Provision instance** con cliente y credenciales del admin;
-5. observa la cola `provisioning` hasta que `provisioned_at` tenga valor.
+```bash
+docker compose exec -T app php artisan core:migrate --fresh --force
+docker compose exec -T app php artisan commander:applications:sync
+docker compose exec -T app php artisan core:seed --force
+```
 
-Comandos de inspección:
+`--fresh` destruye todas las tablas del destino. No lo uses en producción. Una evolución después
+de desplegar este esquema debe usar una nueva migración forward.
+
+## Provisioning
+
+El flujo normal usa la API Commander, no comandos manuales:
+
+1. despliega el package;
+2. sincroniza aplicaciones;
+3. crea plan y límites;
+4. para grupo, crea antes cuenta y contrato negociado;
+5. envía provisioning con credenciales admin;
+6. observa hasta `provisioning_status = ready`.
+
+Inspección:
 
 ```bash
 docker compose ps
 docker compose logs --tail=200 provisioner
 docker compose exec -T app php artisan queue:failed
 docker compose exec -T app php artisan commander:status
+docker compose exec -T app php artisan commander:status <instance_id>
 ```
 
-No reintentes ni borres una fila pending sin comprobar si el job sigue reservado, falló o llegó a
-crear recursos en MariaDB.
+Sin ID, `commander:status` lista instancias. Con ID muestra estado; `--set`, `--reason`, `--message`
+y `--grace-until` permiten operación manual.
 
-## Scheduler y pipelines manuales
+Una instancia failed conserva `last_error`. Reinténtala por
+`POST /api/v1/instances/{id}/retry` con credenciales admin nuevas; no crees una segunda fila.
+
+## Scheduler
 
 ```bash
 docker compose logs --tail=200 scheduler
@@ -178,87 +167,58 @@ docker compose exec -T app php artisan schedule:list
 docker compose exec -T app php artisan commander:refresh
 docker compose exec -T app php artisan commander:usage:rollup --prune
 docker compose exec -T app php artisan commander:quota:measure
+docker compose exec -T app php artisan commander:quota:measure --dry-run
 docker compose exec -T app php artisan commander:git:sync
 docker compose exec -T app php artisan kilkana:publish-scheduled
 ```
 
-Los comandos Kilkana recorren todas sus instancias válidas. No los ejecutes dentro de una conexión
-tenant ya mutada ni añadas una copia nueva del bucle: reutiliza `SnkKilkanaTenantRunnerService`.
+| Frecuencia | Comando |
+|---|---|
+| cada minuto | `kilkana:publish-scheduled` |
+| cada 10 min | `commander:refresh` |
+| cada hora | `commander:usage:rollup --prune` |
+| cada hora | `commander:git:sync` |
+| cada 6 h | `commander:quota:measure` |
 
-## Desarrollo backend
+Los recorridos Kilkana reutilizan `SnkKilkanaTenantRunnerService`; un tenant roto no debe impedir
+procesar los demás.
 
-Desde `src`:
+## Comprobaciones
 
 ```bash
-composer install
-composer test
+docker compose exec -T app php artisan test
+cd src
 vendor/bin/pint --test
 composer audit
-php artisan route:list
 php artisan config:cache
 php artisan route:cache
 ```
 
-O desde Docker:
-
-```bash
-docker compose exec -T app php artisan test
-docker compose exec -T app php artisan route:list
-```
-
-Los tests usan SQLite mediante `COMMANDER_DB_DRIVER=sqlite` y `TENANT_DB_DRIVER=sqlite`; las rutas
-de provisioning saltan DDL real en ese driver. Para cambios de privilegios, nombres de base,
-collation o `information_schema`, añade además una prueba con MariaDB.
-
-Si falta `src/.env`, Laravel puede mostrar warnings de entorno aunque los tests pasen. Copia el
-ejemplo antes de interpretar esos warnings como fallos funcionales.
+Reporta test, formato y audit por separado. SQLite no cubre DDL/privilegios/collation; prueba esos
+cambios también con MariaDB.
 
 ## Cliente web futuro
 
-El repositorio no contiene un cliente web. Docker conserva el servicio opt-in `commander-web` y
-el enrutado de mismo origen: `/api/*` llega a Laravel y `/` al puerto 5173. Después de crear desde
-cero un proyecto con `commander/package.json`, arráncalo con:
+Este repositorio no contiene frontend ni documentos de diseño. Docker solo reserva el perfil y el
+routing de mismo origen. Cuando exista desde cero `commander/package.json`:
 
 ```bash
 docker compose --profile spa up -d commander-web nginx
 ```
 
-## Simulación local
+`/api/*` seguirá llegando a Laravel y `/` al futuro servidor web. Sin el perfil, `/` responde 404
+y la API continúa disponible.
 
-`scripts/simulate.sh` genera clientes, planes, instancias y datos de observabilidad para explorar
-Commander:
-
-```bash
-bash scripts/simulate.sh
-bash scripts/simulate.sh group
-bash scripts/simulate.sh traffic <cliente> <slug> 100
-bash scripts/simulate.sh pipeline
-bash scripts/simulate.sh volume 100000
-bash scripts/simulate.sh year 365
-bash scripts/simulate.sh report
-```
-
-`volume` y `year` escriben grandes volúmenes directamente en MariaDB. Son herramientas de demo,
-no comandos de producción.
-
-`group` es aditivo: migra Commander sin hacer `fresh`, crea o reutiliza la cuenta
-`Grupo Prensa Demo` y provisiona tres cabeceras Kilkana independientes (`diario-norte`,
-`diario-centro`, `diario-sur`). El reporte muestra la cuenta común, las tres bases y el MRR
-agregado a partir de sus términos vigentes. Usa `TENANT_ADMIN_EMAIL` y
-`TENANT_ADMIN_PASSWORD` para cambiar las credenciales tenant de la demo.
-
-## Acceso directo a MariaDB
-
-En local, el cliente instalado en la imagen es `mariadb`:
+## MariaDB
 
 ```bash
 docker compose exec -T db mariadb -uroot commander -e 'SHOW TABLES;'
 docker compose exec -T db mariadb -uroot elmundo_kilkana -e 'SHOW TABLES;'
 ```
 
-No pongas secretos reales en el comando: quedan visibles en history y en la lista de procesos.
+No incluyas secretos reales en comandos: quedan en history y en la lista de procesos.
 
-## Despliegue
+## Deploy
 
 Secuencia mínima:
 
@@ -267,32 +227,32 @@ git pull --ff-only
 cd src
 composer install --no-dev --optimize-autoloader
 php artisan core:migrate --force
+php artisan commander:applications:sync
 php artisan config:cache
 php artisan route:cache
 ```
 
-Después, desde el proceso o contenedor del provisioner —el único con credenciales DDL—:
+Después, desde el provisioner:
 
 ```bash
 php artisan core:migrate --all-tenants --force
 ```
 
-Además:
+Requisitos adicionales:
 
-- wildcard DNS `*.<dominio>` hacia el servidor;
-- certificado wildcard mediante DNS-01;
-- vhost nginx wildcard hacia el único FPM;
-- proceso permanente para `schedule:work` o cron `schedule:run`;
-- worker exclusivo de la cola `provisioning` con credenciales DDL;
-- `retry_after` mayor que el timeout de provisioning;
-- backup de `commander`, de todas las bases tenant y del storage antes de migraciones relevantes.
+- DNS y certificado wildcard;
+- PHP-FPM sin concurrencia interna tipo Octane;
+- scheduler permanente o cron `schedule:run`;
+- worker exclusivo de provisioning con DDL;
+- `retry_after` mayor que el timeout del job;
+- backup de Commander, bases tenant y storage antes de cambios relevantes.
 
 ## Gotchas
 
-- `Hash::make` sobre `CoreUserModel.password` produce doble hash: el modelo ya castea `hashed`.
+- `CoreUserModel.password` ya tiene cast `hashed`; no uses `Hash::make` al asignarlo.
 - El usuario es `Packages\Core\Models\CoreUserModel`, no `App\Models\User`.
-- `BASE_DOMAIN` y `TENANT_BASE_DOMAIN` quedan dentro de la caché de rutas; recachea tras cambiarlos.
-- Un producto u overlay nuevo necesita autoload actualizado y reinicio/recache del proceso.
-- Añadir código en Commander no crea una instancia: la fila solo enruta tras provisioning.
-- Un token tenant no autentica al operador, y uno de Commander no autentica en un tenant.
-- Los procesos concurrentes tipo Octane no están soportados por la conmutación global de conexión.
+- Dominios quedan en route cache; regenera tras cambiarlos.
+- Un package nuevo requiere autoload/recache y sync de aplicaciones.
+- Un token tenant no autentica en Commander ni viceversa.
+- Cambiar un plan de catálogo no propaga límites a instancias hasta provisionar/cambiar plan.
+- Una suscripción negociada agrupa billing, no bases ni cuotas.

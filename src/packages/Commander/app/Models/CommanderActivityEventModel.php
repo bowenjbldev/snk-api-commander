@@ -3,6 +3,7 @@
 namespace Packages\Commander\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CommanderActivityEventModel extends Model
 {
@@ -16,8 +17,18 @@ class CommanderActivityEventModel extends Model
     {
         return [
             'id' => 'integer',
-            'package_id' => 'integer',
+            'instance_id' => 'integer',
             'invoice_id' => 'integer',
         ];
+    }
+
+    public function instance(): BelongsTo
+    {
+        return $this->belongsTo(CommanderInstanceModel::class, 'instance_id');
+    }
+
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(CommanderInvoiceModel::class, 'invoice_id');
     }
 }
