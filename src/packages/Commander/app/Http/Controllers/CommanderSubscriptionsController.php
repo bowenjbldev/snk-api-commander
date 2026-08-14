@@ -23,7 +23,7 @@ class CommanderSubscriptionsController extends CoreBaseApiController
 
     protected string $destroyPermission = 'delete subscriptions';
 
-    protected array $allowedWith = ['account', 'application', 'items', 'items.instance.client', 'items.plan'];
+    protected array $allowedWith = ['account', 'application', 'items', 'items.instance.client', 'items.plan', 'quotas.metric'];
 
     protected array $validationRulesStore = [
         'account_id' => 'required|integer|exists:commander_accounts,id',
@@ -79,7 +79,9 @@ class CommanderSubscriptionsController extends CoreBaseApiController
         if ($subscription === null) {
             return response()->json(['error' => 'Subscription not found'], 404);
         }
-        if ($subscription->items()->exists() || $subscription->invoiceLines()->exists()) {
+        if ($subscription->items()->exists()
+            || $subscription->quotas()->exists()
+            || $subscription->invoiceLines()->exists()) {
             return response()->json(['error' => 'Subscription has history; cancel it instead.'], 409);
         }
 

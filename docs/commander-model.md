@@ -36,6 +36,7 @@ commander_account 1 ─────── N commander_client
                     └── N commander_invoice_line ── N commander_invoice ── 1 account
 
 commander_instance 1 ── N commander_quota N ── 1 commander_application_metric
+commander_subscription 1 ── N commander_quota
 commander_quota    1 ── N commander_metric_measurement
 commander_instance 1 ── N logs, rollups y eventos
 commander_application 1 ── 1 repo Git ── N commits/rollups diarios
@@ -153,6 +154,11 @@ para no perder observabilidad.
 
 Los límites de plan son una plantilla. Se copian a `commander_quotas` al provisionar o cambiar de
 plan. Editar el catálogo de un plan no reescribe silenciosamente instancias existentes.
+
+Una cuota también puede pertenecer directamente a una suscripción. En ese ámbito suma la misma
+métrica de todas las instancias `ready` con ítem activo en el contrato y mantiene mediciones
+propias. Esto permite vender capacidad compartida —por ejemplo, diez millones de lecturas para
+cinco cabeceras— sin crear una macro-instancia ni perder las cuotas individuales.
 
 Cada cuota admite `none`, `warn`, `suspend` o `recommend`:
 
@@ -297,7 +303,8 @@ usage/platform
 - No hay frontend en este repositorio; Docker conserva únicamente un perfil opt-in vacío para un
   cliente futuro creado desde cero.
 - No hay proveedor de pagos, SSO tenant, autoservicio público ni prorrateo.
-- No hay cuota compartida entre cabeceras: el contrato agrupa; la operación se mide por instancia.
+- Las cuotas operativas siguen siendo por instancia; una suscripción puede añadir una cuota
+  compartida que suma la misma métrica de sus cabeceras activas.
 - No se generan ni clonan packages durante el alta.
 - La conmutación global de conexión soporta PHP-FPM y workers secuenciales, no concurrencia
   Octane/Swoole.

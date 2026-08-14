@@ -132,6 +132,23 @@ Cada cabecera repite provisioning con `subscription_id` y un cliente nuevo que u
 La cuarta cabecera de un contrato con capacidad tres responde `422` y la transacción no deja un
 cliente huérfano.
 
+Una cuota común se crea después sobre la suscripción:
+
+```json
+{
+  "subscription_id": 3,
+  "metric_id": 9,
+  "limit_value": 10000000,
+  "warning_percent": 80,
+  "action": "recommend",
+  "consecutive_periods": 2
+}
+```
+
+`POST /api/v1/quotas` solo crea cuotas compartidas y exige que la métrica pertenezca a la
+aplicación del contrato. Solo puede existir una por `(subscription_id, metric_id)`. Las cuotas de
+instancia siguen naciendo exclusivamente del provisioning o de un cambio de plan.
+
 ## Retry
 
 `POST /api/v1/instances/{id}/retry` acepta únicamente `failed` o `deprovisioned`, exige nuevas
@@ -172,7 +189,7 @@ escritura en la ruta de lectura.
 
 ## Medición de cuotas
 
-`commander:quota:measure` recorre cuotas agrupadas por instancia ready:
+`commander:quota:measure` mide primero las cuotas agrupadas por instancia `ready`:
 
 1. fija contexto e instancia;
 2. configura credenciales runtime tenant;
@@ -182,6 +199,12 @@ escritura en la ruta de lectura.
 6. aplica `none`, `warn`, `suspend` o `recommend`;
 7. aísla el fallo de una métrica y continúa;
 8. restaura contexto y conexión en `finally`.
+
+Después suma cada cuota de suscripción usando la misma métrica de todos sus ítems activos con
+instancia `ready`. Si alguna cabecera no se pudo medir, el agregado queda sin muestra en vez de
+usar un total parcial. La cuota compartida conserva su propio valor actual e histórico diario.
+`warn` y `recommend` generan un único evento de contrato; `suspend` aplica grace o suspensión a
+todas sus cabeceras activas. Al volver bajo el límite, solo revierte estados originados por cuotas.
 
 `suspend` entra primero en grace y solo suspende al vencer. Al bajar todas las cuotas que causaron
 ese estado puede hacer auto-resume; nunca cura una suspensión manual o por billing.

@@ -19,6 +19,7 @@ class CommanderQuotaModel extends Model
         return [
             'id' => 'integer',
             'instance_id' => 'integer',
+            'subscription_id' => 'integer',
             'metric_id' => 'integer',
             'current_value' => 'integer',
             'limit_value' => 'integer',
@@ -35,6 +36,11 @@ class CommanderQuotaModel extends Model
     public function instance(): BelongsTo
     {
         return $this->belongsTo(CommanderInstanceModel::class, 'instance_id');
+    }
+
+    public function subscription(): BelongsTo
+    {
+        return $this->belongsTo(CommanderSubscriptionModel::class, 'subscription_id');
     }
 
     public function metric(): BelongsTo

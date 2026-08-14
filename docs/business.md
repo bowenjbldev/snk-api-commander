@@ -55,17 +55,38 @@ asiento en cada uno.
 
 ## Planes y precios
 
-La referencia de trabajo para planes Kilkana es:
+La matriz de trabajo comercial es la siguiente. `Basic` sustituye al nombre histórico `Starter`:
 
-| Plan | Precio orientativo mensual |
-|---|---:|
-| Basic | 29 € |
-| Pro | 59 € |
-| Business | 99 € |
-| Grupo | negociado |
+| Prestación o límite | Basic | Pro | Business |
+|---|---:|---:|---:|
+| Precio mensual orientativo | 29 € | 59 € | 99 € |
+| Cabeceras en contratación individual | 1 | 1 | 1 |
+| Asientos editoriales | 5 | 15 | ilimitados |
+| Almacenamiento total | 20 GB | 60 GB | 120 GB |
+| Lecturas mensuales | 50.000 | 150.000 | 500.000 |
+| Publicación y flujo editorial | incluido | incluido | incluido |
+| Portada y composición | incluido | incluido | incluido |
+| Biblioteca de medios | incluido | incluido | incluido |
+| Autores, secciones y etiquetas | incluido | incluido | incluido |
+| Comentarios y suscriptores | incluido | incluido | incluido |
+| Newsletter | incluido | incluido | incluido |
+| SEO y salida pública | incluido | incluido | incluido |
+| Migración inicial y atención ante caída | incluido | incluido | incluido |
 
-Son decisiones comerciales documentadas, no seeders ni precios publicados. Commander no crea
-estos planes automáticamente. Antes de venderlos deben aprobarse límites, impuestos, trial y
+Todas las capacidades propias de Kilkana están incluidas: los niveles se diferencian por consumo,
+no por bloquear funciones.
+
+| Modalidad | Precio | Cabeceras | Plan operativo y límites |
+|---|---:|---:|---|
+| Grupo | negociado | según contrato | a medida por cabecera o compartidos |
+
+`Grupo` no convierte varias cabeceras en una instancia ni en un plan técnico. La cuenta contrata
+una suscripción con `max_instances`; cada cabecera conserva su plan operativo, base, usuarios y
+cuotas. Opcionalmente, el contrato puede definir una cuota compartida: por ejemplo, diez millones
+de lecturas mensuales sumadas entre todas sus cabeceras activas.
+
+Son decisiones comerciales orientativas, no seeders ni precios publicados. Commander no crea
+estos planes automáticamente. Antes de venderlos deben aprobarse costes, impuestos, trial y
 condiciones contractuales.
 
 Todos los planes pertenecen a la aplicación Kilkana. Sus límites son plantillas de operación;

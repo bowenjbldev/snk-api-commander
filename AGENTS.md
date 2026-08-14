@@ -12,6 +12,7 @@ Antes de cambiar código, lee [`docs/README.md`](docs/README.md),
 | provisioning, de-provisioning, estado o cuotas | [`docs/flows.md`](docs/flows.md) y [`docs/database.md`](docs/database.md) |
 | migraciones o modelos Commander | [`docs/commander-model.md`](docs/commander-model.md) y [`docs/database.md`](docs/database.md) |
 | Kilkana | [`docs/business.md`](docs/business.md) y [`docs/database/kilkana/README.md`](docs/database/kilkana/README.md) |
+| dominios propios, DNS, TLS o SEO multi-host | [`docs/domains.md`](docs/domains.md), [`docs/architecture.md`](docs/architecture.md) y [`docs/operations.md`](docs/operations.md) |
 | comandos, Docker, tests o deploy | [`docs/operations.md`](docs/operations.md) |
 
 ## Invariantes

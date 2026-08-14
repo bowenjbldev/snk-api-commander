@@ -18,6 +18,7 @@ class CommanderActivityEventModel extends Model
         return [
             'id' => 'integer',
             'instance_id' => 'integer',
+            'subscription_id' => 'integer',
             'invoice_id' => 'integer',
         ];
     }
@@ -30,5 +31,10 @@ class CommanderActivityEventModel extends Model
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(CommanderInvoiceModel::class, 'invoice_id');
+    }
+
+    public function subscription(): BelongsTo
+    {
+        return $this->belongsTo(CommanderSubscriptionModel::class, 'subscription_id');
     }
 }

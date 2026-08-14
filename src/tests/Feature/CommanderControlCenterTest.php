@@ -137,6 +137,120 @@ class CommanderControlCenterTest extends CommanderTestCase
         ]);
     }
 
+    public function test_subscription_quota_aggregates_and_controls_all_active_instances(): void
+    {
+        $admin = $this->admin();
+        [$first, $metric, $plan, $contract] = $this->instanceWithMetric('requests_day');
+        $contract->update(['pricing_mode' => 'negotiated', 'monthly_amount' => 5000, 'max_instances' => 2]);
+        $secondClient = CommanderClientModel::create([
+            'account_id' => $first->client->account_id,
+            'slug' => 'tenant-two',
+            'name' => 'Tenant Two',
+            'email' => 'tenant-two@test.test',
+        ]);
+        $second = CommanderInstanceModel::create([
+            'client_id' => $secondClient->id,
+            'application_id' => $first->application_id,
+            'database' => 'tenant_two_shop',
+            'database_username' => 'tenant_2',
+            'database_password' => 'runtime-password',
+            'provisioning_status' => 'ready',
+            'service_status' => 'active',
+            'provisioned_at' => now(),
+        ]);
+        $contract->items()->create([
+            'instance_id' => $second->id,
+            'plan_id' => $plan->id,
+            'status' => 'active',
+        ]);
+        CommanderQuotaModel::create([
+            'instance_id' => $first->id,
+            'metric_id' => $metric->id,
+            'limit_value' => 1,
+            'action' => 'warn',
+        ]);
+        CommanderQuotaModel::create(['instance_id' => $second->id, 'metric_id' => $metric->id]);
+        foreach ([[$first, 7], [$second, 5]] as [$instance, $count]) {
+            for ($i = 0; $i < $count; $i++) {
+                CommanderRequestLogModel::create([
+                    'instance_id' => $instance->id,
+                    'method' => 'GET',
+                    'route' => '/api/v1/x',
+                    'path' => 'api/v1/x',
+                    'status' => 200,
+                    'duration_ms' => 1,
+                ]);
+            }
+        }
+
+        $otherApplication = CommanderApplicationModel::create([
+            'package_name' => 'Other', 'slug' => 'other', 'name' => 'Other',
+            'status' => 'active', 'code_status' => 'available',
+        ]);
+        $otherMetric = CommanderApplicationMetricModel::create([
+            'application_id' => $otherApplication->id,
+            'key' => 'other', 'name' => 'Other', 'unit' => 'count',
+            'kind' => 'counter', 'window' => 'day', 'measurer' => CommanderBuiltInMetricMeasurer::class,
+        ]);
+        $this->actingAs($admin, 'sanctum')->postJson('/api/v1/quotas', [
+            'subscription_id' => $contract->id,
+            'metric_id' => $otherMetric->id,
+            'limit_value' => 10,
+        ])->assertUnprocessable()->assertJsonValidationErrors('metric_id');
+
+        $sharedId = $this->actingAs($admin, 'sanctum')->postJson('/api/v1/quotas', [
+            'subscription_id' => $contract->id,
+            'metric_id' => $metric->id,
+            'limit_value' => 10,
+            'warning_percent' => 80,
+            'action' => 'suspend',
+        ])->assertCreated()
+            ->assertJsonPath('instance_id', null)
+            ->assertJsonPath('subscription.id', $contract->id)
+            ->json('id');
+
+        app(CommanderQuotaMeasurerService::class)->measureAll();
+
+        $shared = CommanderQuotaModel::findOrFail($sharedId);
+        $this->assertSame(12, $shared->current_value);
+        $this->assertSame('grace', $first->fresh()->getRawOriginal('service_status'));
+        $this->assertSame('grace', $second->fresh()->getRawOriginal('service_status'));
+        $this->assertDatabaseHas('commander_metric_measurements', ['quota_id' => $shared->id, 'value' => 12]);
+        $this->assertDatabaseHas('commander_activity_events', [
+            'instance_id' => null,
+            'subscription_id' => $contract->id,
+            'kind' => 'quota_warning',
+        ]);
+        $this->assertSame(2, CommanderActivityEventModel::query()
+            ->where('subscription_id', $contract->id)->where('kind', 'grace')->count());
+        $this->actingAs($admin, 'sanctum')
+            ->getJson("/api/v1/subscriptions/{$contract->id}?with=quotas.metric")
+            ->assertOk()
+            ->assertJsonPath('quotas.0.current_value', 12);
+
+        CommanderRequestLogModel::query()->where('instance_id', $second->id)->delete();
+        app(CommanderQuotaMeasurerService::class)->measureAll();
+
+        $this->assertSame(7, $shared->fresh()->current_value);
+        $this->assertSame('active', $first->fresh()->getRawOriginal('service_status'));
+        $this->assertSame('active', $second->fresh()->getRawOriginal('service_status'));
+    }
+
+    public function test_subscription_with_a_shared_quota_keeps_its_history(): void
+    {
+        $admin = $this->admin();
+        [, $metric, , $contract] = $this->instanceWithMetric('requests_day');
+        $contract->items()->delete();
+        $contract->quotas()->create(['metric_id' => $metric->id, 'limit_value' => 100]);
+
+        $this->actingAs($admin, 'sanctum')->deleteJson("/api/v1/subscriptions/{$contract->id}")
+            ->assertConflict()
+            ->assertJsonPath('error', 'Subscription has history; cancel it instead.');
+
+        $this->assertNotNull($contract->fresh());
+        $this->assertSame(1, $contract->quotas()->count());
+    }
+
     public function test_kilkana_recommends_upgrade_only_after_two_sustained_monthly_evaluations(): void
     {
         [$instance] = $this->instanceWithMetric('requests_day');

@@ -38,7 +38,7 @@ Route::middleware(['api'])->group(function () {
 
         Route::apiResource('subscriptions', CommanderSubscriptionsController::class);
         Route::apiResource('invoices', CommanderInvoicesController::class);
-        Route::apiResource('quotas', CommanderQuotasController::class)->only(['index', 'show', 'update']);
+        Route::apiResource('quotas', CommanderQuotasController::class)->only(['index', 'show', 'store', 'update']);
         Route::apiResource('activity', CommanderActivityController::class)->only(['index', 'show']);
 
         // Platform usage (aggregate of the local snapshot cache) for the Dashboard/Usage charts

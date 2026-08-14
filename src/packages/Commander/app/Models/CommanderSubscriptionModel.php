@@ -46,6 +46,11 @@ class CommanderSubscriptionModel extends Model
         return $this->hasMany(CommanderSubscriptionItemModel::class, 'subscription_id');
     }
 
+    public function quotas(): HasMany
+    {
+        return $this->hasMany(CommanderQuotaModel::class, 'subscription_id');
+    }
+
     public function invoiceLines(): HasMany
     {
         return $this->hasMany(CommanderInvoiceLineModel::class, 'subscription_id');

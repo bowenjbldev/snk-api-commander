@@ -12,6 +12,7 @@ no contiene un cliente web.
 | entender la propuesta comercial de Kilkana | [Negocio](business.md) |
 | tocar migraciones, modelos o relaciones | [Base de datos](database.md) y [Kilkana](database/kilkana/README.md) |
 | seguir un alta, request, cuota o baja | [Flujos](flows.md) |
+| preparar dominios propios, TLS y una migración SEO | [Dominios propios](domains.md) |
 | ejecutar, probar, migrar o desplegar | [Operación](operations.md) |
 
 ## Modelo mental
@@ -29,7 +30,7 @@ no contiene un cliente web.
 - Un plan pertenece a una aplicación. Un contrato pertenece a cuenta+aplicación y sus ítems
   asignan un plan operativo a cada instancia.
 - Una cuenta normal tiene un cliente; una cuenta de grupo puede tener varias cabeceras sin
-  compartir sus bases ni usuarios.
+  compartir sus bases ni usuarios, aunque el contrato puede sumar una cuota común.
 
 ## Prioridad si algo discrepa
 

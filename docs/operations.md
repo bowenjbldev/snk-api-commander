@@ -255,4 +255,5 @@ Requisitos adicionales:
 - Un package nuevo requiere autoload/recache y sync de aplicaciones.
 - Un token tenant no autentica en Commander ni viceversa.
 - Cambiar un plan de catálogo no propaga límites a instancias hasta provisionar/cambiar plan.
-- Una suscripción negociada agrupa billing, no bases ni cuotas.
+- Una suscripción negociada agrupa billing y puede tener cuotas compartidas; no agrupa bases,
+  usuarios ni las cuotas operativas propias de cada instancia.

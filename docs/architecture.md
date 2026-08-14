@@ -45,6 +45,9 @@ diario-norte.kilkana.test    tenant Kilkana
 No existe `commander.kilkana.test`. Actualmente hay un único dominio tenant por despliegue; un
 futuro segundo SaaS con dominio propio requerirá un mapa aplicación→dominio.
 
+Los dominios propios de clientes aún no están implementados. Su modelo, flujo de alta, TLS,
+seguridad y migración SEO están cerrados como diseño futuro en [Dominios propios](domains.md).
+
 ## Aplicaciones, packages y overlays
 
 Una aplicación es provisionable si su implementación compartida o específica contiene

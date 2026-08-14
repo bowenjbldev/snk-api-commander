@@ -39,6 +39,7 @@ la conexión por defecto, que el resolutor conmuta temporalmente a `tenant`.
 accounts ─< clients ─< instances >─ applications ─< application_metrics
     │                    │                 └─< plans ─< plan_limits >─ metrics
     ├─< subscriptions ─< subscription_items >─ instances/plans
+    │         └─< quotas >─ metrics
     └─< invoices ─< invoice_lines >─ subscriptions/items
 
 instances ─< quotas >─ metrics
@@ -95,11 +96,22 @@ valida al crear el ítem. No hay endpoint CRUD directo para ítems.
 
 | Tabla | Responsabilidad | Claves |
 |---|---|---|
-| `commander_quotas` | configuración y estado actual por instancia/métrica | único `(instance_id, metric_id)` |
+| `commander_quotas` | configuración y estado actual por instancia o suscripción/métrica | únicos `(instance_id, metric_id)` y `(subscription_id, metric_id)` |
 | `commander_metric_measurements` | muestra diaria histórica | único `(quota_id, bucket_date)` |
 
-Una cuota guarda valor, límite nullable, porcentaje de aviso, acción, periodos consecutivos y
-sellos de warning/exceso/recomendación. Límite `null` significa observación sin enforcement.
+Una cuota tiene exactamente un ámbito: `instance_id` para el límite materializado desde un plan o
+`subscription_id` para un límite compartido. La API valida que la métrica compartida pertenezca a
+la aplicación del contrato. La cuota guarda valor, límite nullable, porcentaje de aviso, acción,
+periodos consecutivos y sellos de warning/exceso/recomendación. Límite `null` significa
+observación sin enforcement.
+
+MariaDB impone con `commander_quotas_scope` que exactamente una de las dos FKs tenga valor. Los
+escritores de aplicación conservan la misma regla en SQLite, cuyo `ALTER TABLE` no permite añadir
+este `CHECK` durante la migración forward.
+
+El valor compartido es la suma de la misma métrica en los ítems activos cuya instancia está
+`ready`. No se copian usuarios ni datos tenant a Commander: se agregan las mediciones ya obtenidas
+por instancia. Una medición fallida impide guardar un total parcial.
 
 La fecha de medición se normaliza a `Y-m-d` también en SQLite para que el unique diario y las
 consultas mensuales se comporten igual que una columna `DATE` de MariaDB.
@@ -121,7 +133,7 @@ no se eliminan desde la API.
 |---|---|---|
 | `commander_request_logs` | petición cruda | `instance_id` nullable e indexado, sin FK deliberadamente |
 | `commander_usage_rollups` | buckets hora/día por ruta/método/clase | FK instance; unique de bucket |
-| `commander_activity_events` | cambios de estado, cuota y plan | FK opcional instance/invoice |
+| `commander_activity_events` | cambios de estado, cuota y plan | FK opcional instance/subscription/invoice |
 | `commander_application_repos` | origen Git y cursor | `application_id` único |
 | `commander_application_commits` | commits crudos | único `(application_id, sha)` |
 | `commander_application_activity_daily` | rollup Git diario | único `(application_id, day)` |
@@ -185,5 +197,6 @@ La suite usa SQLite y valida relaciones, API y lógica. No valida:
 - collation `utf8mb4_unicode_ci`;
 - `information_schema` para tamaño de BD;
 - comportamiento operativo bajo concurrencia MariaDB.
+- constraints `CHECK` añadidos mediante `ALTER TABLE` solo en MariaDB.
 
 Los cambios en esas fronteras requieren además una prueba contra MariaDB.
