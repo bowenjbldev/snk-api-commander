@@ -8,16 +8,15 @@ técnico propio.
 
 El cliente natural es un periódico local o comarcal; después, revistas digitales y medios de
 nicho. El producto combina flujo editorial, portada compuesta, medios, autores, comentarios,
-boletín y salida pública. El repositorio hermano `kilkana.app` contiene la experiencia editorial
-y pública; este repositorio contiene su API y la plataforma que la opera.
+boletín y salida pública. Este repositorio contiene su API y la plataforma que la opera.
 
 La segunda pieza de valor es la lista de correo: es audiencia propiedad del medio, no prestada
 por buscadores o redes sociales.
 
 ## Decisión de plataforma
 
-Commander es el control plane de Kilkana. No se construirá un segundo panel de infraestructura
-solo para este producto.
+Commander es el control plane de Kilkana. No se construirá un segundo control plane solo para
+este producto.
 
 Cada alta genera una instancia operativa propia:
 
@@ -121,7 +120,7 @@ Commander todavía mide un contrato genérico de API:
 | `users_total` | aproximación a asientos | cuenta también lectores y cuentas de servicio; hace falta contar puestos facturables |
 | `disk_db_mb` | sí | el plan objetivo habla de disco total, no de una banda separada |
 | `disk_storage_mb` | sí | debe sumarse o presentarse junto al disco de BD según contrato |
-| `requests_day` | no como eje comercial | Kilkana quiere lecturas de artículo por mes, medidas desde navegador |
+| `requests_day` | no como eje comercial | Kilkana quiere lecturas comprometidas de artículo por mes |
 
 Para cobrar los planes objetivo faltan, como mínimo:
 

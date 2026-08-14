@@ -179,8 +179,8 @@ sabría por dónde partirse.
 
 La API pública falla cerrada mientras no haya una sesión lectora vinculada a la suscripción:
 `metered` y `locked` solo entregan los bloques hasta el primer `paywall`; si falta, entregan un
-muro automático y ningún texto. Los listados públicos no sirven `body_blocks` nunca. El panel
-autenticado sí recibe el cuerpo completo. Falta el contrato de entitlement para desbloquear el
+muro automático y ningún texto. Los listados públicos no sirven `body_blocks` nunca. La API
+autenticada sí recibe el cuerpo completo. Falta el contrato de entitlement para desbloquear el
 resto a un suscriptor confirmado; no debe resolverse ocultando HTML en el navegador porque el
 payload seguiría filtrándolo.
 

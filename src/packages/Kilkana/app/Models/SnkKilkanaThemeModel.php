@@ -11,9 +11,9 @@ use Packages\Kilkana\Enums\SnkKilkanaThemeStatusEnum;
 /**
  * El tema vendible del catálogo.
  *
- * Nació como puntero a una familia declarada en el frontend, cuando el catálogo eran dos
- * variantes. Ahora es el producto: se prepara, se publica, se navega y se retira, y lo que hace
- * distinta a cada variante viaja entero en su `spec`.
+ * Nació como puntero a una familia de dos variantes. Ahora es el producto: se prepara, se
+ * publica, se navega y se retira, y lo que hace distinta a cada variante viaja entero en su
+ * `spec`.
  *
  * Las filas las escribe `kilkana:sync-themes` desde los ficheros maestros del repo. No hay alta
  * por API: un tema es material del producto, no contenido de la redacción.

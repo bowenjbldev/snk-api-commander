@@ -23,8 +23,8 @@ class SnkKilkanaPostModel extends Model
 
     protected $with = ['category', 'author', 'coverMedia', 'tags'];
 
-    // Una subconsulta por listado en vez de N contadores: el panel muestra cuántos
-    // comentarios lleva cada artículo. Total, no solo aprobados: para moderar hay que ver
+    // Una subconsulta por listado en vez de N contadores: la API incluye cuántos comentarios
+    // lleva cada artículo. Total, no solo aprobados: para moderar hay que ver
     // que hay algo que moderar.
     protected $withCount = ['comments'];
 
@@ -121,8 +121,8 @@ class SnkKilkanaPostModel extends Model
      * Cuerpo que puede salir por la API pública.
      *
      * Mientras no exista una sesión lectora ligada a una suscripción, `metered` y `locked`
-     * fallan cerrados: solo exponen el teaser hasta el primer muro. La API autenticada del
-     * panel sigue serializando el cuerpo entero. Si falta el bloque, se entrega únicamente
+     * fallan cerrados: solo exponen el teaser hasta el primer muro. La API autenticada sigue
+     * serializando el cuerpo entero. Si falta el bloque, se entrega únicamente
      * un muro automático; nunca todo el texto por un error editorial.
      */
     public function publicBodyBlocks(): array

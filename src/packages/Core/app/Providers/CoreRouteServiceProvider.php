@@ -29,8 +29,8 @@ class CoreRouteServiceProvider extends ServiceProvider
 
     private function configureRateLimiting(): void
     {
-        // SPA dashboards fan out several requests per navigation (loadData + per-page usage),
-        // so the per-user budget is generous and env-tunable.
+        // API consumers may fan out several requests, so the per-user budget is generous and
+        // environment-tunable.
         RateLimiter::for('api', function (Request $request) {
             $tenant = $this->app->make(CoreActivePackageSupport::class)->id() ?? 'control';
             $actor = $request->user()?->getAuthIdentifier() ?? $request->ip();
@@ -58,7 +58,7 @@ class CoreRouteServiceProvider extends ServiceProvider
         $router->pushMiddlewareToGroup('api', 'throttle:api');
 
         // Metering + kill-switch son el commander del tenant: solo en deploys gestionados.
-        // El panel del operador (no tenant) lo apaga y no los engancha.
+        // El control plane (no tenant) lo apaga y no los engancha.
         if (config('core.commander', true)) {
             // Metering el primero (outermost): registra tambien los 429 del throttle y los 402 del kill-switch.
             $router->prependMiddlewareToGroup('api', CoreMeteringMiddleware::class);

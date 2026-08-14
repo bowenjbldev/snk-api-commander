@@ -1,6 +1,6 @@
 # Snake API Commander
 
-Backend Laravel 13 y panel de operación para una plataforma SaaS multi-tenant. Un único
+Backend Laravel 13 y control plane API para una plataforma SaaS multi-tenant. Un único
 despliegue sirve todos los clientes, pero cada instancia de producto tiene su propia base de
 datos.
 
@@ -29,15 +29,12 @@ La documentación canónica está en [`docs/`](docs/README.md):
 | [Base de datos](docs/database.md) | Topología, tablas Core/Commander y mapa del esquema Kilkana. |
 | [Flujos](docs/flows.md) | Request tenant, provisioning, fallback, de-provisioning, cuotas y despliegues. |
 | [Operación](docs/operations.md) | Puesta en marcha, Docker, migraciones, seeders, scheduler y validación. |
-| [Commander UI](docs/commander-ui.md) | SPA React, contrato visual, páginas, estado y correspondencia con la API. |
 
 Los agentes deben empezar por [`AGENTS.md`](AGENTS.md).
 
 ## Estructura
 
 ```text
-commander/                 SPA SvelteKit 2 + Svelte 5 + TypeScript
-commander-react/           SPA anterior (React + Carbon), conservada de referencia
 docs/                      documentación canónica
 src/
 ├── packages/Core/         infraestructura compartida
@@ -58,7 +55,7 @@ docker compose up -d
 docker compose exec -T app php artisan core:seed --force
 ```
 
-El panel queda en `https://commander.<BASE_DOMAIN>`, los tenants en
+La API del control plane queda en `https://commander.<BASE_DOMAIN>/api/v1`, los tenants en
 `https://{cliente}.<TENANT_BASE_DOMAIN>` y el health check en
 `https://api.<BASE_DOMAIN>/api/v1/`. En el entorno local por defecto, el operador sembrado es
 `admin@snake.com` / `secret1234`; no uses ese secreto en producción.
@@ -67,7 +64,7 @@ El panel queda en `https://commander.<BASE_DOMAIN>`, los tenants en
 
 ```bash
 docker compose exec -T app php artisan test
-cd commander && npm run check && npm run lint && npm run ds-check && npm test && npm run build
+cd src && vendor/bin/pint --test && composer audit
 ```
 
 Consulta [Operación](docs/operations.md) antes de migrar tenants, provisionar manualmente o

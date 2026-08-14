@@ -52,7 +52,7 @@ class CoreMeteringMiddleware
 
             $packageId = $request->attributes->get('core_metering_package_id');
 
-            // Sin package resuelto (panel del operador / apex) no es trafico de tenant: no se mide.
+            // Sin package resuelto (control plane / apex) no es tráfico tenant: no se mide.
             if ($packageId === null) {
                 return;
             }

@@ -56,7 +56,7 @@ class SnkKilkanaThemesController extends CoreBaseApiController
     /**
      * El catálogo: temas publicados, filtrables y ordenables, con sus variantes dentro.
      *
-     * Un solo endpoint para la galería entera porque elegir tema es una pantalla, no cinco. El
+     * Un solo endpoint devuelve la galería entera. El
      * filtro y el orden viajan como query para que la URL de una búsqueda sea compartible.
      */
     public function catalog(Request $request): JsonResponse

@@ -18,10 +18,8 @@ use Packages\Kilkana\Models\SnkKilkanaThemeVariantModel;
  * silencio descartando lo que no entiende acaba con temas a medias que nadie sabe por qué se
  * ven mal.
  *
- * **Es el espejo en PHP de `kilkana.app/src/lib/themes/spec.ts`.** La duplicación es asumida
- * —PHP no puede leer un tipo de TypeScript— pero divergir no lo es: un tema que entra aquí y no
- * allí, o al revés, es un catálogo roto. Quien dibuja es quien nombra, así que el vocabulario y
- * los rangos vienen del frontend y este fichero los sigue.
+ * Este fichero es la autoridad del contrato de tema: vocabulario, rangos y compatibilidad de
+ * catálogo se validan antes de persistir.
  */
 class SnkKilkanaThemeSpecValidator
 {
@@ -35,7 +33,7 @@ class SnkKilkanaThemeSpecValidator
      */
     public const SPEC_VERSION = 2;
 
-    /** Las cabeceras que sabe pintar el frontend. Es un componente, no un dato libre. */
+    /** Cabeceras soportadas por el contrato del producto; no son datos libres. */
     public const MASTHEADS = ['compact', 'daily'];
 
     /**
@@ -123,9 +121,8 @@ class SnkKilkanaThemeSpecValidator
      * exacto por donde un periódico se vuelve lento sin que nadie lo revise, porque basta con
      * pedir cuarenta bloques y ciento veinte fotos y el JSON entra igual.
      *
-     * El tope de ficheros `woff2` propios **no se comprueba aquí**: las fuentes viajan en la
-     * carpeta del tema, dentro del repositorio del frontend, y quien las cuenta es su catálogo
-     * al construirse. Aquí solo llega el JSON.
+     * El tope de ficheros `woff2` propios **no se comprueba aquí**: esos recursos no forman parte
+     * del spec. Aquí solo llega el JSON.
      */
     public const BUDGET = [
         'bands' => 24,

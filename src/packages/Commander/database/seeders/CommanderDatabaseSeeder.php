@@ -7,10 +7,10 @@ use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 /**
- * Seeds ONLY the panel's authorization scaffolding: the Spatie permissions for each resource and the
+ * Seeds only the Commander API authorization scaffolding: Spatie permissions for each resource and the
  * `admin` role (granted to the admin user that CoreDatabaseSeeder creates). No business/demo data —
  * the registry starts empty and is filled with real data: packages via provisioning, and
- * clients/subscriptions/invoices via the panel's CRUD.
+ * clients/subscriptions/invoices via the API.
  */
 class CommanderDatabaseSeeder extends Seeder
 {

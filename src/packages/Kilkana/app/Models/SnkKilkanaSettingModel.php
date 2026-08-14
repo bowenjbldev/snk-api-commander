@@ -46,8 +46,8 @@ class SnkKilkanaSettingModel extends Model
      * foránea: la base impide vestir una variante que no existe y protege con RESTRICT la que
      * está puesta.
      *
-     * Nula solo en una instalación recién sembrada; quien pinte cae a la primera que envía el
-     * producto, igual que hacía el catálogo del frontend.
+     * Nula solo en una instalación recién sembrada; el contrato cae a la primera variante que
+     * envía el producto.
      */
     public function themeVariant(): BelongsTo
     {

@@ -151,8 +151,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     /**
      * La lista del boletín, con los tres estados representados.
      *
-     * No estaba sembrada: la pantalla de suscriptores salía vacía en una demo donde todo lo
-     * demás tiene contenido, así que no se veía ni el listado ni el filtro por estado.
+     * No estaba sembrada: la API de suscriptores devolvía una demo vacía mientras el resto tenía
+     * contenido, así que no se probaban el listado ni el filtro por estado.
      *
      * Los tres orígenes también, y esa es la mitad que importa: la lista IMPORTADA es la que
      * trae el riesgo legal, y si todas las filas parecen iguales no se puede ni acreditar ni
@@ -195,8 +195,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      * forma de ver si el listado aguanta nombres largos.
      *
      * `job_title` es el cargo PUBLICABLE y va a la firma, no a la cuenta: aquí llegó a estar
-     * la mesa («Mesa de Deportes») metida en `users.company`, que el panel rotula
-     * «Organización» y no sale al público — el dato editorial vivía en la columna del CRM.
+     * la mesa («Mesa de Deportes») metida en `users.company`, que significa «Organización» y no
+     * sale al público — el dato editorial vivía en la columna del CRM.
      * Ahora `company` dice lo que promete: el periódico para la plantilla, la organización
      * propia de quien colabora desde fuera.
      *
@@ -309,7 +309,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             'full_name' => $user->full_name ?: ($ficha['full_name'] ?? $name),
             'company' => $user->company ?: self::PERIODICO,
             'phone' => $user->phone ?: ($ficha['phone'] ?? null),
-            // Cuenta de demo que entra al panel: verificada, o el listado enseña a media
+            // Cuenta operativa de demo: verificada, o el listado devuelve a media
             // redacción «sin verificar» sin que eso signifique nada.
             'email_verified_at' => $user->email_verified_at ?: now(),
         ], fn ($v) => $v !== null))->save();
@@ -344,8 +344,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
 
     /**
      * El resto de la plantilla: quien no firma los 60 artículos del fixture pero existe en
-     * cualquier redacción. Sin ellos, la demo solo enseña dos de los siete roles y no se ve
-     * que el panel cambia según quién entra.
+     * cualquier redacción. Sin ellos, la demo solo cubre dos de los siete roles y no prueba
+     * sus permisos distintos.
      *
      * La colaboradora lleva firma (puede escribir) y la de comunidad NO (no puede): es la
      * misma regla que aplica la API al dar de alta un usuario.
@@ -405,8 +405,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      *
      * Es el caso que el modelo parecía no admitir. Una firma ES una cuenta (`user_id` es
      * obligatorio y único), y «Redacción» no es una persona — pero tampoco hace falta cambiar
-     * el esquema: se le da una CUENTA DE SERVICIO, sin rol y por tanto sin nada que hacer en
-     * el panel, y la firma cuelga de ella con `alias`. Un breve de agencia deja de necesitar
+     * el esquema: se le da una CUENTA DE SERVICIO, sin rol y por tanto sin acceso operativo,
+     * y la firma cuelga de ella con `alias`. Un breve de agencia deja de necesitar
      * que alguien se lo atribuya.
      *
      * Y de paso enseña lo otro: estos dos breves los TECLEÓ una redactora —`created_by` sigue
@@ -454,8 +454,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     }
 
     /**
-     * Comentarios de demo. Sin ellos el contador del panel es siempre 0 y no hay nada que
-     * moderar en /admin/comments, así que la funcionalidad no se puede ni ver ni probar.
+     * Comentarios de demo. Sin ellos el contador siempre es 0 y no hay nada que moderar, así que
+     * la funcionalidad no se puede probar.
      *
      * Determinista a propósito —reparto por posición, no al azar—: dos siembras dan la
      * misma base. Idempotente por (post, autor, texto), como el resto del seeder.
@@ -511,13 +511,13 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                         ? SnkKilkanaCommentStatusEnum::Spam
                         : ($slot % 3 === 0 ? SnkKilkanaCommentStatusEnum::Pending : SnkKilkanaCommentStatusEnum::Approved),
                     // Repartidos por las últimas cuatro semanas: sin esto entran todos a la
-                    // vez y el filtro de periodo del panel no distingue nada.
+                    // vez y el filtro de periodo no distingue nada.
                     'created_at' => now()->subHours(($slot * 7) % 672),
                     'updated_at' => now()->subHours(($slot * 7) % 672),
                 ]);
 
                 // Una respuesta cada pocos hilos: la conversación anidada también hay que
-                // poder verla (el panel la indenta y la API la borra en cascada).
+                // poder probarla; la API la borra en cascada.
                 if ($n === 0 && $i % 5 === 3) {
                     // Otra persona, para que el hilo enseñe una conversación y no un monólogo.
                     $otro = $readers[($slot + 1) % count($readers)];
@@ -607,9 +607,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      * lado de `layouts.json`: no hay datos que sembrar, solo dos filas que apuntan. Y por eso
      * mismo, cuando el producto cambie un color, lo hereda todo inquilino que no lo tocara.
      *
-     * Los slugs son los mismos que el catálogo del frontend (`themes/catalog.ts`). Es la única
-     * duplicación entre los dos repos y es inevitable: alguien tiene que decir de qué variante
-     * se parte, y la base no puede conocer un componente Svelte.
+     * Los slugs coinciden con los ficheros maestros del catálogo para identificar de qué variante
+     * parte cada copia.
      */
     private function seedThemes(): void
     {
@@ -881,7 +880,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      * La audiencia del fixture, en la tabla que la cuenta.
      *
      * `posts.reads` era una columna con un número grande dentro que nada incrementaba: el
-     * panel la pintaba como si fuera audiencia y el «más leído» ordenaba por ella. El número
+     * se trataba como si fuera audiencia y el «más leído» ordenaba por ella. El número
      * del fixture no se pierde —es lo que hace la demo creíble—, cambia de sitio: se reparte
      * en `kilkana_post_views`, que es donde aterriza una lectura de verdad.
      *
@@ -1004,8 +1003,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      * Dos de los tres grupos salen del propio fichero. El tercero NO se puede derivar: qué
      * hay dentro de un JPEG de 800×450 lo sabe quien lo mira, así que aquí se asigna de una
      * lista corta y en rotación fija por índice. Es fixture y se dice: son los valores que
-     * un editor gráfico pone a mano, puestos para que la pantalla se pueda probar con
-     * variedad real en vez de con una etiqueta repetida sesenta veces.
+     * un editor gráfico pone a mano, incluidos para probar variedad real en vez de una etiqueta
+     * repetida sesenta veces.
      */
     /** Meses en español. `translatedFormat` depende del locale de la app y devolvía «June». */
     private const MESES = [

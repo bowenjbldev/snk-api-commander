@@ -28,8 +28,8 @@ El entrypoint instala Composer si falta, genera `APP_KEY`, crea el enlace de sto
 | `app` | PHP-FPM y comandos no privilegiados |
 | `scheduler` | `php artisan schedule:work` |
 | `provisioner` | asegura usuarios runtime y consume solo la cola `provisioning` con DDL |
-| `nginx` | vhost wildcard y proxy a Laravel/Commander |
-| `commander-web` | Vite dev server del panel |
+| `nginx` | vhost wildcard, proxy a Laravel y reserva del origen web de Commander |
+| `commander-web` | conexión opcional para un futuro cliente web; perfil `spa` |
 | `db` | MariaDB: `commander` más una BD por instancia |
 | `db-init` | crea/actualiza el usuario no privilegiado de Commander |
 | `mailpit` | SMTP de pruebas y UI en el puerto 8025 |
@@ -64,10 +64,9 @@ Rutas locales habituales:
 
 | Recurso | URL |
 |---|---|
-| Commander | `https://commander.snakepc.test` o `:8443` |
+| API Commander | `https://commander.snakepc.test/api/v1` o `:8443/api/v1` |
 | tenant Kilkana demo | `https://demo.kilkana.test` o `:8443` |
 | health Core | `https://api.snakepc.test/api/v1/` |
-| OpenAPI UI | `https://api.snakepc.test/api/v1/docs` |
 | spec OpenAPI | `https://api.snakepc.test/api/v1/docs.json` |
 | Mailpit | `http://localhost:8025` |
 
@@ -154,7 +153,7 @@ esquema debe ser una migración forward, no un `fresh`.
 El camino normal no es ejecutar migraciones a mano:
 
 1. despliega el código del producto;
-2. abre Commander y sincroniza Packages;
+2. usa la API Commander para sincronizar packages;
 3. crea un plan;
 4. usa **Provision instance** con cliente y credenciales del admin;
 5. observa la cola `provisioning` hasta que `provisioned_at` tenga valor.
@@ -214,23 +213,15 @@ collation o `information_schema`, añade además una prueba con MariaDB.
 Si falta `src/.env`, Laravel puede mostrar warnings de entorno aunque los tests pasen. Copia el
 ejemplo antes de interpretar esos warnings como fallos funcionales.
 
-## Desarrollo Commander
+## Cliente web futuro
+
+El repositorio no contiene un cliente web. Docker conserva el servicio opt-in `commander-web` y
+el enrutado de mismo origen: `/api/*` llega a Laravel y `/` al puerto 5173. Después de crear desde
+cero un proyecto con `commander/package.json`, arráncalo con:
 
 ```bash
-cd commander
-npm install
-npm run dev
-npm test
-npm run build
-npm run lint
-npm audit
+docker compose --profile spa up -d commander-web nginx
 ```
-
-Vite usa `/api/v1` same-origin y lo proxifica al backend. Para un build desplegado fuera del mismo
-origen, define `VITE_API_BASE=https://commander.<dominio>/api/v1`.
-
-No confundas validaciones: `npm test` comprueba comportamiento, `npm run build` TypeScript/bundle y
-`npm run lint` la deuda de estilo. Reporta cada resultado por separado.
 
 ## Simulación local
 

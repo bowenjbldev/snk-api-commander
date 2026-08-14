@@ -33,7 +33,7 @@ class SnkKilkanaCommentModel extends Model
 
             // UN nivel de respuestas, y aquí es donde se impone: `parent_id` admitiría por su
             // cuenta una cadena sin fin, y creamos doce niveles sin que nada lo impidiera.
-            // Un hilo así no cabe indentado en ninguna pantalla, y borrar su raíz dispara una
+            // Un hilo así no tiene una representación manejable y borrar su raíz dispara una
             // cascada tan larga como la conversación.
             //
             // No es restricción de la base porque no puede serlo: MariaDB no admite

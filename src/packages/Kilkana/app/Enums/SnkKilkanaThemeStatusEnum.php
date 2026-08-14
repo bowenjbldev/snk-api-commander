@@ -22,7 +22,7 @@ enum SnkKilkanaThemeStatusEnum: string
     /** En preparación. No se ofrece en el catálogo, aunque esté sembrado. */
     case Draft = 'draft';
 
-    /** A la venta: es lo único que devuelve el catálogo del panel. */
+    /** A la venta: es lo único que devuelve la API del catálogo. */
     case Published = 'published';
 
     /**

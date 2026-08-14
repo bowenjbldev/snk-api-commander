@@ -79,7 +79,7 @@ class CommanderApiTest extends CommanderTestCase
         $this->assertCount(1, $this->actingAs($admin, 'sanctum')->getJson('/api/v1/clients')->json());
     }
 
-    public function test_package_shape_matches_spa_types(): void
+    public function test_package_shape_matches_api_contract(): void
     {
         $admin = $this->admin();
 

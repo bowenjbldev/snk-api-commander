@@ -194,7 +194,7 @@ class CommanderProvisioningController extends CoreBaseApiController
             $commanderPackage->save();
 
             foreach ($plan->quotaLimits() as $metric => $limit) {
-                // Tabla unica: una fila por metrica, que el panel edita y el medidor mide/aplica.
+                // Tabla única: una fila por métrica, que la API edita y el medidor mide/aplica.
                 CommanderQuotaModel::create([
                     'package_id' => $commanderPackage->id,
                     'metric_key' => $metric,

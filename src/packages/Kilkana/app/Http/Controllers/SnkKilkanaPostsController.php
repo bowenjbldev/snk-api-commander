@@ -17,7 +17,7 @@ use Packages\Kilkana\Services\SnkKilkanaPostService;
  * CRUD de artículos con BD normalizada. La escritura acepta texto libre del editor
  * (category=slug existente, image=url, tags=nombres) y el server resuelve/crea las
  * relaciones; la FIRMA no, que viaja como `author_id` de una fila existente porque se
- * gobierna en su propia pantalla. La lectura sale anidada (category/author/cover/tags/meta,
+ * gobierna como agregado propio. La lectura sale anidada (category/author/cover/tags/meta,
  * serialización del modelo). Solo claves de meta conocidas pasan la validación.
  */
 #[Group('Posts')]
@@ -26,10 +26,10 @@ class SnkKilkanaPostsController extends CoreBaseApiController
     protected string $modelClass = SnkKilkanaPostModel::class;
 
     /**
-     * Vistas reales agregadas también en el PANEL, no solo en la salida pública.
+     * Vistas reales agregadas también en la API editorial, no solo en la salida pública.
      *
      * Tres ventanas: hoy, últimos siete días y total histórico. Aquí hubo una columna
-     * `posts.reads` que nada incrementaba y que el panel pintaba como si fuera audiencia;
+     * `posts.reads` que nada incrementaba y se presentaba como si fuera audiencia;
      * `views_total` es la misma pregunta contestada con los datos de verdad. Mismos alias que
      * `SnkKilkanaPublicController::posts()`, para que quien lea vea un único contrato.
      */
@@ -200,7 +200,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
     /**
      * Acción masiva sobre varios artículos: cambio de estado o borrado.
      *
-     * Un endpoint y no N peticiones desde el panel: publicar veinte eran veinte PUT, cada
+     * Un endpoint y no N peticiones: publicar veinte eran veinte PUT, cada
      * uno con su carrera y su fallo parcial. `publish` sella `publish_at` cuando falta o
      * cuando apunta al futuro: publicar a mano una pieza programada la saca AHORA, y dejarle
      * la fecha prevista la ordenaría mañana en la portada, el sitemap y el feed.

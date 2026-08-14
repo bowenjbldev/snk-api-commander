@@ -92,7 +92,7 @@ return new class extends Migration
 
         foreach ($overrides as $base => $override) {
             // Una clave que no es una variante conocida ya estaba muerta: `loadOverrides` solo
-            // conserva las que casan con el catalogo, asi que el frontend nunca la aplicaba.
+            // conserva las que casan con el catálogo.
             if (! in_array($base, self::BUILTIN, true) || ! is_array($override)) {
                 continue;
             }

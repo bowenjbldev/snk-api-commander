@@ -95,9 +95,8 @@ class SnkKilkanaThemeVariantModel extends Model
     /**
      * El tema tal como hay que pintarlo: el spec congelado con el retoque encima.
      *
-     * La resolución vive aquí y no en el cliente porque la consumen los dos —el panel y la
-     * salida pública— y porque una fila manipulada a mano no debe poder pintar nada que el
-     * catálogo no permitiera.
+     * La resolución vive aquí porque la consumen tanto el flujo editorial como la salida pública,
+     * y una fila manipulada a mano no debe producir nada que el catálogo no permitiera.
      */
     public function resolvedSpec(): array
     {
@@ -202,8 +201,8 @@ class SnkKilkanaThemeVariantModel extends Model
      * El slug se deriva del nombre al crear, y no se recalcula al renombrar.
      *
      * Misma regla que en el resto del esquema: es la identidad estable de la variante, y la
-     * columna es UNIQUE. Sin derivación, crear una variante obligaría a la pantalla a inventar
-     * un slug y a resolver ella los choques.
+     * columna es UNIQUE. Sin derivación, cada consumidor tendría que inventar un slug y resolver
+     * los choques.
      *
      * Un nombre sin ninguna letra latina no deja segmento utilizable, así que cae a un
      * respaldo estable en vez de dar cadena vacía contra un UNIQUE.

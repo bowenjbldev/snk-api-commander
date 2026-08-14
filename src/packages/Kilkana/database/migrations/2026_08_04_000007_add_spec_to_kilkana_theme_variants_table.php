@@ -9,9 +9,9 @@ use Packages\Kilkana\Enums\SnkKilkanaThemeSourceEnum;
 /**
  * La variante deja de ser un puntero al código y pasa a llevar el tema entero.
  *
- * Hasta ahora `base_slug` señalaba una definición de `themes/catalog.ts` y la fila solo guardaba
- * el retoque de la redacción. Eso funciona con dos variantes que envía el producto y no funciona
- * con un catálogo que se vende: publicar un tema exigiría tocar el frontend y desplegar.
+ * Hasta ahora `base_slug` señalaba una definición externa y la fila solo guardaba el retoque de la
+ * redacción. Eso funciona con dos variantes, pero no con un catálogo vendible: publicar un tema
+ * exigiría cambiar código y desplegar.
  *
  * Y no hacía falta. Un tema ya era JSON: los tokens, el estilo —incluidos el kicker y la
  * tarjeta—, `masthead` (un enum de dos valores) y las plantillas de arranque son todo dato

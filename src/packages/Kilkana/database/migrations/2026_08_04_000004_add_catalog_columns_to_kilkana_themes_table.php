@@ -9,10 +9,9 @@ use Packages\Kilkana\Enums\SnkKilkanaThemeStatusEnum;
 /**
  * `kilkana_themes` deja de ser un puntero a una familia de código y pasa a ser el tema vendible.
  *
- * La tabla nació con lo justo —slug, nombre, posición— porque el catálogo eran dos variantes
- * declaradas en el frontend. El producto pide otra cosa: muchos temas navegables, filtrables por
- * categoría y ordenables por varios criterios, así que aquí entra lo que hace falta para pintar
- * una tarjeta y para ordenar una parrilla.
+ * La tabla nació con lo justo —slug, nombre, posición— porque el catálogo eran dos variantes. El
+ * producto pide muchos temas navegables, filtrables por categoría y ordenables por varios
+ * criterios, así que aquí entra lo necesario para describir y ordenar el catálogo.
  *
  * `status` existe por el mismo motivo que en las secciones: un tema se prepara antes de
  * ofrecerlo, y retirarlo no puede romper a quien ya lo viste. Como al adoptarlo se guarda una

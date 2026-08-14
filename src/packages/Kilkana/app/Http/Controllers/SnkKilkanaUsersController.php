@@ -17,8 +17,8 @@ class SnkKilkanaUsersController extends CoreUsersController
      * El listado dice qué ROL tiene cada cuenta.
      *
      * `CoreUserModel` esconde la relación `roles` en serialización, y hace bien: destaparla
-     * arrastraría el pivot de Spatie en cada usuario de cada respuesta. Pero esta pantalla
-     * es justo la que reparte los roles del periódico, así que aquí se añade UN campo plano
+     * arrastraría el pivot de Spatie en cada usuario de cada respuesta. Este endpoint reparte los
+     * roles del periódico, así que añade UN campo plano
      * —el nombre del rol— en vez de abrir la relación entera.
      *
      * Uno solo: Spatie admite varios roles por usuario, pero un periódico reparte un puesto
@@ -95,8 +95,8 @@ class SnkKilkanaUsersController extends CoreUsersController
      *
      * Sin esto el aviso no existe: la cuenta aparece en el listado como cualquier otra y solo
      * al ir a atribuirle un artículo se descubre que no puede firmar. `byline_pending` viaja
-     * en la respuesta del guardado —no es estado, es lo que acaba de pasar— y el panel lo
-     * convierte en un aviso hacia /admin/authors.
+     * en la respuesta del guardado —no es estado, es lo que acaba de pasar— para que el consumidor
+     * pueda avisar de la firma pendiente.
      */
     private function flagPendingByline(JsonResponse $response, int $userId): JsonResponse
     {

@@ -12,9 +12,9 @@ use Packages\Kilkana\Models\SnkKilkanaSubscriberModel;
 use Packages\Kilkana\Services\SnkKilkanaPublicService;
 
 /**
- * Lectura pública del periódico (sin auth): solo contenido `published`, resuelto por
- * slug (URL SEO). Un slug antiguo responde `{redirect_to}` para que el frontend emita
- * el 301. El kill-switch por paquete (CoreEnsureActiveMiddleware) sigue aplicando.
+ * Lectura pública del periódico (sin auth): solo contenido `published`, resuelto por slug (URL
+ * SEO). Un slug antiguo responde `{redirect_to}` para que el consumidor emita el 301. El
+ * kill-switch por paquete (CoreEnsureActiveMiddleware) sigue aplicando.
  */
 #[Group('Public')]
 class SnkKilkanaPublicController extends Controller
@@ -134,8 +134,8 @@ class SnkKilkanaPublicController extends Controller
      *
      * `GET` que cambia estado, a sabiendas: se pulsa desde un buzón, donde no hay formulario
      * que mande un POST. La contrapartida es que un escáner corporativo de enlaces puede
-     * confirmar solo; la alternativa —página con botón— exige una pantalla que la app todavía
-     * no tiene, y hasta entonces esto no funcionaría en absoluto. La firma es lo que impide
+     * confirmar solo; la alternativa exige una interacción adicional que todavía no forma parte
+     * del contrato. La firma es lo que impide
      * confirmar suscripciones ajenas recorriendo ids.
      */
     public function confirmSubscription(SnkKilkanaSubscriberModel $subscriber, Request $request): Response|RedirectResponse

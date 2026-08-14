@@ -10,7 +10,6 @@ activa en cada petición.
 |---|---|---|
 | Core | descubrimiento, rutas, auth base, permisos, conexión tenant, metering, estado y comandos | `src/packages/Core` |
 | Commander | control plane: cuentas comerciales, clientes, planes, provisioning, billing, cuotas y observabilidad | `src/packages/Commander` |
-| Commander SPA | interfaz del operador contra la API real de Commander | `commander` |
 | Kilkana | producto editorial compartido y sus migraciones | `src/packages/Kilkana` |
 | Overlay | diferencias de un cliente sobre un producto compartido | `src/packages/<Cliente>/<Paquete>` |
 
@@ -66,7 +65,7 @@ elconfidencial.kilkana.test     instancia Kilkana de El Confidencial
 
 No existe `commander.kilkana.test`: Commander administra Kilkana, pero no pertenece a su marca
 pública. `BASE_DOMAIN` gobierna el control plane y `TENANT_BASE_DOMAIN` las rutas tenant; Core,
-nginx/TLS y la SPA respetan esa separación. Si `TENANT_BASE_DOMAIN` no está definido, Core cae a
+nginx y TLS respetan esa separación. Si `TENANT_BASE_DOMAIN` no está definido, Core cae a
 `BASE_DOMAIN` para mantener compatibles los despliegues anteriores.
 
 El límite deliberado actual es un dominio tenant por despliegue. Cuando exista un segundo SaaS

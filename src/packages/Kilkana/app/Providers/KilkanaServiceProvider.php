@@ -29,9 +29,8 @@ class KilkanaServiceProvider extends ServiceProvider
             });
         }
 
-        // Las vistas del paquete son SOLO cuerpos de correo: la salida pública la pinta la app
-        // de Svelte, y el panel también. Namespace propio para que `kilkana::` no compita con
-        // las vistas de la app anfitriona.
+        // Las vistas del paquete son solo cuerpos de correo. El namespace evita que `kilkana::`
+        // compita con las vistas de la aplicación anfitriona.
         $this->loadViewsFrom(__DIR__.'/../../resources/views', 'kilkana');
 
         if ($this->app->runningInConsole()) {

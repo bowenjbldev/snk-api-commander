@@ -2,11 +2,10 @@
 
 namespace Packages\Core\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\View;
-use Illuminate\Support\Str;
 use Dedoc\Scramble\Scramble;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 use Packages\Core\Scramble\DocumentTransformers\CoreBearerSecuritySchemeDocumentTransformer;
 use Packages\Core\Scramble\OperationTransformers\CoreSanctumOperationSecurityTransformer;
 
@@ -24,15 +23,8 @@ class CoreScrambleServiceProvider extends ServiceProvider
     {
         Gate::define('viewApiDocs', fn ($user = null) => true);
 
-        View::prependNamespace('scramble', base_path('packages/Core/resources/views/vendor/rapidoc'));
-
         $docsConfig = $this->app->make('config')->get('scramble.docs', []);
-        $uiPath = $docsConfig['ui_path'] ?? 'docs';
         $jsonPath = $docsConfig['json_path'] ?? 'docs.json';
-
-        if (is_string($uiPath) && $uiPath !== '') {
-            Scramble::registerUiRoute($uiPath);
-        }
 
         if (is_string($jsonPath) && $jsonPath !== '') {
             Scramble::registerJsonSpecificationRoute($jsonPath);
@@ -56,7 +48,6 @@ class CoreScrambleServiceProvider extends ServiceProvider
 
             $docsConfig = config('scramble.docs', []);
             $docsPaths = array_filter([
-                $docsConfig['ui_path'] ?? null,
                 $docsConfig['json_path'] ?? null,
             ]);
 

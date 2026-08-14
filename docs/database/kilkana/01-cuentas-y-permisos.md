@@ -15,7 +15,7 @@ es único y es lo que identifica a alguien**, no el nombre.
 | Columna | Tipo | Nulo | Qué es |
 |---|---|---|---|
 | `id` | bigint unsigned | no | Clave primaria. |
-| `name` | varchar(255) | no | Nombre de trabajo, el que se ve en pantalla y con el que se firma si no hay alias. Puede repetirse: dos personas pueden llamarse igual. |
+| `name` | varchar(255) | no | Nombre de trabajo y firma por defecto si no hay alias. Puede repetirse: dos personas pueden llamarse igual. |
 | `full_name` | varchar(255) | sí | Nombre completo, con los dos apellidos. Sirve para desempatar a dos homónimos. |
 | `company` | varchar(255) | sí | Organización a la que pertenece. Para la plantilla, el propio periódico; para quien colabora desde fuera, la suya. **No sale al público.** |
 | `phone` | varchar(50) | sí | Teléfono de contacto interno. |
@@ -58,7 +58,7 @@ es único y es lo que identifica a alguien**, no el nombre.
 | `redactor` | Plantilla: escribe y publica **lo suyo**. |
 | `colaborador` | Escribe lo suyo pero **no publica**: entrega y espera. |
 | `moderador` | Comentarios y suscriptores. No escribe artículos. |
-| `reader` | Cuenta de lectura registrada. Nada del panel. |
+| `reader` | Cuenta de lectura registrada. Sin acceso editorial. |
 
 ### Los dos permisos que no salen del CRUD
 

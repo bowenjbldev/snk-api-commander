@@ -55,7 +55,7 @@ sin que nada lo impidiera. Ahora **el padre de una respuesta no puede tener padr
 responde al comentario, no a la respuesta.
 
 Es la misma regla de forma que en las secciones, y por los mismos dos motivos: un hilo sin
-fondo no cabe indentado en ninguna pantalla, y borrar su raíz dispara una cascada tan larga
+fondo no tiene una representación manejable, y borrar su raíz dispara una cascada tan larga
 como la conversación. Y como allí, **no es una restricción de la base porque no puede
 serlo**: MariaDB no admite subconsultas en un `CHECK`, así que vive en el modelo, que es por
 donde pasan también el seeder y la consola.
@@ -121,7 +121,7 @@ Pero idempotente no es «no hacer nada». Quien se dio de baja y **vuelve a rell
 formulario** está dando consentimiento nuevo, así que se le devuelve a `pending`. Antes el
 alta era un `firstOrCreate` a secas: encontraba la fila, no tocaba nada y respondía `202`.
 El formulario parecía funcionar y la persona seguía dada de baja para siempre, sin ninguna
-manera de volver que no fuese que alguien le cambiara el estado a mano desde el panel.
+manera de volver que no fuese cambiar el estado a mano.
 
 Un `confirmed` que se vuelve a apuntar **no** se toca: ya está dentro, y devolverlo a
 `pending` sería castigar con una baja de facto a quien rellena el formulario dos veces.
@@ -152,8 +152,8 @@ Cuatro decisiones que conviene no deshacer sin motivo:
 
 Y una contrapartida asumida: **el `GET` cambia el estado**. Se pulsa desde un buzón, donde no
 hay formulario que mande un `POST`, así que un escáner corporativo de enlaces puede confirmar
-o dar de baja por su cuenta. La alternativa —aterrizar en una página con un botón— exige una
-pantalla que la app todavía no tiene, y hasta entonces la baja no funcionaría en absoluto.
+o dar de baja por su cuenta. La alternativa exige una interacción adicional que todavía no forma
+parte del contrato, y hasta entonces la baja no funcionaría en absoluto.
 Cuando haya proveedor de correo real, el camino es RFC 8058 (`List-Unsubscribe-Post`).
 
 Las dos rutas redirigen a `{tenant.url}/subscribe/{confirmed|unsubscribed}`. Si el periódico
@@ -192,8 +192,8 @@ prueba se trata, así que no hace falta una segunda columna que lo repita — la
 
 **`consent_source` lo pone siempre el servidor**, nunca la petición: una prueba que elige quien
 la aporta no prueba nada. `public_form` desde la portada, `import` desde una lista que trajo el
-periódico, y `admin` por defecto en el modelo para todo lo demás, que hoy es solo el alta desde
-el panel. El día que exista un comando de importación tiene que declarar su origen, o quedará
+periódico, y `admin` por defecto en el modelo para todo lo demás, que hoy es solo el alta
+administrativa. El día que exista un comando de importación tiene que declarar su origen, o quedará
 etiquetado como tecleado a mano: una prueba falsa es peor que una ausente.
 
 Separar el origen es lo que permite acreditar y purgar por separado: **la lista importada es la

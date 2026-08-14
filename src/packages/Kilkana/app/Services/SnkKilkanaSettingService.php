@@ -70,8 +70,8 @@ class SnkKilkanaSettingService
 
         return [
             'theme_variant_id' => $fila->theme_variant_id,
-            // La variante resuelta viaja entera —spec incluido— para que el panel pinte sin una
-            // segunda llamada. Es siempre una copia propia del periódico: vestir un tema del
+            // La variante resuelta viaja entera —spec incluido— para evitar una segunda llamada.
+            // Es siempre una copia propia del periódico: vestir un tema del
             // catálogo lo adopta primero.
             'theme' => $fila->themeVariant?->payload(),
             'tenant' => [

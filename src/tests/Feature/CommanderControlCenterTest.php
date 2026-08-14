@@ -21,9 +21,8 @@ use Packages\Core\Support\CoreActivePackageSupport;
 use Tests\CommanderTestCase;
 
 /**
- * Cobertura de las piezas nuevas que adaptan el SPA al backend: settings persistidos,
- * propagacion de la edicion de cuotas al enforcement real, logs globales y validacion
- * de package desplegado en planes.
+ * Cobertura de settings persistidos, propagación de cuotas al enforcement real, logs globales y
+ * validación de packages desplegados en planes.
  */
 class CommanderControlCenterTest extends CommanderTestCase
 {
@@ -79,7 +78,7 @@ class CommanderControlCenterTest extends CommanderTestCase
         $admin = $this->admin();
         $pkg = $this->package();
 
-        // Tabla unica: la fila que edita el panel ES la que mide/aplica el motor (sin propagacion).
+        // Tabla única: la fila que edita la API ES la que mide/aplica el motor (sin propagación).
         $quota = CommanderQuotaModel::create([
             'package_id' => $pkg->id, 'metric_key' => 'requests_day',
             'current_value' => 0, 'limit_value' => 1000, 'on_exceed' => 'warn', 'unit' => 'count',

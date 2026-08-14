@@ -19,7 +19,7 @@ class SnkKilkanaPostService
     {
         return $this->scopeToOwner(
             SnkKilkanaPostModel::query()
-                // `engaged`, no `opens`: la columna de vistas del panel cuenta lecturas reales.
+                // `engaged`, no `opens`: la API de audiencia cuenta lecturas reales.
                 ->withSum(['views as views_day' => fn ($query) => $query->where('date', now()->toDateString())], 'engaged')
                 ->withSum(['views as views_week' => fn ($query) => $query->where('date', '>=', now()->subDays(6)->toDateString())], 'engaged')
                 ->withSum('views as views_total', 'engaged'),

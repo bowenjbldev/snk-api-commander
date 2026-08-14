@@ -7,7 +7,7 @@ use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Commander\Models\CommanderQuotaModel;
 
 /**
- * commander_quotas es la tabla UNICA de cuotas: la edita el panel (limit_value/on_exceed) y la mide/
+ * commander_quotas es la tabla UNICA de cuotas: la edita la API (limit_value/on_exceed) y la mide/
  * aplica el motor (CommanderQuotaMeasurerService) sobre la MISMA fila. Por eso editar un limite o una
  * politica desde aqui llega directamente al enforcement, sin propagacion a una tabla espejo.
  */

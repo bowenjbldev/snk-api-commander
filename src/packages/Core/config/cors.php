@@ -10,7 +10,7 @@ return [
         static fn(string $origin): string => trim($origin),
         explode(',', (string) env(
             'CORS_ALLOWED_ORIGINS',
-            'http://localhost:5174',
+            '',
         )),
     ))),
     'allowed_origins_patterns' => [],

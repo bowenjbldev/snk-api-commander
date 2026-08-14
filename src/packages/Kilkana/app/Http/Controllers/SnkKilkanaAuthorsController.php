@@ -24,8 +24,8 @@ class SnkKilkanaAuthorsController extends CoreBaseApiController
 
     protected string $destroyPermission = 'delete authors';
 
-    /** La foto de la firma vive en la biblioteca: `?with=avatarMedia` la trae resuelta a URL
-     *  para el panel, que si no solo tendría un id que no puede pintar. */
+    /** La foto de la firma vive en la biblioteca: `?with=avatarMedia` la resuelve a URL para que
+     *  el consumidor no reciba solo un id opaco. */
     protected array $allowedWith = ['avatarMedia'];
 
     /**

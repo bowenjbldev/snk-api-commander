@@ -7,10 +7,8 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Perfil del OPERADOR sobre la `users` de Laravel.
  *
- * Core crea la tabla tal cual la trae el framework; lo que necesita el panel de operador lo
- * anade este package. Son las tres que aceptan las reglas de `CoreUsersController`, del que
- * cuelga `CommanderUsersController`. Sin avatar: el operador no publica nada y su ficha se
- * dibuja con el monograma de iniciales.
+ * Core crea la tabla tal cual la trae el framework; este package añade los campos del operador
+ * aceptados por `CoreUsersController`, del que cuelga `CommanderUsersController`.
  */
 return new class extends Migration
 {

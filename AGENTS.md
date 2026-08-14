@@ -11,7 +11,6 @@ Antes de cambiar código, lee [`docs/README.md`](docs/README.md) y después el d
 | provisioning, de-provisioning, estado o cuotas | [`docs/flows.md`](docs/flows.md) y [`docs/database.md`](docs/database.md) |
 | migraciones o modelos Commander | [`docs/database.md`](docs/database.md) |
 | Kilkana | [`docs/business.md`](docs/business.md) y [`docs/database/kilkana/README.md`](docs/database/kilkana/README.md) |
-| SPA Commander o estilos | [`docs/commander-ui.md`](docs/commander-ui.md) |
 | comandos, Docker, tests o deploy | [`docs/operations.md`](docs/operations.md) |
 
 ## Invariantes
@@ -81,23 +80,6 @@ cd src
 vendor/bin/pint --test
 composer audit
 ```
-
-Commander:
-
-```bash
-cd commander
-npm run check      # svelte-check estricto
-npm run lint       # eslint strict type-checked
-npm run ds-check   # reglas del design system
-npm test           # vitest
-npm run build
-```
-
-La guía viva de las primitivas está en `https://commander.<BASE_DOMAIN>/uikit`, sin sesión.
-
-**Al renombrar `commander/`, recrea el contenedor**: un bind mount se ata al inodo, no a la ruta,
-así que `docker compose restart commander-web` sigue sirviendo el directorio antiguo. Hace falta
-`docker compose up -d --force-recreate commander-web`.
 
 Migraciones y rutas cuando apliquen:
 

@@ -11,8 +11,8 @@ use Packages\Commander\Models\CommanderSettingModel;
 /**
  * Perfil + preferencias del operador (singleton, BD commander). Se guardan como UNA bolsa JSON
  * (`commander_settings.settings`) pero la API las expone/acepta PLANAS: show()/update() despliegan y
- * mergean con los defaults. El default_grace_hours alimenta el grace real (el SPA lo usa para
- * calcular grace_until). La ruta va bajo auth:sanctum, asi que solo un operador autenticado llega aqui.
+ * mergean con los defaults. El default_grace_hours alimenta el cálculo real de grace_until. La
+ * ruta va bajo auth:sanctum, asi que solo un operador autenticado llega aqui.
  */
 #[Group('Settings')]
 class CommanderSettingsController extends Controller
@@ -51,7 +51,7 @@ class CommanderSettingsController extends Controller
         return response()->json($this->payload($row));
     }
 
-    /** Aplana la bolsa JSON a las 5 claves (defaults + lo guardado): el contrato que consume el SPA. */
+    /** Aplana la bolsa JSON a las 5 claves que forman el contrato de la API. */
     private function payload(CommanderSettingModel $row): array
     {
         return array_merge(self::DEFAULTS, $row->settings ?? []);

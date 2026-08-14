@@ -63,7 +63,7 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
     }
 
     /**
-     * Moderación en masa desde el panel; mismo contrato que `posts/bulk`.
+     * Moderación en masa; mismo contrato que `posts/bulk`.
      * Borrar arrastra el hilo: parent_id es cascadeOnDelete.
      */
     public function bulk(Request $request): JsonResponse

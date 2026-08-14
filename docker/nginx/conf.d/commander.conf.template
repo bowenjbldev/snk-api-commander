@@ -1,6 +1,5 @@
-# Operator panel on one origin: the SPA (commander-web container) + the Commander API (Laravel,
-# the same app container as api.snakepc.test). Same-origin → no CORS, no Vite proxy. The wildcard
-# cert combinado de scripts/setup-ssl.sh cubre este subdominio y los tenants Kilkana.
+# Commander mantiene un único origen: `/api/*` llega a Laravel y `/` queda reservado para el
+# servicio opcional `commander-web`. El certificado de scripts/setup-ssl.sh cubre este subdominio.
 server {
     listen 80;
     server_name commander.${BASE_DOMAIN};
@@ -18,8 +17,10 @@ server {
     ssl_certificate_key /etc/nginx/certs/wildcard.${BASE_DOMAIN}-key.pem;
     ssl_protocols       TLSv1.2 TLSv1.3;
     ssl_ciphers         HIGH:!aNULL:!MD5;
+    resolver 127.0.0.11 valid=10s ipv6=off;
+    resolver_timeout 2s;
 
-    # /api/* → the Commander Laravel app (front controller). ^~ wins over the regex/SPA locations.
+    # La API Commander siempre está disponible aunque el perfil `spa` esté apagado.
     location ^~ /api/ {
         try_files $uri $uri/ /index.php?$query_string;
     }
@@ -35,14 +36,21 @@ server {
         fastcgi_param PATH_INFO $fastcgi_path_info;
     }
 
-    # Everything else → the SPA container (static dist + client-side routing fallback).
+    # El nombre se resuelve en cada petición para que nginx arranque sin `commander-web`.
     location / {
-        proxy_pass http://commander-web:5173;
+        set $commander_web http://commander-web:5173;
+        proxy_pass $commander_web;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_intercept_errors on;
+        error_page 502 503 504 = @commander_web_missing;
+    }
+
+    location @commander_web_missing {
+        return 404;
     }
 }

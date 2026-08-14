@@ -12,9 +12,8 @@ use Illuminate\Support\Facades\Schema;
  * puntero, para que la variante que viste un periodico pueda ser una clave foranea de verdad
  * en vez de una cadena suelta que nadie valida.
  *
- * `name` nulo significa «el que envia el producto». El nombre de un paquete es un mensaje
- * traducido del frontend (`m.theme_pack_press()`), asi que copiarlo aqui congelaria una
- * traduccion en cada base de inquilino.
+ * `name` nulo significa «el que envia el producto» y evita congelar una traducción concreta en
+ * cada base de inquilino.
  */
 return new class extends Migration
 {

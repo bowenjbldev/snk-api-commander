@@ -33,7 +33,7 @@ class SnkKilkanaMediaController extends CoreBaseApiController
 
     protected string $destroyPermission = 'delete media';
 
-    /** Mimes aceptados en subida/reemplazo (alineados con MEDIA_ACCEPT del frontend). */
+    /** Mimes aceptados por el contrato de subida y reemplazo. */
     private const MIMES = 'jpeg,jpg,png,webp,avif,gif,mp4,webm,mp3,m4a,wav,ogg,pdf';
 
     // Sin parámetro: la firma la fija CoreBaseApiController::index(). La request se

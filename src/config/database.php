@@ -38,8 +38,8 @@ return [
             'database' => env('DB_DATABASE', database_path('database.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
-            // WAL + busy_timeout: let concurrent reads run during a write and wait (don't fail) on a
-            // lock — the SPA fires several requests in parallel against this single sqlite file.
+            // WAL + busy_timeout: let concurrent reads run during a write and wait instead of
+            // failing when API requests share this SQLite file.
             'busy_timeout' => env('DB_BUSY_TIMEOUT', 5000),
             'journal_mode' => env('DB_JOURNAL_MODE', 'WAL'),
             'synchronous' => env('DB_SYNCHRONOUS', 'NORMAL'),

@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        // Tabla UNICA de cuotas por (package, metrica): la edita el panel (limit_value/on_exceed/unit) y
+        // Tabla UNICA de cuotas por (package, metrica): la API edita limit_value/on_exceed/unit y
         // la mide/aplica el motor (CommanderQuotaMeasurerService: current_value/measured_at/exceeded_at).
         // No hay tabla espejo aparte.
         Schema::create('commander_quotas', function (Blueprint $table) {

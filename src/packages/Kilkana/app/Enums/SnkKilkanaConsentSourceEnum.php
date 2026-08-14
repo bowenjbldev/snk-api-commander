@@ -26,7 +26,7 @@ enum SnkKilkanaConsentSourceEnum: string
     /** Venia en una lista que trajo el periodico. El consentimiento se dio ANTES y fuera. */
     case Import = 'import';
 
-    /** Lo dio de alta la redaccion desde el panel. */
+    /** Lo dio de alta la redacción mediante el flujo administrativo. */
     case Admin = 'admin';
 
     /** Si el sistema tiene constancia propia del acto, en vez de fiarse de lo que le contaron. */

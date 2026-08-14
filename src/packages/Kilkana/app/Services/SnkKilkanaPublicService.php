@@ -369,7 +369,8 @@ class SnkKilkanaPublicService
      * La identidad y la piel del periódico para un lector.
      *
      * La forma es SIEMPRE la misma, haya fila o no. Antes `tenant` salía nulo cuando la fila no
-     * existía mientras el panel, que la crea con `firstOrCreate`, no veía ese caso nunca: dos
+     * existía mientras el flujo administrativo, que la crea con `firstOrCreate`, no veía ese caso:
+     * dos
      * formas posibles para el mismo endpoint, y la rara solo aparecía en la salida pública.
      *
      * `url` no sale: el lector ya está en ella, y es un dato de configuración.

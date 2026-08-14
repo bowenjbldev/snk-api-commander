@@ -12,7 +12,6 @@ existe en esta rama y separa explícitamente lo implementado de la dirección de
 | tocar migraciones, modelos o relaciones | [Base de datos](database.md) y el [detalle de Kilkana](database/kilkana/README.md) |
 | seguir una petición, un alta o una baja | [Flujos](flows.md) |
 | ejecutar, probar, migrar o desplegar | [Operación](operations.md) |
-| cambiar la SPA o su lenguaje visual | [Commander UI](commander-ui.md) |
 
 ## Modelo mental en un minuto
 
@@ -37,11 +36,11 @@ existe en esta rama y separa explícitamente lo implementado de la dirección de
 ## Componentes
 
 ```text
-Navegador del operador
+Petición al control plane
         │
         ▼
-commander.<BASE_DOMAIN> ── SPA `commander/` (SvelteKit)
-        │ Bearer
+commander.<BASE_DOMAIN>/api/v1
+        │
         ▼
 paquete Commander ──────── base `commander`
         │                         │
@@ -73,7 +72,5 @@ Markdown del proyecto deben vivir aquí, salvo el `README.md` de entrada y `AGEN
 
 ## Alcance
 
-Este repositorio contiene el backend y la SPA de Commander, además del backend compartido de
-Kilkana. La salida pública y el panel editorial Svelte viven en el repositorio hermano
-`kilkana.app`; las afirmaciones sobre ese frontend en [Negocio](business.md) son contexto de
-producto, no un contrato verificable desde este árbol.
+Este repositorio contiene únicamente el backend y el control plane API. Los consumidores de la
+API viven fuera de este árbol y no forman parte de su contrato verificable.

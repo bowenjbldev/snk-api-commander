@@ -19,8 +19,8 @@ use Packages\Commander\Http\Controllers\CommanderUsersController;
 Route::middleware(['api'])->group(function () {
     Route::post('auth/login', [CommanderAuthController::class, 'login'])->middleware('throttle:login');
 
-    // El panel corre sobre la BD commander (operador). Un token de tenant vive en SU BD, no en la
-    // commander -> auth:sanctum no lo encuentra aqui -> 401 automatico (aislamiento por BD).
+    // Commander autentica sobre su propia BD. Un token tenant vive en SU BD, así que
+    // auth:sanctum no lo encuentra aquí y devuelve 401 (aislamiento por BD).
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('auth/me', [CommanderAuthController::class, 'me']);
         Route::post('auth/logout', [CommanderAuthController::class, 'logout']);

@@ -6,14 +6,13 @@ use HTMLPurifier;
 use HTMLPurifier_Config;
 
 /**
- * Saneado server-side del HTML rico del editor (Tiptap) antes de persistirlo.
- * Espeja EXACTAMENTE el contrato del frontend (`kilkana.app/src/lib/articles/rich-text.ts`):
- * solo estos tags y, en <p>, solo `text-align`. Es la frontera de confianza: lo que
- * guardamos ya es seguro para inyectar con {@html} en SSR, sin depender del cliente.
+ * Saneado server-side del HTML rico del editor (Tiptap) antes de persistirlo. Solo admite estos
+ * tags y, en <p>, `text-align`. Es la frontera de confianza: lo guardado ya es seguro para su
+ * renderizado posterior sin depender del cliente.
  */
 class SnkKilkanaRichText
 {
-    /** Tags permitidos + `text-align` solo en <p>. Igual que ALLOWED_TAGS del frontend. */
+    /** Tags permitidos y `text-align` solo en <p>. */
     private const ALLOWED = 'p[style],br,strong,b,em,i,s,code';
 
     private static ?HTMLPurifier $purifier = null;

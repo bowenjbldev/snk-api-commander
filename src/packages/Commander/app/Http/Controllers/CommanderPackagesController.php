@@ -25,7 +25,7 @@ use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Core\Services\CorePackageStateService;
 
 /**
- * Hub del panel sobre commander_packages: filas de catálogo y una fila operativa por instancia.
+ * API sobre commander_packages: filas de catálogo y una fila operativa por instancia.
  * index() sincroniza productos desplegados y enriquece las filas con disco/planes. Las acciones
  * operativas exigen `provisioned_at` y siempre se direccionan por la PK numérica de la instancia.
  */
@@ -408,9 +408,8 @@ class CommanderPackagesController extends CoreBaseApiController
     }
 
     /**
-     * Platform-wide git code frequency: daily additions/deletions summed across ALL packages over a
-     * window (default 12 weeks). Same `GitDailyActivity` shape as insights().daily, so the SPA reuses
-     * dailyToCodeFrequency() to bucket it weekly. Powers the Dashboard "Code frequency" card.
+     * Platform-wide git code frequency: daily additions/deletions summed across all packages over
+     * a configurable window (12 weeks by default).
      */
     public function codeFrequency(Request $request): JsonResponse
     {

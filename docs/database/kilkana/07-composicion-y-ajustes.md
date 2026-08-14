@@ -81,9 +81,8 @@ variantes, el vocabulario con el que se navega y el pivote que los une.
 
 **Un tema entero es un dato.** Los tokens, el estilo —incluidos el kicker y la tarjeta—, la
 cabecera (un enum de dos valores) y las plantillas de arranque son todo JSON, así que viven en
-`kilkana_theme_variants.spec` y publicar un tema nuevo no exige desplegar el frontend. Eso es
-lo que permite producirlos deprisa y venderlos: el código solo pone los componentes que saben
-pintar un spec.
+`kilkana_theme_variants.spec` y publicar un tema nuevo no exige desplegar código. Eso permite
+producirlos deprisa y venderlos: el consumidor solo necesita implementar el contrato del spec.
 
 El catálogo **se replica en la base de cada periódico** y su maestro son ficheros versionados
 en `database/seeders/data/themes/`. `kilkana:sync-themes` los publica: compara por `version`,
@@ -160,8 +159,8 @@ tocada a mano en la base no debe poder tumbar la portada.
 
 `kilkana:sync-themes` valida cada spec **antes de escribir nada** y falla ruidosamente con el
 par de colores en la mano. Se comprueba el contraste AA (≥4.5:1) de `text`, `textMuted`,
-`textSoft` y `accent` sobre `surface`, los rangos, que `masthead` sea uno de los que sabe pintar
-el frontend y que todos los bloques de las plantillas existan.
+`textSoft` y `accent` sobre `surface`, los rangos, que `masthead` sea uno de los soportados y que
+todos los bloques de las plantillas existan.
 
 Es la contrapartida de producir temas deprisa: un gris elegante sobre blanco se ve bien en una
 captura y deja por debajo de AA al periódico que lo instale, y este producto tiene presupuestos
@@ -250,8 +249,8 @@ forma la normaliza quien escribe, por tipo y por rango — un valor fuera de ban
 texto ilegible sobre su fondo.
 
 > La tabla hermana `commander_settings` sigue siendo una bolsa JSON. La divergencia es
-> consciente: aquellos son ajustes de infraestructura del operador, y estos los toca una
-> redacción desde una pantalla y salen al público.
+> consciente: aquellos son ajustes de infraestructura del operador, y estos pertenecen al flujo
+> editorial y salen al público.
 
 ---
 
