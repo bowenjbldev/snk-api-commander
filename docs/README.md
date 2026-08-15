@@ -1,7 +1,7 @@
 # Documentación de Snake API Commander
 
 Este directorio describe el backend y el control plane que existen en esta rama. El repositorio
-no contiene un cliente web.
+no contiene todavía un cliente web; su diseño funcional futuro está documentado.
 
 ## Mapa de lectura
 
@@ -13,6 +13,7 @@ no contiene un cliente web.
 | tocar migraciones, modelos o relaciones | [Base de datos](database.md) y [Kilkana](database/kilkana/README.md) |
 | seguir un alta, request, cuota o baja | [Flujos](flows.md) |
 | preparar dominios propios, TLS y una migración SEO | [Dominios propios](domains.md) |
+| diseñar o implementar el futuro SPA de Commander | [Diseño funcional del SPA](design/commander-spa.md) |
 | ejecutar, probar, migrar o desplegar | [Operación](operations.md) |
 
 ## Modelo mental

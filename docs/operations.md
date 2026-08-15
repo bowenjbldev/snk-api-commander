@@ -199,8 +199,9 @@ cambios también con MariaDB.
 
 ## Cliente web futuro
 
-Este repositorio no contiene frontend ni documentos de diseño. Docker solo reserva el perfil y el
-routing de mismo origen. Cuando exista desde cero `commander/package.json`:
+Este repositorio no contiene frontend. Su [diseño funcional](design/commander-spa.md) es agnóstico
+de tecnología y Docker solo reserva el perfil y el routing de mismo origen. Cuando exista desde
+cero `commander/package.json`:
 
 ```bash
 docker compose --profile spa up -d commander-web nginx
