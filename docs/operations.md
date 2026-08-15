@@ -197,18 +197,31 @@ php artisan route:cache
 Reporta test, formato y audit por separado. SQLite no cubre DDL/privilegios/collation; prueba esos
 cambios también con MariaDB.
 
-## Cliente web futuro
+## Cliente web
 
-Este repositorio no contiene frontend. Su [diseño funcional](design/commander-spa.md) es agnóstico
-de tecnología y Docker solo reserva el perfil y el routing de mismo origen. Cuando exista desde
-cero `commander/package.json`:
+`commander/` es el SPA del operador: React 19 + TypeScript + Carbon Design System v11, según el
+[diseño funcional](design/commander-spa.md). **Corre entero sobre un mock determinista**
+(`src/services/api/mock/`) y no llama a la API; el store vive en memoria y se pierde al recargar.
+
+El perfil `spa` no arranca por defecto, así que hay que pedirlo:
 
 ```bash
 docker compose --profile spa up -d commander-web nginx
 ```
 
-`/api/*` seguirá llegando a Laravel y `/` al futuro servidor web. Sin el perfil, `/` responde 404
-y la API continúa disponible.
+Queda en `https://commander.snakepc.test/`. `/api/*` sigue llegando a Laravel y `/` al servidor de
+Vite. Sin el perfil, `/` responde 404 y la API continúa disponible.
+
+Dentro de `commander/` (o con `docker compose exec commander-web`):
+
+```bash
+npm run check   # tsc -b --noEmit
+npm test        # node --test, lógica de negocio de src/**/model
+npm run build   # typecheck + vite build
+```
+
+La lógica de negocio vive en `features/<dominio>/model/` justo para poder probarla sin navegador;
+los componentes de `pages/` solo pintan.
 
 ## MariaDB
 

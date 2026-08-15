@@ -21,7 +21,9 @@
       "Bash(npx tsc *)",
       "Bash(echo \"=== tsc EXIT: $? ===\")",
       "Bash(npx vitest *)",
-      "Bash(rtk ls *)"
+      "Bash(rtk ls *)",
+      "mcp__carbon-mcp__code_search",
+      "Bash(rtk read *)"
     ]
   }
 }

@@ -1,0 +1,503 @@
+// IBM Plex llega desde Google Fonts en index.html: no emitimos @font-face al CDN de Akamai.
+@use '@carbon/react' with ($css--font-face: false);
+@use '@carbon/react/scss/themes' as *;
+@use '@carbon/react/scss/theme';
+@use '@carbon/react/scss/spacing' as *;
+@use '@carbon/react/scss/type' as *;
+
+// Gray 100 en la raíz: los componentes leen los tokens como custom properties, así que
+// reemitirlos aquí viste toda la aplicación sin reconfigurar el módulo de tema.
+:root {
+  @include theme.theme($g100);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--cds-background);
+  color: var(--cds-text-primary);
+}
+
+/* Shell -------------------------------------------------------------------- */
+
+/* Solo el header fijo empuja el contenido; la barra de simulación va en flujo… */
+.cmd-shell__main {
+  padding-block-start: 3rem;
+}
+
+/* …hasta que hay sitio para fijarla, y entonces se suma su altura. */
+@media (min-width: 66rem) {
+  .cmd-shell__main {
+    padding-block-start: 5.5rem;
+    margin-inline-start: 16rem;
+  }
+}
+
+.cmd-shell__content {
+  min-block-size: calc(100vh - 5.5rem);
+  max-inline-size: 100rem;
+  padding: $spacing-06 $spacing-07 $spacing-09;
+}
+
+.cmd-nav__group {
+  @include type-style('label-01');
+
+  padding: $spacing-05 $spacing-05 $spacing-02;
+  color: var(--cds-text-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cmd-panel__link {
+  @include type-style('body-compact-01');
+
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: $spacing-05;
+  inline-size: 100%;
+  padding: $spacing-03 0;
+  border: 0;
+  background: none;
+  color: var(--cds-link-primary);
+  cursor: pointer;
+  text-align: start;
+}
+
+.cmd-panel__link:hover {
+  background: var(--cds-layer-hover-01);
+}
+
+/* Login -------------------------------------------------------------------- */
+
+.cmd-login {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  min-block-size: 100vh;
+}
+
+@media (max-width: 55rem) {
+  .cmd-login {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cmd-login__aside,
+.cmd-login__form {
+  padding: $spacing-09 $spacing-07;
+}
+
+.cmd-login__aside {
+  border-inline-end: 1px solid var(--cds-border-subtle-01);
+}
+
+.cmd-login__claim {
+  @include type-style('fluid-heading-03', true);
+
+  max-inline-size: 20ch;
+  margin-block: $spacing-07 $spacing-06;
+  font-weight: 300;
+}
+
+.cmd-login__foot {
+  @include type-style('code-01');
+
+  margin-block-start: $spacing-09;
+  color: var(--cds-text-helper);
+}
+
+/* En pantallas estrechas se apila y ocuparía media pantalla: ahí va en flujo. */
+.cmd-sim {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $spacing-05;
+  padding: 0 $spacing-05;
+  min-block-size: 2.5rem;
+  background: var(--cds-layer-01);
+  border-block-end: 1px solid var(--cds-border-subtle-01);
+}
+
+@media (min-width: 66rem) {
+  .cmd-sim {
+    position: fixed;
+    inset-block-start: 3rem;
+    inset-inline: 0;
+    z-index: 8000;
+  }
+}
+
+.cmd-sim__label {
+  @include type-style('label-01');
+
+  color: var(--cds-text-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cmd-sim__hint {
+  @include type-style('label-01');
+
+  color: var(--cds-text-helper);
+}
+
+.cmd-sim__field {
+  inline-size: 14rem;
+}
+
+/* Con la barra fijada, la navegación arranca por debajo de ella. */
+@media (min-width: 66rem) {
+  .cds--side-nav--ux {
+    inset-block-start: 5.5rem;
+    block-size: calc(100% - 5.5rem);
+  }
+}
+
+/* El panel de pestaña trae fondo y padding propios; aquí el fondo lo ponen los
+   paneles de dentro, y ese relleno extra fundía la rejilla en un solo bloque.
+   El selector replica el de Carbon (`.cds--tabs--contained ~ .cds--tab-content`)
+   porque el suyo lleva dos clases y una regla de una sola clase no lo gana. */
+.cds--tabs--contained ~ .cds--tab-content {
+  padding: $spacing-05 0 0;
+  background: transparent;
+}
+
+/* Contrato común de página ------------------------------------------------- */
+
+.cmd-page__title {
+  @include type-style('productive-heading-05');
+
+  margin-block: $spacing-03 $spacing-03;
+}
+
+.cmd-page__lede {
+  @include type-style('body-01');
+
+  max-inline-size: 42rem;
+  color: var(--cds-text-secondary);
+}
+
+.cmd-page__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: $spacing-05;
+  margin-block-end: $spacing-06;
+}
+
+.cmd-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-03;
+}
+
+.cmd-count {
+  @include type-style('label-01');
+
+  display: block;
+  padding: $spacing-03 0;
+  color: var(--cds-text-secondary);
+}
+
+.cmd-table-scroll {
+  overflow-x: auto;
+}
+
+/* Carbon alinea la toolbar a la derecha: sin envolver, los primeros filtros se salen
+   por la izquierda en pantallas estrechas y quedan fuera de alcance. */
+.cds--table-toolbar {
+  block-size: auto;
+  min-block-size: 3rem;
+}
+
+.cds--table-toolbar .cds--toolbar-content {
+  block-size: auto;
+  min-block-size: 3rem;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  row-gap: $spacing-03;
+}
+
+/* Métricas y barras --------------------------------------------------------- */
+
+.cmd-meter {
+  min-inline-size: 8rem;
+}
+
+.cmd-meter__value {
+  @include type-style('label-01');
+
+  display: flex;
+  justify-content: space-between;
+  gap: $spacing-03;
+}
+
+.cmd-meter__track {
+  block-size: 0.25rem;
+  margin-block-start: $spacing-02;
+  background: var(--cds-layer-accent-01);
+}
+
+.cmd-meter__fill {
+  display: block;
+  block-size: 100%;
+  background: var(--cds-support-success);
+}
+
+.cmd-meter__fill--warn {
+  background: var(--cds-support-warning);
+}
+
+.cmd-meter__fill--crit {
+  background: var(--cds-support-error);
+}
+
+.cmd-meter__caption {
+  @include type-style('label-01');
+
+  color: var(--cds-text-secondary);
+}
+
+/* Rejilla de indicadores ---------------------------------------------------- */
+
+.cmd-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1px;
+  margin-block-end: $spacing-07;
+  background: var(--cds-border-subtle-01);
+}
+
+.cmd-kpi {
+  padding: $spacing-05;
+  background: var(--cds-layer-01);
+}
+
+.cmd-kpi__label {
+  @include type-style('label-01');
+
+  color: var(--cds-text-secondary);
+}
+
+.cmd-kpi__value {
+  @include type-style('productive-heading-04');
+
+  margin-block: $spacing-02;
+}
+
+.cmd-kpi__value--crit {
+  color: var(--cds-text-error);
+}
+
+.cmd-kpi__value--warn {
+  color: var(--cds-support-warning);
+}
+
+.cmd-kpi__note {
+  @include type-style('label-01');
+
+  color: var(--cds-text-secondary);
+}
+
+/* Fichas -------------------------------------------------------------------- */
+
+.cmd-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: $spacing-05;
+}
+
+.cmd-panel {
+  padding: $spacing-05;
+  background: var(--cds-layer-01);
+}
+
+.cmd-panel__title {
+  @include type-style('productive-heading-01');
+
+  margin-block-end: $spacing-04;
+}
+
+.cmd-defs {
+  display: grid;
+  grid-template-columns: minmax(8rem, auto) 1fr;
+  gap: $spacing-03 $spacing-05;
+}
+
+.cmd-defs dt {
+  @include type-style('label-01');
+
+  color: var(--cds-text-secondary);
+}
+
+.cmd-defs dd {
+  @include type-style('body-compact-01');
+
+  overflow-wrap: anywhere;
+}
+
+.cmd-mono {
+  @include type-style('code-01');
+}
+
+.cmd-text-error {
+  color: var(--cds-text-error);
+}
+
+.cmd-text-warn {
+  color: var(--cds-support-warning);
+}
+
+.cmd-stack > * + * {
+  margin-block-start: $spacing-05;
+}
+
+.cmd-form {
+  max-inline-size: 42rem;
+}
+
+.cmd-form__section {
+  margin-block-end: $spacing-07;
+}
+
+.cmd-form__legend {
+  @include type-style('productive-heading-01');
+
+  padding-block-end: $spacing-03;
+  border-block-end: 1px solid var(--cds-border-subtle-01);
+  margin-block-end: $spacing-05;
+}
+
+.cmd-form__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: $spacing-05;
+}
+
+.cmd-chart {
+  padding: $spacing-05;
+  background: var(--cds-layer-01);
+}
+
+.cmd-chart__title {
+  @include type-style('productive-heading-01');
+}
+
+.cmd-chart__help {
+  @include type-style('label-01');
+
+  display: block;
+  margin-block: $spacing-02 $spacing-05;
+  color: var(--cds-text-secondary);
+}
+
+/* Barras horizontales ------------------------------------------------------- */
+
+.cmd-hbars__row + .cmd-hbars__row {
+  margin-block-start: $spacing-04;
+}
+
+.cmd-hbars__head {
+  @include type-style('label-01');
+
+  display: flex;
+  justify-content: space-between;
+  gap: $spacing-05;
+  margin-block-end: $spacing-02;
+  color: inherit;
+}
+
+a.cmd-hbars__head {
+  color: var(--cds-link-primary);
+}
+
+.cmd-hbars__value {
+  color: var(--cds-text-secondary);
+}
+
+.cmd-hbars__track {
+  position: relative;
+  display: block;
+  block-size: 0.5rem;
+  background: var(--cds-layer-accent-01);
+}
+
+.cmd-hbars__fill {
+  display: block;
+  block-size: 100%;
+  background: var(--cds-support-info);
+}
+
+.cmd-hbars__fill--ok {
+  background: var(--cds-support-success);
+}
+
+.cmd-hbars__fill--warn {
+  background: var(--cds-support-warning);
+}
+
+.cmd-hbars__fill--crit {
+  background: var(--cds-support-error);
+}
+
+.cmd-hbars__warn {
+  position: absolute;
+  inset-block: -0.125rem;
+  inline-size: 1px;
+  background: var(--cds-border-strong-02);
+}
+
+/* Semicírculo --------------------------------------------------------------- */
+
+.cmd-gauge svg {
+  inline-size: 100%;
+  max-inline-size: 16rem;
+}
+
+.cmd-gauge__value {
+  fill: var(--cds-text-primary);
+  font-size: 1.75rem;
+  font-weight: 300;
+}
+
+.cmd-activity {
+  display: grid;
+  grid-template-columns: minmax(10rem, auto) 1fr auto;
+  gap: $spacing-05;
+  padding-block: $spacing-03;
+  border-block-end: 1px solid var(--cds-border-subtle-01);
+}
+
+@media (max-width: 42rem) {
+  .cmd-activity {
+    grid-template-columns: 1fr;
+    gap: $spacing-02;
+  }
+}
+
+/* Sparkline ----------------------------------------------------------------- */
+
+.cmd-spark {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  block-size: 3rem;
+}
+
+.cmd-spark__bar {
+  flex: 1;
+  background: var(--cds-support-info);
+}
+
+.cmd-spark__bar--warn {
+  background: var(--cds-support-warning);
+}
+
+.cmd-spark__bar--crit {
+  background: var(--cds-support-error);
+}
