@@ -30,6 +30,7 @@ class CommanderApiTest extends CommanderTestCase
     {
         $this->getJson('/api/v1/applications')->assertUnauthorized();
         $admin = $this->admin();
+        $this->assertSame('argon2id', password_get_info($admin->password)['algoName']);
 
         $response = $this->postJson('/api/v1/auth/login', [
             'email' => $admin->email,

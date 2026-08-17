@@ -174,6 +174,85 @@ las duraciones del bucket en arrays PHP para calcular p95; `chunkById` limita ca
 ese acumulado. Ese algoritmo no es viable a millones de peticiones/día con `memory_limit=128M` y
 debe cambiarse antes de sostener ese volumen.
 
+### Octane y FrankenPHP: evaluación futura
+
+PHP-FPM sigue siendo el único runtime HTTP soportado. Más workers no ofrecen otro salto: ocho
+fueron el óptimo medido y diez o doce empeoraron throughput y p95. FrankenPHP clásico simplificaría
+Nginx/FastCGI, pero vuelve a arrancar Laravel por petición y no es candidato razonable a duplicar
+el rendimiento. La prueba con potencial es Laravel Octane sobre FrankenPHP en worker mode, que
+mantiene la aplicación cargada; no se ha implementado ni medido en este proyecto.
+
+El riesgo es de aislamiento, no solo de memoria. El resolutor modifica la conexión por defecto,
+credenciales tenant, configuración de package/overlay y el singleton de instancia activa. El
+`finally` actual es una buena base para workers secuenciales, pero un estado propio no restaurado
+podría contaminar la siguiente petición del mismo worker. Laravel reinicia su estado conocido,
+no garantiza limpiar el estado global creado por la aplicación.
+
+Una prueba de concepto deberá usar FrankenPHP con glibc, sin Swoole ni tareas concurrentes, y no
+se considerará compatible hasta cumplir simultáneamente:
+
+- alternar tenants, packages y tokens bajo respuestas normales, excepciones, `404`, `429`,
+  streaming y desconexiones sin fuga de conexión, config, usuario ni permisos;
+- mantener memoria estable durante al menos 100.000 peticiones, reciclando workers cada 500;
+- repetir la misma matriz FPM y aceptar el cambio solo con mejora material de RPS y p95, sin
+  `5xx`, timeouts ni errores de aislamiento;
+- conservar la purga de PDO tenant y no introducir un pool ilimitado por credencial.
+
+Octane puede reducir mucho el coste de bootstrap en lecturas simples, pero no elimina SQL,
+metering ni hashing. Por eso un 2× es plausible para lecturas y tráfico mixto, no una expectativa
+para todos los endpoints. Una segunda réplica en CPU separada continúa siendo la vía predecible
+para duplicar capacidad agregada.
+
+Referencias: [Octane y estado persistente](https://laravel.com/docs/13.x/octane#dependency-injection-and-octane),
+[FrankenPHP clásico frente a worker](https://frankenphp.dev/docs/migrate/#step-5-consider-worker-mode-optional)
+y [tuning de FrankenPHP](https://frankenphp.dev/docs/performance/).
+
+### Hash de contraseñas y capacidad de login
+
+Commander usa Argon2id con 19 MiB, tiempo 2 y un hilo; `HASH_VERIFY=true` rechaza hashes de otro
+algoritmo. No existe un censo fiable que permita afirmar qué usa la mayoría de SaaS: bcrypt sigue
+siendo común y es el default de Laravel, mientras que OWASP recomienda Argon2id para sistemas
+nuevos. El contenedor PHP 8.3 instalado soporta ambos.
+
+Microbenchmark local del 17-08-2026 sobre el i7-7700K, diez verificaciones secuenciales por
+configuración y sin HTTP:
+
+| Algoritmo | Parámetros | Tiempo por `password_verify` |
+|---|---|---:|
+| bcrypt | coste 10, usado por el benchmark HTTP histórico | 43,38 ms |
+| bcrypt | coste 12 | 171,41 ms |
+| Argon2id Commander | 19 MiB, tiempo 2, 1 hilo | 24,16 ms |
+| Argon2id anterior | 64 MiB, tiempo 2, 1 hilo | 87,17 ms |
+| Argon2id default Laravel | 64 MiB, tiempo 4, 1 hilo | 178,81 ms |
+
+La configuración de 19 MiB/2/1 cumple el mínimo OWASP. Reduce el margen adicional de resistencia
+offline del perfil anterior, pero mejora el coste medido de bcrypt-12 y limita a unos 152 MiB la
+memoria Argon2 simultánea con ocho workers. Debe recalibrarse sobre el hardware de producción y no
+reducirse por debajo de este suelo solo para ganar RPS.
+
+La carga HTTP real midió 79,23 MiB con una verificación concurrente, 136,90 MiB con cuatro y
+156,90 MiB con ocho. El último valor es el 7,7 % del límite del contenedor. Con ocho workers se
+procesaron 1.000 logins correctos a 58,63 RPS, p95 142 ms y sin errores. Frente a 64 MiB/2/1,
+mejoró el throughput un 86 %, el p95 un 47 % y la RAM un 65 %.
+La referencia bcrypt anterior daba 56,37 RPS porque el usuario efímero se creó por error con el
+default PHP de coste 10, no con el coste 12 de Laravel; `login-load` genera ahora el hash mediante
+el driver configurado por la aplicación. Una repetición controlada con bcrypt-12 dio 24,32 RPS,
+p95 377 ms y 62,65 MiB: Argon2id 19 MiB/2/1 mejora el throughput un 141 % y el p95 un 62 % frente
+al coste real de Laravel, usando 2,5 veces más RAM con ocho verificaciones simultáneas.
+
+Como todavía no existe producción, las identidades locales bcrypt se reinician directamente y no
+se mantiene un modo mixto. Un despliegue futuro que ya contenga bcrypt necesitará una transición
+explícita: verificar solo bcrypt/Argon2id, rehacer el hash tras un login correcto y terminar
+forzando Argon2id. `HASH_VERIFY=false` no debe quedar permanente. El hash dummy para cuentas
+inexistentes usa la configuración activa y conserva la resistencia a enumeración.
+
+No se debe reducir el coste por debajo del suelo validado para ganar RPS. Passkeys o un proveedor
+OIDC pueden reducir los logins locales y añadir resistencia al phishing, pero son cambios de
+producto, recuperación de cuenta y operación; no sustituyen esta migración por sí solos.
+
+Referencias: [hashing de Laravel](https://laravel.com/docs/13.x/hashing),
+[almacenamiento de contraseñas de OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html).
+
 ## Invariantes de implementación
 
 - Solo `provisioning_status = ready` enruta.

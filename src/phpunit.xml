@@ -27,7 +27,12 @@
         <env name="BASE_DOMAIN" value="snakepc.test"/>
         <env name="TENANT_BASE_DOMAIN" value="kilkana.test"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
-        <env name="BCRYPT_ROUNDS" value="4"/>
+        <!-- Mismo driver que producción, con coste mínimo para que la suite siga rápida. -->
+        <env name="HASH_DRIVER" value="argon2id"/>
+        <env name="HASH_VERIFY" value="true"/>
+        <env name="ARGON_MEMORY" value="1024"/>
+        <env name="ARGON_TIME" value="1"/>
+        <env name="ARGON_THREADS" value="1"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
         <!-- Multi-tenant en tests: commander y tenant son sqlite :memory: (no hay MariaDB). -->

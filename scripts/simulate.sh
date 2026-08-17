@@ -208,7 +208,11 @@ create_benchmark_identity() {
     local key="$1" database="${TARGET_DB[$1]}" email password hash id role_count
     email="bench+$RUN_ID.$key@example.test"
     password="Bench-$(tr -d '-' </proc/sys/kernel/random/uuid)-9a"
-    hash="$(printf '%s' "$password" | dc exec -T app php -r '$p=stream_get_contents(STDIN); echo password_hash($p, PASSWORD_BCRYPT);')"
+    hash="$(printf '%s' "$password" | dc exec -T app php -r '
+        require "vendor/autoload.php";
+        $app=require "bootstrap/app.php";
+        $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+        echo Illuminate\Support\Facades\Hash::make(stream_get_contents(STDIN));')"
     role_count="$(dbq -N "$database" -e "SELECT COUNT(*) FROM roles WHERE name='admin' AND guard_name='sanctum';" | tr -d '[:space:]')"
     [[ "$role_count" == "1" ]] || { echo "Tenant $key has no unique admin role." >&2; exit 1; }
     id="$(dbq -N "$database" -e "START TRANSACTION;

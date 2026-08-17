@@ -229,9 +229,10 @@ bash scripts/simulate.sh matrix
 - `same-package`: tres bases Kilkana en round-robin;
 - `cross-package`: las tres Kilkana más DemoApp.
 
-`login-load` mide por separado verificación bcrypt y emisión de tokens sobre un usuario efímero;
-eleva temporalmente solo el límite API para que el throttle no falsee la capacidad, y elimina al
-usuario con todos sus tokens al terminar. No admite credenciales de usuarios existentes.
+`login-load` mide por separado el driver de hashing configurado y la emisión de tokens sobre un
+usuario efímero. Genera el hash mediante Laravel, eleva temporalmente los límites API y de login
+para que el throttle no falsee la capacidad y elimina al usuario con todos sus tokens al terminar.
+No admite credenciales de usuarios existentes.
 
 `matrix` prueba concurrencias `1, 5, 10, 25, 50`. Para que los `429` no oculten el techo de la
 aplicación, recrea solo `app` con límites altos mediante un override Compose temporal y restaura
@@ -273,11 +274,42 @@ Una comparación más larga de 1.200 lecturas a concurrencia 5 dio 90,29 RPS par
 para tres bases Kilkana y 88,64 para Kilkana+DemoApp. La diferencia inferior al 2 % no muestra una
 penalización material por cambiar BD/package.
 
-El login se midió aparte porque bcrypt es deliberadamente intensivo en CPU. Con coste 12, ocho
-workers procesaron 1.000 logins correctos en 17,74 s: 56,37 RPS, p95 de 142 ms, 468 % de CPU PHP,
-22 % de CPU MariaDB y ningún error, timeout o `429`. Es throughput sostenido con concurrencia ocho,
-no una promesa de aceptar 1.000 sockets en el mismo instante; no reduzcas bcrypt para aumentar esa
-cifra. Usa `login-load` para repetirla sobre el hardware de producción.
+La repetición posterior a la migración de contraseñas confirmó que Argon2id no afecta al camino
+normal con token: a concurrencia 10 se obtuvieron 111,69 RPS de lectura y 55,45 RPS de escritura;
+el escalón mixto aceptado fue 79,41 RPS a concurrencia 5. Un package dio 91,52 RPS y tres bases del
+mismo package 90,80 RPS a concurrencia 5. No hubo `5xx`, timeouts ni `429`, y el cambio de conexión
+continúa sin penalización material.
+
+El login se midió aparte con Argon2id de 19 MiB, tiempo 2 y un hilo:
+
+| Concurrencia | Logins | RPS | p95 | CPU PHP pico | RAM `app` pico | Errores |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 200 | 14,16 | 66 ms | 69 % | 79,23 MiB | 0 |
+| 4 | 500 | 45,25 | 85 ms | 280 % | 136,90 MiB | 0 |
+| 8 | 1.000 | 58,63 | 142 ms | 435 % | 156,90 MiB | 0 |
+
+Los picos son muestras de `docker stats`; la reserva teórica de ocho verificaciones simultáneas es
+152 MiB, más el proceso Laravel. El pico observado usa el 7,7 % del límite de 2 GiB de `app`.
+`pm.max_children=8` limita las reservas Argon2 simultáneas; subir workers debe volver a medirse
+porque el perfil aún consume 4,35 de los cuatro núcleos físicos bajo carga.
+
+La referencia HTTP anterior de 56,37 RPS, p95 142 ms y 62,57 MiB con ocho workers correspondía en
+realidad a bcrypt coste 10: el simulador histórico usaba el default de `password_hash`, aunque la
+documentación indicaba coste 12. La comparación controlada posterior, con 1.000 logins y
+concurrencia 8 en ambos casos, dio:
+
+| Driver | RPS | p95 | CPU PHP pico | RAM `app` pico | Errores |
+|---|---:|---:|---:|---:|---:|
+| bcrypt coste 12 | 24,32 | 377 ms | ~600 % | 62,65 MiB | 0 |
+| Argon2id anterior 64 MiB/2/1 | 31,58 | 267 ms | ~600 % | 446,70 MiB | 0 |
+| Argon2id actual 19 MiB/2/1 | 58,63 | 142 ms | 435 % | 156,90 MiB | 0 |
+
+Frente al perfil Argon2id anterior, 19 MiB/2/1 aporta un 86 % más throughput, reduce el p95 un 47 %
+y la RAM un 65 %. Frente a bcrypt-12 aporta un 141 % más throughput y reduce el p95 un 62 %, usando
+2,5 veces más RAM. Cumple el mínimo OWASP, pero elimina el margen adicional de resistencia offline
+que daba 64 MiB/2/1. El simulador usa el driver y coste reales de Laravel. Es throughput sostenido,
+no una promesa de aceptar 1.000 sockets en el mismo instante; repite `login-load` sobre el hardware
+de producción.
 
 El objetivo de 100 RPS mixtos queda cerca en bruto, pero no cabe con 30 % de margen y el criterio
 de latencia. La medición da dos réplicas equivalentes; no deben competir en este mismo i7, porque
