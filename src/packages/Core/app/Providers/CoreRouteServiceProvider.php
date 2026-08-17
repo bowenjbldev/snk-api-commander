@@ -9,6 +9,7 @@ use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 use Packages\Core\Http\Middleware\CoreEnsureActiveMiddleware;
 use Packages\Core\Http\Middleware\CoreMeteringMiddleware;
 use Packages\Core\Http\Middleware\CoreResolveInstanceFromHostMiddleware;
@@ -35,13 +36,23 @@ class CoreRouteServiceProvider extends ServiceProvider
             $tenant = $this->app->make(CoreActiveInstanceSupport::class)->id() ?? 'control';
             $actor = $request->user()?->getAuthIdentifier() ?? $request->ip();
 
-            return Limit::perMinute((int) env('CORE_API_RATE_LIMIT', 240))->by("{$tenant}:{$actor}");
+            return Limit::perMinute((int) config('core.rate_limits.api_per_minute', 240))->by("{$tenant}:{$actor}");
         });
 
         RateLimiter::for('login', function (Request $request) {
             $tenant = $this->app->make(CoreActiveInstanceSupport::class)->id() ?? 'control';
+            $input = $request->input('email');
+            $email = is_string($input) ? Str::lower(trim($input)) : '';
+            $failed = static fn ($response): bool => $response->getStatusCode() === 401;
 
-            return Limit::perMinute((int) env('CORE_LOGIN_RATE_LIMIT', 10))->by("{$tenant}:{$request->ip()}");
+            return [
+                Limit::perMinute((int) config('core.rate_limits.login_account_failures_per_minute', 5))
+                    ->by("{$tenant}:account:{$email}")
+                    ->after($failed),
+                Limit::perMinute((int) config('core.rate_limits.login_ip_failures_per_minute', 10))
+                    ->by("{$tenant}:ip:{$request->ip()}")
+                    ->after($failed),
+            ];
         });
     }
 

@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Queue;
 use Packages\Commander\Database\Seeders\CommanderDatabaseSeeder;
 use Packages\Commander\Jobs\CommanderDeprovisionInstanceJob;
@@ -41,6 +43,85 @@ class CommanderApiTest extends CommanderTestCase
         $this->assertSame('login', $token->name);
         $this->assertSame(['api'], $token->abilities);
         $this->assertTrue($token->expires_at->isBefore(now()->addMinutes(1441)));
+    }
+
+    public function test_unknown_login_identifier_still_performs_password_verification(): void
+    {
+        $this->admin();
+        $hasher = \Mockery::mock(Hasher::class);
+        $hasher->shouldReceive('make')->once()->andReturn('dummy-hash');
+        $hasher->shouldReceive('check')
+            ->twice()
+            ->withArgs(fn (string $password, string $hash): bool => $password === 'wrong-password' && $hash !== '')
+            ->andReturnFalse();
+        Hash::swap($hasher);
+
+        for ($attempt = 0; $attempt < 2; $attempt++) {
+            $this->postJson('/api/v1/auth/login', [
+                'email' => 'missing@example.test',
+                'password' => 'wrong-password',
+            ])->assertUnauthorized();
+        }
+    }
+
+    public function test_successful_logins_do_not_exhaust_the_shared_ip_failure_budget(): void
+    {
+        $admin = $this->admin();
+        config([
+            'core.rate_limits.login_account_failures_per_minute' => 2,
+            'core.rate_limits.login_ip_failures_per_minute' => 2,
+        ]);
+
+        $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.10'])
+            ->postJson('/api/v1/auth/login', [
+                'email' => ['not-a-string'],
+                'password' => 'wrong-password',
+            ])->assertUnprocessable();
+
+        for ($attempt = 0; $attempt < 3; $attempt++) {
+            $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.10'])
+                ->postJson('/api/v1/auth/login', [
+                    'email' => $admin->email,
+                    'password' => 'secret1234',
+                ])->assertOk();
+        }
+
+        for ($attempt = 0; $attempt < 2; $attempt++) {
+            $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.10'])
+                ->postJson('/api/v1/auth/login', [
+                    'email' => "missing-{$attempt}@example.test",
+                    'password' => 'wrong-password',
+                ])->assertUnauthorized();
+        }
+
+        $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.10'])
+            ->postJson('/api/v1/auth/login', [
+                'email' => 'another-missing@example.test',
+                'password' => 'wrong-password',
+            ])->assertTooManyRequests();
+    }
+
+    public function test_login_failures_are_limited_per_normalized_account_across_ips(): void
+    {
+        $this->admin();
+        config([
+            'core.rate_limits.login_account_failures_per_minute' => 2,
+            'core.rate_limits.login_ip_failures_per_minute' => 10,
+        ]);
+
+        foreach (['admin@snake.com', 'ADMIN@SNAKE.COM'] as $attempt => $email) {
+            $this->withServerVariables(['REMOTE_ADDR' => "203.0.113.2{$attempt}"])
+                ->postJson('/api/v1/auth/login', [
+                    'email' => $email,
+                    'password' => 'wrong-password',
+                ])->assertUnauthorized();
+        }
+
+        $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.22'])
+            ->postJson('/api/v1/auth/login', [
+                'email' => 'Admin@Snake.Com',
+                'password' => 'wrong-password',
+            ])->assertTooManyRequests();
     }
 
     public function test_application_catalog_only_changes_through_explicit_sync(): void

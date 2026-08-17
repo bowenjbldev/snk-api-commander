@@ -36,6 +36,13 @@ return [
         'admin_password' => env('CORE_ADMIN_PASSWORD'),
     ],
 
+    'rate_limits' => [
+        'api_per_minute' => (int) env('CORE_API_RATE_LIMIT', 240),
+        'login_account_failures_per_minute' => (int) env('CORE_LOGIN_ACCOUNT_RATE_LIMIT', 5),
+        // CORE_LOGIN_RATE_LIMIT conserva compatibilidad con despliegues anteriores.
+        'login_ip_failures_per_minute' => (int) env('CORE_LOGIN_IP_RATE_LIMIT', env('CORE_LOGIN_RATE_LIMIT', 10)),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Package State (kill-switch)
@@ -76,10 +83,10 @@ return [
     'quotas' => [
         'grace_hours' => (int) env('CORE_QUOTA_GRACE_HOURS', 72),
         'defaults' => [
-            'disk_db_mb'      => env('CORE_QUOTA_DISK_DB_MB'),
+            'disk_db_mb' => env('CORE_QUOTA_DISK_DB_MB'),
             'disk_storage_mb' => env('CORE_QUOTA_DISK_STORAGE_MB'),
-            'requests_day'    => env('CORE_QUOTA_REQUESTS_DAY'),
-            'users_total'     => env('CORE_QUOTA_USERS_TOTAL'),
+            'requests_day' => env('CORE_QUOTA_REQUESTS_DAY'),
+            'users_total' => env('CORE_QUOTA_USERS_TOTAL'),
         ],
     ],
 

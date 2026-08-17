@@ -36,6 +36,23 @@ No migra automáticamente las bases tenant existentes.
 MariaDB local permite root sin contraseña para el provisioner. No copies esa configuración a
 producción.
 
+### Perfil del contenedor HTTP
+
+El perfil local está calibrado para el i7-7700K de 4 núcleos/8 hilos con MariaDB en el mismo host:
+
+- `app`: cuota de 6 CPU, 2 GiB y 128 procesos, sin capabilities y con `no-new-privileges`;
+- FPM: 8 workers estáticos, backlog 1024, reciclaje cada 500 requests, slowlog a 5 s y corte a
+  60 s;
+- PHP: 128 MiB por request, OPcache 192 MiB/16 MiB de strings, JIT desactivado y subida máxima
+  de 64 MiB para respetar el contrato Kilkana de 50 MiB;
+- Nginx: compresión de JSON, buffer FastCGI, sesiones TLS y `X-Content-Type-Options`.
+
+`APP_CONTAINER_CPUS`, `APP_CONTAINER_MEMORY` y `APP_CONTAINER_PIDS` permiten recalibrar el
+presupuesto sin editar Compose. `opcache.validate_timestamps=1` se conserva porque local monta el
+código; en una imagen de producción inmutable puede pasar a `0`. No actives keepalive FastCGI con
+esta topología: ocho conexiones persistentes inmovilizaron los ocho workers FPM y provocaron 76
+timeouts en 1.200 operaciones de calibración.
+
 ## DNS, TLS y URLs
 
 ```bash
@@ -73,6 +90,13 @@ y contraseña explícitos. Un seed tenant nunca copia el operador Commander.
 
 `KILKANA_SEED_DEMO=false` es el valor seguro. Si se activa, configura también
 `KILKANA_DEMO_READER_PASSWORD`.
+
+El login no penaliza respuestas correctas. Por defecto bloquea tras cinco `401` por cuenta o diez
+por IP en un minuto mediante `CORE_LOGIN_ACCOUNT_RATE_LIMIT` y `CORE_LOGIN_IP_RATE_LIMIT`; ambos
+controles se aplican a la vez y no deben sustituirse por un límite alto solo por IP. El límite API
+general es `CORE_API_RATE_LIMIT=240` por usuario autenticado o IP. Si hay un balanceador delante de
+Nginx, configura la IP real únicamente para sus CIDR de confianza: aceptar `X-Forwarded-For` desde
+cualquier origen permite falsificar la clave del rate limit.
 
 ## Catálogo de aplicaciones
 
@@ -182,6 +206,90 @@ docker compose exec -T app php artisan kilkana:publish-scheduled
 
 Los recorridos Kilkana reutilizan `SnkKilkanaTenantRunnerService`; un tenant roto no debe impedir
 procesar los demás.
+
+## Simulación de capacidad multi-tenant
+
+`scripts/simulate.sh` caracteriza routing, cambio de conexión, carga y aislamiento con las
+herramientas ya instaladas. Solo admite `APP_ENV=local` y dominios `.test`. Descubre instancias
+`ready/active` y el escenario actual exige tres Kilkana y una DemoApp.
+
+```bash
+bash scripts/simulate.sh smoke
+bash scripts/simulate.sh load read cross-package 10 300
+bash scripts/simulate.sh load write same-package 5 100
+bash scripts/simulate.sh login-load 5 100
+bash scripts/simulate.sh security
+bash scripts/simulate.sh rate-limit
+bash scripts/simulate.sh matrix
+```
+
+`read`, `write` y `mixed` —90/10 por operaciones— se pueden cruzar con:
+
+- `single`: una instancia Kilkana;
+- `same-package`: tres bases Kilkana en round-robin;
+- `cross-package`: las tres Kilkana más DemoApp.
+
+`login-load` mide por separado verificación bcrypt y emisión de tokens sobre un usuario efímero;
+eleva temporalmente solo el límite API para que el throttle no falsee la capacidad, y elimina al
+usuario con todos sus tokens al terminar. No admite credenciales de usuarios existentes.
+
+`matrix` prueba concurrencias `1, 5, 10, 25, 50`. Para que los `429` no oculten el techo de la
+aplicación, recrea solo `app` con límites altos mediante un override Compose temporal y restaura
+la configuración normal en `trap`. `rate-limit` comprueba por separado que doce accesos correctos
+desde una IP pasan y que los fallos posteriores reciben `429`. Cada
+ejecución crea usuarios admin efímeros con contraseña aleatoria dentro de las bases locales,
+genera y borra tags o tokens, y los elimina al salir. No modifica cuentas existentes. Los request
+logs de metering sí permanecen y el preflight rechaza cuotas `requests_day` capaces de suspender
+un target, salvo `ALLOW_QUOTA_EFFECTS=1` explícito.
+
+Los CSV de cliente contienen status, conexión, TTFB y total; los de servidor muestrean CPU,
+memoria y conexiones MariaDB. Se escriben en `/tmp/commander-benchmark-*` o `OUTPUT_DIR`. Se
+pueden ajustar `REQUESTS`, `WARMUP_REQUESTS`, `CONCURRENCIES` y `TARGET_RPS`.
+
+### Baseline local y tuning del 17-08-2026
+
+Entorno: i7-7700K de 4 núcleos/8 hilos y 31 GiB; `app` pasó de no tener límites y usar 5 workers
+dinámicos sin reciclaje a 6 CPU/2 GiB y 8 workers estáticos. MariaDB 11.5 mantuvo
+`max_connections=151` y buffer pool de 128 MiB. Se enviaron 300 operaciones por escalón, con
+metering activo y rate limit separado.
+
+| Perfil/escenario | Concurrencia | Antes | Ajustado | Cambio | p95 antes → ajustado |
+|---|---:|---:|---:|---:|---:|
+| lectura cross-package | 10 | 54,89 RPS | 91,24 RPS | +66 % | 191 → 121 ms |
+| escritura cross-package | 10 | 30,12 RPS | 52,03 RPS | +73 % | 327 → 176 ms |
+| mixto aceptado por criterio | 5 | 45,19 RPS | 74,49 RPS | +65 % | 125 → 76 ms |
+| mixto máximo bruto | 25 | 49,35 RPS | 94,45 RPS | +91 % | 550 → 293 ms |
+
+No hubo `5xx`, timeouts ni `429`. El ajuste alcanzó 358 % CPU y 77 MiB en `app`, 38 % CPU y
+293 MiB en MariaDB, con 17 conexiones activas como máximo. Diez y doce workers rindieron menos
+que ocho: el cuello pasó de la cola artificial de cinco workers a los cuatro núcleos físicos y al
+coste por request. Memoria, la cuota de 6 CPU y `max_connections` conservaron margen.
+
+MariaDB no se retocó: los 10,4 MiB actuales caben completos en su buffer pool de 128 MiB, no hubo
+esperas por buffer y su CPU quedó lejos de saturarse. Aumentar memoria o relajar durabilidad no
+mejoraría este perfil medido.
+
+Una comparación más larga de 1.200 lecturas a concurrencia 5 dio 90,29 RPS para un tenant, 89,53
+para tres bases Kilkana y 88,64 para Kilkana+DemoApp. La diferencia inferior al 2 % no muestra una
+penalización material por cambiar BD/package.
+
+El login se midió aparte porque bcrypt es deliberadamente intensivo en CPU. Con coste 12, ocho
+workers procesaron 1.000 logins correctos en 17,74 s: 56,37 RPS, p95 de 142 ms, 468 % de CPU PHP,
+22 % de CPU MariaDB y ningún error, timeout o `429`. Es throughput sostenido con concurrencia ocho,
+no una promesa de aceptar 1.000 sockets en el mismo instante; no reduzcas bcrypt para aumentar esa
+cifra. Usa `login-load` para repetirla sobre el hardware de producción.
+
+El objetivo de 100 RPS mixtos queda cerca en bruto, pero no cabe con 30 % de margen y el criterio
+de latencia. La medición da dos réplicas equivalentes; no deben competir en este mismo i7, porque
+una ya consume hasta 3,58 de sus cuatro núcleos físicos. Necesitan CPU adicional o un segundo
+nodo. Con ocho workers por réplica, reserva hasta 16 conexiones MariaDB por réplica —Commander +
+tenant—, más scheduler, provisioner y operación.
+
+Los 100 tenants registrados no crean 100 conexiones permanentes: mandan la concurrencia y los
+workers. Esta línea base solo tiene cuatro bases; no mide backups, migraciones, filesystem ni
+`information_schema` con 100 esquemas. Además, el generador usa procesos `curl` y conexiones
+cortas desde el mismo host Docker, por lo que es una medida conservadora extremo a extremo, no un
+sustituto de una prueba distribuida.
 
 ## Comprobaciones
 

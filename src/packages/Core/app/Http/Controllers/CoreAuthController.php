@@ -9,6 +9,7 @@ use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Packages\Core\Models\CoreUserModel;
 
@@ -36,9 +37,13 @@ class CoreAuthController extends Controller
         /** @var CoreUserModel|null $user */
         $user = CoreUserModel::query()->where('email', $data['email'])->first();
 
-        $hash = $user?->password;
+        $hash = (string) ($user?->password ?? '');
+        $verificationHash = $hash !== ''
+            ? $hash
+            : $this->dummyPasswordHash();
+        $passwordMatches = Hash::check($data['password'], $verificationHash);
 
-        if ($user === null || $hash === null || $hash === '' || ! Hash::check($data['password'], (string) $hash)) {
+        if ($user === null || $hash === '' || ! $passwordMatches) {
             return response()->json(['error' => 'Invalid credentials'], 401);
         }
 
@@ -55,6 +60,13 @@ class CoreAuthController extends Controller
             'user' => $user,
             'token_id' => $token->accessToken->id,
         ]);
+    }
+
+    private function dummyPasswordHash(): string
+    {
+        $key = 'core:auth:dummy-password-hash:'.hash('sha256', serialize(config('hashing')));
+
+        return (string) Cache::rememberForever($key, fn (): string => Hash::make('invalid-login-placeholder'));
     }
 
     #[Endpoint(

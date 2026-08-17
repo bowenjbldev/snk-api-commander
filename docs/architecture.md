@@ -126,9 +126,15 @@ la credencial DDL y crea un usuario runtime por instancia con únicamente `SELEC
 - `suspended` o grace vencida: `402`;
 - error al verificar estado: `503` fail-closed.
 
-Rate limit y login incluyen `instance_id` en su clave. `CoreMeteringMiddleware` captura esa misma
-identidad antes de que el resolutor restaure el contexto y escribe el log al terminar la respuesta.
-Un fallo de metering nunca modifica la respuesta.
+El rate limit general usa `instance_id` más usuario autenticado o IP. El login limita únicamente
+respuestas `401`: cinco fallos por cuenta normalizada y diez por IP cada minuto, siempre dentro de
+la instancia. Así los accesos correctos de usuarios que comparten NAT no consumen el presupuesto,
+pero ni rotar IP contra una cuenta ni rotar cuentas desde una IP evita el bloqueo. Los límites se
+configuran bajo `core.rate_limits` y la cache compartida los mantiene coherentes entre réplicas.
+Un identificador inexistente ejecuta una comprobación contra un hash dummy del mismo algoritmo,
+de modo que respuesta y coste no revelen si la cuenta existe.
+`CoreMeteringMiddleware` captura la misma identidad antes de que el resolutor restaure el contexto
+y escribe el log al terminar la respuesta. Un fallo de metering nunca modifica la respuesta.
 
 ## Procesos
 
@@ -143,6 +149,30 @@ Un fallo de metering nunca modifica la respuesta.
 La conmutación de conexión/configuración es estado global mutable. Está soportada en PHP-FPM y
 workers secuenciales. No debe usarse con requests concurrentes dentro del mismo proceso
 (Octane/Swoole) sin contexto aislado por coroutine.
+
+### Capacidad y conexiones
+
+PDO no usa conexiones persistentes ni existe un pool externo. Cada request resuelve la instancia
+en `commander`, abre la conexión tenant al primer acceso SQL y `DB::purge('tenant')` la cierra al
+salir. Por tanto, el número de tenants registrados no determina las conexiones simultáneas; la
+aproximación conservadora es dos conexiones por worker HTTP ocupado, más scheduler, provisioner
+y operación. Sí existe churn de autenticación/conexión proporcional a las peticiones.
+
+La baseline local de agosto de 2026, detallada en [Operación](operations.md), pasó de cinco workers
+dinámicos a ocho estáticos calibrados sobre un i7-7700K. La lectura subió de 55 a 91 RPS, la
+escritura de 30 a 52 y el escalón mixto aceptado por latencia de 45 a 74 RPS. Diez y doce workers
+empeoraron throughput/p95: el límite actual son los cuatro núcleos físicos y el coste por request,
+no memoria, cuota de CPU ni MariaDB. Pruebas de 1.200 lecturas con uno y tres tenants de Kilkana y
+con dos packages quedaron dentro de un 2 %; el cambio de conexión/package no añadió una
+penalización material.
+
+Commander sigue siendo un punto central por petición: resolución, estado y un insert de metering.
+Con `CORE_METERING_SAMPLE_RATE=1`, 100 RPS producen 8,64 millones de logs/día. La tabla local ocupa
+aproximadamente 233 bytes por fila entre datos e índices, del orden de 2 GB/día y 60 GB para la
+retención predeterminada de 30 días, antes de margen operativo. El rollup diario conserva todas
+las duraciones del bucket en arrays PHP para calcular p95; `chunkById` limita cada lectura, pero no
+ese acumulado. Ese algoritmo no es viable a millones de peticiones/día con `memory_limit=128M` y
+debe cambiarse antes de sostener ese volumen.
 
 ## Invariantes de implementación
 
@@ -165,3 +195,13 @@ workers secuenciales. No debe usarse con requests concurrentes dentro del mismo 
 - Los tests SQLite no validan DDL, permisos, collation ni `information_schema` de MariaDB.
 - El borrado solo conoce el storage `media/{database}`.
 - Las clases Kilkana conservan el prefijo histórico `SnkKilkana*`; no afecta al aislamiento.
+- El proceso HTTP y el arranque/migrador comparten `commander_app`: no tiene acceso a bases tenant,
+  pero conserva DDL sobre `commander`. Producción debe separar credencial runtime y migrador.
+- Solo `app` tiene presupuesto explícito de CPU/memoria/procesos. MariaDB, Nginx, scheduler y
+  provisioner aún compiten sin cuotas en el host local.
+- Nginx local emite `X-Content-Type-Options`, pero deja HSTS al terminador TLS de producción. CSP
+  solo será relevante en hosts que sirvan contenido de navegador.
+- El metering crudo y su rollup diario son el primer límite de almacenamiento/memoria al acercarse
+  a 100 RPS, antes que el número de conexiones MariaDB.
+- Los tokens Sanctum caducados dejan de autenticar, pero aún no existe una poda programada que
+  recorra todas las bases tenant; debe añadirse si el volumen histórico de logins empieza a crecer.

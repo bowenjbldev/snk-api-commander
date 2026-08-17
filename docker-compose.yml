@@ -10,11 +10,20 @@ services:
         WWWGROUP: ${WWWGROUP:-1000}
     restart: unless-stopped
     working_dir: /var/www/src
+    cpus: "${APP_CONTAINER_CPUS:-6.0}"
+    mem_limit: "${APP_CONTAINER_MEMORY:-2g}"
+    pids_limit: ${APP_CONTAINER_PIDS:-128}
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     volumes:
       - ./src:/var/www/src
       # Historial Git (solo lectura) para insights por aplicación, acotado al package compartido.
       - ./.git:/var/www/.git:ro
       - /var/www/src/bootstrap/cache
+      - ./docker/php/commander.ini:/usr/local/etc/php/conf.d/zz-commander.ini:ro
+      - ./docker/php/fpm.conf:/usr/local/etc/php-fpm.d/zzzz-commander.conf:ro
     environment:
       DB_USERNAME: ${COMMANDER_DB_USERNAME:-commander_app}
       DB_PASSWORD: ${COMMANDER_DB_PASSWORD:-commander-local-secret}
