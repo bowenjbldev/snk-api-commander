@@ -13,8 +13,9 @@ import {
   Search as SearchInput,
   Tag,
 } from '@carbon/react';
-import { Notification, Renew, Search, UserAvatar } from '@carbon/icons-react';
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Close, Code, Notification, Renew, Rocket, Search, UserAvatar } from '@carbon/icons-react';
+import { Link as RouterLink, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link } from '@shared/components/AppLink';
 import { fmtRel, ROLES } from '@services/api/mock/commander-mock';
 import { NAV } from '@app/nav';
 import { useApp } from '@app/provider';
@@ -74,24 +75,37 @@ export function Shell() {
           isActive={sideNav.expanded}
           aria-expanded={sideNav.expanded}
         />
-        <HeaderName as={Link} to="/" prefix="Commander">
-          Control plane
+        {/* `prefix` por defecto es «IBM»; sin vaciarlo el logotipo dice «IBM Commander». */}
+        <HeaderName as={RouterLink} to="/" prefix="">
+          Commander
         </HeaderName>
 
+        {/* El modo de compilación, no un valor escrito a mano: en producción dirá otra cosa,
+            y por eso el icono también cambia. De solo lectura porque no acciona nada: la
+            operacional promete desplegar más de lo que enseña. Tamaño `md` porque Carbon
+            descarta el icono decorativo en `sm` —a propósito: en 18px choca con el borde—. */}
+        <Tag
+          type="green"
+          size="md"
+          className="cmd-env"
+          renderIcon={import.meta.env.DEV ? Code : Rocket}
+        >
+          {import.meta.env.MODE}
+        </Tag>
+
         <HeaderGlobalBar>
-          {/* El modo de compilación, no un valor escrito a mano: en producción dirá otra cosa. */}
-          <Tag type="purple" size="sm" className="cmd-env">
-            {import.meta.env.MODE}
-          </Tag>
-          <HeaderGlobalAction aria-label="Refrescar los datos" onClick={refresh}>
-            <Renew size={20} />
-          </HeaderGlobalAction>
+          {/* El buscador se abre en la propia barra, no en un panel lateral: los
+              resultados cuelgan justo debajo del campo donde se escribe. */}
+          {panel === 'search' && <GlobalSearch onGo={() => setPanel(null)} />}
           <HeaderGlobalAction
-            aria-label="Buscar"
+            aria-label={panel === 'search' ? 'Cerrar la búsqueda' : 'Buscar'}
             isActive={panel === 'search'}
             onClick={() => setPanel(panel === 'search' ? null : 'search')}
           >
-            <Search size={20} />
+            {panel === 'search' ? <Close size={20} /> : <Search size={20} />}
+          </HeaderGlobalAction>
+          <HeaderGlobalAction aria-label="Refrescar los datos" onClick={refresh}>
+            <Renew size={20} />
           </HeaderGlobalAction>
           <HeaderGlobalAction
             aria-label="Actividad reciente"
@@ -109,10 +123,15 @@ export function Shell() {
           </HeaderGlobalAction>
         </HeaderGlobalBar>
 
-        <HeaderPanel expanded={panel !== null} aria-label="Panel de cabecera">
-          {panel === 'search' && <SearchPanel onGo={() => setPanel(null)} />}
+        {/* Un solo panel para los dos desplegables; el ancho lo fija cada uno, porque
+            una lista de eventos y una ficha de sesión no piden lo mismo. */}
+        <HeaderPanel
+          expanded={panel === 'notif' || panel === 'user'}
+          className={`cmd-hpanel cmd-hpanel--${panel ?? 'none'}`}
+          aria-label="Panel de cabecera"
+        >
           {panel === 'notif' && <NotificationsPanel onGo={() => setPanel(null)} />}
-          {panel === 'user' && <UserPanel />}
+          {panel === 'user' && <UserPanel onGo={() => setPanel(null)} />}
         </HeaderPanel>
 
         <SideNav
@@ -158,7 +177,7 @@ export function Shell() {
 }
 
 /** Búsqueda global sobre el store: mismas reglas de permiso que la navegación. */
-function SearchPanel({ onGo }: { onGo: () => void }) {
+function GlobalSearch({ onGo }: { onGo: () => void }) {
   const { store, can } = useApp();
   const [q, setQ] = useState('');
   const navigate = useNavigate();
@@ -209,39 +228,57 @@ function SearchPanel({ onGo }: { onGo: () => void }) {
     return out.slice(0, 8);
   }, [q, store, can]);
 
+  const enough = q.trim().length >= 2;
+
   return (
-    <div className="cmd-panel cmd-stack">
+    <div className="cmd-search">
       <SearchInput
         id="global-search"
         size="lg"
+        autoFocus
         labelText="Buscar en el control plane"
-        placeholder="Instancia, cuenta, cliente, plan…"
+        placeholder="Instancia, cuenta, cliente, aplicación o plan"
         value={q}
         onChange={(e) => setQ(e.target.value)}
       />
-      {q.trim().length >= 2 && results.length === 0 && (
-        <p className="cmd-meter__caption">Sin coincidencias.</p>
+
+      {enough && results.length > 0 && (
+        <ul className="cmd-search__results">
+          {results.map((r) => (
+            <li key={r.to}>
+              <button
+                type="button"
+                className="cmd-search__hit"
+                onClick={() => {
+                  navigate(r.to);
+                  onGo();
+                }}
+              >
+                <span>{r.label}</span>
+                <span className="cmd-search__hint">{r.hint}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
-      <ul>
-        {results.map((r) => (
-          <li key={r.to}>
-            <button
-              type="button"
-              className="cmd-panel__link"
-              onClick={() => {
-                navigate(r.to);
-                onGo();
-              }}
-            >
-              <span>{r.label}</span>
-              <span className="cmd-meter__caption">{r.hint}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
+
+      {enough && results.length === 0 && (
+        <p className="cmd-search__results cmd-search__empty">Sin coincidencias para «{q.trim()}».</p>
+      )}
     </div>
   );
 }
+
+/** El punto de color adelanta la gravedad del evento antes de leer su texto. */
+const EVENT_TONE: Record<string, string> = {
+  failed: 'var(--cds-support-error)',
+  provision_failed: 'var(--cds-support-error)',
+  suspended: 'var(--cds-support-error)',
+  invoice_overdue: 'var(--cds-support-error)',
+  grace: 'var(--cds-support-warning)',
+  warning: 'var(--cds-support-warning)',
+  quota_warning: 'var(--cds-support-warning)',
+};
 
 function NotificationsPanel({ onGo }: { onGo: () => void }) {
   const { store } = useApp();
@@ -249,21 +286,36 @@ function NotificationsPanel({ onGo }: { onGo: () => void }) {
   const items = store.activity.slice(0, 6);
 
   return (
-    <div className="cmd-panel cmd-stack">
-      <p className="cmd-panel__title">Actividad reciente</p>
+    <div className="cmd-hpanel__body">
+      <div className="cmd-hpanel__head">
+        <span className="cmd-hpanel__title">Actividad reciente</span>
+        <Link to="/activity" onClick={onGo}>
+          Ver toda
+        </Link>
+      </div>
+
+      {items.length === 0 && <p className="cmd-hpanel__empty">Ningún evento registrado todavía.</p>}
+
       <ul>
         {items.map((a) => (
           <li key={a.id}>
             <button
               type="button"
-              className="cmd-panel__link"
+              className="cmd-notif"
               onClick={() => {
-                navigate(`/activity/${a.id}`);
+                navigate(a.instance_id ? `/instances/${a.instance_id}` : `/activity/${a.id}`);
                 onGo();
               }}
             >
-              <span>{a.label}</span>
-              <span className="cmd-meter__caption">{fmtRel(a.created_at)}</span>
+              <span className="cmd-notif__label">
+                <span
+                  className="cmd-notif__dot"
+                  style={{ background: EVENT_TONE[a.reason] ?? EVENT_TONE[a.type] ?? 'var(--cds-support-info)' }}
+                />
+                {a.label}
+              </span>
+              <span className="cmd-notif__message">{a.message}</span>
+              <span className="cmd-notif__when">{fmtRel(a.created_at)}</span>
             </button>
           </li>
         ))}
@@ -272,30 +324,58 @@ function NotificationsPanel({ onGo }: { onGo: () => void }) {
   );
 }
 
-function UserPanel() {
-  const { operator, role, signOut } = useApp();
+function UserPanel({ onGo }: { onGo: () => void }) {
+  const { operator, role, can, signOut } = useApp();
   const navigate = useNavigate();
 
+  const initials = (operator?.short_name ?? operator?.name ?? '?')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join('')
+    .toUpperCase();
+
+  const links = [
+    { label: 'Preferencias', to: '/settings', perm: 'show settings' },
+    { label: 'Operadores', to: '/operators', perm: 'index users' },
+  ].filter((l) => can(l.perm));
+
   return (
-    <div className="cmd-panel cmd-stack">
-      <p className="cmd-panel__title">{operator?.name}</p>
-      <dl className="cmd-defs">
-        <dt>Correo</dt>
-        <dd>{operator?.email}</dd>
-        <dt>Rol efectivo</dt>
-        <dd>{ROLES[role].label}</dd>
-      </dl>
-      <p className="cmd-meter__caption">{ROLES[role].hint}</p>
-      <button
-        type="button"
-        className="cmd-panel__link"
-        onClick={() => {
-          signOut();
-          navigate('/login');
-        }}
-      >
-        Salir
-      </button>
+    <div className="cmd-hpanel__body">
+      <div className="cmd-user">
+        <span className="cmd-user__avatar" aria-hidden="true">
+          {initials}
+        </span>
+        <span className="cmd-user__id">
+          <span className="cmd-user__name">{operator?.short_name ?? operator?.name}</span>
+          <span className="cmd-user__mail">{operator?.email}</span>
+        </span>
+      </div>
+
+      <div className="cmd-user__perms">
+        <span className="cmd-nav__group">Permisos</span>
+        <span>{ROLES[role].label}</span>
+        <span className="cmd-meter__caption">{ROLES[role].hint}</span>
+      </div>
+
+      <div className="cmd-user__links">
+        {links.map((l) => (
+          <Link key={l.to} to={l.to} className="cmd-user__link" onClick={onGo}>
+            {l.label}
+          </Link>
+        ))}
+        <button
+          type="button"
+          className="cmd-user__link"
+          onClick={() => {
+            signOut();
+            navigate('/login');
+          }}
+        >
+          Cerrar la sesión
+        </button>
+      </div>
     </div>
   );
 }

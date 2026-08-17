@@ -38,9 +38,63 @@ body {
 }
 
 /* El tag de entorno no es interactivo: se queda quieto entre los botones del header. */
+/* Va pegada al nombre del producto, en el hueco que dejó «Control plane». El propio
+   `HeaderName` ya reserva 32px por detrás, así que la etiqueta no añade margen. */
 .cmd-env {
   align-self: center;
-  margin-inline: $spacing-03 $spacing-05;
+}
+
+/* El buscador se abre dentro de la barra, así que necesita ser el ancla de su propio
+   desplegable de resultados. */
+.cmd-search {
+  position: relative;
+  inline-size: 26rem;
+  max-inline-size: 40vw;
+}
+
+.cmd-search__results {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 100%;
+  z-index: 9000;
+  max-block-size: 60vh;
+  overflow-y: auto;
+  background: var(--cds-layer-01);
+  border: 1px solid var(--cds-border-subtle-02);
+  border-block-start: 0;
+}
+
+.cmd-search__hit {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: $spacing-02 $spacing-05;
+  align-items: baseline;
+  inline-size: 100%;
+  padding: $spacing-04 $spacing-05;
+  border: 0;
+  border-block-end: 1px solid var(--cds-border-subtle-01);
+  background: none;
+  color: var(--cds-text-primary);
+  cursor: pointer;
+  text-align: start;
+}
+
+.cmd-search__hit:hover {
+  background: var(--cds-layer-hover-01);
+}
+
+.cmd-search__hint {
+  @include type-style('label-01');
+
+  color: var(--cds-text-helper);
+  white-space: nowrap;
+}
+
+.cmd-search__empty {
+  @include type-style('label-01');
+
+  padding: $spacing-05;
+  color: var(--cds-text-helper);
 }
 
 /* El workspace no crece a lo ancho sin fin: se topa en el breakpoint `xlg` del grid 2x
@@ -70,24 +124,168 @@ body {
 }
 
 
-.cmd-panel__link {
-  @include type-style('body-compact-01');
+/* Paneles de la cabecera ---------------------------------------------------- */
 
+/* Carbon da al panel 16rem y toda la altura de la ventana: demasiado estrecho para un
+   correo y demasiado alto para seis eventos. Cada panel pide su ancho y crece con su
+   contenido; el filete inferior lo cierra. */
+.cmd-hpanel {
+  /* Carbon lo ancla arriba y abajo (`inset-block: 3rem 0`), así que se estira hasta el
+     pie aunque solo lleve tres enlaces. Soltando el anclaje inferior crece con su
+     contenido y para donde termina. */
+  inset-block-end: auto;
+  max-block-size: calc(100vh - 3rem);
+  overflow-y: auto;
+  border-block-end: 1px solid var(--cds-border-subtle-02);
+}
+
+.cmd-hpanel--notif.cds--header-panel--expanded {
+  inline-size: 24rem;
+}
+
+.cmd-hpanel--user.cds--header-panel--expanded {
+  inline-size: 20rem;
+}
+
+.cmd-hpanel__head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: $spacing-05;
+  padding: $spacing-05;
+  border-block-end: 1px solid var(--cds-border-subtle-01);
+}
+
+.cmd-hpanel__title {
+  @include type-style('heading-compact-01');
+}
+
+.cmd-hpanel__empty {
+  @include type-style('label-01');
+
+  padding: $spacing-05;
+  color: var(--cds-text-helper);
+}
+
+/* Cada evento: gravedad, qué pasó, y cuándo. */
+.cmd-notif {
+  display: grid;
+  gap: $spacing-02;
   inline-size: 100%;
-  padding: $spacing-03 0;
+  padding: $spacing-04 $spacing-05;
   border: 0;
+  border-block-end: 1px solid var(--cds-border-subtle-01);
   background: none;
-  color: var(--cds-link-primary);
+  color: var(--cds-text-primary);
   cursor: pointer;
   text-align: start;
 }
 
-.cmd-panel__link:hover {
+.cmd-notif:hover {
   background: var(--cds-layer-hover-01);
+}
+
+.cmd-notif__label {
+  @include type-style('body-compact-01');
+
+  display: flex;
+  align-items: center;
+  gap: $spacing-03;
+}
+
+.cmd-notif__dot {
+  flex: none;
+  inline-size: 0.375rem;
+  block-size: 0.375rem;
+  border-radius: 50%;
+}
+
+.cmd-notif__message {
+  @include type-style('label-01');
+
+  color: var(--cds-text-secondary);
+}
+
+.cmd-notif__when {
+  @include type-style('code-01');
+
+  color: var(--cds-text-helper);
+}
+
+/* Ficha de sesión ----------------------------------------------------------- */
+
+.cmd-user {
+  display: flex;
+  align-items: center;
+  gap: $spacing-04;
+  padding: $spacing-05;
+  border-block-end: 1px solid var(--cds-border-subtle-01);
+}
+
+.cmd-user__avatar {
+  @include type-style('heading-compact-01');
+
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2.5rem;
+  block-size: 2.5rem;
+  border-radius: 50%;
+  background: var(--cds-layer-03);
+}
+
+.cmd-user__id {
+  display: grid;
+  gap: $spacing-01;
+  min-inline-size: 0;
+}
+
+.cmd-user__name {
+  @include type-style('heading-compact-01');
+}
+
+/* El correo no se parte en tres líneas: cabe o se recorta. */
+.cmd-user__mail {
+  @include type-style('code-01');
+
+  overflow: hidden;
+  color: var(--cds-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cmd-user__perms {
+  display: grid;
+  gap: $spacing-02;
+  padding: 0 $spacing-05 $spacing-05;
+  border-block-end: 1px solid var(--cds-border-subtle-01);
+}
+
+.cmd-user__perms .cmd-nav__group {
+  padding: $spacing-05 0 0;
+}
+
+.cmd-user__links {
+  display: grid;
+  padding-block: $spacing-02;
+}
+
+.cmd-user__link {
+  @include type-style('body-compact-01');
+
+  padding: $spacing-04 $spacing-05;
+  border: 0;
+  background: none;
+  color: var(--cds-text-primary);
+  cursor: pointer;
+  text-align: start;
+  text-decoration: none;
+}
+
+.cmd-user__link:hover {
+  background: var(--cds-layer-hover-01);
+  color: var(--cds-text-primary);
 }
 
 /* Login -------------------------------------------------------------------- */

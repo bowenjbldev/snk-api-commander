@@ -14,14 +14,17 @@ export function Link({
   children,
   className,
   title,
+  onClick,
 }: {
   to: string;
   children: ReactNode;
   className?: string;
   title?: string;
+  /** Para cerrar lo que envuelva al enlace —un panel, un menú— al navegar. */
+  onClick?: () => void;
 }) {
   return (
-    <CarbonLink as={RouterLink} to={to} className={className} title={title}>
+    <CarbonLink as={RouterLink} to={to} className={className} title={title} onClick={onClick}>
       {children}
     </CarbonLink>
   );
