@@ -1,7 +1,7 @@
 # Documentación de Snake API Commander
 
 Este directorio describe el backend y el control plane que existen en esta rama. El cliente web
-del operador vive en `commander/` y hoy corre contra un mock, sin tocar la API.
+del operador vive en `commander-web/` y hoy corre contra un mock, sin tocar la API.
 
 ## Mapa de lectura
 

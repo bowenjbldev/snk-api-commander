@@ -111,13 +111,13 @@ services:
 
   # Punto de conexión opcional para un futuro cliente web de Commander.
   # No arranca con el backend: se activa explícitamente con `--profile spa`
-  # después de crear `commander/package.json`.
+  # después de crear `commander-web/package.json`.
   commander-web:
     profiles: ["spa"]
     image: node:24-alpine
     working_dir: /app
     volumes:
-      - ./commander:/app
+      - ./commander-web:/app
       - /app/node_modules
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
     restart: unless-stopped

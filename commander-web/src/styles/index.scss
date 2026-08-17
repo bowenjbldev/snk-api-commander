@@ -1,0 +1,728 @@
+// IBM Plex llega desde Google Fonts en index.html: no emitimos @font-face al CDN de Akamai.
+@use '@carbon/react' with ($css--font-face: false);
+@use '@carbon/react/scss/themes' as *;
+@use '@carbon/react/scss/theme';
+@use '@carbon/react/scss/spacing' as *;
+@use '@carbon/react/scss/type' as *;
+@use '@carbon/react/scss/breakpoint' as *;
+
+// Gray 100 en la raíz: los componentes leen los tokens como custom properties, así que
+// reemitirlos aquí viste toda la aplicación sin reconfigurar el módulo de tema.
+:root {
+  @include theme.theme($g100);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--cds-background);
+  color: var(--cds-text-primary);
+}
+
+/* Shell -------------------------------------------------------------------- */
+
+/* Lo único fijo por arriba es el header de Carbon, que mide 3rem. */
+.cmd-shell__main {
+  padding-block-start: 3rem;
+}
+
+/* Desde `lg` la navegación queda fijada y deja de solaparse con el contenido. */
+@include breakpoint-up(lg) {
+  .cmd-shell__main {
+    margin-inline-start: 16rem;
+  }
+}
+
+/* El tag de entorno no es interactivo: se queda quieto entre los botones del header. */
+.cmd-env {
+  align-self: center;
+  margin-inline: $spacing-03 $spacing-05;
+}
+
+/* El workspace no crece a lo ancho sin fin: se topa en el breakpoint `xlg` del grid 2x
+   (82rem = 1312px) y se centra, igual que hace `.cds--css-grid` con `max`. Como el
+   contenedor ya está desplazado por la navegación, centra el área útil, no la ventana. */
+.cmd-shell__content {
+  min-block-size: calc(100vh - 3rem);
+  max-inline-size: 82rem;
+  margin-inline: auto;
+  padding: $spacing-06 $spacing-07 $spacing-09;
+}
+
+/* Rótulo de sección. Lo comparten la navegación lateral y el encabezado de página para
+   que un «INICIO» se lea igual esté donde esté. */
+%cmd-eyebrow {
+  @include type-style('label-01');
+
+  color: var(--cds-text-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cmd-nav__group {
+  @extend %cmd-eyebrow;
+
+  padding: $spacing-05 $spacing-05 $spacing-02;
+}
+
+
+.cmd-panel__link {
+  @include type-style('body-compact-01');
+
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: $spacing-05;
+  inline-size: 100%;
+  padding: $spacing-03 0;
+  border: 0;
+  background: none;
+  color: var(--cds-link-primary);
+  cursor: pointer;
+  text-align: start;
+}
+
+.cmd-panel__link:hover {
+  background: var(--cds-layer-hover-01);
+}
+
+/* Login -------------------------------------------------------------------- */
+
+.cmd-login {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  min-block-size: 100vh;
+}
+
+@media (max-width: 55rem) {
+  .cmd-login {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cmd-login__aside,
+.cmd-login__form {
+  padding: $spacing-09 $spacing-07;
+}
+
+.cmd-login__aside {
+  border-inline-end: 1px solid var(--cds-border-subtle-01);
+}
+
+.cmd-login__claim {
+  @include type-style('fluid-heading-03', true);
+
+  max-inline-size: 20ch;
+  margin-block: $spacing-07 $spacing-06;
+  font-weight: 300;
+}
+
+.cmd-login__foot {
+  @include type-style('code-01');
+
+  margin-block-start: $spacing-09;
+  color: var(--cds-text-helper);
+}
+
+/* Ancho de los desplegables de filtro de una tabla. */
+.cmd-filter {
+  inline-size: 14rem;
+}
+
+/* El panel de pestaña trae fondo y padding propios; aquí el fondo lo ponen los
+   paneles de dentro, y ese relleno extra fundía la rejilla en un solo bloque.
+   El selector replica el de Carbon (`.cds--tabs--contained ~ .cds--tab-content`)
+   porque el suyo lleva dos clases y una regla de una sola clase no lo gana. */
+.cds--tabs--contained ~ .cds--tab-content {
+  padding: $spacing-05 0 0;
+  background: transparent;
+}
+
+/* Contrato común de página ------------------------------------------------- */
+
+/* La sección de la navegación encabeza el título: dice dónde estás antes de decir qué
+   estás mirando, y con el mismo rótulo que la propia navegación. */
+.cmd-page__kicker {
+  @extend %cmd-eyebrow;
+
+  display: block;
+  margin-block-end: $spacing-02;
+}
+
+.cmd-page__title {
+  @include type-style('heading-05');
+
+  margin-block: $spacing-03 $spacing-03;
+}
+
+.cmd-page__lede {
+  @include type-style('body-01');
+
+  max-inline-size: 42rem;
+  color: var(--cds-text-secondary);
+}
+
+.cmd-page__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: $spacing-05;
+  margin-block-end: $spacing-06;
+}
+
+.cmd-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-03;
+}
+
+.cmd-count {
+  @include type-style('label-01');
+
+  display: block;
+  padding: $spacing-03 0;
+  color: var(--cds-text-secondary);
+}
+
+.cmd-table-scroll {
+  overflow-x: auto;
+}
+
+/* Carbon alinea la toolbar a la derecha: sin envolver, los primeros filtros se salen
+   por la izquierda en pantallas estrechas y quedan fuera de alcance. */
+.cds--table-toolbar {
+  block-size: auto;
+  min-block-size: 3rem;
+}
+
+.cds--table-toolbar .cds--toolbar-content {
+  block-size: auto;
+  min-block-size: 3rem;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  row-gap: $spacing-03;
+}
+
+/* Métricas y barras --------------------------------------------------------- */
+
+.cmd-meter {
+  min-inline-size: 8rem;
+}
+
+.cmd-meter__value {
+  @include type-style('label-01');
+
+  display: flex;
+  justify-content: space-between;
+  gap: $spacing-03;
+}
+
+.cmd-meter__track {
+  block-size: 0.25rem;
+  margin-block-start: $spacing-02;
+  background: var(--cds-layer-accent-01);
+}
+
+.cmd-meter__fill {
+  display: block;
+  block-size: 100%;
+  background: var(--cds-support-success);
+}
+
+.cmd-meter__fill--warn {
+  background: var(--cds-support-warning);
+}
+
+.cmd-meter__fill--crit {
+  background: var(--cds-support-error);
+}
+
+.cmd-meter__caption {
+  @include type-style('label-01');
+
+  color: var(--cds-text-secondary);
+}
+
+/* Rejilla de indicadores ---------------------------------------------------- */
+
+/* Las columnas salen del número real de celdas (`--cmd-kpi-cols`, que pone `KpiGrid`):
+   `auto-fit` repartía por ancho disponible y dejaba huecos abiertos en la última fila
+   —ocho indicadores salían 5+3—. Por debajo de `lg` manda el breakpoint, no la cuenta. */
+.cmd-kpis {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1px;
+  margin-block-end: $spacing-07;
+  background: var(--cds-border-subtle-01);
+}
+
+@include breakpoint-up(md) {
+  .cmd-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@include breakpoint-up(lg) {
+  .cmd-kpis {
+    grid-template-columns: repeat(var(--cmd-kpi-cols, 4), minmax(0, 1fr));
+  }
+}
+
+/* El fondo y el relleno de cada celda los pone el `Tile` de Carbon con sus propios
+   tokens (`$layer`, `$spacing-05`), que además siguen el contexto de `<Layer>`. */
+
+.cmd-kpi__label {
+  @include type-style('label-01');
+
+  color: var(--cds-text-secondary);
+}
+
+.cmd-kpi__value {
+  @include type-style('heading-04');
+
+  margin-block: $spacing-02;
+}
+
+.cmd-kpi__value--crit {
+  color: var(--cds-text-error);
+}
+
+.cmd-kpi__value--warn {
+  color: var(--cds-support-warning);
+}
+
+.cmd-kpi__note {
+  @include type-style('label-01');
+
+  color: var(--cds-text-secondary);
+}
+
+/* Dice a dónde lleva la celda, pero no es un ancla propia: el enlace es el tile. */
+.cmd-kpi__link {
+  @include type-style('label-01');
+
+  margin-block-start: $spacing-03;
+  color: var(--cds-link-primary);
+}
+
+/* Fichas -------------------------------------------------------------------- */
+
+/* Dos columnas como máximo. Con pistas de 18rem cabían cuatro, y los bloques que no
+   piden fila entera —los dos gráficos de instancias— quedaban a un cuarto de ancho con
+   media fila vacía al lado. El mínimo de cada pista es la mitad del hueco disponible,
+   así que la segunda columna solo aparece si de verdad caben dos bloques legibles. */
+.cmd-panels {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(100%, max(26rem, calc(50% - #{$spacing-05}))), 1fr)
+  );
+  gap: $spacing-07;
+}
+
+.cmd-panels__wide {
+  grid-column: 1 / -1;
+}
+
+.cmd-panel {
+  padding: $spacing-05;
+  background: var(--cds-layer-01);
+}
+
+.cmd-panel__title {
+  @include type-style('heading-compact-01');
+
+  margin-block-end: $spacing-04;
+}
+
+.cmd-defs {
+  display: grid;
+  grid-template-columns: minmax(8rem, auto) 1fr;
+  gap: $spacing-03 $spacing-05;
+}
+
+.cmd-defs dt {
+  @include type-style('label-01');
+
+  color: var(--cds-text-secondary);
+}
+
+.cmd-defs dd {
+  @include type-style('body-compact-01');
+
+  overflow-wrap: anywhere;
+}
+
+.cmd-mono {
+  @include type-style('code-01');
+}
+
+/* Baja el dato a secundario sin tocar su tamaño: en una tabla, la fecha y el mensaje
+   acompañan y el tipo es lo que se busca. */
+.cmd-dim {
+  color: var(--cds-text-secondary);
+}
+
+.cmd-text-error {
+  color: var(--cds-text-error);
+}
+
+.cmd-text-warn {
+  color: var(--cds-support-warning);
+}
+
+.cmd-stack > * + * {
+  margin-block-start: $spacing-05;
+}
+
+.cmd-form {
+  max-inline-size: 42rem;
+}
+
+.cmd-form__section {
+  margin-block-end: $spacing-07;
+}
+
+.cmd-form__legend {
+  @include type-style('heading-compact-01');
+
+  padding-block-end: $spacing-03;
+  border-block-end: 1px solid var(--cds-border-subtle-01);
+  margin-block-end: $spacing-05;
+}
+
+.cmd-form__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: $spacing-05;
+}
+
+/* El bloque no es una caja: es una columna. Solo el contenido va sobre `layer-01`; el
+   título y su explicación se leen sobre el fondo de la página, que es lo que separa un
+   bloque del siguiente sin necesidad de bordes. */
+.cmd-chart {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: $spacing-04;
+}
+
+.cmd-chart__body {
+  padding: $spacing-05;
+  background: var(--cds-layer-01);
+}
+
+/* Una tabla llena su caja de lado a lado: el contenedor de Carbon ya trae su propio fondo
+   y sus celdas su relleno, así que el del bloque solo la despegaría de los bordes. */
+.cmd-chart__body:has(.cds--data-table-container) {
+  padding: 0;
+}
+
+/* Título a la izquierda y la salida al listado completo pegada a la derecha. */
+.cmd-chart__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: $spacing-05;
+}
+
+.cmd-chart__title {
+  @include type-style('heading-compact-01');
+}
+
+.cmd-chart__help,
+.cmd-chart__summary {
+  @include type-style('body-01');
+
+  display: block;
+  max-inline-size: 118ch;
+  color: var(--cds-text-secondary);
+  text-wrap: pretty;
+}
+
+/* Barras horizontales ------------------------------------------------------- */
+
+.cmd-hbars__row + .cmd-hbars__row {
+  margin-block-start: $spacing-05;
+}
+
+/* Etiqueta que se come el espacio sobrante, lectura absoluta y porcentaje anclado a la
+   derecha: los porcentajes quedan en columna aunque los nombres midan distinto. */
+.cmd-hbars__head {
+  display: flex;
+  align-items: baseline;
+  gap: $spacing-05;
+  margin-block-end: $spacing-03;
+}
+
+.cmd-hbars__label {
+  @include type-style('body-compact-01');
+
+  overflow: hidden;
+  flex: 1 1 auto;
+  color: var(--cds-link-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+span.cmd-hbars__label {
+  color: var(--cds-text-primary);
+}
+
+.cmd-hbars__reading {
+  @include type-style('code-01');
+
+  color: var(--cds-text-secondary);
+  white-space: nowrap;
+}
+
+.cmd-hbars__value {
+  @include type-style('code-01');
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: $spacing-02;
+  min-inline-size: 5rem;
+  color: var(--cds-text-secondary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cmd-hbars__value--ok {
+  color: var(--cds-support-success);
+}
+
+.cmd-hbars__value--warn {
+  color: var(--cds-support-warning);
+}
+
+.cmd-hbars__value--crit {
+  color: var(--cds-support-error);
+}
+
+.cmd-hbars__value svg {
+  fill: currentcolor;
+}
+
+.cmd-hbars__track {
+  position: relative;
+  display: block;
+  block-size: 0.5rem;
+  background: var(--cds-layer-accent-01);
+}
+
+.cmd-hbars__fill {
+  display: block;
+  block-size: 100%;
+  background: var(--cds-support-info);
+}
+
+.cmd-hbars__fill--ok {
+  background: var(--cds-support-success);
+}
+
+.cmd-hbars__fill--warn {
+  background: var(--cds-support-warning);
+}
+
+.cmd-hbars__fill--crit {
+  background: var(--cds-support-error);
+}
+
+/* Sobresale por arriba y por abajo de la barra para que no se confunda con el relleno. */
+.cmd-hbars__warn {
+  position: absolute;
+  inset-block: -0.1875rem;
+  inline-size: 2px;
+  background: var(--cds-border-inverse);
+}
+
+.cmd-hbars__footnote {
+  @include type-style('label-01');
+
+  display: flex;
+  align-items: center;
+  gap: $spacing-03;
+  margin-block-start: $spacing-05;
+  color: var(--cds-text-secondary);
+}
+
+/* La misma marca, para que el pie se lea junto a lo que explica. */
+.cmd-hbars__warn-sample {
+  flex: none;
+  inline-size: 2px;
+  block-size: 0.75rem;
+  background: var(--cds-border-inverse);
+}
+
+/* Barras con eje común ------------------------------------------------------ */
+
+/* Tres columnas fijas —etiqueta, barra, valor— para que las barras arranquen todas del
+   mismo eje y se puedan comparar de un vistazo. */
+.cmd-axisbars__row,
+.cmd-axisbars__axis {
+  display: grid;
+  grid-template-columns: 8.75rem minmax(0, 1fr) 4.75rem;
+  gap: $spacing-04;
+  align-items: center;
+}
+
+.cmd-axisbars__row {
+  padding-block: $spacing-02;
+  text-decoration: none;
+}
+
+a.cmd-axisbars__row:hover .cmd-axisbars__label {
+  color: var(--cds-text-primary);
+}
+
+.cmd-axisbars__label {
+  @include type-style('label-01');
+
+  overflow: hidden;
+  color: var(--cds-text-secondary);
+  text-align: end;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* El borde izquierdo es el eje del que nacen todas las barras. */
+.cmd-axisbars__track {
+  display: block;
+  block-size: 1.25rem;
+  border-inline-start: 1px solid var(--cds-border-strong-01);
+}
+
+.cmd-axisbars__fill {
+  display: block;
+  block-size: 100%;
+}
+
+.cmd-axisbars__value {
+  @include type-style('code-01');
+
+  color: var(--cds-text-secondary);
+  white-space: nowrap;
+}
+
+.cmd-axisbars__axis > div {
+  @include type-style('code-01');
+
+  display: flex;
+  justify-content: space-between;
+  padding-block-start: $spacing-03;
+  border-block-start: 1px solid var(--cds-border-subtle-01);
+  color: var(--cds-text-secondary);
+}
+
+.cmd-axisbars > p {
+  margin-block-start: $spacing-05;
+}
+
+/* Semicírculo --------------------------------------------------------------- */
+
+/* Marcador a la izquierda y desglose navegable a la derecha: el arco da la proporción
+   de un vistazo y la leyenda lleva a cada listado filtrado. */
+.cmd-gauge {
+  display: grid;
+  grid-template-columns: 13rem minmax(0, 1fr);
+  gap: $spacing-07;
+  align-items: center;
+}
+
+@media (max-width: 42rem) {
+  .cmd-gauge {
+    grid-template-columns: 1fr;
+    gap: $spacing-05;
+  }
+}
+
+/* El bloque se estira a la altura de su vecino en la fila; sin esto el marcador queda
+   colgando arriba con un palmo de hueco debajo. */
+.cmd-chart__body:has(.cmd-gauge) {
+  display: flex;
+  flex: 1;
+  align-items: center;
+}
+
+.cmd-chart__body > .cmd-gauge {
+  inline-size: 100%;
+}
+
+.cmd-gauge__dial {
+  position: relative;
+  inline-size: 13rem;
+}
+
+.cmd-gauge__readout {
+  position: absolute;
+  inset: auto 0 0 0;
+  text-align: center;
+}
+
+.cmd-gauge__pct {
+  @include type-style('heading-06');
+
+  display: block;
+  color: var(--cds-text-primary);
+}
+
+.cmd-gauge__legend {
+  display: grid;
+  gap: $spacing-04;
+}
+
+.cmd-gauge__legend-row {
+  display: grid;
+  grid-template-columns: 0.75rem minmax(0, 1fr) auto;
+  gap: $spacing-04;
+  align-items: center;
+  padding-block-end: $spacing-03;
+  border-block-end: 1px solid var(--cds-border-subtle-01);
+  color: var(--cds-text-primary);
+  text-decoration: none;
+}
+
+a.cmd-gauge__legend-row:hover {
+  background: var(--cds-layer-hover-01);
+}
+
+.cmd-gauge__swatch {
+  inline-size: 0.75rem;
+  block-size: 0.75rem;
+}
+
+.cmd-gauge__legend-value {
+  @include type-style('code-01');
+
+  color: var(--cds-text-secondary);
+  white-space: nowrap;
+}
+
+/* Sparkline ----------------------------------------------------------------- */
+
+.cmd-spark {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  block-size: 3rem;
+}
+
+.cmd-spark__bar {
+  flex: 1;
+  background: var(--cds-support-info);
+}
+
+.cmd-spark__bar--warn {
+  background: var(--cds-support-warning);
+}
+
+.cmd-spark__bar--crit {
+  background: var(--cds-support-error);
+}

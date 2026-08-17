@@ -199,7 +199,7 @@ cambios también con MariaDB.
 
 ## Cliente web
 
-`commander/` es el SPA del operador: React 19 + TypeScript + Carbon Design System v11, según el
+`commander-web/` es el SPA del operador: React 19 + TypeScript + Carbon Design System v11, según el
 [diseño funcional](design/commander-spa.md). **Corre entero sobre un mock determinista**
 (`src/services/api/mock/`) y no llama a la API; el store vive en memoria y se pierde al recargar.
 
@@ -212,7 +212,7 @@ docker compose --profile spa up -d commander-web nginx
 Queda en `https://commander.snakepc.test/`. `/api/*` sigue llegando a Laravel y `/` al servidor de
 Vite. Sin el perfil, `/` responde 404 y la API continúa disponible.
 
-Dentro de `commander/` (o con `docker compose exec commander-web`):
+Dentro de `commander-web/` (o con `docker compose exec commander-web`):
 
 ```bash
 npm run check   # tsc -b --noEmit

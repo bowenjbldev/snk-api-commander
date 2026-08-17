@@ -64,6 +64,14 @@ Antes de cambiar código, lee [`docs/README.md`](docs/README.md),
 - No uses `Hash::make` al asignar `CoreUserModel.password`: el cast `hashed` ya lo hace.
 - El modelo de usuario es `Packages\Core\Models\CoreUserModel`, no `App\Models\User`.
 - Valida nombres de host, BD y usuario en toda frontera; no interpolar entrada sin validar en DDL.
+- SPA (`commander-web/`): color, espaciado, tipografía y breakpoints salen **siempre** de Carbon
+  —`var(--cds-*)`, `$spacing-*`, `type-style()`, `breakpoint-up()`—, nunca un hex, un px ni un
+  `@media` a mano. Hoy la app va en `g100` fijo y un hex de tema oscuro parece correcto, pero se
+  rompe en silencio el día que haya conmutador claro/oscuro; el token ya trae los dos valores.
+  `@carbon/charts` es la excepción y tiene su propio cauce: pinta con D3 y necesita un color
+  que pueda parsear, así que su `color.scale` se arma con `tokenScale()` (`shared/lib/theme.ts`),
+  que resuelve el token contra el documento. Nunca un hex suelto en las opciones del chart.
+  Deuda conocida: quedan `@media` a mano en `styles/index.scss` que deberían ser `breakpoint-up()`.
 
 ## Flujo de trabajo
 
