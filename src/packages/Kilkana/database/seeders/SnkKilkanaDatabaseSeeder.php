@@ -26,9 +26,9 @@ use Packages\Kilkana\Models\SnkKilkanaPostViewModel;
 use Packages\Kilkana\Models\SnkKilkanaSettingModel;
 use Packages\Kilkana\Models\SnkKilkanaSubscriberModel;
 use Packages\Kilkana\Models\SnkKilkanaTagModel;
-use Packages\Kilkana\Models\SnkKilkanaThemeVariantModel;
-use Packages\Kilkana\Services\SnkKilkanaThemeAdoptionService;
+use Packages\Kilkana\Models\SnkKilkanaThemeModel;
 use Packages\Kilkana\Services\SnkKilkanaThemeCatalogSyncService;
+use Packages\Kilkana\Services\SnkKilkanaThemeWearService;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -599,17 +599,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         }
     }
 
-    /**
-     * El paquete y las variantes que envía el producto, como PUNTEROS.
-     *
-     * Una builtin no copia el tema: guarda su `base_slug` y deja `tokens`/`style` nulos, que es
-     * lo que significa «tal como lo envía el producto». Por eso no hay un `data/themes.json` al
-     * lado de `layouts.json`: no hay datos que sembrar, solo dos filas que apuntan. Y por eso
-     * mismo, cuando el producto cambie un color, lo hereda todo inquilino que no lo tocara.
-     *
-     * Los slugs coinciden con los ficheros maestros del catálogo para identificar de qué variante
-     * parte cada copia.
-     */
+    /** El catálogo que envía el producto, publicado desde los ficheros maestros. */
     private function seedThemes(): void
     {
         // El catálogo no se siembra aquí: lo publica el mismo servicio que usa
@@ -625,32 +615,35 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     /** Identidad/tema de arranque; firstOrCreate: nunca pisa lo que el tenant ya editó. */
     private function seedSettings(): void
     {
-        // El snapshot solo se usa con datos demo; sin ellos basta con vestir la primera
-        // variante que envía el producto.
+        // El snapshot solo se usa con datos demo; sin ellos basta con vestir el primer tema
+        // que envía el producto.
         $settings = config('kilkana.kilkana.seed_demo', false)
             ? json_decode((string) file_get_contents(__DIR__.'/data/settings.json'), true)
             : [];
         $tenant = $settings['tenant'] ?? [];
 
-        // El fichero guarda el SLUG de la variante, nunca su id: un id de una base no significa
-        // nada en otra, y este snapshot tiene que poder sembrarse en cualquiera.
-        //
-        // Y se ADOPTA, no se apunta: vestir una fila del catálogo directamente rompería el
-        // congelado, porque la siguiente sincronización le cambiaría el tema al periódico.
-        $catalogo = SnkKilkanaThemeVariantModel::query()->fromCatalog();
-        $variante = (isset($settings['theme'])
+        // El fichero guarda el SLUG del tema, nunca su id: un id de una base no significa nada
+        // en otra, y este snapshot tiene que poder sembrarse en cualquiera.
+        $catalogo = SnkKilkanaThemeModel::query()->published();
+        $tema = (isset($settings['theme'])
             ? (clone $catalogo)->where('slug', $settings['theme'])->first()
             : null)
-            ?? (clone $catalogo)->orderByDesc('is_default')->orderBy('position')->first();
+            ?? (clone $catalogo)->orderByDesc('featured')->orderBy('position')->first();
 
-        SnkKilkanaSettingModel::firstOrCreate(['id' => 1], [
-            'theme_variant_id' => $variante ? app(SnkKilkanaThemeAdoptionService::class)->adopt($variante)->id : null,
+        $fila = SnkKilkanaSettingModel::firstOrCreate(['id' => 1], [
             'tenant_name' => $tenant['name'] ?? null,
             'tenant_tagline' => $tenant['tagline'] ?? null,
             'tenant_city' => $tenant['city'] ?? null,
             'tenant_url' => $tenant['url'] ?? null,
             'onboarded' => (bool) ($settings['onboarded'] ?? false),
         ]);
+
+        // Vestir COPIA el spec, no lo apunta: apuntar a la fila del catálogo rompería el
+        // congelado, porque la siguiente sincronización le cambiaría el tema al periódico. Solo
+        // si va desnudo — `firstOrCreate` no pisa lo que el inquilino ya eligió.
+        if ($tema && $fila->theme_spec === null) {
+            app(SnkKilkanaThemeWearService::class)->wear($tema);
+        }
     }
 
     /**

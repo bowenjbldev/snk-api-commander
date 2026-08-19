@@ -21,7 +21,7 @@ distinción es justo lo que necesita saber quien vaya a tocar algo.
 | 4 | [Artículos](04-articulos.md) | `kilkana_posts` · `kilkana_post_slugs` · `kilkana_post_revisions` · `kilkana_post_views` · `kilkana_tags` · `kilkana_post_tag` |
 | 5 | [Biblioteca de medios](05-medios.md) | `kilkana_media` · `kilkana_media_tags` · `kilkana_media_collections` · sus dos pivotes |
 | 6 | [Comentarios y suscriptores](06-comentarios-y-suscriptores.md) | `kilkana_comments` · `kilkana_subscribers` |
-| 7 | [Composición y ajustes](07-composicion-y-ajustes.md) | `kilkana_layouts` · `kilkana_layout_revisions` · `kilkana_themes` · `kilkana_theme_variants` · `kilkana_settings` |
+| 7 | [Composición y ajustes](07-composicion-y-ajustes.md) | `kilkana_layouts` · `kilkana_layout_revisions` · `kilkana_themes` · `kilkana_settings` |
 
 ## Una base de datos por periódico
 
@@ -56,7 +56,7 @@ kilkana_posts ──1:N── kilkana_post_slugs       (URLs viejas → redirecc
 
 kilkana_layouts ──1:N── kilkana_layout_revisions
 
-kilkana_themes ──1:N── kilkana_theme_variants ◄──RESTRICT── kilkana_settings
+kilkana_themes ◄──SET NULL── kilkana_settings (que guarda su copia del spec)
 
 Sin relaciones: kilkana_subscribers
 ```

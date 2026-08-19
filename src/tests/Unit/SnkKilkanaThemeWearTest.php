@@ -3,32 +3,32 @@
 namespace Tests\Unit;
 
 use Illuminate\Support\Facades\Validator;
-use Packages\Kilkana\Enums\SnkKilkanaThemeSourceEnum;
 use Packages\Kilkana\Models\SnkKilkanaSettingModel;
-use Packages\Kilkana\Models\SnkKilkanaThemeVariantModel;
+use Packages\Kilkana\Models\SnkKilkanaThemeModel;
 use Packages\Kilkana\Services\SnkKilkanaSettingService;
+use Packages\Kilkana\Services\SnkKilkanaThemeWearService;
 use Tests\TestCase;
 
 /**
- * Los rangos de una variante y el mapeo que sale a la API.
+ * El vestido del periodico: los rangos del retoque y el mapeo que sale a la API.
  *
  * Estos casos no tocan la base a proposito: las migraciones de negocio de Kilkana no se cargan
  * en la conexion por defecto (ver `CoreServiceProvider::boot`) y la suite corre sobre sqlite,
  * que no admite el `ALTER TABLE ... ADD CONSTRAINT CHECK` con el que se declara el singleton.
  * Lo que si es comprobable aqui, y es lo que importa, es que un valor fuera de banda no entre.
  */
-class SnkKilkanaThemeVariantTest extends TestCase
+class SnkKilkanaThemeWearTest extends TestCase
 {
     private function validate(array $datos): \Illuminate\Validation\Validator
     {
-        return Validator::make($datos, SnkKilkanaThemeVariantModel::shapeRules());
+        return Validator::make($datos, SnkKilkanaSettingModel::shapeRules());
     }
 
-    public function test_it_accepts_a_variant_within_range(): void
+    public function test_it_accepts_a_tweak_within_range(): void
     {
         $validator = $this->validate([
-            'tokens' => ['brand' => '#1A1A1A', 'pageRadius' => '10px'],
-            'style' => [
+            'theme_overrides' => [
+                'tokens' => ['brand' => '#1A1A1A', 'pageRadius' => '10px'],
                 'density' => ['rowGap' => 44, 'padX' => 28],
                 'hero' => ['size' => 54, 'weight' => 700, 'tracking' => '-0.02em', 'leading' => 1.1],
             ],
@@ -40,8 +40,8 @@ class SnkKilkanaThemeVariantTest extends TestCase
     public function test_it_accepts_the_edges_of_every_range(): void
     {
         $validator = $this->validate([
-            'tokens' => ['pageRadius' => '0px'],
-            'style' => [
+            'theme_overrides' => [
+                'tokens' => ['pageRadius' => '0px'],
                 'density' => ['rowGap' => 240, 'blockGap' => 0, 'padX' => 80, 'padY' => 0],
                 'hero' => ['size' => 120, 'weight' => 900, 'tracking' => '-0.06em', 'leading' => 0.9],
             ],
@@ -58,24 +58,24 @@ class SnkKilkanaThemeVariantTest extends TestCase
      */
     public function test_it_rejects_a_colour_that_is_not_hex(): void
     {
-        $validator = $this->validate(['tokens' => ['brand' => 'red']]);
+        $validator = $this->validate(['theme_overrides' => ['tokens' => ['brand' => 'red']]]);
 
         $this->assertTrue($validator->fails());
-        $this->assertArrayHasKey('tokens.brand', $validator->errors()->toArray());
+        $this->assertArrayHasKey('theme_overrides.tokens.brand', $validator->errors()->toArray());
     }
 
     public function test_it_rejects_values_outside_their_range(): void
     {
         foreach ([
-            'style.hero.size' => ['style' => ['hero' => ['size' => 300]]],
-            'style.hero.weight' => ['style' => ['hero' => ['weight' => 650]]],
-            'style.hero.leading' => ['style' => ['hero' => ['leading' => 4]]],
-            'style.hero.tracking' => ['style' => ['hero' => ['tracking' => '-1em']]],
-            'style.density.padX' => ['style' => ['density' => ['padX' => 99]]],
-            'style.density.rowGap' => ['style' => ['density' => ['rowGap' => 400]]],
-            'tokens.pageRadius' => ['tokens' => ['pageRadius' => '40px']],
+            'theme_overrides.hero.size' => ['hero' => ['size' => 300]],
+            'theme_overrides.hero.weight' => ['hero' => ['weight' => 650]],
+            'theme_overrides.hero.leading' => ['hero' => ['leading' => 4]],
+            'theme_overrides.hero.tracking' => ['hero' => ['tracking' => '-1em']],
+            'theme_overrides.density.padX' => ['density' => ['padX' => 99]],
+            'theme_overrides.density.rowGap' => ['density' => ['rowGap' => 400]],
+            'theme_overrides.tokens.pageRadius' => ['tokens' => ['pageRadius' => '40px']],
         ] as $campo => $datos) {
-            $validator = $this->validate($datos);
+            $validator = $this->validate(['theme_overrides' => $datos]);
 
             $this->assertTrue($validator->fails(), "{$campo} deberia haber fallado");
             $this->assertArrayHasKey($campo, $validator->errors()->toArray());
@@ -85,7 +85,7 @@ class SnkKilkanaThemeVariantTest extends TestCase
     /** Un numero sin unidad no es un valor CSS, y `themeVars()` lo emitiria tal cual. */
     public function test_it_rejects_a_css_value_without_its_unit(): void
     {
-        $validator = $this->validate(['style' => ['hero' => ['tracking' => '-0.02']]]);
+        $validator = $this->validate(['theme_overrides' => ['hero' => ['tracking' => '-0.02']]]);
 
         $this->assertTrue($validator->fails());
     }
@@ -93,31 +93,31 @@ class SnkKilkanaThemeVariantTest extends TestCase
     /**
      * Una clave que no esta declarada no se rechaza: no se guarda.
      *
-     * Es la diferencia entre lo que el tema deja tocar y lo que pertenece al paquete —el
-     * kicker, la tarjeta, las familias tipograficas—. Mandar `fontSerif` no es un error del
-     * cliente, simplemente no es suyo.
+     * Es la diferencia entre lo que el tema deja tocar y lo que es del tema —el kicker, la
+     * tarjeta, las familias tipograficas—. Mandar `fontSerif` no es un error del cliente,
+     * simplemente no es suyo.
      */
-    public function test_it_drops_keys_that_are_not_part_of_a_variant(): void
+    public function test_it_drops_keys_that_are_not_part_of_the_tweak(): void
     {
-        $validator = $this->validate(['tokens' => ['brand' => '#1a1a1a', 'fontSerif' => 'Comic Sans']]);
-
-        $this->assertFalse($validator->fails());
-        $this->assertSame(['brand' => '#1a1a1a'], $validator->validated()['tokens']);
-    }
-
-    /** Sin retoques, `tokens` y `style` salen como objeto y no como lista. */
-    public function test_a_pristine_variant_serialises_empty_objects(): void
-    {
-        $variante = new SnkKilkanaThemeVariantModel([
-            'slug' => 'standard',
-            'source' => SnkKilkanaThemeSourceEnum::Catalog->value,
-            'spec' => ['masthead' => 'daily', 'tokens' => ['brand' => '#121212'], 'style' => []],
+        $validator = $this->validate([
+            'theme_overrides' => ['tokens' => ['brand' => '#1a1a1a', 'fontSerif' => 'Comic Sans']],
         ]);
 
-        $payload = $variante->payload();
+        $this->assertFalse($validator->fails());
+        $this->assertSame(['brand' => '#1a1a1a'], $validator->validated()['theme_overrides']['tokens']);
+    }
 
-        $this->assertSame('{}', json_encode($payload['tokens']));
-        $this->assertSame('catalog', $payload['source']);
+    /** Sin retoques, el retoque sale como objeto y no como lista. */
+    public function test_a_pristine_dressing_serialises_an_empty_object(): void
+    {
+        $ajustes = new SnkKilkanaSettingModel([
+            'theme_spec' => ['masthead' => 'daily', 'tokens' => ['brand' => '#121212']],
+            'theme_version' => '2.0.0',
+        ]);
+
+        $payload = $ajustes->themePayload();
+
+        $this->assertSame('{}', json_encode($payload['overrides']));
         // El spec resuelto sin retoques es el spec tal cual.
         $this->assertSame('#121212', $payload['spec']->tokens['brand']);
     }
@@ -126,15 +126,13 @@ class SnkKilkanaThemeVariantTest extends TestCase
      * Con retoque, el resuelto lo aplica encima y el suelto sigue viajando aparte.
      *
      * El retoque que no es de color son dos cosas: el aire (`density`) y la APERTURA (`hero`).
-     * Los otros nueve peldanos son la escala del paquete, y tocarlos uno a uno seria redisenar
-     * el tema en vez de vestirlo.
+     * Los otros nueve peldanos son la escala del tema, y tocarlos uno a uno seria redisenarlo
+     * en vez de vestirlo.
      */
     public function test_the_resolved_spec_layers_the_newsroom_tweak_on_top(): void
     {
-        $variante = new SnkKilkanaThemeVariantModel([
-            'slug' => 'verano',
-            'source' => SnkKilkanaThemeSourceEnum::Tenant->value,
-            'spec' => [
+        $ajustes = new SnkKilkanaSettingModel([
+            'theme_spec' => [
                 'tokens' => ['brand' => '#121212', 'accent' => '#d32f2f'],
                 'density' => ['rowGap' => 44, 'blockGap' => 18],
                 'type' => [
@@ -145,11 +143,14 @@ class SnkKilkanaThemeVariantTest extends TestCase
                     ],
                 ],
             ],
-            'tokens' => ['brand' => '#0000ff'],
-            'style' => ['density' => ['rowGap' => 60], 'hero' => ['size' => 64]],
+            'theme_overrides' => [
+                'tokens' => ['brand' => '#0000ff'],
+                'density' => ['rowGap' => 60],
+                'hero' => ['size' => 64],
+            ],
         ]);
 
-        $resuelto = $variante->resolvedSpec();
+        $resuelto = $ajustes->resolvedSpec();
 
         $this->assertSame('#0000ff', $resuelto['tokens']['brand']);
         $this->assertSame('#d32f2f', $resuelto['tokens']['accent'], 'lo que no se toca se hereda del spec');
@@ -162,36 +163,58 @@ class SnkKilkanaThemeVariantTest extends TestCase
     }
 
     /**
-     * El payload de ajustes: plano en la base, anidado en la API, y con la variante resuelta.
+     * El payload de ajustes: plano en la base, anidado en la API, y con el tema resuelto.
      *
      * `version` no viaja: un control optimista que ningun cliente manda no protege de nada, y
      * el numero solo daria la impresion de que si.
      */
-    public function test_settings_payload_nests_the_tenant_and_resolves_the_variant(): void
+    public function test_settings_payload_nests_the_tenant_and_resolves_the_theme(): void
     {
-        $variante = new SnkKilkanaThemeVariantModel([
-            'slug' => 'verano',
-            'source' => SnkKilkanaThemeSourceEnum::Tenant->value,
-            'spec' => ['masthead' => 'daily', 'tokens' => ['brand' => '#121212'], 'style' => []],
-        ]);
-        $variante->id = 3;
+        $tema = new SnkKilkanaThemeModel(['slug' => 'folio', 'name' => 'Folio', 'version' => '2.0.0']);
+        $tema->id = 3;
 
         $ajustes = new SnkKilkanaSettingModel([
-            'theme_variant_id' => 3,
+            'theme_id' => 3,
+            'theme_spec' => ['masthead' => 'daily', 'tokens' => ['brand' => '#121212']],
+            'theme_version' => '2.0.0',
             'tenant_name' => 'The Beacon',
             'tenant_city' => 'Springfield',
             'onboarded' => true,
         ]);
-        $ajustes->setRelation('themeVariant', $variante);
+        $ajustes->setRelation('theme', $tema);
 
         $payload = app(SnkKilkanaSettingService::class)->payload($ajustes);
 
-        $this->assertSame(3, $payload['theme_variant_id']);
-        // La variante viaja con su spec resuelto: quien pinta no necesita otra llamada.
+        $this->assertSame(3, $payload['theme_id']);
+        // El tema viaja con su spec resuelto: quien pinta no necesita otra llamada.
         $this->assertSame('daily', $payload['theme']['spec']->masthead);
-        $this->assertSame('tenant', $payload['theme']['source']);
+        $this->assertSame('folio', $payload['theme']['slug']);
         $this->assertSame(['name' => 'The Beacon', 'tagline' => null, 'city' => 'Springfield', 'url' => null], $payload['tenant']);
         $this->assertTrue($payload['onboarded']);
         $this->assertArrayNotHasKey('version', $payload);
+    }
+
+    /**
+     * El aviso de actualizacion compara VERSIONES, no los dos JSON.
+     *
+     * La version es lo que sube el fichero maestro al publicar, asi que es la unica senal que no
+     * depende de como se serialice un spec.
+     */
+    public function test_it_flags_an_update_only_when_the_catalogue_moved_on(): void
+    {
+        $tema = new SnkKilkanaThemeModel(['slug' => 'folio', 'version' => '2.1.0']);
+
+        $ajustes = new SnkKilkanaSettingModel(['theme_version' => '2.0.0']);
+        $ajustes->setRelation('theme', $tema);
+        $this->assertTrue(app(SnkKilkanaThemeWearService::class)->updateAvailable($ajustes));
+
+        $alDia = new SnkKilkanaSettingModel(['theme_version' => '2.1.0']);
+        $alDia->setRelation('theme', $tema);
+        $this->assertFalse(app(SnkKilkanaThemeWearService::class)->updateAvailable($alDia));
+
+        // Sin tema del catalogo detras —retirado, o base recien sembrada— no hay con que comparar.
+        $huerfano = new SnkKilkanaSettingModel(['theme_version' => '2.0.0']);
+        $huerfano->setRelation('theme', null);
+        $this->assertFalse(app(SnkKilkanaThemeWearService::class)->updateAvailable($huerfano));
     }
 }

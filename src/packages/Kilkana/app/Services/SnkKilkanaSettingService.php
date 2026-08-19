@@ -3,7 +3,7 @@
 namespace Packages\Kilkana\Services;
 
 use Packages\Kilkana\Models\SnkKilkanaSettingModel;
-use Packages\Kilkana\Models\SnkKilkanaThemeVariantModel;
+use Packages\Kilkana\Models\SnkKilkanaThemeModel;
 
 /**
  * Los ajustes del periódico: una sola fila, con columnas de verdad.
@@ -24,7 +24,7 @@ use Packages\Kilkana\Models\SnkKilkanaThemeVariantModel;
  */
 class SnkKilkanaSettingService
 {
-    public function __construct(private readonly SnkKilkanaThemeAdoptionService $adoptions) {}
+    public function __construct(private readonly SnkKilkanaThemeWearService $wear) {}
 
     private const SINGLETON_ID = 1;
 
@@ -66,14 +66,15 @@ class SnkKilkanaSettingService
 
     public function payload(SnkKilkanaSettingModel $fila): array
     {
-        $fila->loadMissing('themeVariant');
+        $fila->loadMissing('theme');
 
         return [
-            'theme_variant_id' => $fila->theme_variant_id,
-            // La variante resuelta viaja entera —spec incluido— para evitar una segunda llamada.
-            // Es siempre una copia propia del periódico: vestir un tema del
-            // catálogo lo adopta primero.
-            'theme' => $fila->themeVariant?->payload(),
+            'theme_id' => $fila->theme_id,
+            // El tema resuelto viaja entero —spec incluido— para evitar una segunda llamada. Es
+            // siempre la copia congelada del periódico con su retoque encima, no la fila del
+            // catálogo: vestir un tema lo copia primero.
+            'theme' => $fila->themePayload(),
+            'theme_update_available' => $this->wear->updateAvailable($fila),
             'tenant' => [
                 'name' => $fila->tenant_name,
                 'tagline' => $fila->tenant_tagline,
@@ -92,15 +93,17 @@ class SnkKilkanaSettingService
      */
     private function columnsFrom(array $data): array
     {
-        $columnas = collect($data)->only(['theme_variant_id', 'onboarded'])->all();
+        $columnas = collect($data)->only(['theme_overrides', 'onboarded'])->all();
 
-        // Vestir es SIEMPRE vestir una copia propia. Si llega una variante del catálogo se
-        // adopta aquí y se guarda la copia, porque apuntar a la fila del catálogo la dejaría a
-        // merced de la siguiente sincronización — y el periódico cambiaría de aspecto solo.
-        if (isset($columnas['theme_variant_id'])) {
-            $variante = SnkKilkanaThemeVariantModel::query()->find($columnas['theme_variant_id']);
-            if ($variante) {
-                $columnas['theme_variant_id'] = $this->adoptions->adopt($variante)->id;
+        // Vestir es SIEMPRE copiar. Si llega un tema del catálogo se copia su spec aquí, porque
+        // apuntar a la fila del catálogo dejaría al periódico a merced de la siguiente
+        // sincronización — y cambiaría de aspecto solo. Va antes que el retoque: cambiar de tema
+        // vacía lo movido, y mandar las dos cosas en la misma llamada tiene que dejar el retoque
+        // nuevo puesto, no borrado.
+        if (isset($data['theme_id'])) {
+            $tema = SnkKilkanaThemeModel::query()->find($data['theme_id']);
+            if ($tema) {
+                $this->wear->wear($tema);
             }
         }
 

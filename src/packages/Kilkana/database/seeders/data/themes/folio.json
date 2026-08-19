@@ -1,0 +1,1027 @@
+{
+    "slug": "folio",
+    "name": "Folio",
+    "tagline": "Diario generalista de hoja ancha, con raíl, secciones y jerarquía de verdad",
+    "description": "Un broadsheet que se comporta como tal: doce columnas de setenta y ocho con filete en el medianil, cabecera centrada entre filetes con su línea de servicio y su menú, una apertura que decide el día a 54 px contra tarjetas de 20, y una portada que baja por las siete secciones vivas del periódico en dieciséis bandas. Sin un solo texto en color.",
+    "status": "published",
+    "version": "2.0.0",
+    "featured": true,
+    "position": 0,
+    "popularity": 100,
+    "categories": [
+        "news",
+        "minimal"
+    ],
+    "spec": {
+        "specVersion": 2,
+        "masthead": "daily",
+        "grid": {
+            "sheet": 1200,
+            "columns": 12,
+            "gutter": 24,
+            "rule": {
+                "width": 1,
+                "color": "borderSubtle",
+                "style": "solid"
+            }
+        },
+        "tokens": {
+            "brand": "#111111",
+            "brandDark": "#000000",
+            "brandSoft": "#eef2f8",
+            "brandEdge": "#d3ddea",
+            "accent": "#0e3a6f",
+            "text": "#111111",
+            "textMuted": "#5b6068",
+            "textSoft": "#3f444b",
+            "textFaint": "#8a9098",
+            "surface": "#ffffff",
+            "surface2": "#f7f8fa",
+            "surface3": "#eef0f4",
+            "borderSubtle": "#e7e9ed",
+            "borderSoft": "#d6dae0",
+            "borderStrong": "#aeb4bd",
+            "pageRadius": "0px"
+        },
+        "type": {
+            "display": "Georgia, 'Times New Roman', serif",
+            "text": "Geist, system-ui, -apple-system, sans-serif",
+            "steps": {
+                "masthead": {
+                    "size": 46,
+                    "weight": 700,
+                    "tracking": "-0.03em",
+                    "leading": 1
+                },
+                "hero": {
+                    "size": 54,
+                    "weight": 700,
+                    "tracking": "-0.031em",
+                    "leading": 1.09
+                },
+                "lead": {
+                    "size": 30,
+                    "weight": 700,
+                    "tracking": "-0.036em",
+                    "leading": 1.12
+                },
+                "card": {
+                    "size": 20,
+                    "weight": 700,
+                    "tracking": "-0.015em",
+                    "leading": 1.18
+                },
+                "brief": {
+                    "size": 15,
+                    "weight": 600,
+                    "tracking": "-0.005em",
+                    "leading": 1.28
+                },
+                "kicker": {
+                    "size": 11,
+                    "weight": 700,
+                    "tracking": "0.07em",
+                    "leading": 1.2,
+                    "color": "accent",
+                    "transform": "uppercase",
+                    "family": "text"
+                },
+                "standfirst": {
+                    "size": 17,
+                    "weight": 400,
+                    "tracking": "0em",
+                    "leading": 1.5,
+                    "color": "textSoft",
+                    "family": "text"
+                },
+                "meta": {
+                    "size": 12,
+                    "weight": 400,
+                    "tracking": "0.01em",
+                    "leading": 1.35,
+                    "color": "textMuted",
+                    "family": "text"
+                },
+                "band": {
+                    "size": 18,
+                    "weight": 700,
+                    "tracking": "0.08em",
+                    "leading": 1.2,
+                    "transform": "uppercase",
+                    "family": "text"
+                },
+                "nav": {
+                    "size": 12,
+                    "weight": 600,
+                    "tracking": "0.05em",
+                    "leading": 1.2,
+                    "transform": "uppercase",
+                    "family": "text"
+                }
+            }
+        },
+        "media": {
+            "hero": "16/9",
+            "card": "3/2",
+            "thumb": "4/3",
+            "portrait": "2/3",
+            "square": "1/1"
+        },
+        "density": {
+            "rowGap": 44,
+            "blockGap": 18,
+            "padX": 28,
+            "padY": 20
+        },
+        "chrome": {
+            "kicker": {
+                "bg": "transparent",
+                "pad": "0",
+                "radius": "0"
+            },
+            "card": {
+                "bg": "transparent",
+                "border": "none",
+                "pad": "0",
+                "radius": "0",
+                "shadow": "none"
+            }
+        },
+        "layouts": {
+            "front": [
+                {
+                    "cols": [
+                        {
+                            "span": 12,
+                            "blocks": [
+                                {
+                                    "type": "topic-strip"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "cols": [
+                        {
+                            "span": 9,
+                            "blocks": [
+                                {
+                                    "type": "lead-briefs",
+                                    "config": {
+                                        "standfirst": true,
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 4,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "span": 3,
+                            "sticky": true,
+                            "blocks": [
+                                {
+                                    "type": "most-read",
+                                    "config": {
+                                        "window": "day",
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 6,
+                                            "sort": "reads"
+                                        },
+                                        "min": 3
+                                    }
+                                },
+                                {
+                                    "type": "ad-slot"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "header": {
+                        "text": "Breaking"
+                    },
+                    "cols": [
+                        {
+                            "span": 8,
+                            "blocks": [
+                                {
+                                    "type": "river",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 6,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "span": 4,
+                            "blocks": [
+                                {
+                                    "type": "live-ticker",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 5,
+                                            "sort": "recent"
+                                        },
+                                        "min": 2
+                                    }
+                                },
+                                {
+                                    "type": "brief-list",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 6,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "header": {
+                        "from": "section"
+                    },
+                    "cols": [
+                        {
+                            "span": 8,
+                            "blocks": [
+                                {
+                                    "type": "two-up",
+                                    "config": {
+                                        "standfirst": true,
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 2,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "span": 4,
+                            "blocks": [
+                                {
+                                    "type": "brief-list",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 5,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    "section": {
+                        "nth": 1
+                    }
+                },
+                {
+                    "header": {
+                        "from": "section"
+                    },
+                    "cols": [
+                        {
+                            "span": 6,
+                            "blocks": [
+                                {
+                                    "type": "lead-story",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 1,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "span": 3,
+                            "blocks": [
+                                {
+                                    "type": "brief-list",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 4,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "span": 3,
+                            "blocks": [
+                                {
+                                    "type": "brief-list",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 4,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    "section": {
+                        "nth": 2
+                    }
+                },
+                {
+                    "header": {
+                        "from": "section"
+                    },
+                    "cols": [
+                        {
+                            "span": 12,
+                            "blocks": [
+                                {
+                                    "type": "mosaic",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 5,
+                                            "sort": "recent"
+                                        },
+                                        "min": 5
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    "section": {
+                        "nth": 3
+                    }
+                },
+                {
+                    "cols": [
+                        {
+                            "span": 8,
+                            "blocks": [
+                                {
+                                    "type": "river",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 5,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "span": 4,
+                            "blocks": [
+                                {
+                                    "type": "latest-in-category",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 5,
+                                            "sort": "recent"
+                                        },
+                                        "min": 3
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    "section": {
+                        "nth": 3
+                    }
+                },
+                {
+                    "header": {
+                        "from": "section"
+                    },
+                    "cols": [
+                        {
+                            "span": 8,
+                            "blocks": [
+                                {
+                                    "type": "three-up",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 3,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "span": 4,
+                            "blocks": [
+                                {
+                                    "type": "brief-list",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 5,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    "section": {
+                        "nth": 4
+                    }
+                },
+                {
+                    "header": {
+                        "from": "section"
+                    },
+                    "cols": [
+                        {
+                            "span": 12,
+                            "blocks": [
+                                {
+                                    "type": "four-up",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 4,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    "section": {
+                        "nth": 5
+                    }
+                },
+                {
+                    "header": {
+                        "from": "section"
+                    },
+                    "cols": [
+                        {
+                            "span": 12,
+                            "blocks": [
+                                {
+                                    "type": "three-up",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 3,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    "section": {
+                        "nth": 6
+                    }
+                },
+                {
+                    "cols": [
+                        {
+                            "span": 6,
+                            "blocks": [
+                                {
+                                    "type": "river",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 4,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "span": 6,
+                            "blocks": [
+                                {
+                                    "type": "river",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 4,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    "section": {
+                        "nth": 6
+                    }
+                },
+                {
+                    "header": {
+                        "text": "In depth"
+                    },
+                    "cols": [
+                        {
+                            "span": 12,
+                            "blocks": [
+                                {
+                                    "type": "photo-essay",
+                                    "config": {
+                                        "standfirst": true,
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 2,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "header": {
+                        "from": "section"
+                    },
+                    "cols": [
+                        {
+                            "span": 8,
+                            "blocks": [
+                                {
+                                    "type": "opinion-strip",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 3,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "span": 4,
+                            "blocks": [
+                                {
+                                    "type": "brief-list",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 5,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    "section": {
+                        "nth": 7
+                    }
+                },
+                {
+                    "header": {
+                        "text": "Most read"
+                    },
+                    "cols": [
+                        {
+                            "span": 3,
+                            "blocks": [
+                                {
+                                    "type": "most-read",
+                                    "config": {
+                                        "window": "week",
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 6,
+                                            "sort": "reads"
+                                        },
+                                        "min": 3
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "span": 3,
+                            "blocks": [
+                                {
+                                    "type": "latest-in-category",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 5,
+                                            "sort": "recent",
+                                            "section": {
+                                                "nth": 1
+                                            }
+                                        },
+                                        "min": 3
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "span": 3,
+                            "blocks": [
+                                {
+                                    "type": "latest-in-category",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 5,
+                                            "sort": "recent",
+                                            "section": {
+                                                "nth": 2
+                                            }
+                                        },
+                                        "min": 3
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "span": 3,
+                            "blocks": [
+                                {
+                                    "type": "latest-in-category",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 5,
+                                            "sort": "recent",
+                                            "section": {
+                                                "nth": 3
+                                            }
+                                        },
+                                        "min": 3
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "header": {
+                        "text": "More news"
+                    },
+                    "cols": [
+                        {
+                            "span": 12,
+                            "blocks": [
+                                {
+                                    "type": "four-up",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 4,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                },
+                                {
+                                    "type": "brief-list",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 8,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "cols": [
+                        {
+                            "span": 6,
+                            "blocks": [
+                                {
+                                    "type": "newsletter-card"
+                                }
+                            ]
+                        },
+                        {
+                            "span": 6,
+                            "blocks": [
+                                {
+                                    "type": "ad-slot"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "section": [
+                {
+                    "cols": [
+                        {
+                            "span": 12,
+                            "blocks": [
+                                {
+                                    "type": "topic-strip"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "cols": [
+                        {
+                            "span": 9,
+                            "blocks": [
+                                {
+                                    "type": "lead-briefs",
+                                    "config": {
+                                        "standfirst": true,
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 4,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "span": 3,
+                            "sticky": true,
+                            "blocks": [
+                                {
+                                    "type": "most-read",
+                                    "config": {
+                                        "window": "week",
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 6,
+                                            "sort": "reads"
+                                        },
+                                        "min": 3
+                                    }
+                                },
+                                {
+                                    "type": "ad-slot"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "header": {
+                        "text": "Latest"
+                    },
+                    "cols": [
+                        {
+                            "span": 8,
+                            "blocks": [
+                                {
+                                    "type": "river",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 6,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "span": 4,
+                            "blocks": [
+                                {
+                                    "type": "brief-list",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 5,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                },
+                                {
+                                    "type": "latest-in-category",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 5,
+                                            "sort": "recent"
+                                        },
+                                        "min": 3
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "cols": [
+                        {
+                            "span": 12,
+                            "blocks": [
+                                {
+                                    "type": "three-up",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 3,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "header": {
+                        "text": "In pictures"
+                    },
+                    "cols": [
+                        {
+                            "span": 12,
+                            "blocks": [
+                                {
+                                    "type": "photo-essay",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 2,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "cols": [
+                        {
+                            "span": 6,
+                            "blocks": [
+                                {
+                                    "type": "brief-list",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 3,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "span": 6,
+                            "blocks": [
+                                {
+                                    "type": "brief-list",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 3,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "header": {
+                        "text": "More from this section"
+                    },
+                    "cols": [
+                        {
+                            "span": 12,
+                            "blocks": [
+                                {
+                                    "type": "four-up",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 4,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "cols": [
+                        {
+                            "span": 12,
+                            "blocks": [
+                                {
+                                    "type": "newsletter-card"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "starter": [
+                {
+                    "cols": [
+                        {
+                            "span": 12,
+                            "blocks": [
+                                {
+                                    "type": "lead-story",
+                                    "config": {}
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "cols": [
+                        {
+                            "span": 8,
+                            "blocks": [
+                                {
+                                    "type": "river",
+                                    "config": {
+                                        "data": {
+                                            "count": 5
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "span": 4,
+                            "blocks": [
+                                {
+                                    "type": "brief-list",
+                                    "config": {
+                                        "data": {
+                                            "count": 5
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "section": {
+                        "nth": 1
+                    },
+                    "header": {
+                        "from": "section"
+                    },
+                    "cols": [
+                        {
+                            "span": 12,
+                            "blocks": [
+                                {
+                                    "type": "three-up",
+                                    "config": {}
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "cols": [
+                        {
+                            "span": 12,
+                            "blocks": [
+                                {
+                                    "type": "newsletter-card"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}

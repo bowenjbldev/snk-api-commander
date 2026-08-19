@@ -3,7 +3,7 @@
 namespace Packages\Kilkana\Services;
 
 use Packages\Kilkana\Enums\SnkKilkanaLayoutEnum;
-use Packages\Kilkana\Models\SnkKilkanaThemeVariantModel;
+use Packages\Kilkana\Models\SnkKilkanaSettingModel;
 
 /**
  * Lo que un tema tiene que cumplir para entrar en el catálogo.
@@ -39,7 +39,7 @@ class SnkKilkanaThemeSpecValidator
     /**
      * Los peldaños de la escala tipográfica: diez, y los diez obligatorios.
      *
-     * **El tracking va POR PELDAÑO y no por variante**, porque un periódico no lo ajusta una
+     * **El tracking va POR PELDAÑO y no por tema**, porque un periódico no lo ajusta una
      * sola vez: El País pide −0,031em a 54 px y cero en el rótulo de banda.
      *
      * `masthead` y `nav` están en la escala para que trescientas cabeceras distintas no salgan
@@ -212,64 +212,11 @@ class SnkKilkanaThemeSpecValidator
         return array_values($errores);
     }
 
-    /**
-     * Lo que define la familia, y que **todas las variantes de un paquete comparten**.
-     *
-     * El `spec` es autosuficiente —copiarlo lo dibuja— y el precio de esa autonomía es que la
-     * rejilla y las tipografías se repiten en cada variante. Repetido y sin comprobar sería una
-     * promesa rota: una variante con otro ancho de hoja ya no es la misma cabecera. Si dos
-     * variantes no se reconocen como el mismo periódico, son dos temas.
-     *
-     * @param  list<array>  $variantes  las variantes del fichero maestro, con su `spec`
-     * @return list<string> los desacuerdos; vacío significa que son la misma familia
-     */
-    public function validateFamily(array $variantes): array
-    {
-        if (count($variantes) < 2) {
-            return [];
-        }
-
-        $rasgos = function (array $variante): array {
-            $spec = is_array($variante['spec'] ?? null) ? $variante['spec'] : [];
-            $grid = is_array($spec['grid'] ?? null) ? $spec['grid'] : [];
-            $type = is_array($spec['type'] ?? null) ? $spec['type'] : [];
-
-            return [
-                'masthead' => $spec['masthead'] ?? null,
-                'sheet' => $grid['sheet'] ?? null,
-                'columns' => $this->gridSize($grid),
-                'display' => $type['display'] ?? null,
-                'text' => $type['text'] ?? null,
-            ];
-        };
-
-        $primera = array_shift($variantes);
-        $base = $rasgos($primera);
-        $errores = [];
-
-        foreach ($variantes as $variante) {
-            foreach ($rasgos($variante) as $clave => $valor) {
-                if ($valor !== $base[$clave]) {
-                    $errores[] = sprintf(
-                        '«%s» rompe la familia en %s: %s contra %s en «%s»',
-                        $variante['slug'] ?? '?',
-                        $clave,
-                        json_encode($valor),
-                        json_encode($base[$clave]),
-                        $primera['slug'] ?? '?'
-                    );
-                }
-            }
-        }
-
-        return $errores;
-    }
-
     private function checkTokens(array $tokens): array
     {
         $errores = [];
 
-        foreach (SnkKilkanaThemeVariantModel::COLOR_KEYS as $clave) {
+        foreach (SnkKilkanaSettingModel::COLOR_KEYS as $clave) {
             if (! $this->isHex($tokens[$clave] ?? null)) {
                 $errores[] = "tokens.{$clave}: falta o no es un hex de seis dígitos";
             }
@@ -764,7 +711,7 @@ class SnkKilkanaThemeSpecValidator
     private function isColor(mixed $valor): bool
     {
         return $this->isHex($valor)
-            || (is_string($valor) && in_array($valor, SnkKilkanaThemeVariantModel::COLOR_KEYS, true));
+            || (is_string($valor) && in_array($valor, SnkKilkanaSettingModel::COLOR_KEYS, true));
     }
 
     private function inRange(mixed $valor, string $rango): bool

@@ -5,18 +5,18 @@ namespace Packages\Kilkana\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Packages\Kilkana\Enums\SnkKilkanaThemeStatusEnum;
 
 /**
- * El tema vendible del catálogo.
+ * El tema vendible del catálogo, y **un tema es un `spec`**.
  *
- * Nació como puntero a una familia de dos variantes. Ahora es el producto: se prepara, se
- * publica, se navega y se retira, y lo que hace distinta a cada variante viaja entero en su
- * `spec`.
+ * No hay variantes: si dos pieles no se reconocen como el mismo periódico son dos temas, y si
+ * se reconocen, lo que las separa —densidad, acento, tamaño del titular— es lo que ajusta el
+ * inquilino sobre el que ya lleva puesto, y eso vive en `kilkana_settings`.
  *
  * Las filas las escribe `kilkana:sync-themes` desde los ficheros maestros del repo. No hay alta
- * por API: un tema es material del producto, no contenido de la redacción.
+ * por API: un tema es material del producto, no contenido de la redacción. Esta tabla es de
+ * SOLO LECTURA para el inquilino — lo suyo es la copia congelada de sus ajustes.
  */
 class SnkKilkanaThemeModel extends Model
 {
@@ -31,15 +31,11 @@ class SnkKilkanaThemeModel extends Model
     {
         return [
             'status' => SnkKilkanaThemeStatusEnum::class,
+            'spec' => 'array',
             'featured' => 'boolean',
             'screenshots' => 'array',
             'published_at' => 'datetime',
         ];
-    }
-
-    public function variants(): HasMany
-    {
-        return $this->hasMany(SnkKilkanaThemeVariantModel::class, 'theme_id');
     }
 
     public function categories(): BelongsToMany
@@ -71,6 +67,33 @@ class SnkKilkanaThemeModel extends Model
         return $limpio === ''
             ? $query
             : $query->whereFullText(['name', 'tagline', 'description'], $limpio.'*', ['mode' => 'boolean']);
+    }
+
+    /**
+     * Lo que sale a la API: la ficha del catálogo con su tema dentro.
+     *
+     * El `spec` viaja entero y no por partes. Quien pinta recibe el tema y lo emite; que la
+     * galería enseñe exactamente lo que se va a llevar puesto es la mitad de para qué existe
+     * una galería.
+     */
+    public function payload(): array
+    {
+        return [
+            'id' => $this->id,
+            'slug' => $this->slug,
+            'name' => $this->name,
+            'tagline' => $this->tagline,
+            'description' => $this->description,
+            'status' => $this->status?->value,
+            'featured' => (bool) $this->featured,
+            'position' => $this->position,
+            'popularity' => $this->popularity,
+            'version' => $this->version,
+            'thumbnail_path' => $this->thumbnail_path,
+            'screenshots' => $this->screenshots ?? [],
+            'demo_url' => $this->demo_url,
+            'spec' => (object) ($this->spec ?? []),
+        ];
     }
 
     /**

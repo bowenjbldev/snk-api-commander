@@ -11,14 +11,11 @@ return new class extends Migration
     {
         Schema::create('kilkana_settings', function (Blueprint $table) {
             $table->unsignedTinyInteger('id')->primary();
-            $table->string('theme', 64)->nullable();
             $table->string('tenant_name')->nullable();
             $table->string('tenant_tagline')->nullable();
             $table->string('tenant_city')->nullable();
             $table->string('tenant_url')->nullable();
-            $table->json('theme_overrides')->nullable();
             $table->boolean('onboarded')->default(false);
-            $table->unsignedInteger('version')->default(1);
             $table->timestamps();
         });
 

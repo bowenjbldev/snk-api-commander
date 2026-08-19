@@ -12,9 +12,8 @@ use Tests\TestCase;
  * inservibles: un gris elegante que no llega al contraste minimo se ve bien en una captura y
  * arruina la accesibilidad del periodico que lo instale.
  *
- * Tres clases de fallo se paran solo aqui, porque ninguna revienta al pintar: una rejilla cuyos
- * `span` no cuadran, una plantilla que se pasa del presupuesto de rendimiento, y dos variantes
- * que dicen ser el mismo paquete sin serlo.
+ * Dos clases de fallo se paran solo aqui, porque ninguna revienta al pintar: una rejilla cuyos
+ * `span` no cuadran y una plantilla que se pasa del presupuesto de rendimiento.
  */
 class SnkKilkanaThemeSpecValidatorTest extends TestCase
 {
@@ -328,41 +327,5 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
         $spec['layouts']['front'] = array_fill(0, 17, $fila);
 
         $this->assertSame([], $this->validator()->validate($spec));
-    }
-
-    /**
-     * Dos variantes de un paquete son dos pieles del mismo periodico.
-     *
-     * Si no comparten cabecera, ancho de hoja, numero de columnas y las dos familias
-     * tipograficas, no se reconocen como el mismo diario: son dos temas.
-     */
-    public function test_it_refuses_variants_that_are_not_the_same_family(): void
-    {
-        $morning = ['slug' => 'morning', 'spec' => $this->spec()];
-        $otra = $this->spec();
-        $otra['grid']['sheet'] = 1024;
-        $weekend = ['slug' => 'weekend', 'spec' => $otra];
-
-        $errores = $this->validator()->validateFamily([$morning, $weekend]);
-
-        $this->assertCount(1, $errores);
-        $this->assertStringContainsString('«weekend» rompe la familia en sheet', $errores[0]);
-    }
-
-    public function test_a_single_variant_is_always_a_family(): void
-    {
-        $this->assertSame([], $this->validator()->validateFamily([['slug' => 'morning', 'spec' => $this->spec()]]));
-    }
-
-    public function test_two_skins_of_the_same_paper_are_a_family(): void
-    {
-        $wire = $this->spec();
-        $wire['tokens']['accent'] = '#1f3d5c';
-        $wire['type']['steps']['hero']['size'] = 34;
-
-        $this->assertSame([], $this->validator()->validateFamily([
-            ['slug' => 'morning', 'spec' => $this->spec()],
-            ['slug' => 'wire', 'spec' => $wire],
-        ]));
     }
 }

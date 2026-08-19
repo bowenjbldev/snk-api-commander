@@ -3,11 +3,9 @@
 namespace Packages\Kilkana\Services;
 
 use Illuminate\Support\Facades\DB;
-use Packages\Kilkana\Enums\SnkKilkanaThemeSourceEnum;
 use Packages\Kilkana\Enums\SnkKilkanaThemeStatusEnum;
 use Packages\Kilkana\Models\SnkKilkanaThemeCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaThemeModel;
-use Packages\Kilkana\Models\SnkKilkanaThemeVariantModel;
 
 /**
  * Lleva el catálogo de los ficheros maestros a la base de un periódico.
@@ -20,9 +18,10 @@ use Packages\Kilkana\Models\SnkKilkanaThemeVariantModel;
  *
  * 1. **Se compara por `version`.** Un catálogo de trescientos temas sin cambios no escribe una
  *    sola fila. Publicar uno escribe ese.
- * 2. **Jamás se toca una fila `tenant`.** Lo que un periódico adoptó es suyo y está congelado:
- *    esa copia es exactamente lo que impide que publicar una versión nueva le cambie la portada
- *    a alguien que está en producción.
+ * 2. **Jamás se toca el vestido de un periódico.** Lo que se lleva puesto es una copia
+ *    congelada en `kilkana_settings`, no una fila de esta tabla: eso es exactamente lo que
+ *    impide que publicar una versión nueva le cambie la portada a alguien que está en
+ *    producción. Aquí se reescribe el catálogo entero sin mirar a quién viste qué.
  */
 class SnkKilkanaThemeCatalogSyncService
 {
@@ -98,28 +97,17 @@ class SnkKilkanaThemeCatalogSyncService
             return;
         }
 
-        $variantes = is_array($datos['variants'] ?? null) ? $datos['variants'] : [];
-        if ($variantes === []) {
-            $resumen['errors'][] = "{$fichero}: un tema sin variantes no se puede vestir";
+        $spec = is_array($datos['spec'] ?? null) ? $datos['spec'] : [];
+        if ($spec === []) {
+            $resumen['errors'][] = "{$fichero}: un tema sin spec no se puede vestir";
 
             return;
         }
 
-        // Validar ANTES de escribir nada, y el tema entero: publicar la mitad de un tema deja
-        // el catálogo en un estado que nadie pidió.
+        // Validar ANTES de escribir nada: publicar la mitad de un tema deja el catálogo en un
+        // estado que nadie pidió.
         $problemas = [];
-        foreach ($variantes as $variante) {
-            $slug = $variante['slug'] ?? '?';
-            foreach ($this->validator->validate(is_array($variante['spec'] ?? null) ? $variante['spec'] : []) as $error) {
-                $problemas[] = "{$fichero} [{$slug}] {$error}";
-            }
-        }
-
-        // Y que las variantes sean el mismo periódico. El `spec` es autosuficiente —copiarlo lo
-        // dibuja— y el precio de esa autonomía es que la rejilla y las tipografías se repiten en
-        // cada una. Repetido y sin comprobar sería una promesa rota: una variante con otro ancho
-        // de hoja ya no es la misma cabecera, y entonces no son dos pieles, son dos temas.
-        foreach ($this->validator->validateFamily($variantes) as $error) {
+        foreach ($this->validator->validate($spec) as $error) {
             $problemas[] = "{$fichero}: {$error}";
         }
 
@@ -145,12 +133,13 @@ class SnkKilkanaThemeCatalogSyncService
             ? ($existente?->published_at ?? now())
             : null;
 
-        DB::transaction(function () use ($datos, $variantes, $categorias, $estado, $publicadoEn, &$resumen) {
+        DB::transaction(function () use ($datos, $spec, $categorias, $estado, $publicadoEn, &$resumen) {
             $tema = SnkKilkanaThemeModel::updateOrCreate(['slug' => $datos['slug']], [
                 'name' => $datos['name'] ?? $datos['slug'],
                 'tagline' => $datos['tagline'] ?? null,
                 'description' => $datos['description'] ?? null,
                 'status' => $estado,
+                'spec' => $spec,
                 'featured' => (bool) ($datos['featured'] ?? false),
                 'position' => $datos['position'] ?? 0,
                 'popularity' => $datos['popularity'] ?? 0,
@@ -162,31 +151,6 @@ class SnkKilkanaThemeCatalogSyncService
             ]);
 
             $tema->categories()->sync($categorias);
-
-            $vistos = [];
-            foreach ($variantes as $orden => $variante) {
-                $vistos[] = $variante['slug'];
-                SnkKilkanaThemeVariantModel::updateOrCreate(
-                    ['slug' => $variante['slug']],
-                    [
-                        'theme_id' => $tema->id,
-                        'source' => SnkKilkanaThemeSourceEnum::Catalog->value,
-                        'name' => $variante['name'] ?? null,
-                        'spec' => $variante['spec'],
-                        'position' => $variante['position'] ?? $orden,
-                        'is_default' => (bool) ($variante['is_default'] ?? false),
-                        'thumbnail_path' => $variante['thumbnail_path'] ?? null,
-                    ]
-                );
-            }
-
-            // Una variante retirada del fichero desaparece del catálogo, pero solo del catálogo:
-            // el filtro por `source` es lo que protege la copia que alguien esté vistiendo.
-            SnkKilkanaThemeVariantModel::query()
-                ->where('theme_id', $tema->id)
-                ->where('source', SnkKilkanaThemeSourceEnum::Catalog->value)
-                ->whereNotIn('slug', $vistos)
-                ->delete();
 
             $resumen['written']++;
         });
