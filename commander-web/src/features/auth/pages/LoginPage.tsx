@@ -38,7 +38,7 @@ export function LoginPage() {
     <div className="cmd-login">
       <aside className="cmd-login__aside">
         <p>
-          <strong>Commander</strong> <span className="cmd-meter__caption">Control plane</span>
+          <strong>Commander</strong> <span className="cmd-dim">Control plane</span>
         </p>
         <h1 className="cmd-login__claim">
           Cuentas, clientes, aplicaciones e instancias en un solo plano de control.
@@ -53,8 +53,9 @@ export function LoginPage() {
       </aside>
 
       <section className="cmd-login__form">
-        <h2 className="cmd-page__title">Entrar</h2>
+        {/* El título va dentro del formulario porque comparte con él la columna estrecha. */}
         <form className="cmd-stack" onSubmit={submit} noValidate>
+          <h2 className="cmd-page__title">Entrar</h2>
           {global && (
             <InlineNotification
               kind="error"
@@ -67,6 +68,7 @@ export function LoginPage() {
           <TextInput
             id="login-email"
             type="email"
+            autoComplete="username"
             labelText="Correo del operador"
             value={email}
             invalid={Boolean(fields.email)}
@@ -75,6 +77,7 @@ export function LoginPage() {
           />
           <PasswordInput
             id="login-password"
+            autoComplete="current-password"
             labelText="Contraseña"
             showPasswordLabel="Mostrar contraseña"
             hidePasswordLabel="Ocultar contraseña"
@@ -84,12 +87,15 @@ export function LoginPage() {
             invalidText={fields.password}
             onChange={(e) => setPassword(e.target.value)}
           />
+          {/* Aquí el prototipo pone «Entrar con permisos de». Se omite porque el proveedor fija
+              el rol en una constante: el desplegable no cambiaría ni `can` ni `permissions`, y un
+              control que no hace nada miente. Vuelve en cuanto el rol sea estado de la aplicación. */}
           <Button type="submit" disabled={busy}>
-            {busy ? 'Entrando…' : 'Entrar'}
+            {busy ? 'Autenticando…' : 'Entrar'}
           </Button>
           <p className="cmd-meter__caption">
-            El token vive en <code className="cmd-mono">sessionStorage</code> durante la sesión.
-            Cualquier contraseña de seis caracteres o más entra en el prototipo.
+            El token vive en memoria durante la sesión. Cualquier contraseña de seis caracteres o
+            más entra en el prototipo.
           </p>
         </form>
       </section>

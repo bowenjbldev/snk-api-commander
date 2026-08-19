@@ -23,6 +23,15 @@ test('los campos se recortan antes de enviarse', () => {
   assert.equal(payload.email, 'm@commander.es');
 });
 
-test('un alta sin id no inventa uno', () => {
-  assert.equal(toOperatorPayload(emptyOperatorValues()).id, undefined);
+test('un alta no lleva la clave id', () => {
+  // No basta con que valga `undefined`: el servidor numera la fila y luego mezcla el
+  // payload encima, así que la clave presente le devolvería el id a undefined.
+  assert.equal('id' in toOperatorPayload(emptyOperatorValues()), false);
+});
+
+test('el rol se muestra pero no se envía', () => {
+  const values = emptyOperatorValues();
+
+  assert.equal(values.role, 'admin');
+  assert.equal('role' in toOperatorPayload(values), false, 'no es editable: lo fija el servidor');
 });

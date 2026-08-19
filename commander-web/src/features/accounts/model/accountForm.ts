@@ -1,4 +1,5 @@
-import type { Account, EntityStatus } from '@services/api/types';
+import { ENTITY_STATUS } from '@services/api/mock/commander-mock';
+import type { Account } from '@services/api/types';
 import { asEntityStatus } from '@shared/lib/enums';
 
 export type AccountFormValues = {
@@ -15,6 +16,18 @@ export type AccountFormValues = {
 };
 
 export const PAYMENT_TERMS = ['15 días', '30 días', '45 días', '60 días', 'Al contado'];
+
+/**
+ * El catálogo de estados tiene tres valores, pero un pagador solo se da de alta o se
+ * retira: «suspendido» es una decisión de operación sobre la instancia, no sobre la cuenta.
+ */
+export const ACCOUNT_STATUS_OPTIONS = (['active', 'inactive'] as const).map((value) => ({
+  value,
+  label: ENTITY_STATUS[value].label,
+}));
+
+/** Un único país mientras la facturación no salga de España. */
+export const COUNTRY_OPTIONS = [{ value: 'ES', label: 'España' }];
 
 export function emptyAccountValues(account?: Account | null): AccountFormValues {
   return {
@@ -35,7 +48,7 @@ export function emptyAccountValues(account?: Account | null): AccountFormValues 
 export function toAccountPayload(values: AccountFormValues): Partial<Account> {
   return {
     name: values.name.trim(),
-    status: asEntityStatus(values.status) as EntityStatus,
+    status: asEntityStatus(values.status),
     email: values.email.trim(),
     phone: values.phone.trim(),
     billing_email: values.billing_email.trim(),

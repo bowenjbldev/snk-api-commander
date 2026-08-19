@@ -102,10 +102,10 @@ services:
     ports:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
-      # Tambien en los puertos estandar para que las URLs limpias (sin :8443) funcionen,
-      # p.ej. https://commander.snakepc.test/. Requiere que 80/443 esten libres en el host.
-      - "80:80"
-      - "443:443"
+      # Las URLs limpias de Commander usan otra IP de loopback para no compartir
+      # proxy, red ni certificados con los productos locales.
+      - "127.0.0.2:80:80"
+      - "127.0.0.2:443:443"
     volumes:
       - ./src:/var/www/src
       - ./docker/nginx/conf.d/:/etc/nginx/templates/:ro

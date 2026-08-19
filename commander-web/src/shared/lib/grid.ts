@@ -20,3 +20,15 @@ export function balancedColumns(count: number, max = 4): number {
   }
   return best;
 }
+
+/**
+ * Columnas de una sección de formulario: tres campos por fila como máximo y repartidos
+ * parejos, de modo que cuatro campos van 2+2 y cinco van 3+2. Un campo solo ocupa media
+ * fila para no estirar un input a lo ancho de la página.
+ */
+export function formColumns(count: number): number {
+  if (count === 0) return 1;
+  if (count === 1) return 2;
+  if (count % 3 === 0) return 3;
+  return count % 2 === 0 ? 2 : 3;
+}

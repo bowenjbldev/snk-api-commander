@@ -1,13 +1,27 @@
+import { METRICS, fmtNum } from '@services/api/mock/commander-mock';
 import type { Application, Plan, PlanLimit, QuotaAction } from '@services/api/types';
 
-/** Una fila del editor: el límite puede estar vacío mientras se escribe. */
-export type PlanLimitDraft = PlanLimit;
+/**
+ * Una fila del editor. Mientras se escribe, los tres números viajan como texto: el campo
+ * a medio teclear no es un número todavía y convertirlo antes de tiempo pinta `NaN`.
+ */
+export type PlanLimitDraft = Omit<
+  PlanLimit,
+  'limit_value' | 'warning_percent' | 'consecutive_periods'
+> & {
+  limit_value: number | string | null;
+  warning_percent: number | string | null;
+  consecutive_periods: number | string | null;
+};
 
 /**
  * El editor muestra una fila por métrica ACTIVA de la aplicación, no por límite ya
  * guardado: si el package declara una métrica nueva, aparece vacía en vez de faltar.
  */
-export function draftLimitsFor(application: Application | undefined, plan: Plan | undefined): PlanLimitDraft[] {
+export function draftLimitsFor(
+  application: Application | undefined,
+  plan: Plan | undefined,
+): PlanLimitDraft[] {
   return (application?.metrics ?? []).map((metric) => {
     const existing = plan?.limits.find((l) => l.metric_key === metric.key);
     return (
@@ -35,20 +49,35 @@ export function effectiveAction(row: PlanLimitDraft): QuotaAction {
 export function normalizeLimits(rows: PlanLimitDraft[]): PlanLimit[] {
   return rows.map((row) => {
     if (hasNoLimit(row)) {
-      return { metric_key: row.metric_key, limit_value: null, warning_percent: null, action: 'none', consecutive_periods: null };
+      return {
+        metric_key: row.metric_key,
+        limit_value: null,
+        warning_percent: null,
+        action: 'none',
+        consecutive_periods: null,
+      };
     }
     return {
       metric_key: row.metric_key,
       limit_value: Number(row.limit_value),
       warning_percent: row.warning_percent === null ? null : Number(row.warning_percent),
       action: row.action,
-      consecutive_periods: row.consecutive_periods === null ? null : Number(row.consecutive_periods),
+      consecutive_periods:
+        row.consecutive_periods === null ? null : Number(row.consecutive_periods),
     };
   });
 }
 
-/** Resumen de una plantilla para la tabla: cuántas métricas limitan y cuántas solo miden. */
+/**
+ * Resumen de la plantilla para la tabla: las dos primeras métricas que limitan, con su
+ * valor, y cuántas quedan. Un plan que no limita nada lo dice entero, sin contar nada.
+ */
 export function summarizeLimits(limits: PlanLimit[]): string {
-  const withLimit = limits.filter((l) => l.limit_value !== null).length;
-  return `${withLimit} con límite · ${limits.length - withLimit} solo medición`;
+  const withLimit = limits.filter((l) => l.limit_value !== null);
+  if (withLimit.length === 0) return 'Todas las métricas sin límite';
+  const first = withLimit
+    .slice(0, 2)
+    .map((l) => `${METRICS[l.metric_key]?.name ?? l.metric_key} ${fmtNum(l.limit_value)}`)
+    .join(' · ');
+  return withLimit.length > 2 ? `${first} · +${withLimit.length - 2} más` : first;
 }

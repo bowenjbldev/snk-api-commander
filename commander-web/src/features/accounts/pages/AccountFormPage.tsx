@@ -1,12 +1,16 @@
 import { SkeletonText } from '@carbon/react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ENTITY_STATUS } from '@services/api/mock/commander-mock';
 import { useApp } from '@app/provider';
 import { useResource } from '@shared/hooks/useResource';
 import { FormPage } from '@shared/components/FormPage';
 import type { FormSection } from '@shared/components/FormPage';
 import { ErrorState, Forbidden } from '@shared/components/States';
-import { PAYMENT_TERMS, emptyAccountValues } from '../model/accountForm';
+import {
+  ACCOUNT_STATUS_OPTIONS,
+  COUNTRY_OPTIONS,
+  PAYMENT_TERMS,
+  emptyAccountValues,
+} from '../model/accountForm';
 import { useAccountsService } from '../services/accountsService';
 
 const sections: FormSection[] = [
@@ -14,12 +18,7 @@ const sections: FormSection[] = [
     legend: 'Identidad y estado',
     fields: [
       { key: 'name', label: 'Nombre' },
-      {
-        key: 'status',
-        label: 'Estado',
-        type: 'select',
-        options: Object.entries(ENTITY_STATUS).map(([value, meta]) => ({ value, label: meta.label })),
-      },
+      { key: 'status', label: 'Estado', type: 'select', options: ACCOUNT_STATUS_OPTIONS },
     ],
   },
   {
@@ -33,7 +32,7 @@ const sections: FormSection[] = [
     legend: 'Facturación y condiciones de pago',
     fields: [
       { key: 'billing_email', label: 'Correo de facturación', type: 'email' },
-      { key: 'tax_id', label: 'NIF', helper: 'Letra y ocho dígitos.' },
+      { key: 'tax_id', label: 'NIF', helper: 'Letra y ocho dígitos' },
       {
         key: 'payment_terms',
         label: 'Condiciones de pago',
@@ -46,10 +45,14 @@ const sections: FormSection[] = [
     legend: 'Dirección',
     fields: [
       { key: 'address', label: 'Dirección' },
-      { key: 'country', label: 'País' },
+      { key: 'country', label: 'País', type: 'select', options: COUNTRY_OPTIONS },
     ],
   },
-  { legend: 'Notas internas', fields: [{ key: 'notes', label: 'Notas', type: 'textarea' }] },
+  {
+    legend: 'Notas internas',
+    help: 'Solo las ve el operador. No se envían al tenant.',
+    fields: [{ key: 'notes', label: 'Nota', type: 'textarea', span: 'full' }],
+  },
 ];
 
 export function AccountFormPage() {
@@ -69,8 +72,8 @@ export function AccountFormPage() {
   return (
     <FormPage
       title={editing ? 'Editar cuenta' : 'Nueva cuenta'}
-      lede="Formulario largo con impacto contractual: página dedicada, no diálogo. La cuenta es quien paga; no contiene datos de negocio de ningún tenant."
-      crumbs={[{ label: 'Cuentas', to: '/accounts' }, { label: editing ? 'Editar' : 'Nueva' }]}
+      lede="Formulario largo con impacto contractual: página dedicada, no diálogo."
+      crumbs={[{ label: 'Cuentas', to: '/accounts' }]}
       cancelTo={editing ? `/accounts/${id}` : '/accounts'}
       submitLabel={editing ? 'Guardar cambios' : 'Crear cuenta'}
       initial={emptyAccountValues(res.data)}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import {
   Button,
   Checkbox,
@@ -13,6 +13,7 @@ import {
 } from '@carbon/react';
 import { useNavigate } from 'react-router-dom';
 import type { ApiError } from '@services/api/mock/commander-mock';
+import { formColumns } from '@shared/lib/grid';
 import { PageHeader } from './PageHeader';
 import type { Crumb } from './PageHeader';
 
@@ -27,10 +28,14 @@ export interface FormField {
   readOnly?: boolean;
   /** Dentro de una tabla la cabecera ya nombra la columna: la etiqueta solo la repite. */
   hideLabel?: boolean;
+  /** Un texto largo o una casilla ocupan la fila entera; el resto media. */
+  span?: 'full';
 }
 
 export interface FormSection {
   legend: string;
+  /** Lo que hay que saber antes de rellenar la sección, no lo que hace cada campo. */
+  help?: string;
   fields: FormField[];
 }
 
@@ -131,15 +136,29 @@ export function FormPage<T extends FormValues>({
         {sections.map((section) => (
           <fieldset key={section.legend} className="cmd-form__section">
             <legend className="cmd-form__legend">{section.legend}</legend>
-            <div className="cmd-form__grid">
+            {section.help && <p className="cmd-page__lede">{section.help}</p>}
+            <div
+              className="cmd-form__grid"
+              style={
+                {
+                  '--cmd-form-cols': formColumns(
+                    section.fields.filter((f) => f.span !== 'full').length,
+                  ),
+                } as CSSProperties
+              }
+            >
               {section.fields.map((field) => (
-                <Field
+                <div
                   key={field.key}
-                  field={field}
-                  value={data[field.key]}
-                  error={errors[field.key]}
-                  onChange={(v) => set(field.key, v)}
-                />
+                  style={field.span === 'full' ? { gridColumn: '1 / -1' } : undefined}
+                >
+                  <Field
+                    field={field}
+                    value={data[field.key]}
+                    error={errors[field.key]}
+                    onChange={(v) => set(field.key, v)}
+                  />
+                </div>
               ))}
             </div>
           </fieldset>
@@ -147,15 +166,16 @@ export function FormPage<T extends FormValues>({
 
         {aside}
 
-        {dirty && <p className="cmd-meter__caption">Hay cambios sin guardar: al salir se pierden.</p>}
-
-        <div className="cmd-page__actions">
+        <div className="cmd-form__foot">
           <Button type="submit" disabled={busy}>
             {busy ? 'Guardando…' : submitLabel}
           </Button>
           <Button kind="secondary" type="button" onClick={cancel}>
             Cancelar
           </Button>
+          {dirty && (
+            <span className="cmd-form__dirty">Hay cambios sin guardar: al salir se pierden.</span>
+          )}
         </div>
       </form>
     </>

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useApp } from '@app/provider';
 import type { CommanderApiClient } from '@services/api/commanderApi';
 import type {
-  Account, Activity, Application, Client, Instance, Invoice, Plan, Quota, Subscription, SubscriptionItem,
+  Account, Activity, Application, Client, Invoice, Plan, Quota, Subscription, SubscriptionItem,
 } from '@services/api/types';
 import { toSubscriptionPayload } from '../model/subscriptionForm';
 import type { SubscriptionFormValues } from '../model/subscriptionForm';
@@ -11,11 +11,12 @@ export interface SubscriptionsService {
   listWithRelations(): Promise<[Subscription[], Account[], Application[], SubscriptionItem[]]>;
   getWithContext(
     id: string | number,
-  ): Promise<[Subscription, Account[], Application[], SubscriptionItem[], Client[], Instance[], Plan[], Quota[], Invoice[], Activity[]]>;
+  ): Promise<[Subscription, Account[], Application[], SubscriptionItem[], Client[], Plan[], Quota[], Invoice[], Activity[]]>;
   listCatalog(): Promise<[Account[], Application[]]>;
   create(values: SubscriptionFormValues): Promise<Subscription>;
   updateTerms(id: number, patch: Partial<Subscription>): Promise<Subscription>;
   createSharedQuota(subscriptionId: number, data: Partial<Quota>): Promise<Quota>;
+  updateQuota(id: number, patch: Partial<Quota>): Promise<Quota>;
 }
 
 export function createSubscriptionsService(api: CommanderApiClient): SubscriptionsService {
@@ -29,7 +30,6 @@ export function createSubscriptionsService(api: CommanderApiClient): Subscriptio
         api.list('applications'),
         api.list('items'),
         api.list('clients'),
-        api.list('instances'),
         api.list('plans'),
         api.list('quotas'),
         api.list('invoices'),
@@ -40,6 +40,7 @@ export function createSubscriptionsService(api: CommanderApiClient): Subscriptio
     updateTerms: (id, patch) => api.updateSubscription(id, patch),
     createSharedQuota: (subscriptionId, data) =>
       api.createSharedQuota({ ...data, subscription_id: subscriptionId } as Partial<Quota> & { subscription_id: number }),
+    updateQuota: (id, patch) => api.updateQuota(id, patch),
   };
 }
 

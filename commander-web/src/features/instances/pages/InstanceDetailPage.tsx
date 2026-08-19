@@ -1,6 +1,18 @@
 import { useMemo, useState } from 'react';
-import { Button, Callout, InlineNotification, SkeletonText } from '@carbon/react';
-import { useNavigate, useParams } from 'react-router-dom';
+import {
+  Button,
+  Callout,
+  InlineNotification,
+  SkeletonText,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@carbon/react';
+import { useParams } from 'react-router-dom';
 import { Link } from '@shared/components/AppLink';
 import {
   METRICS,
@@ -12,24 +24,26 @@ import {
   fmtNum,
   fmtRel,
 } from '@services/api/mock/commander-mock';
+import type { Quota, QuotaAction } from '@services/api/types';
 import { useApp } from '@app/provider';
 import { useResource } from '@shared/hooks/useResource';
 import { lut, pending } from '@shared/lib/data';
 import { PageHeader } from '@shared/components/PageHeader';
-import { Defs, DetailTabs, Panel } from '@shared/components/Detail';
-import { DataView } from '@shared/components/DataView';
+import { Defs, DetailTabs } from '@shared/components/Detail';
+import { ChartBlock } from '@shared/components/charts';
 import { StatusTag } from '@shared/components/StatusTag';
 import { Meter } from '@shared/components/Meter';
 import { ActionModal } from '@shared/components/ActionModal';
-import type { ModalField } from '@shared/components/ActionModal';
-import { ErrorState, Forbidden } from '@shared/components/States';
-import { quotaPercent } from '@features/quotas/model/quotaHealth';
+import { EmptyState, ErrorState, Forbidden } from '@shared/components/States';
 import { statusTone } from '@features/logs/model/httpStatus';
 import { InstanceUsagePanel } from '../components/InstanceUsagePanel';
-import { availableActions, isInFlight } from '../model/instanceActions';
+import { ACTION_LABEL, ACTION_PERM, actionDialog, availableActions, isInFlight } from '../model/instanceActions';
 import type { InstanceAction } from '../model/instanceActions';
 import { useInstancePolling } from '../hooks/useInstancePolling';
 import { useInstancesService } from '../services/instancesService';
+
+/** Las cifras se leen por la unidad, no por el primer dígito: van pegadas a la derecha. */
+const RIGHT = { textAlign: 'right' } as const;
 
 const TABS = [
   { slug: 'summary', label: 'Resumen' },
@@ -42,11 +56,11 @@ const TABS = [
 ];
 
 export function InstanceDetailPage() {
-  const { can } = useApp();
+  const { can, store } = useApp();
   const instancesService = useInstancesService();
   const { id = '', tab = 'summary' } = useParams();
-  const navigate = useNavigate();
   const [dialog, setDialog] = useState<InstanceAction | null>(null);
+  const [quotaDialog, setQuotaDialog] = useState<Quota | null>(null);
   const [flash, setFlash] = useState<{ title: string; body: string } | null>(null);
 
   const core = useResource(() => instancesService.getWithContext(id), [id]);
@@ -61,13 +75,10 @@ export function InstanceDetailPage() {
     () => quotas.filter((q) => q.scope === 'instance' && q.instance_id === Number(id)),
     [quotas, id],
   );
-  const instanceActivity = useMemo(() => activity.filter((a) => a.instance_id === Number(id)), [activity, id]);
-
-  async function runAction(action: InstanceAction, data: Record<string, unknown>) {
-    const updated = await instancesService.run(id, action, data);
-    core.reload();
-    setFlash({ title: 'Acción aceptada', body: updated.status_message ?? 'El servidor confirmó el cambio.' });
-  }
+  const instanceActivity = useMemo(
+    () => activity.filter((a) => a.instance_id === Number(id)).slice(0, 30),
+    [activity, id],
+  );
 
   if (!can('show instances')) return <Forbidden perm="show instances" />;
   if (core.error) {
@@ -85,53 +96,60 @@ export function InstanceDetailPage() {
   const application = lut(applications).get(instance.application_id);
   const plan = instance.plan_id ? lut(plans).get(instance.plan_id) : undefined;
   const subscription = instance.subscription_id ? lut(subscriptions).get(instance.subscription_id) : undefined;
-  const allowed = availableActions(instance);
-  const offers = (action: InstanceAction) => allowed.includes(action);
+  const provisioning = PROVISIONING[instance.provisioning_status];
+  const service = SERVICE[instance.service_status];
+  const ready = instance.provisioning_status === 'ready';
+  const retryable = ['failed', 'deprovisioned'].includes(instance.provisioning_status);
+  const actions = availableActions(instance).filter((action) => can(ACTION_PERM[action]));
+
+  const consultState = () => {
+    core.reload();
+    setFlash({
+      title: 'Estado consultado',
+      body: `GET /instances/${instance.id} respondió con el estado actual.`,
+    });
+  };
+
+  const spec =
+    dialog &&
+    actionDialog(dialog, instance, {
+      clientName: client?.name ?? '—',
+      clientSlug: client?.slug ?? '',
+      graceHours: store.settings.default_grace_hours,
+      currentPlan: plan?.name ?? '—',
+      planOptions: plans
+        .filter((p) => p.application_id === instance.application_id && p.status === 'active' && p.id !== instance.plan_id)
+        .map((p) => ({ value: String(p.id), label: `${p.name} · ${fmtMoney(p.monthly_price, p.currency)}` })),
+    });
 
   return (
     <>
       <PageHeader
-        title={`${client?.name ?? 'Instancia'} · ${application?.name ?? ''}`}
-        crumbs={[{ label: 'Instancias', to: '/instances' }, { label: `Instancia ${instance.id}` }]}
-        lede={
+        kicker={`Instancia ${instance.id}`}
+        title={`${client?.name ?? '—'} · ${application?.name ?? '—'}`}
+        crumbs={[
+          { label: 'Instancias', to: '/instances' },
+          { label: client?.name ?? '—', to: `/clients/${instance.client_id}` },
+        ]}
+        lede={`${account?.name ?? '—'} · base ${instance.database_name}`}
+        statuses={
           <>
-            <StatusTag catalog={PROVISIONING} value={instance.provisioning_status} />{' '}
-            <StatusTag catalog={SERVICE} value={instance.service_status} />{' '}
-            <span className="cmd-mono">#{instance.id}</span>
+            <StatusTag catalog={PROVISIONING} value={instance.provisioning_status} />
+            <StatusTag catalog={SERVICE} value={instance.service_status} />
           </>
         }
         actions={
           <>
-            {can('control instances') && offers('grace') && (
-              <Button kind="tertiary" size="md" onClick={() => setDialog('grace')}>
-                Gracia
-              </Button>
+            {can('control instances') && ready && Boolean(instance.plan_id) && (
+              <Button onClick={() => setDialog('change-plan')}>Cambiar plan</Button>
             )}
-            {can('control instances') && offers('suspend') && (
-              <Button kind="tertiary" size="md" onClick={() => setDialog('suspend')}>
-                Suspender
-              </Button>
+            {can('provision instances') && retryable && (
+              <Button onClick={() => setDialog('retry')}>Reintentar alta</Button>
             )}
-            {can('control instances') && offers('resume') && (
-              <Button kind="tertiary" size="md" onClick={() => setDialog('resume')}>
-                Reanudar
-              </Button>
-            )}
-            {can('control instances') && offers('change-plan') && (
-              <Button kind="tertiary" size="md" onClick={() => setDialog('change-plan')}>
-                Cambiar plan
-              </Button>
-            )}
-            {can('provision instances') && offers('retry') && (
-              <Button kind="tertiary" size="md" onClick={() => setDialog('retry')}>
-                Reintentar
-              </Button>
-            )}
-            {can('control instances') && offers('deprovision') && (
-              <Button kind="danger--tertiary" size="md" onClick={() => setDialog('deprovision')}>
-                Dar de baja
-              </Button>
-            )}
+            {/* Consultar es releer la ficha entera: el estado real solo llega del servidor. */}
+            <Button kind="tertiary" onClick={consultState}>
+              Consultar estado
+            </Button>
           </>
         }
       />
@@ -146,38 +164,79 @@ export function InstanceDetailPage() {
         />
       )}
 
-      {inFlight && !pollExpired && (
-        <Callout
-          kind="info"
-          lowContrast
-          title="Trabajo en curso"
-          subtitle="Se consulta el estado cada cinco segundos hasta que el servidor confirme el resultado."
-        />
-      )}
-      {pollExpired && (
-        <Callout
-          kind="warning"
-          lowContrast
-          title="Han pasado diez minutos"
-          subtitle="Se dejó de consultar automáticamente. El trabajo continúa en el servidor; refresca para ver su estado."
-        />
-      )}
-
       <DetailTabs base={`/instances/${instance.id}`} tabs={TABS} current={tab}>
         <div className="cmd-stack">
+          {/* Los avisos suben por encima de los bloques: acotan qué se está viendo antes de
+              que el operador lea un estado que todavía puede cambiar. */}
+          {inFlight && (
+            <Callout
+              kind="info"
+              lowContrast
+              title={`Trabajo asíncrono en curso: ${provisioning.label.toLowerCase()}`}
+              subtitle={`El SPA consulta GET /instances/${instance.id} cada cinco segundos y no da por buena ninguna transición hasta recibirla del servidor.`}
+            />
+          )}
+          {pollExpired && (
+            <Callout
+              kind="warning"
+              lowContrast
+              title="Se ha dejado de consultar"
+              subtitle="Han pasado diez minutos: se ha dejado de consultar. El trabajo continúa en el servidor, puedes refrescar manualmente."
+            />
+          )}
           {tab === 'summary' && (
-            <div className="cmd-panels">
-              <Panel title="Identidad">
+            <Callout
+              kind="info"
+              lowContrast
+              title="Datos de negocio fuera de alcance"
+              subtitle="Commander no lista usuarios, roles ni contenido del tenant: viven en la base aislada de esta instancia."
+            />
+          )}
+          {tab === 'domains' && (
+            <Callout
+              kind="info"
+              lowContrast
+              title="Dominios propios todavía no disponibles"
+              subtitle="No existe API. Esta pestaña no renderiza controles inertes ni inventa endpoints: cuando exista, separará propiedad, DNS, TLS y health check, y un hostname pendiente nunca aparecerá como activo."
+            />
+          )}
+
+          <div className="cmd-panels">
+            {tab === 'summary' && (
+              <ChartBlock
+                title="Identidad"
+                help="Los datos fijos del registro. Lo que queda inmutable tras el alta se marca como tal; el resto se edita desde su formulario."
+              >
                 <Defs
                   items={[
-                    { label: 'ID', value: <span className="cmd-mono">{instance.id}</span> },
-                    { label: 'Cliente', value: client ? <Link to={`/clients/${client.id}`}>{client.name}</Link> : '—' },
-                    { label: 'Cuenta', value: account ? <Link to={`/accounts/${account.id}`}>{account.name}</Link> : '—' },
+                    { label: 'ID de instancia', value: <span className="cmd-mono">{instance.id}</span> },
+                    {
+                      label: 'Cliente',
+                      value: <Link to={`/clients/${instance.client_id}`}>{client?.name ?? '—'}</Link>,
+                      hint: `tenant · ${client?.slug ?? '—'}`,
+                    },
+                    {
+                      label: 'Cuenta',
+                      value: <Link to={`/accounts/${instance.account_id}`}>{account?.name ?? '—'}</Link>,
+                      hint: 'pagador',
+                    },
                     {
                       label: 'Aplicación',
-                      value: application ? <Link to={`/applications/${application.id}`}>{application.name}</Link> : '—',
+                      value: (
+                        <Link to={`/applications/${instance.application_id}`}>{application?.name ?? '—'}</Link>
+                      ),
+                      hint: application?.package_name,
                     },
-                    { label: 'Plan operativo', value: plan?.name ?? 'Sin plan' },
+                    {
+                      label: 'Plan operativo',
+                      // El plan solo es navegable si se puede editar: su ficha ES su formulario.
+                      value:
+                        plan && can('update plans') ? (
+                          <Link to={`/plans/${plan.id}/edit`}>{plan.name}</Link>
+                        ) : (
+                          (plan?.name ?? 'Sin plan')
+                        ),
+                    },
                     {
                       label: 'Contrato',
                       value: subscription ? (
@@ -185,250 +244,324 @@ export function InstanceDetailPage() {
                       ) : (
                         '—'
                       ),
+                      hint: subscription && (subscription.mode === 'catalog' ? 'catálogo' : 'negociado'),
                     },
-                  ]}
-                />
-              </Panel>
-
-              <Panel title="Base tenant">
-                <Defs
-                  items={[
-                    { label: 'Base de datos', value: <span className="cmd-mono">{instance.database_name}</span> },
-                    { label: 'Usuario runtime', value: <span className="cmd-mono">{instance.database_user}</span> },
-                    { label: 'Contraseña', value: <span className="cmd-meter__caption">Nunca se muestra ni se recupera.</span> },
-                  ]}
-                />
-              </Panel>
-
-              <Panel title="Fechas">
-                <Defs
-                  items={[
-                    { label: 'Creada', value: `${fmtDateTime(instance.created_at)} (${fmtRel(instance.created_at)})` },
+                    { label: 'Base tenant', value: <span className="cmd-mono">{instance.database_name}</span> },
+                    {
+                      label: 'Usuario runtime',
+                      value: <span className="cmd-mono">{instance.database_user}</span>,
+                      hint: 'la contraseña nunca se muestra',
+                    },
+                    {
+                      label: 'Creada',
+                      value: fmtDateTime(instance.created_at),
+                      hint: fmtRel(instance.created_at),
+                    },
                     {
                       label: 'Aprovisionada',
-                      value: instance.provisioned_at ? fmtDateTime(instance.provisioned_at) : 'Todavía no',
+                      value: instance.provisioned_at ? fmtDateTime(instance.provisioned_at) : '—',
                     },
-                    { label: 'Actualizada', value: fmtDateTime(instance.updated_at) },
                     {
-                      label: 'Última actividad',
-                      value: instance.last_activity_at ? fmtDateTime(instance.last_activity_at) : 'Sin actividad',
+                      label: 'Actualizada',
+                      value: fmtDateTime(instance.updated_at),
+                      hint: fmtRel(instance.updated_at),
                     },
                     { label: 'Requests 24 h', value: fmtNum(instance.requests_24h) },
                   ]}
                 />
-              </Panel>
-            </div>
-          )}
+              </ChartBlock>
+            )}
 
-          {tab === 'operation' && (
-            <div className="cmd-panels">
-              <Panel title="Estado">
+            {tab === 'operation' && (
+              <>
+                <ChartBlock
+                  title="Estado operativo"
+                  help="Lo que dice el servidor ahora mismo: aprovisionamiento, servicio y la razón registrada en el último cambio."
+                >
+                  <Defs
+                    items={[
+                      {
+                        label: 'Provisioning',
+                        value: <StatusTag catalog={PROVISIONING} value={instance.provisioning_status} />,
+                        hint: `severidad ${provisioning.sev}`,
+                      },
+                      {
+                        label: 'Servicio',
+                        value: <StatusTag catalog={SERVICE} value={instance.service_status} />,
+                        hint: service.note,
+                      },
+                      {
+                        label: 'Razón',
+                        value: <span className="cmd-mono">{instance.status_reason ?? '—'}</span>,
+                      },
+                      { label: 'Mensaje', value: instance.status_message ?? '—' },
+                      {
+                        label: 'Gracia hasta',
+                        value: instance.grace_until ? fmtDateTime(instance.grace_until) : '—',
+                        hint: instance.grace_until ? fmtRel(instance.grace_until) : undefined,
+                      },
+                      { label: 'Última actualización', value: fmtDateTime(instance.updated_at) },
+                    ]}
+                  />
+                </ChartBlock>
+
+                {instance.last_error && (
+                  <ChartBlock
+                    title="Último error"
+                    help="Se conserva tal cual lo devuelve el servidor. Retry reutiliza el mismo ID de instancia: no se crea otra para tapar el fallo."
+                  >
+                    <pre className="cmd-mono cmd-table-scroll">{instance.last_error}</pre>
+                  </ChartBlock>
+                )}
+
+                <ChartBlock
+                  title="Acciones"
+                  help="Cada acción abre un diálogo con su razón y su mensaje, y espera la respuesta del servidor antes de dar nada por hecho."
+                >
+                  <div className="cmd-page__actions">
+                    {actions.length > 0 ? (
+                      actions.map((action) => (
+                        <Button
+                          key={action}
+                          size="sm"
+                          kind={action === 'deprovision' ? 'danger' : 'tertiary'}
+                          onClick={() => setDialog(action)}
+                        >
+                          {ACTION_LABEL[action]}
+                        </Button>
+                      ))
+                    ) : (
+                      <Button size="sm" kind="ghost" disabled title="Tu rol no permite operar esta instancia">
+                        Sin acciones disponibles
+                      </Button>
+                    )}
+                    <p className="cmd-page__lede">
+                      {can('control instances')
+                        ? 'Cada acción envía su POST y espera la respuesta: la interfaz no simula el éxito antes de recibirlo.'
+                        : 'Tu rol no tiene «control instances», así que la interfaz no ofrece estas acciones.'}
+                    </p>
+                  </div>
+                </ChartBlock>
+              </>
+            )}
+
+            {tab === 'usage' && <InstanceUsagePanel instanceId={id} />}
+
+            {tab === 'quotas' &&
+              (instanceQuotas.length > 0 ? (
+                <ChartBlock
+                  title="Cuotas propias"
+                  help="Las cuotas de instancia nacen del plan al aprovisionar o al cambiar de plan. La API no permite borrarlas, solo editarlas."
+                >
+                  <TableContainer className="cmd-table-scroll">
+                    <Table size="sm" aria-label="Cuotas propias">
+                      <TableHead>
+                        <TableRow>
+                          <TableHeader>Métrica</TableHeader>
+                          <TableHeader style={RIGHT}>Valor</TableHeader>
+                          <TableHeader style={RIGHT}>Límite</TableHeader>
+                          <TableHeader>Consumo</TableHeader>
+                          <TableHeader style={RIGHT}>Aviso</TableHeader>
+                          <TableHeader>Acción</TableHeader>
+                          <TableHeader style={RIGHT}>Periodos</TableHeader>
+                          <TableHeader>Última medición</TableHeader>
+                          <TableHeader aria-label="Editar" style={RIGHT} />
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {instanceQuotas.map((quota) => {
+                          const metric = METRICS[quota.metric_key];
+                          return (
+                            <TableRow key={quota.id}>
+                              <TableCell>
+                                <Link to={`/quotas/${quota.id}`}>{metric?.name ?? quota.metric_key}</Link>
+                                <span className="cmd-cell__sub">{quota.metric_key}</span>
+                              </TableCell>
+                              <TableCell style={RIGHT}>
+                                {fmtNum(quota.current_value)}
+                                <span className="cmd-cell__sub">{metric?.unit}</span>
+                              </TableCell>
+                              <TableCell
+                                className={quota.limit_value === null ? 'cmd-dim' : undefined}
+                                style={RIGHT}
+                              >
+                                {quota.limit_value === null ? 'Sin límite' : fmtNum(quota.limit_value)}
+                              </TableCell>
+                              <TableCell>
+                                {/* `pct` divide un valor nulo y devuelve cero: sin medición no
+                                    hay barra que pintar, y un cero mentiría sobre el consumo. */}
+                                {quota.current_value === null && quota.limit_value !== null ? (
+                                  <span className="cmd-meter__caption">Sin medición</span>
+                                ) : (
+                                  <Meter value={quota.current_value} limit={quota.limit_value} />
+                                )}
+                              </TableCell>
+                              <TableCell className="cmd-dim" style={RIGHT}>
+                                {quota.warning_percent === null ? '—' : `${quota.warning_percent} %`}
+                              </TableCell>
+                              <TableCell>
+                                <StatusTag catalog={QUOTA_ACTION} value={quota.action} />
+                              </TableCell>
+                              <TableCell className="cmd-dim" style={RIGHT}>
+                                {quota.consecutive_count} / {quota.consecutive_periods ?? '—'}
+                              </TableCell>
+                              <TableCell className="cmd-dim">{fmtDateTime(quota.measured_at)}</TableCell>
+                              <TableCell style={RIGHT}>
+                                {can('update quotas') && (
+                                  <Button kind="ghost" size="sm" onClick={() => setQuotaDialog(quota)}>
+                                    Editar
+                                  </Button>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </ChartBlock>
+              ) : (
+                <EmptyBlock
+                  head="Cuotas"
+                  title="Sin cuotas materializadas"
+                  body="Los límites se materializan al aprovisionar o al cambiar de plan. Una instancia dada de baja no conserva cuotas."
+                />
+              ))}
+
+            {tab === 'logs' && <InstanceLogsPanel instanceId={id} />}
+
+            {tab === 'activity' &&
+              (instanceActivity.length > 0 ? (
+                <ChartBlock
+                  title="Eventos de la instancia"
+                  help="Cambios de estado, cambios de plan, warnings y recomendaciones emitidos para esta instancia."
+                >
+                  <TableContainer className="cmd-table-scroll">
+                    <Table size="sm" aria-label="Eventos de la instancia">
+                      <TableHead>
+                        <TableRow>
+                          <TableHeader>Fecha</TableHeader>
+                          <TableHeader>Tipo</TableHeader>
+                          <TableHeader>Razón</TableHeader>
+                          <TableHeader>Mensaje</TableHeader>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {instanceActivity.map((event) => (
+                          <TableRow key={event.id}>
+                            <TableCell className="cmd-dim">{fmtDateTime(event.created_at)}</TableCell>
+                            <TableCell>{event.label}</TableCell>
+                            <TableCell className="cmd-mono cmd-dim">{event.reason}</TableCell>
+                            <TableCell className="cmd-dim">{event.message}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </ChartBlock>
+              ) : (
+                <EmptyBlock
+                  head="Actividad"
+                  title="Sin actividad registrada"
+                  body="Los eventos aparecen cuando el servidor los emite."
+                />
+              ))}
+
+            {tab === 'domains' && (
+              <ChartBlock
+                title="Lo único servible hoy"
+                help="El subdominio técnico es el fallback que siempre queda visible, incluso cuando falle un dominio propio."
+              >
                 <Defs
                   items={[
-                    { label: 'Provisioning', value: <StatusTag catalog={PROVISIONING} value={instance.provisioning_status} /> },
-                    { label: 'Servicio', value: <StatusTag catalog={SERVICE} value={instance.service_status} /> },
                     {
-                      label: 'Razón',
-                      value: instance.status_reason ? <span className="cmd-mono">{instance.status_reason}</span> : '—',
-                    },
-                    { label: 'Mensaje', value: instance.status_message ?? '—' },
-                    {
-                      label: 'Gracia hasta',
-                      value: instance.grace_until
-                        ? `${fmtDateTime(instance.grace_until)} (${fmtRel(instance.grace_until)})`
-                        : 'Sin gracia abierta',
+                      label: 'Subdominio técnico',
+                      value: <span className="cmd-mono">{client?.slug ?? '—'}.commander.app</span>,
+                      hint: 'fallback siempre visible',
                     },
                   ]}
                 />
-              </Panel>
-
-              {instance.last_error && (
-                <div className="cmd-panels__wide">
-                  <Panel title="Último error">
-                    <p className="cmd-mono">{instance.last_error}</p>
-                    <p className="cmd-meter__caption">
-                      Retry reutiliza este mismo ID de instancia; nunca se crea otra para tapar un fallo.
-                    </p>
-                  </Panel>
-                </div>
-              )}
-            </div>
-          )}
-
-          {tab === 'usage' && <InstanceUsagePanel instanceId={id} />}
-
-          {tab === 'quotas' && (
-            <DataView
-              label="Cuotas de la instancia"
-              rows={instanceQuotas}
-              columns={[
-                {
-                  key: 'metric',
-                  header: 'Métrica',
-                  value: (q) => METRICS[q.metric_key]?.name ?? q.metric_key,
-                  render: (q) => <Link to={`/quotas/${q.id}`}>{METRICS[q.metric_key]?.name ?? q.metric_key}</Link>,
-                },
-                {
-                  key: 'current',
-                  header: 'Consumo',
-                  value: (q) => quotaPercent(q),
-                  render: (q) => <Meter value={q.current_value} limit={q.limit_value} />,
-                },
-                {
-                  key: 'limit',
-                  header: 'Límite',
-                  align: 'right',
-                  value: (q) => q.limit_value,
-                  render: (q) => (q.limit_value === null ? 'Sin límite' : fmtNum(q.limit_value)),
-                },
-                { key: 'action', header: 'Enforcement', value: (q) => q.action, render: (q) => <StatusTag catalog={QUOTA_ACTION} value={q.action} /> },
-                {
-                  key: 'consecutive',
-                  header: 'Periodos',
-                  align: 'right',
-                  value: (q) => q.consecutive_count,
-                  render: (q) => `${q.consecutive_count} / ${q.consecutive_periods ?? '—'}`,
-                },
-                { key: 'measured_at', header: 'Medición', value: (q) => q.measured_at, render: (q) => fmtRel(q.measured_at) },
-              ]}
-              emptyTitle="Sin cuotas materializadas"
-              emptyBody="Las cuotas nacen al aprovisionar o al cambiar de plan. Una instancia que nunca llegó a ready no tiene ninguna."
-            />
-          )}
-
-          {tab === 'logs' && <InstanceLogsPanel instanceId={id} />}
-
-          {tab === 'activity' && (
-            <DataView
-              label="Actividad de la instancia"
-              rows={instanceActivity}
-              columns={[
-                { key: 'created_at', header: 'Fecha', value: (a) => a.created_at, render: (a) => fmtDateTime(a.created_at) },
-                { key: 'label', header: 'Tipo', value: (a) => a.label, render: (a) => <Link to={`/activity/${a.id}`}>{a.label}</Link> },
-                { key: 'reason', header: 'Razón', value: (a) => a.reason, render: (a) => <span className="cmd-mono">{a.reason}</span> },
-                { key: 'message', header: 'Mensaje', value: (a) => a.message },
-              ]}
-              defaultSort={{ key: 'created_at', dir: 'desc' }}
-              emptyTitle="Sin eventos"
-              emptyBody="Esta instancia todavía no ha generado auditoría operativa."
-            />
-          )}
-
-          {tab === 'domains' && (
-            <Panel title="Dominios propios">
-              <Defs items={[{ label: 'Subdominio técnico', value: <span className="cmd-mono">{client?.slug ?? '—'}</span> }]} />
-              <p className="cmd-meter__caption">
-                Dominios propios todavía no disponibles. Mientras no exista API no se muestran controles que no harían
-                nada.
-              </p>
-            </Panel>
-          )}
+              </ChartBlock>
+            )}
+          </div>
         </div>
       </DetailTabs>
 
-      <ActionModal
-        open={dialog === 'grace'}
-        kicker="Instancia lista"
-        title="Abrir periodo de gracia"
-        body="La instancia sigue sirviendo tráfico hasta que venza la gracia. Es una decisión operativa: queda registrada con su razón."
-        submitLabel="Abrir gracia"
-        fields={[
-          { key: 'hours', label: 'Horas de gracia', type: 'number', helper: 'Entre 1 y 720 horas.' },
-          { key: 'reason', label: 'Razón operativa', placeholder: 'quota_exceeded, invoice_overdue…' },
-          { key: 'message', label: 'Mensaje para la ficha', type: 'textarea' },
-        ]}
-        initial={{ hours: 48, reason: '', message: '' }}
-        onClose={() => setDialog(null)}
-        onSubmit={(data) => runAction('grace', data)}
-      />
+      {dialog && spec && (
+        <ActionModal
+          open
+          kicker={spec.kicker}
+          title={spec.title}
+          body={spec.body}
+          danger={spec.danger}
+          submitLabel={spec.submitLabel}
+          fields={spec.fields}
+          initial={spec.initial}
+          onClose={() => setDialog(null)}
+          onSubmit={async (data) => {
+            await instancesService.run(instance.id, dialog, data);
+            core.reload();
+            setFlash({ title: 'Acción aplicada', body: spec.done });
+          }}
+        />
+      )}
 
-      <ActionModal
-        open={dialog === 'suspend'}
-        kicker="Instancia lista"
-        title="Suspender el servicio"
-        body="La instancia dejará de servir tráfico y responderá 402 hasta que se reanude."
-        danger
-        submitLabel="Suspender"
-        fields={[
-          { key: 'reason', label: 'Razón operativa', placeholder: 'invoice_overdue, abuse…' },
-          { key: 'message', label: 'Mensaje para la ficha', type: 'textarea' },
-        ]}
-        initial={{ reason: '', message: '' }}
-        onClose={() => setDialog(null)}
-        onSubmit={(data) => runAction('suspend', data)}
-      />
-
-      <ActionModal
-        open={dialog === 'resume'}
-        title="Reanudar el servicio"
-        body="La instancia vuelve a servir tráfico de inmediato."
-        submitLabel="Reanudar"
-        fields={[{ key: 'message', label: 'Mensaje para la ficha', type: 'textarea' }]}
-        initial={{ message: '' }}
-        onClose={() => setDialog(null)}
-        onSubmit={(data) => runAction('resume', data)}
-      />
-
-      <ActionModal
-        open={dialog === 'change-plan'}
-        title="Cambiar el plan operativo"
-        body="Las cuotas se rehacen desde la plantilla del plan destino. El precio pactado del contrato no se recalcula."
-        submitLabel="Cambiar plan"
-        fields={
-          [
+      {quotaDialog && (
+        <ActionModal
+          open
+          kicker={`Cuota ${quotaDialog.id}`}
+          title={`Editar ${METRICS[quotaDialog.metric_key]?.name ?? quotaDialog.metric_key}`}
+          body="Un límite vacío significa medir sin limitar. La API no permite borrar cuotas."
+          submitLabel="Guardar cuota"
+          fields={[
             {
-              key: 'plan_id',
-              label: 'Plan destino',
-              type: 'select',
-              options: plans
-                .filter((p) => p.application_id === instance.application_id && p.status === 'active')
-                .map((p) => ({ value: String(p.id), label: `${p.name} · ${fmtMoney(p.monthly_price, p.currency)}` })),
+              key: 'limit_value',
+              label: `Límite (${METRICS[quotaDialog.metric_key]?.unit ?? ''})`,
+              placeholder: 'Sin límite',
             },
-          ] as ModalField[]
-        }
-        initial={{ plan_id: String(instance.plan_id ?? '') }}
-        onClose={() => setDialog(null)}
-        onSubmit={(data) => runAction('change-plan', data)}
-      />
-
-      <ActionModal
-        open={dialog === 'retry'}
-        kicker="Reintento"
-        title="Reintentar el alta"
-        body="Se reutiliza el mismo ID de instancia. Hace falta una contraseña nueva para el administrador tenant."
-        submitLabel="Reintentar"
-        fields={[
-          {
-            key: 'password',
-            label: 'Contraseña del administrador',
-            type: 'password',
-            helper: 'Doce caracteres como mínimo, con letras y números. No se recupera después.',
-          },
-        ]}
-        initial={{ password: '' }}
-        onClose={() => setDialog(null)}
-        onSubmit={(data) => runAction('retry', data)}
-      />
-
-      <ActionModal
-        open={dialog === 'deprovision'}
-        kicker="Acción destructiva"
-        title="Dar de baja la instancia"
-        body={`Se eliminan los recursos de la instancia. La ficha histórica se conserva. Escribe «${client?.slug ?? ''}» para confirmar.`}
-        danger
-        submitLabel="Dar de baja"
-        fields={[
-          { key: 'confirm', label: 'Slug del cliente', placeholder: client?.slug },
-          { key: 'reason', label: 'Razón operativa', placeholder: 'contract_ended, operator_request…' },
-        ]}
-        initial={{ confirm: '', reason: 'operator_request' }}
-        onClose={() => setDialog(null)}
-        onSubmit={async (data) => {
-          await runAction('deprovision', data);
-          navigate(`/instances/${instance.id}/operation`);
-        }}
-      />
+            { key: 'warning_percent', label: 'Porcentaje de aviso' },
+            {
+              key: 'action',
+              label: 'Acción',
+              type: 'select',
+              helper: QUOTA_ACTION[quotaDialog.action]?.help,
+              options: Object.entries(QUOTA_ACTION).map(([value, meta]) => ({ value, label: meta.label })),
+            },
+            { key: 'consecutive_periods', label: 'Periodos consecutivos' },
+          ]}
+          initial={{
+            limit_value: quotaDialog.limit_value ?? '',
+            warning_percent: quotaDialog.warning_percent ?? '',
+            action: quotaDialog.action,
+            consecutive_periods: quotaDialog.consecutive_periods ?? 1,
+          }}
+          onClose={() => setQuotaDialog(null)}
+          onSubmit={async (data) => {
+            await instancesService.saveQuota(quotaDialog.id, {
+              limit_value: data.limit_value === '' ? null : Number(data.limit_value),
+              warning_percent: data.warning_percent === '' ? null : Number(data.warning_percent),
+              action: String(data.action) as QuotaAction,
+              consecutive_periods: Number(data.consecutive_periods) || 1,
+            });
+            core.reload();
+            setFlash({
+              title: 'Cuota guardada',
+              body: 'Los cambios aplican a partir de la siguiente medición.',
+            });
+          }}
+        />
+      )}
     </>
+  );
+}
+
+/** Un bloque vacío es su título fuera de la caja y el motivo dentro, como cualquier otro. */
+function EmptyBlock({ head, title, body }: { head: string; title: string; body: string }) {
+  return (
+    <section className="cmd-chart">
+      <h2 className="cmd-chart__title">{head}</h2>
+      <EmptyState title={title} body={body} />
+    </section>
   );
 }
 
@@ -436,47 +569,61 @@ function InstanceLogsPanel({ instanceId }: { instanceId: string }) {
   const instancesService = useInstancesService();
   const res = useResource(() => instancesService.logs(instanceId), [instanceId]);
 
+  if (res.error) return <ErrorState error={res.error} onRetry={res.reload} />;
+  if (res.loading) return <SkeletonText paragraph lineCount={4} />;
+
+  const rows = (res.data ?? []).slice(0, 40);
+  if (rows.length === 0) {
+    return (
+      <EmptyBlock
+        head="Logs"
+        title="Sin logs para esta instancia"
+        body="Los logs pueden desaparecer por retención o por deprovisioning."
+      />
+    );
+  }
+
   return (
-    <DataView
-      label="Logs de la instancia"
-      rows={res.data}
-      loading={res.loading}
-      refreshing={res.refreshing}
-      error={res.error}
-      onRetry={res.reload}
-      columns={[
-        {
-          key: 'created_at',
-          header: 'Fecha',
-          value: (l) => l.created_at,
-          render: (l) => <span className="cmd-mono">{fmtDateTime(l.created_at)}</span>,
-        },
-        { key: 'method', header: 'Método', value: (l) => l.method, render: (l) => <span className="cmd-mono">{l.method}</span> },
-        { key: 'path', header: 'Ruta', value: (l) => l.path, render: (l) => <span className="cmd-mono">{l.path}</span> },
-        {
-          key: 'status',
-          header: 'Estado',
-          align: 'right',
-          value: (l) => l.status,
-          render: (l) => {
-            const tone = statusTone(l.status);
-            return <span className={tone ? `cmd-text-${tone}` : undefined}>{l.status}</span>;
-          },
-        },
-        {
-          key: 'duration_ms',
-          header: 'Duración',
-          align: 'right',
-          value: (l) => l.duration_ms,
-          render: (l) => `${fmtNum(l.duration_ms)} ms`,
-        },
-        { key: 'actor', header: 'Actor', value: (l) => l.actor, render: (l) => <span className="cmd-mono">{l.actor}</span> },
-        { key: 'ip', header: 'IP', value: (l) => l.ip, render: (l) => <span className="cmd-mono">{l.ip}</span> },
-      ]}
-      search={(l) => `${l.path} ${l.actor} ${l.ip} ${l.status}`}
-      defaultSort={{ key: 'created_at', dir: 'desc' }}
-      emptyTitle="Sin logs"
-      emptyBody="No hay requests registrados para esta instancia dentro de la ventana de retención."
-    />
+    <ChartBlock
+      title="Últimos requests"
+      help="Los cuarenta requests más recientes de esta instancia. Pueden desaparecer por retención o por deprovisioning."
+      linkTo={`/logs?instance=${instanceId}`}
+      linkLabel="Ver en logs globales"
+    >
+      <TableContainer className="cmd-table-scroll">
+        <Table size="sm" aria-label="Últimos requests">
+          <TableHead>
+            <TableRow>
+              <TableHeader>Fecha</TableHeader>
+              <TableHeader>Método</TableHeader>
+              <TableHeader>Ruta</TableHeader>
+              <TableHeader style={RIGHT}>Estado</TableHeader>
+              <TableHeader style={RIGHT}>Duración</TableHeader>
+              <TableHeader>Actor</TableHeader>
+              <TableHeader>IP</TableHeader>
+              <TableHeader style={RIGHT}>Bytes</TableHeader>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rows.map((log) => (
+              <TableRow key={log.id}>
+                <TableCell className="cmd-dim">{fmtDateTime(log.created_at)}</TableCell>
+                <TableCell className="cmd-mono cmd-dim">{log.method}</TableCell>
+                <TableCell className="cmd-mono cmd-dim">{log.path}</TableCell>
+                <TableCell className={`cmd-text-${statusTone(log.status)}`} style={RIGHT}>
+                  {log.status}
+                </TableCell>
+                <TableCell className="cmd-mono cmd-dim" style={RIGHT}>
+                  {log.duration_ms} ms
+                </TableCell>
+                <TableCell className="cmd-mono cmd-dim">{log.actor}</TableCell>
+                <TableCell className="cmd-mono cmd-dim">{log.ip}</TableCell>
+                <TableCell style={RIGHT}>{fmtNum(log.bytes)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </ChartBlock>
   );
 }

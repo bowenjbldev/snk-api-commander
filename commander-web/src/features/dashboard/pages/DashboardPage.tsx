@@ -85,7 +85,7 @@ export function DashboardPage() {
       label: 'Instancias listas',
       value: fmtNum(view.readyInstances.length),
       note: `de ${view.totalInstances} en el parque`,
-      to: '/instances?provisioning=ready',
+      to: '/instances?prov=ready',
       linkLabel: 'Ver instancias',
     });
     add('index instances', {
@@ -174,7 +174,7 @@ export function DashboardPage() {
                   items={Object.entries(PROVISIONING).map(([key, meta]) => ({
                     label: meta.label,
                     value: view.byProvisioning[key] ?? 0,
-                    to: `/instances?provisioning=${key}`,
+                    to: `/instances?prov=${key}`,
                     tone: meta.tone,
                   }))}
                   total={`${fmtNum(view.totalInstances)} instancias en el parque, en el orden del ciclo de vida.`}
@@ -198,7 +198,7 @@ export function DashboardPage() {
                       ((view.byService[key] ?? 0) / (view.readyInstances.length || 1)) * 100,
                     ),
                     tone: meta.tone,
-                    to: `/instances?service=${key}`,
+                    to: `/instances?svc=${key}`,
                   }))}
                   footer={`${fmtNum(view.readyInstances.length)} instancias listas de ${fmtNum(view.totalInstances)} en el parque.`}
                 />

@@ -9,7 +9,6 @@ import type { Account, Application, Client, Instance, LogEntry } from '@services
  */
 export interface LogsService {
   listGlobal(): Promise<[LogEntry[], Instance[], Client[], Application[], Account[]]>;
-  listForInstance(instanceId: string | number): Promise<LogEntry[]>;
 }
 
 export function createLogsService(api: CommanderApiClient): LogsService {
@@ -22,7 +21,6 @@ export function createLogsService(api: CommanderApiClient): LogsService {
         api.list('applications'),
         api.list('accounts'),
       ]),
-    listForInstance: (instanceId) => api.instanceLogs(instanceId),
   };
 }
 

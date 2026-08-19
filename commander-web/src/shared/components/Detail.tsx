@@ -40,7 +40,9 @@ export function DetailTabs({
         navigate(tab.slug === tabs[0].slug ? base : `${base}/${tab.slug}`);
       }}
     >
-      <TabList aria-label="Secciones de la ficha" contained>
+      {/* Pestañas de línea: el subrayado marca la sección sin encajonar la ficha en
+          una caja más, que es lo que hace la variante `contained`. */}
+      <TabList aria-label="Secciones de la ficha">
         {tabs.map((t) => (
           <Tab key={t.slug}>{t.label}</Tab>
         ))}
@@ -57,16 +59,23 @@ export function DetailTabs({
 export interface DefItem {
   label: string;
   value: ReactNode;
+  /** La letra pequeña del dato: de dónde sale, qué implica o desde cuándo. */
+  hint?: ReactNode;
 }
 
-/** Lista de definición: etiqueta y dato, con los timestamps siempre absolutos. */
+/**
+ * Lista de definición en rejilla: rótulo encima del dato, y tantas columnas como
+ * quepan. Un dl a dos columnas obliga a una etiqueta corta y deja media ficha vacía
+ * cuando los valores son cortos, que es lo normal aquí.
+ */
 export function Defs({ items }: { items: DefItem[] }) {
   return (
     <dl className="cmd-defs">
       {items.map((item) => (
-        <div key={item.label} style={{ display: 'contents' }}>
+        <div key={item.label}>
           <dt>{item.label}</dt>
           <dd>{item.value ?? '—'}</dd>
+          {item.hint && <dd className="cmd-defs__hint">{item.hint}</dd>}
         </div>
       ))}
     </dl>

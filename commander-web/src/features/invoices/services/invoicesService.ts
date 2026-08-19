@@ -9,7 +9,7 @@ export interface InvoicesService {
   listWithAccounts(): Promise<[Invoice[], Account[]]>;
   getWithContext(id: string | number): Promise<[Invoice, Account[], Subscription[]]>;
   listFormCatalog(): Promise<[Account[], Subscription[], SubscriptionItem[], Client[]]>;
-  create(values: InvoiceFormValues, accountId: number, lines: DraftLine[]): Promise<Invoice>;
+  create(values: InvoiceFormValues, lines: DraftLine[]): Promise<Invoice>;
   updateStatus(id: number, status: string, issuedAt: string, dueAt: string): Promise<Invoice>;
 }
 
@@ -19,7 +19,7 @@ export function createInvoicesService(api: CommanderApiClient): InvoicesService 
     getWithContext: (id) => Promise.all([api.get('invoices', id), api.list('accounts'), api.list('subscriptions')]),
     listFormCatalog: () =>
       Promise.all([api.list('accounts'), api.list('subscriptions'), api.list('items'), api.list('clients')]),
-    create: (values, accountId, lines) => api.createInvoice(toInvoicePayload(values, accountId, lines)),
+    create: (values, lines) => api.createInvoice(toInvoicePayload(values, lines)),
     updateStatus: (id, status, issuedAt, dueAt) => api.updateInvoice(id, toInvoiceUpdatePayload(status, issuedAt, dueAt)),
   };
 }

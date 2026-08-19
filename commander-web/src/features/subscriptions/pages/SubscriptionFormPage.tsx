@@ -1,5 +1,5 @@
-import { Callout, SkeletonText } from '@carbon/react';
-import { useNavigate } from 'react-router-dom';
+import { SkeletonText } from '@carbon/react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { SUB_STATUS } from '@services/api/mock/commander-mock';
 import { useApp } from '@app/provider';
 import { useResource } from '@shared/hooks/useResource';
@@ -17,42 +17,36 @@ function sectionsFor(
 ): FormSection[] {
   return [
     {
-      legend: 'Partes y modalidad',
+      legend: 'Ámbito',
+      help: 'El alta normal ya crea un contrato de catálogo: crear otro a mano puede duplicar el cobro.',
       fields: [
         {
           key: 'account_id',
           label: 'Cuenta',
           type: 'select',
-          options: accounts.map((a) => ({ value: String(a.id), label: a.name })),
-          helper: 'Inmutable después de crear.',
+          options: [{ value: '', label: 'Elige una cuenta' }].concat(
+            [...accounts]
+              .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+              .map((a) => ({ value: String(a.id), label: a.name })),
+          ),
         },
         {
           key: 'application_id',
           label: 'Aplicación',
           type: 'select',
-          options: applications.map((a) => ({ value: String(a.id), label: a.name })),
-          helper: 'Inmutable después de crear.',
+          options: [{ value: '', label: 'Elige una aplicación' }].concat(
+            applications.map((a) => ({ value: String(a.id), label: a.name })),
+          ),
         },
+        { key: 'name', label: 'Nombre del contrato' },
         {
           key: 'mode',
           label: 'Modalidad',
           type: 'select',
-          options: Object.entries(SUBSCRIPTION_MODE_CATALOG).map(([value, meta]) => ({ value, label: meta.label })),
-          helper: 'Inmutable después de crear.',
-        },
-        { key: 'name', label: 'Nombre reconocible' },
-      ],
-    },
-    {
-      legend: 'Precio y capacidad',
-      fields: [
-        { key: 'monthly_amount', label: 'Importe mensual', type: 'number' },
-        { key: 'currency', label: 'Moneda' },
-        {
-          key: 'max_instances',
-          label: 'Capacidad (cabeceras)',
-          type: 'number',
-          helper: 'Nunca puede quedar por debajo de las cabeceras activas.',
+          options: [
+            { value: 'negotiated', label: SUBSCRIPTION_MODE_CATALOG.negotiated.label },
+            { value: 'catalog', label: SUBSCRIPTION_MODE_CATALOG.catalog.label },
+          ],
         },
         {
           key: 'status',
@@ -62,8 +56,24 @@ function sectionsFor(
         },
       ],
     },
-    { legend: 'Vigencia', fields: [{ key: 'starts_at', label: 'Inicio (AAAA-MM-DD)' }] },
-    { legend: 'Notas internas', fields: [{ key: 'notes', label: 'Notas', type: 'textarea' }] },
+    {
+      legend: 'Precio y capacidad',
+      fields: [
+        // Campos de texto, no `number`: un importe vacío tiene que poder viajar vacío
+        // para que el 422 del servidor sea el que hable, y así lo pide el resto del SPA.
+        {
+          key: 'monthly_amount',
+          label: 'Importe mensual',
+          helper: 'En euros. El precio pactado no se recalcula al cambiar el plan de una cabecera.',
+        },
+        {
+          key: 'max_instances',
+          label: 'Capacidad (cabeceras)',
+          helper: 'Nunca por debajo del número de ítems activos.',
+        },
+        { key: 'starts_at', label: 'Inicio', helper: 'AAAA-MM-DD.' },
+      ],
+    },
   ];
 }
 
@@ -71,6 +81,7 @@ export function SubscriptionFormPage() {
   const { can } = useApp();
   const subscriptionsService = useSubscriptionsService();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const res = useResource(() => subscriptionsService.listCatalog(), []);
   const [accounts, applications] = pending(res.data, [[], []]);
 
@@ -81,20 +92,12 @@ export function SubscriptionFormPage() {
   return (
     <FormPage
       title="Nuevo contrato"
-      lede="Para contratos negociados o de catálogo creados a mano. El alta normal ya crea un contrato de catálogo: crear otro aquí duplicaría la facturación."
-      crumbs={[{ label: 'Contratos', to: '/subscriptions' }, { label: 'Nuevo' }]}
+      lede="Para contratos negociados o de catálogo creados a mano. Cuenta, aplicación y modalidad son inmutables después de crear."
+      crumbs={[{ label: 'Contratos', to: '/subscriptions' }]}
       cancelTo="/subscriptions"
       submitLabel="Crear contrato"
-      initial={emptySubscriptionValues(accounts[0]?.id, applications[0]?.id)}
+      initial={emptySubscriptionValues(params.get('account') ?? undefined)}
       sections={sectionsFor(accounts, applications)}
-      aside={
-        <Callout
-          kind="info"
-          lowContrast
-          title="Cuidado con los duplicados"
-          subtitle="El alta de una instancia ya crea su contrato de catálogo. Este formulario es para acuerdos negociados o correcciones manuales."
-        />
-      }
       onSubmit={async (values) => {
         const saved = await subscriptionsService.create(values);
         navigate(`/subscriptions/${saved.id}`);

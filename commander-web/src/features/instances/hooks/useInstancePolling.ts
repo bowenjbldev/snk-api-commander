@@ -19,12 +19,11 @@ export function useInstancePolling(active: boolean, reload: () => void, resetKey
     let ticks = 0;
     const timer = setInterval(() => {
       ticks += 1;
-      if (ticks > POLL_MAX_TICKS) {
+      reloadRef.current();
+      if (ticks >= POLL_MAX_TICKS) {
         setExpired(true);
         clearInterval(timer);
-        return;
       }
-      reloadRef.current();
     }, POLL_INTERVAL_MS);
     return () => clearInterval(timer);
   }, [active, resetKey]);

@@ -35,9 +35,21 @@ export function healthyInstances(instances: Instance[]): Instance[] {
 }
 
 /**
- * Borrar una cuenta solo se ofrece si no deja historia detrás. Con clientes,
- * contratos o facturas lo que corresponde es desactivarla.
+ * Requieren atención, que no es lo contrario de sana: una instancia a medio aprovisionar
+ * ni sirve tráfico ni ha fallado todavía, así que no entra en ninguna de las dos listas.
  */
-export function isAccountDeletable(clients: Client[], subscriptions: Subscription[], invoices: Invoice[]): boolean {
-  return clients.length === 0 && subscriptions.length === 0 && invoices.length === 0;
+export function troubledInstances(instances: Instance[]): Instance[] {
+  return instances.filter((i) => i.provisioning_status === 'failed' || i.service_status !== 'active');
+}
+
+/**
+ * Lo que impide borrar la cuenta, ya redactado. Solo se enumera lo que existe: con
+ * historia detrás lo que corresponde es desactivarla, no borrarla.
+ */
+export function deletionBlockers(clients: Client[], subscriptions: Subscription[], invoices: Invoice[]): string[] {
+  const blockers: string[] = [];
+  if (clients.length) blockers.push(`${clients.length} clientes`);
+  if (subscriptions.length) blockers.push(`${subscriptions.length} contratos`);
+  if (invoices.length) blockers.push(`${invoices.length} facturas`);
+  return blockers;
 }

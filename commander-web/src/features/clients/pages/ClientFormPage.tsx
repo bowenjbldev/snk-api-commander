@@ -1,6 +1,7 @@
 import { SkeletonText } from '@carbon/react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ENTITY_STATUS } from '@services/api/mock/commander-mock';
+import type { Account } from '@services/api/types';
 import { useApp } from '@app/provider';
 import { useResource } from '@shared/hooks/useResource';
 import { pending } from '@shared/lib/data';
@@ -10,36 +11,45 @@ import { ErrorState, Forbidden } from '@shared/components/States';
 import { emptyClientValues } from '../model/clientForm';
 import { useClientsService } from '../services/clientsService';
 
-function clientSections(accounts: { id: number; name: string }[], editing: boolean): FormSection[] {
+const STATUS_OPTIONS = ['active', 'inactive'].map((value) => ({
+  value,
+  label: ENTITY_STATUS[value].label,
+}));
+
+function clientSections(accounts: Account[], editing: boolean): FormSection[] {
   return [
     {
-      legend: 'Identidad',
+      legend: 'Cuenta y ámbito',
       fields: [
         {
           key: 'account_id',
           label: 'Cuenta pagadora',
           type: 'select',
-          options: accounts.map((a) => ({ value: String(a.id), label: a.name })),
+          options: [
+            { value: '', label: 'Elige una cuenta' },
+            ...[...accounts]
+              .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+              .map((a) => ({ value: String(a.id), label: a.name })),
+          ],
           readOnly: editing,
-          helper: editing ? 'Inmutable tras el alta.' : undefined,
-        },
-        {
-          key: 'slug',
-          label: 'Slug (subdominio)',
-          readOnly: editing,
-          helper: editing ? 'Inmutable tras el alta.' : 'Minúsculas, números y guiones (3–40).',
-        },
-        { key: 'name', label: 'Nombre' },
-        {
-          key: 'status',
-          label: 'Estado',
-          type: 'select',
-          options: Object.entries(ENTITY_STATUS).map(([value, meta]) => ({ value, label: meta.label })),
         },
       ],
     },
-    { legend: 'Contacto', fields: [{ key: 'email', label: 'Correo de contacto', type: 'email' }] },
-    { legend: 'Notas internas', fields: [{ key: 'notes', label: 'Notas', type: 'textarea' }] },
+    {
+      legend: 'Identidad',
+      fields: [
+        { key: 'name', label: 'Nombre del cliente' },
+        {
+          key: 'slug',
+          label: 'Slug / subdominio',
+          readOnly: editing,
+          helper: editing ? 'Inmutable tras el alta' : 'Minúsculas, números y guiones. Debe ser único.',
+        },
+        { key: 'email', label: 'Correo de contacto', type: 'email' },
+        { key: 'status', label: 'Estado', type: 'select', options: STATUS_OPTIONS },
+      ],
+    },
+    { legend: 'Notas', fields: [{ key: 'notes', label: 'Nota', type: 'textarea', span: 'full' }] },
   ];
 }
 
@@ -47,6 +57,7 @@ export function ClientFormPage() {
   const { can } = useApp();
   const clientsService = useClientsService();
   const { id } = useParams();
+  const [query] = useSearchParams();
   const navigate = useNavigate();
   const editing = Boolean(id);
   const perm = editing ? 'update clients' : 'create clients';
@@ -64,11 +75,16 @@ export function ClientFormPage() {
   return (
     <FormPage
       title={editing ? 'Editar cliente' : 'Nuevo cliente'}
-      lede="El slug es el subdominio técnico y queda inmutable tras el alta, igual que la cuenta pagadora: cambiarlos rompería URLs y facturación."
-      crumbs={[{ label: 'Clientes', to: '/clients' }, { label: editing ? 'Editar' : 'Nuevo' }]}
+      lede={
+        editing
+          ? 'Cuenta y slug quedan inmutables después del alta.'
+          : 'La cuenta pagadora y el slug quedan fijos tras crear el cliente.'
+      }
+      crumbs={[{ label: 'Clientes', to: '/clients' }]}
       cancelTo={editing ? `/clients/${id}` : '/clients'}
       submitLabel={editing ? 'Guardar cambios' : 'Crear cliente'}
-      initial={emptyClientValues(client, accounts[0]?.id)}
+      // El alta desde la ficha de una cuenta llega con ella elegida en la URL.
+      initial={emptyClientValues(client, query.get('account'))}
       sections={clientSections(accounts, editing)}
       onSubmit={async (values) => {
         const saved = editing

@@ -18,6 +18,10 @@ test('la edición NO lleva cuenta ni slug: son inmutables tras el alta', () => {
   assert.equal(payload.email, 'a@b.es');
 });
 
+test('el alta desde una cuenta llega con ella elegida', () => {
+  assert.equal(emptyClientValues(null, '7').account_id, '7');
+});
+
 test('un estado desconocido no llega al servidor', () => {
   assert.equal(toClientUpdatePayload({ ...values, status: 'zombi' }).status, 'active');
 });

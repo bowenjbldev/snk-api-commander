@@ -23,7 +23,7 @@ type TagType =
 export function StatusTag({
   catalog,
   value,
-  size = 'sm',
+  size = 'md',
 }: {
   catalog: Catalog<{ tone: string }>;
   value: string | null | undefined;
@@ -31,8 +31,9 @@ export function StatusTag({
 }) {
   if (!value) return <span className="cmd-meter__caption">—</span>;
   const entry = catalog[value];
+  // El punto delante es el mismo color del texto: refuerza el estado sin añadir un color más.
   return (
-    <Tag type={(entry?.tone as TagType) ?? 'gray'} size={size}>
+    <Tag className="cmd-tag" type={(entry?.tone as TagType) ?? 'gray'} size={size}>
       {entry?.label ?? value}
     </Tag>
   );

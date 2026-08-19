@@ -1,5 +1,10 @@
-import type { FormSection } from '@shared/components/FormPage';
 import type { Operator } from '@services/api/types';
+
+/** Empresa del alta: todos los operadores sembrados pertenecen a la misma. */
+const DEFAULT_COMPANY = 'Commander SL';
+
+/** Único rol sembrado. No hay endpoint de catálogo del que sacar otros. */
+const FIXED_ROLE = 'admin';
 
 /**
  * Lo que el formulario tiene en pantalla: todo texto, porque eso es lo que devuelve
@@ -11,66 +16,41 @@ export type OperatorFormValues = {
   short_name: string;
   company: string;
   phone: string;
+  role: string;
   password: string;
 };
 
-export type OperatorPayload = Partial<Operator> & { id?: number; password?: string };
+export type OperatorPayload = Partial<Operator> & { password?: string };
 
 export function emptyOperatorValues(operator?: Operator | null): OperatorFormValues {
   return {
     name: operator?.name ?? '',
     email: operator?.email ?? '',
     short_name: operator?.short_name ?? '',
-    company: operator?.company ?? '',
+    company: operator?.company ?? DEFAULT_COMPANY,
     phone: operator?.phone ?? '',
+    role: operator?.role ?? FIXED_ROLE,
     password: '',
   };
 }
 
 /**
- * Una contraseña vacía al editar significa «no la cambies», no «déjala en blanco»:
- * por eso se omite del payload en vez de enviarse vacía.
+ * El rol no viaja: no es editable y el alta lo fija el servidor. Una contraseña vacía
+ * al editar significa «no la cambies», no «déjala en blanco», por eso se omite del
+ * payload en vez de enviarse vacía.
+ *
+ * El alta no lleva ni la clave `id`: el servidor mezcla el payload SOBRE la fila que
+ * acaba de numerar, así que un `id: undefined` explícito le borraría el identificador.
  */
 export function toOperatorPayload(values: OperatorFormValues, id?: number): OperatorPayload {
   const payload: OperatorPayload = {
-    id,
     name: values.name.trim(),
     email: values.email.trim(),
     short_name: values.short_name.trim(),
     company: values.company.trim(),
     phone: values.phone.trim(),
   };
+  if (id) payload.id = id;
   if (values.password) payload.password = values.password;
   return payload;
-}
-
-export function operatorFormSections(editing: boolean): FormSection[] {
-  return [
-    {
-      legend: 'Identidad',
-      fields: [
-        { key: 'name', label: 'Nombre completo' },
-        { key: 'email', label: 'Correo', type: 'email' },
-        { key: 'short_name', label: 'Nombre corto' },
-      ],
-    },
-    {
-      legend: 'Organización',
-      fields: [
-        { key: 'company', label: 'Empresa' },
-        { key: 'phone', label: 'Teléfono' },
-      ],
-    },
-    {
-      legend: 'Acceso',
-      fields: [
-        {
-          key: 'password',
-          label: editing ? 'Nueva contraseña (opcional)' : 'Contraseña',
-          type: 'password',
-          helper: 'Al menos doce caracteres. No se muestra ni se recupera después.',
-        },
-      ],
-    },
-  ];
 }

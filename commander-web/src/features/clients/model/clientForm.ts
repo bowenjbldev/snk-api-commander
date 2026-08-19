@@ -1,4 +1,4 @@
-import type { Client, EntityStatus } from '@services/api/types';
+import type { Client } from '@services/api/types';
 import { asEntityStatus } from '@shared/lib/enums';
 
 export type ClientFormValues = {
@@ -10,9 +10,10 @@ export type ClientFormValues = {
   notes: string;
 };
 
-export function emptyClientValues(client?: Client | null, fallbackAccountId?: number): ClientFormValues {
+/** En el alta no se preselecciona ninguna cuenta salvo que la traiga la URL. */
+export function emptyClientValues(client?: Client | null, accountId?: string | null): ClientFormValues {
   return {
-    account_id: String(client?.account_id ?? fallbackAccountId ?? ''),
+    account_id: String(client?.account_id ?? accountId ?? ''),
     slug: client?.slug ?? '',
     name: client?.name ?? '',
     email: client?.email ?? '',
@@ -37,7 +38,7 @@ export function toClientUpdatePayload(values: ClientFormValues): Partial<Client>
   return {
     name: values.name.trim(),
     email: values.email.trim(),
-    status: asEntityStatus(values.status) as EntityStatus,
+    status: asEntityStatus(values.status),
     notes: values.notes,
   };
 }

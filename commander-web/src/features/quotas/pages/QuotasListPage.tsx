@@ -1,7 +1,12 @@
 import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Link } from '@shared/components/AppLink';
-import { METRICS, QUOTA_ACTION, fmtNum, fmtRel } from '@services/api/mock/commander-mock';
+import {
+  METRICS,
+  QUOTA_ACTION,
+  fmtDateTime,
+  fmtNum,
+  fmtRel,
+} from '@services/api/mock/commander-mock';
 import type { Quota } from '@services/api/types';
 import { useResource } from '@shared/hooks/useResource';
 import { lut, pending } from '@shared/lib/data';
@@ -10,17 +15,16 @@ import type { Column, FilterDef } from '@shared/components/DataView';
 import { ListPage } from '@shared/components/ListPage';
 import { StatusTag } from '@shared/components/StatusTag';
 import { Meter } from '@shared/components/Meter';
-import { quotaHealth, quotaPercent } from '../model/quotaHealth';
+import {
+  quotaHealth,
+  quotaOwnerHref,
+  quotaOwnerName,
+  quotaPercent,
+} from '../model/quotaHealth';
 import { useQuotasService } from '../services/quotasService';
-
-const SCOPE_CATALOG = {
-  instance: { label: 'Instancia', tone: 'blue' },
-  subscription: { label: 'Contrato', tone: 'purple' },
-} as const;
 
 export function QuotasListPage() {
   const quotasService = useQuotasService();
-  const navigate = useNavigate();
   const res = useResource(() => quotasService.listWithContext(), []);
   const [quotas, instances, clients, accounts, applications, subscriptions] = pending(res.data, [
     [], [], [], [], [], [],
@@ -31,84 +35,99 @@ export function QuotasListPage() {
   const appById = useMemo(() => lut(applications), [applications]);
   const subById = useMemo(() => lut(subscriptions), [subscriptions]);
 
-  const owner = (q: Quota) => {
-    if (q.scope === 'subscription') return subById.get(q.subscription_id ?? -1)?.name ?? 'Contrato';
-    const inst = instById.get(q.instance_id ?? -1);
-    return inst ? (cliById.get(inst.client_id)?.name ?? `Instancia ${inst.id}`) : 'Instancia';
-  };
+  const owner = (q: Quota) => quotaOwnerName(q, instById, cliById, subById);
+  const appName = (q: Quota) => appById.get(q.application_id)?.name ?? '';
 
   const columns: Column<Quota>[] = [
-    { key: 'scope', header: 'Ámbito', value: (q) => q.scope, render: (q) => <StatusTag catalog={SCOPE_CATALOG} value={q.scope} /> },
     {
       key: 'owner',
       header: 'Propietario',
       value: owner,
-      render: (q) =>
-        q.scope === 'subscription' ? (
-          <Link to={`/subscriptions/${q.subscription_id}`}>{owner(q)}</Link>
-        ) : (
-          <Link to={`/instances/${q.instance_id}/quotas`}>{owner(q)}</Link>
-        ),
+      render: (q) => <Link to={quotaOwnerHref(q)}>{owner(q)}</Link>,
+      sub: (q) => `${q.scope === 'instance' ? 'Instancia' : 'Contrato'} · ${appName(q)}`,
     },
-    { key: 'application', header: 'Aplicación', value: (q) => appById.get(q.application_id)?.name ?? '' },
     {
       key: 'metric',
       header: 'Métrica',
-      value: (q) => METRICS[q.metric_key]?.name ?? q.metric_key,
-      render: (q) => <Link to={`/quotas/${q.id}`}>{METRICS[q.metric_key]?.name ?? q.metric_key}</Link>,
+      value: (q) => METRICS[q.metric_key].name,
+      render: (q) => <Link to={`/quotas/${q.id}`}>{METRICS[q.metric_key].name}</Link>,
+      sub: (q) => q.metric_key,
     },
     {
-      key: 'current_value',
-      header: 'Consumo',
-      value: (q) => quotaPercent(q),
-      render: (q) => <Meter value={q.current_value} limit={q.limit_value} />,
-    },
-    {
-      key: 'limit_value',
-      header: 'Límite',
+      key: 'value',
+      header: 'Valor y límite',
       align: 'right',
-      value: (q) => q.limit_value,
-      render: (q) => (q.limit_value === null ? 'Sin límite' : fmtNum(q.limit_value)),
+      value: (q) => q.current_value,
+      render: (q) => fmtNum(q.current_value),
+      sub: (q) =>
+        q.limit_value === null
+          ? 'Sin límite'
+          : `de ${fmtNum(q.limit_value)} ${METRICS[q.metric_key].unit}`,
     },
     {
-      key: 'warning_percent',
-      header: 'Aviso',
+      key: 'pct',
+      header: 'Consumo',
+      // Sin límite no hay porcentaje, y esas filas se van al final del orden.
+      value: (q) => quotaPercent(q) ?? -1,
+      render: (q) =>
+        // `pct` divide un valor nulo y devuelve cero: sin medición no hay barra que pintar.
+        q.current_value === null && q.limit_value !== null ? (
+          <span className="cmd-meter__caption">Sin medición</span>
+        ) : (
+          <Meter value={q.current_value} limit={q.limit_value} />
+        ),
+    },
+    {
+      key: 'action',
+      header: 'Acción',
+      value: (q) => q.action,
+      render: (q) => <StatusTag catalog={QUOTA_ACTION} value={q.action} />,
+    },
+    {
+      key: 'warn',
+      header: 'Aviso y periodos',
       align: 'right',
       value: (q) => q.warning_percent,
-      render: (q) => (q.warning_percent ? `${q.warning_percent} %` : '—'),
+      render: (q) => (
+        <span className="cmd-dim">
+          {q.warning_percent === null ? '—' : `${q.warning_percent} %`}
+        </span>
+      ),
+      sub: (q) =>
+        q.consecutive_periods === null
+          ? null
+          : `${q.consecutive_count} / ${q.consecutive_periods} periodos`,
     },
-    { key: 'action', header: 'Acción', value: (q) => q.action, render: (q) => <StatusTag catalog={QUOTA_ACTION} value={q.action} /> },
     {
-      key: 'consecutive',
-      header: 'Periodos',
-      align: 'right',
-      value: (q) => q.consecutive_count,
-      render: (q) => `${q.consecutive_count} / ${q.consecutive_periods ?? '—'}`,
+      key: 'measured',
+      header: 'Última medición',
+      value: (q) => q.measured_at,
+      render: (q) => <span className="cmd-dim">{fmtDateTime(q.measured_at)}</span>,
+      sub: (q) => (q.last_warning_at ? `aviso ${fmtRel(q.last_warning_at)}` : 'sin avisos'),
     },
-    {
-      key: 'last_warning_at',
-      header: 'Último aviso',
-      value: (q) => q.last_warning_at,
-      render: (q) => (q.last_warning_at ? fmtRel(q.last_warning_at) : '—'),
-    },
-    { key: 'measured_at', header: 'Medición', value: (q) => q.measured_at, render: (q) => fmtRel(q.measured_at) },
   ];
 
   const filters: FilterDef<Quota>[] = [
     {
       id: 'scope',
       label: 'Ámbito',
-      options: Object.entries(SCOPE_CATALOG).map(([value, meta]) => ({ value, label: meta.label })),
+      options: [
+        { value: 'instance', label: 'Instancia' },
+        { value: 'subscription', label: 'Contrato' },
+      ],
       test: (q, v) => q.scope === v,
     },
     {
       id: 'account',
+      // La cuenta es el pagador y hay muchas: ordenadas por nombre se encuentran.
       label: 'Cuenta',
-      options: accounts.map((a) => ({ value: String(a.id), label: a.name })),
+      options: [...accounts]
+        .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+        .map((a) => ({ value: String(a.id), label: a.name })),
       test: (q, v) => String(q.account_id) === v,
     },
     {
-      id: 'application',
+      id: 'app',
       label: 'Aplicación',
       options: applications.map((a) => ({ value: String(a.id), label: a.name })),
       test: (q, v) => String(q.application_id) === v,
@@ -127,12 +146,12 @@ export function QuotasListPage() {
     },
     {
       id: 'state',
-      label: 'Estado',
+      label: 'Situación',
+      all: 'Cualquiera',
       options: [
-        { value: 'over', label: 'Excedida' },
-        { value: 'warn', label: 'En aviso' },
         { value: 'nolimit', label: 'Sin límite' },
-        { value: 'unmeasured', label: 'Sin medición' },
+        { value: 'warn', label: 'En aviso' },
+        { value: 'over', label: 'Excedida' },
       ],
       test: (q, v) => quotaHealth(q) === v,
     },
@@ -142,20 +161,19 @@ export function QuotasListPage() {
     <ListPage
       perm="index quotas"
       title="Cuotas"
-      lede="Las cuotas de instancia nacen del plan y solo se editan. Una cuota compartida se crea desde su contrato."
+      lede="Las cuotas de instancia nacen del plan y solo se editan. Crear se ofrece únicamente dentro de las cuotas compartidas de un contrato."
     >
       <DataView
         label="Cuotas"
         rows={quotas}
         columns={columns}
         filters={filters}
-        search={(q) => `${owner(q)} ${METRICS[q.metric_key]?.name ?? q.metric_key}`}
-        defaultSort={{ key: 'current_value', dir: 'desc' }}
+        search={(q) => [METRICS[q.metric_key].name, q.metric_key, owner(q), appName(q)].join(' ')}
+        searchHint="Métrica, propietario o aplicación"
         loading={res.loading}
         refreshing={res.refreshing}
         error={res.error}
         onRetry={res.reload}
-        rowActions={(q) => [{ label: 'Abrir cuota', onClick: () => navigate(`/quotas/${q.id}`) }]}
       />
     </ListPage>
   );

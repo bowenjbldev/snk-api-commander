@@ -13,8 +13,8 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="cmd-panel cmd-stack">
-      <p className="cmd-panel__title">{title}</p>
+    <div className="cmd-empty">
+      <h3 className="cmd-empty__title">{title}</h3>
       <p className="cmd-page__lede">{body}</p>
       {action}
     </div>

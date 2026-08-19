@@ -102,9 +102,9 @@ body {
    contenedor ya está desplazado por la navegación, centra el área útil, no la ventana. */
 .cmd-shell__content {
   min-block-size: calc(100vh - 3rem);
-  max-inline-size: 82rem;
+  max-inline-size: 100rem;
   margin-inline: auto;
-  padding: $spacing-06 $spacing-07 $spacing-09;
+  padding: $spacing-07 $spacing-07 $spacing-12;
 }
 
 /* Rótulo de sección. Lo comparten la navegación lateral y el encabezado de página para
@@ -304,26 +304,59 @@ body {
 
 .cmd-login__aside,
 .cmd-login__form {
-  padding: $spacing-09 $spacing-07;
+  padding: $spacing-09;
 }
 
+/* Marca arriba, reclamo en medio y letra pequeña abajo: la columna reparte los tres
+   bloques a lo alto en vez de amontonarlos contra el techo. */
 .cmd-login__aside {
+  display: flex;
+  flex-direction: column;
   border-inline-end: 1px solid var(--cds-border-subtle-01);
 }
 
 .cmd-login__claim {
   @include type-style('fluid-heading-03', true);
 
-  max-inline-size: 20ch;
-  margin-block: $spacing-07 $spacing-06;
+  max-inline-size: 34rem;
+  margin-block: auto $spacing-06;
   font-weight: 300;
+}
+
+.cmd-login__aside .cmd-page__lede {
+  max-inline-size: 34rem;
 }
 
 .cmd-login__foot {
   @include type-style('code-01');
 
-  margin-block-start: $spacing-09;
+  max-inline-size: 34rem;
+  padding-block-start: $spacing-03;
+  border-block-start: 1px solid var(--cds-border-subtle-01);
+  margin-block-start: auto;
   color: var(--cds-text-helper);
+}
+
+/* El formulario es una columna estrecha centrada a media altura, no una cabecera. */
+.cmd-login__form {
+  display: flex;
+  align-items: center;
+}
+
+.cmd-login__form form {
+  inline-size: 100%;
+  max-inline-size: 24rem;
+}
+
+/* Los campos de entrada respiran más que una pila cualquiera. */
+.cmd-login__form form.cmd-stack > * + * {
+  margin-block-start: $spacing-06;
+}
+
+/* Un botón de entrada ocupa el ancho de su formulario: es la única salida de la página. */
+.cmd-login__form .cds--btn {
+  inline-size: 100%;
+  max-inline-size: none;
 }
 
 /* Ancho de los desplegables de filtro de una tabla. */
@@ -331,46 +364,83 @@ body {
   inline-size: 14rem;
 }
 
-/* El panel de pestaña trae fondo y padding propios; aquí el fondo lo ponen los
-   paneles de dentro, y ese relleno extra fundía la rejilla en un solo bloque.
-   El selector replica el de Carbon (`.cds--tabs--contained ~ .cds--tab-content`)
-   porque el suyo lleva dos clases y una regla de una sola clase no lo gana. */
-.cds--tabs--contained ~ .cds--tab-content {
-  padding: $spacing-05 0 0;
+/* El panel de pestaña trae fondo y relleno propios; aquí el fondo lo ponen los paneles
+   de dentro, y ese relleno extra fundía la rejilla en un solo bloque. Lo único que
+   separa las pestañas del contenido es el aire de la sección. */
+.cds--tab-content {
+  padding: $spacing-07 0 0;
   background: transparent;
+}
+
+/* Pestañas de línea. Carbon subraya cada pestaña con 2 px de `border-subtle` y acaba la
+   línea con la última, así que la ficha queda partida por la mitad. La lista —que es
+   `inline-size: auto` dentro de un flex— se estira, y un relleno final continúa ESE
+   MISMO filete hasta el borde: una sola línea, con el grosor y el token del sistema, en
+   vez de una segunda más fina por debajo. `fullWidth` no sirve: es solo para las
+   contenidas y además iguala el ancho de todas las pestañas. */
+.cds--tabs:not(.cds--tabs--contained) .cds--tab--list {
+  flex: 1 1 auto;
+}
+
+.cds--tabs:not(.cds--tabs--contained) .cds--tab--list::after {
+  content: '';
+  flex: 1 1 0;
+  border-block-end: 2px solid var(--cds-border-subtle);
+}
+
+/* Cada pestaña mide lo que mide su etiqueta: al estirar la lista, Carbon las repartiría
+   a lo ancho y dejarían de leerse como pestañas. */
+.cds--tabs:not(.cds--tabs--contained) .cds--tabs__nav-item {
+  flex: 0 0 auto;
+}
+
+/* Título y pastillas en la misma línea: el estado es de la cosa, y una fila propia solo
+   estira la cabecera. Si no caben, envuelven ellas solas. */
+.cmd-page__headline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $spacing-05;
+}
+
+.cmd-page__tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: $spacing-03;
 }
 
 /* Contrato común de página ------------------------------------------------- */
 
 /* La sección de la navegación encabeza el título: dice dónde estás antes de decir qué
-   estás mirando, y con el mismo rótulo que la propia navegación. */
+   estás mirando, y con el mismo rótulo y la misma letra que la propia navegación. */
 .cmd-page__kicker {
   @extend %cmd-eyebrow;
 
   display: block;
-  margin-block-end: $spacing-02;
 }
 
 .cmd-page__title {
-  @include type-style('heading-05');
+  @include type-style('heading-04');
 
-  margin-block: $spacing-03 $spacing-03;
+  margin-block: $spacing-03;
+  font-weight: 300;
 }
 
 .cmd-page__lede {
   @include type-style('body-01');
 
-  max-inline-size: 42rem;
   color: var(--cds-text-secondary);
+  text-wrap: pretty;
 }
 
+/* Título y acciones a la misma altura por arriba: un lede de tres líneas no debe
+   arrastrar el botón primario hasta el pie del bloque. */
 .cmd-page__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: $spacing-05;
-  margin-block-end: $spacing-06;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: $spacing-07;
+  align-items: start;
+  margin-block-end: $spacing-07;
 }
 
 .cmd-page__actions {
@@ -379,31 +449,191 @@ body {
   gap: $spacing-03;
 }
 
-.cmd-count {
-  @include type-style('label-01');
-
-  display: block;
-  padding: $spacing-03 0;
-  color: var(--cds-text-secondary);
+/* Barra de filtros de página: los de una tabla viven en su toolbar, pero una vista que
+   no es una tabla —el uso— los pone arriba, sobre la capa 01 y alineados por abajo. */
+.cmd-page__filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: $spacing-05 $spacing-06;
+  align-items: end;
+  padding: $spacing-05;
+  margin-block-end: $spacing-07;
+  background: var(--cds-layer-01);
 }
 
 .cmd-table-scroll {
   overflow-x: auto;
 }
 
-/* Carbon alinea la toolbar a la derecha: sin envolver, los primeros filtros se salen
-   por la izquierda en pantallas estrechas y quedan fuera de alcance. */
-.cds--table-toolbar {
-  block-size: auto;
-  min-block-size: 3rem;
+/* Tabla ---------------------------------------------------------------------- */
+
+/* Toolbar, chips, tabla y paginación se leen como un solo bloque sobre la capa 01. */
+.cmd-table {
+  background: var(--cds-layer-01);
 }
 
-.cds--table-toolbar .cds--toolbar-content {
-  block-size: auto;
-  min-block-size: 3rem;
-  flex-wrap: wrap;
+/* Solo la tabla se desplaza; sus controles se quedan quietos. */
+.cmd-table .cds--data-table-content {
+  overflow-x: auto;
+}
+
+/* Los paneles de la toolbar salen de su caja: sin esto quedan recortados. */
+.cmd-table .cds--table-toolbar,
+.cmd-table .cds--toolbar-content {
+  overflow: visible;
+}
+
+/* Lo que está pasando ahora se lee a la izquierda; los controles quedan a la derecha. */
+.cmd-toolbar__status {
+  @include type-style('label-01');
+
+  margin-inline-end: auto;
+  padding-inline-start: $spacing-05;
+  color: var(--cds-text-helper);
+}
+
+.cmd-toolbar__action {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 3rem;
+  block-size: 3rem;
+  border: 0;
+  background: transparent;
+  color: var(--cds-text-primary);
+  cursor: pointer;
+}
+
+.cmd-toolbar__action:hover {
+  background: var(--cds-layer-hover-01);
+}
+
+/* Un filtro puesto se ve sin abrir el panel. */
+.cmd-toolbar__mark {
+  position: absolute;
+  inset-block-start: 0.75rem;
+  inset-inline-end: 0.75rem;
+  inline-size: 0.375rem;
+  block-size: 0.375rem;
+  background: var(--cds-support-info);
+}
+
+/* El panel flotante de la toolbar: controles, no una lista de acciones. Va sobre la
+   capa 02 para despegarse de la tabla, que ya ocupa la 01. */
+.cmd-popover {
+  background: var(--cds-layer-02);
+}
+
+.cmd-popover > div {
+  display: grid;
+  gap: $spacing-05;
+  min-inline-size: 17rem;
+  max-block-size: 26rem;
+  overflow-y: auto;
+  padding: $spacing-05;
+  text-align: start;
+}
+
+.cmd-popover--filters > div {
+  inline-size: 20rem;
+}
+
+.cmd-popover__title {
+  @extend %cmd-eyebrow;
+}
+
+/* El botón de limpiar es una acción del panel, no una fila más de la rejilla. */
+.cmd-popover .cds--btn--ghost {
   justify-content: flex-start;
-  row-gap: $spacing-03;
+  padding-inline: 0;
+}
+
+.cmd-popover .cds--checkbox-wrapper {
+  margin: 0;
+}
+
+.cmd-popover .cds--checkbox-label-text {
+  max-inline-size: none;
+  white-space: nowrap;
+}
+
+/* Filtros puestos, siempre visibles sin abrir el panel. */
+.cmd-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $spacing-03;
+  padding: $spacing-03 $spacing-05;
+  border-block-start: 1px solid var(--cds-border-subtle-01);
+}
+
+/* Una celda es un dato arriba y su contexto debajo; con eso sobra una columna. */
+.cmd-cell__sub {
+  @include type-style('label-01');
+
+  display: block;
+  padding-block-start: $spacing-01;
+  color: var(--cds-text-helper);
+}
+
+/* Una tabla es densa la pinte quien la pinte: el listado y las tablas planas de una
+   ficha se leen igual, con el dato arriba y sin partir una celda en dos líneas. */
+.cmd-table .cds--data-table td,
+.cmd-chart__body .cds--data-table td,
+.cmd-panel .cds--data-table td {
+  padding-block: $spacing-03;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+/* Con muchas columnas la tabla se desplaza en horizontal y la identidad de la fila
+   se pierde por la izquierda: esa primera columna se queda anclada. */
+.cmd-table .cds--data-table th.cmd-stick,
+.cmd-table .cds--data-table td.cmd-stick {
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 2;
+  box-shadow: 1px 0 0 var(--cds-border-subtle-01);
+}
+
+.cmd-table .cds--data-table td.cmd-stick {
+  background: var(--cds-layer-01);
+}
+
+.cmd-table .cds--data-table th.cmd-stick {
+  z-index: 3;
+  background: var(--cds-layer-accent-01);
+}
+
+.cmd-table .cds--data-table tbody tr:hover td.cmd-stick {
+  background: var(--cds-layer-hover-01);
+}
+
+/* Estado = texto + color, y un punto delante que lo repite en forma. */
+.cmd-tag .cds--tag__label::before {
+  content: '';
+  display: inline-block;
+  inline-size: 0.375rem;
+  block-size: 0.375rem;
+  margin-inline-end: $spacing-02;
+  border-radius: 50%;
+  background: currentcolor;
+  vertical-align: 0.0625rem;
+}
+
+/* Sin resultados ------------------------------------------------------------- */
+
+.cmd-empty {
+  display: grid;
+  justify-items: start;
+  gap: $spacing-05;
+  padding: $spacing-09;
+  background: var(--cds-layer-01);
+}
+
+.cmd-empty__title {
+  @include type-style('heading-03');
 }
 
 /* Métricas y barras --------------------------------------------------------- */
@@ -429,6 +659,9 @@ body {
 .cmd-meter__fill {
   display: block;
   block-size: 100%;
+}
+
+.cmd-meter__fill--ok {
   background: var(--cds-support-success);
 }
 
@@ -438,6 +671,20 @@ body {
 
 .cmd-meter__fill--crit {
   background: var(--cds-support-error);
+}
+
+/* El porcentaje escrito lleva el mismo tono que la barra: el color acompaña al dato,
+   no lo sustituye. */
+.cmd-meter__pct--ok {
+  color: var(--cds-support-success);
+}
+
+.cmd-meter__pct--warn {
+  color: var(--cds-support-warning);
+}
+
+.cmd-meter__pct--crit {
+  color: var(--cds-support-error);
 }
 
 .cmd-meter__caption {
@@ -538,22 +785,43 @@ body {
   margin-block-end: $spacing-04;
 }
 
+/* Tantas columnas como quepan, con el rótulo encima del dato. */
 .cmd-defs {
   display: grid;
-  grid-template-columns: minmax(8rem, auto) 1fr;
-  gap: $spacing-03 $spacing-05;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: $spacing-06 $spacing-07;
+}
+
+.cmd-defs > div {
+  display: grid;
+  align-content: start;
+  gap: $spacing-02;
+  min-inline-size: 0;
 }
 
 .cmd-defs dt {
   @include type-style('label-01');
 
   color: var(--cds-text-secondary);
+  letter-spacing: 0.02em;
 }
 
 .cmd-defs dd {
-  @include type-style('body-compact-01');
+  @include type-style('body-01');
 
   overflow-wrap: anywhere;
+}
+
+.cmd-defs .cmd-defs__hint {
+  @include type-style('label-01');
+
+  color: var(--cds-text-helper);
+}
+
+/* Una rejilla de datos respira más que una tabla o una gráfica. */
+.cmd-panel:has(> .cmd-defs),
+.cmd-chart__body:has(> .cmd-defs) {
+  padding: $spacing-06;
 }
 
 .cmd-mono {
@@ -566,6 +834,14 @@ body {
   color: var(--cds-text-secondary);
 }
 
+/* Carbon topa las notificaciones en 832 px porque las piensa dentro de una columna de
+   formulario. Aquí son avisos de página: ocupan lo que ocupe la página, como el resto
+   de los bloques, o quedan colgando a media fila. */
+.cds--inline-notification,
+.cds--actionable-notification {
+  max-inline-size: none;
+}
+
 .cmd-text-error {
   color: var(--cds-text-error);
 }
@@ -574,30 +850,81 @@ body {
   color: var(--cds-support-warning);
 }
 
+.cmd-text-ok {
+  color: var(--cds-support-success);
+}
+
+/* Alineación numérica: una columna de cifras se lee por la derecha. */
+.cmd-num {
+  text-align: end;
+}
+
+/* Un volcado de error se lee tal cual vino, con su filete de gravedad al lado. */
+.cmd-code {
+  @include type-style('code-01');
+
+  overflow-x: auto;
+  padding: $spacing-05;
+  border-inline-start: 3px solid var(--cds-support-error);
+  background: var(--cds-layer-01);
+  white-space: pre-wrap;
+}
+
 .cmd-stack > * + * {
   margin-block-start: $spacing-05;
 }
 
 .cmd-form {
-  max-inline-size: 42rem;
+  display: grid;
+  gap: $spacing-07;
+  max-inline-size: 64rem;
 }
 
 .cmd-form__section {
-  margin-block-end: $spacing-07;
+  display: grid;
+  gap: $spacing-06;
+  padding: 0;
+  border: 0;
+  margin: 0;
 }
 
 .cmd-form__legend {
   @include type-style('heading-compact-01');
 
-  padding-block-end: $spacing-03;
+  inline-size: 100%;
+  padding-block-end: $spacing-04;
   border-block-end: 1px solid var(--cds-border-subtle-01);
-  margin-block-end: $spacing-05;
 }
 
+/* Tres campos por fila como máximo; el número exacto lo pone `formColumns` con los
+   campos que no ocupan la fila entera. */
 .cmd-form__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-  gap: $spacing-05;
+  grid-template-columns: repeat(var(--cmd-form-cols, 2), minmax(0, 1fr));
+  gap: $spacing-06;
+}
+
+@media (max-width: 42rem) {
+  .cmd-form__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* El filete separa lo que se rellena de lo que se decide. */
+.cmd-form__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $spacing-03;
+  padding-block-start: $spacing-06;
+  border-block-start: 1px solid var(--cds-border-subtle-01);
+}
+
+.cmd-form__dirty {
+  @include type-style('label-01');
+
+  padding-inline-start: $spacing-05;
+  color: var(--cds-text-helper);
 }
 
 /* El bloque no es una caja: es una columna. Solo el contenido va sobre `layer-01`; el
@@ -616,8 +943,10 @@ body {
 }
 
 /* Una tabla llena su caja de lado a lado: el contenedor de Carbon ya trae su propio fondo
-   y sus celdas su relleno, así que el del bloque solo la despegaría de los bordes. */
-.cmd-chart__body:has(.cds--data-table-container) {
+   y sus celdas su relleno, así que el del bloque solo la despegaría de los bordes. Y un
+   vacío trae su propia caja del mismo color: dos rellenos sumados solo abren un hueco. */
+.cmd-chart__body:has(.cds--data-table-container),
+.cmd-chart__body:has(> .cmd-empty) {
   padding: 0;
 }
 
@@ -909,7 +1238,7 @@ a.cmd-gauge__legend-row:hover {
   display: flex;
   align-items: flex-end;
   gap: 2px;
-  block-size: 3rem;
+  block-size: 7.5rem;
 }
 
 .cmd-spark__bar {

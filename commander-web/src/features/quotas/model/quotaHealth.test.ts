@@ -27,8 +27,8 @@ test('sin límite no hay porcentaje, y eso no es cero', () => {
   assert.equal(quotaHealth(quota({ limit_value: null })), 'nolimit');
 });
 
-test('sin medición no se inventa un consumo', () => {
-  assert.equal(quotaHealth(quota({ current_value: null })), 'unmeasured');
+test('sin medición no hay situación: ni aviso ni exceso', () => {
+  assert.equal(quotaHealth(quota({ current_value: null })), 'ok');
 });
 
 test('el aviso usa el porcentaje configurado, no un 80 fijo', () => {
@@ -37,6 +37,8 @@ test('el aviso usa el porcentaje configurado, no un 80 fijo', () => {
 });
 
 test('excedida es estrictamente por encima del límite', () => {
+  assert.equal(quotaHealth(quota({ current_value: 100 })), 'warn');
+  assert.equal(quotaHealth(quota({ current_value: 101 })), 'over');
   assert.equal(isExceeded(quota({ current_value: 100 })), false);
   assert.equal(isExceeded(quota({ current_value: 101 })), true);
   assert.equal(isExceeded(quota({ limit_value: null, current_value: 999 })), false);

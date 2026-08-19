@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { availableActions, hasIncident, isInFlight } from './instanceActions.ts';
+import { actionDialog, availableActions, hasIncident, isInFlight } from './instanceActions.ts';
 import type { Instance } from '@services/api/types';
 
 const instance = (over: Partial<Instance> = {}): Instance => ({
@@ -11,13 +11,24 @@ const instance = (over: Partial<Instance> = {}): Instance => ({
   ...over,
 });
 
+const ctx = {
+  clientName: 'Diario Norte', clientSlug: 'diario-norte', graceHours: 48,
+  currentPlan: 'Base', planOptions: [{ value: '2', label: 'Pro' }],
+};
+
 test('una instancia lista y activa no ofrece reanudar', () => {
   const actions = availableActions(instance());
   assert.deepEqual(actions, ['grace', 'suspend', 'change-plan', 'deprovision']);
 });
 
-test('una suspendida sí ofrece reanudar', () => {
+test('ninguna acción repite el estado en el que ya está', () => {
+  assert.equal(availableActions(instance({ service_status: 'grace' })).includes('grace'), false);
+  assert.equal(availableActions(instance({ service_status: 'suspended' })).includes('suspend'), false);
   assert.ok(availableActions(instance({ service_status: 'suspended' })).includes('resume'));
+});
+
+test('sin plan no hay plan que cambiar', () => {
+  assert.equal(availableActions(instance({ plan_id: null })).includes('change-plan'), false);
 });
 
 test('retry solo existe para failed o deprovisioned', () => {
@@ -44,4 +55,21 @@ test('incidencia es failed o cualquier servicio que no sea activo', () => {
 test('solo se sondea mientras hay trabajo en vuelo', () => {
   assert.equal(isInFlight(instance({ provisioning_status: 'pending' })), true);
   assert.equal(isInFlight(instance()), false);
+});
+
+test('la baja pide el slug del cliente y es destructiva', () => {
+  const dialog = actionDialog('deprovision', instance(), ctx);
+  assert.equal(dialog.danger, true);
+  assert.ok(dialog.body.includes('diario-norte'));
+  assert.equal(dialog.fields[0].placeholder, 'diario-norte');
+});
+
+test('la gracia parte de las horas configuradas por el operador', () => {
+  assert.equal(actionDialog('grace', instance(), ctx).initial.hours, 48);
+});
+
+test('cambiar de plan obliga a elegir: la opción vacía encabeza y no hay preselección', () => {
+  const dialog = actionDialog('change-plan', instance(), ctx);
+  assert.deepEqual(dialog.fields[0].options?.[0], { value: '', label: 'Elige un plan' });
+  assert.equal(dialog.initial.plan_id, '');
 });

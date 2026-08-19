@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { activeItemsBySubscription, invoicesReferencing, isCapacityFull, isSubscriptionDeletable } from './subscriptionCapacity.ts';
+import { activeItemsBySubscription, isCapacityFull, isSubscriptionDeletable, linesReferencing } from './subscriptionCapacity.ts';
 import type { Invoice, Subscription, SubscriptionItem } from '@services/api/types';
 
 const item = (over: Partial<SubscriptionItem> = {}): SubscriptionItem => ({
@@ -24,10 +24,10 @@ test('un contrato con cualquier historia no se borra', () => {
   assert.equal(isSubscriptionDeletable([item()], [], []), false);
 });
 
-test('invoicesReferencing mira las líneas, no la cabecera de la factura', () => {
+test('linesReferencing devuelve líneas, no facturas, y las identifica por posición', () => {
   const invoices = [
-    { id: 1, lines: [{ subscription_id: 5 }] },
-    { id: 2, lines: [{ subscription_id: 9 }] },
+    { id: 1, lines: [{ subscription_id: 9 }, { subscription_id: 5 }] },
+    { id: 2, lines: [{ subscription_id: 5 }] },
   ] as unknown as Invoice[];
-  assert.deepEqual(invoicesReferencing(invoices, 5).map((i) => i.id), [1]);
+  assert.deepEqual(linesReferencing(invoices, 5).map((l) => l.id), ['1-1', '2-0']);
 });

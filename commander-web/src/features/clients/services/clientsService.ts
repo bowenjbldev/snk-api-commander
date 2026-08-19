@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useApp } from '@app/provider';
 import type { CommanderApiClient } from '@services/api/commanderApi';
-import type { Account, Application, Client, Instance, Plan, Quota, Subscription } from '@services/api/types';
+import type { Account, Application, Client, Instance, Plan, Quota } from '@services/api/types';
 import { toClientCreatePayload, toClientUpdatePayload } from '../model/clientForm';
 import type { ClientFormValues } from '../model/clientForm';
 
@@ -10,7 +10,7 @@ export interface ClientsService {
   get(id: string | number): Promise<Client>;
   getWithContext(
     id: string | number,
-  ): Promise<[Client, Account[], Instance[], Application[], Plan[], Subscription[], Quota[]]>;
+  ): Promise<[Client, Account[], Instance[], Application[], Plan[], Quota[]]>;
   listAccounts(): Promise<Account[]>;
   create(values: ClientFormValues): Promise<Client>;
   update(id: number, values: ClientFormValues): Promise<Client>;
@@ -28,7 +28,6 @@ export function createClientsService(api: CommanderApiClient): ClientsService {
         api.list('instances'),
         api.list('applications'),
         api.list('plans'),
-        api.list('subscriptions'),
         api.list('quotas'),
       ]),
     listAccounts: () => api.list('accounts'),

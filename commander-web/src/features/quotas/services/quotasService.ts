@@ -7,7 +7,7 @@ export interface QuotasService {
   listWithContext(): Promise<[Quota[], Instance[], Client[], Account[], Application[], Subscription[]]>;
   getWithSeries(
     id: string | number,
-  ): Promise<[Quota, Measurement[], Instance[], Client[], Subscription[], Application[]]>;
+  ): Promise<[Quota, Measurement[], Instance[], Client[], Subscription[]]>;
   update(id: number, patch: Partial<Quota>): Promise<Quota>;
 }
 
@@ -29,7 +29,6 @@ export function createQuotasService(api: CommanderApiClient): QuotasService {
         api.list('instances'),
         api.list('clients'),
         api.list('subscriptions'),
-        api.list('applications'),
       ]),
     update: (id, patch) => api.updateQuota(id, patch),
   };

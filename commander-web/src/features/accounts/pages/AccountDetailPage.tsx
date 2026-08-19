@@ -1,25 +1,52 @@
 import { useMemo } from 'react';
-import { Button, Callout, SkeletonText } from '@carbon/react';
+import {
+  Button,
+  Callout,
+  SkeletonText,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@carbon/react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Link } from '@shared/components/AppLink';
 import {
   ENTITY_STATUS,
   INVOICE_STATUS,
+  SUB_STATUS,
   fmtDate,
   fmtDateTime,
   fmtMoney,
+  fmtNum,
+  fmtRel,
 } from '@services/api/mock/commander-mock';
 import { useApp } from '@app/provider';
 import { useResource } from '@shared/hooks/useResource';
 import { lut, pending } from '@shared/lib/data';
 import { PageHeader } from '@shared/components/PageHeader';
-import { Defs, DetailTabs, Panel } from '@shared/components/Detail';
-import { DataView } from '@shared/components/DataView';
+import { Defs, DetailTabs } from '@shared/components/Detail';
+import { ChartBlock } from '@shared/components/charts';
+import { KpiGrid } from '@shared/components/KpiGrid';
 import { StatusTag } from '@shared/components/StatusTag';
-import { ErrorState, Forbidden } from '@shared/components/States';
-import { subscriptionColumns } from '@features/subscriptions/model/subscriptionColumns';
-import { contractualMrr, healthyInstances, isAccountDeletable, unpaidInvoices } from '../model/accountTotals';
+import { EmptyState, ErrorState, Forbidden } from '@shared/components/States';
+import { SUBSCRIPTION_MODE_CATALOG } from '@features/subscriptions/model/subscriptionColumns';
+import {
+  contractualMrr,
+  deletionBlockers,
+  healthyInstances,
+  troubledInstances,
+  unpaidInvoices,
+} from '../model/accountTotals';
 import { useAccountsService } from '../services/accountsService';
+
+const RIGHT = { textAlign: 'right' } as const;
+
+/** La misma frase con y sin contratos: el bloque se explica aunque esté vacío. */
+const CONTRACTS_HELP =
+  'Cada contrato fija modalidad, precio y capacidad. El importe pactado no se recalcula al cambiar el plan de una cabecera.';
 
 const ACCOUNT_TABS = [
   { slug: 'summary', label: 'Resumen' },
@@ -36,17 +63,9 @@ export function AccountDetailPage() {
   const navigate = useNavigate();
 
   const res = useResource(() => accountsService.getWithContext(id), [id]);
-  const [account, allClients, allSubs, allInvoices, allInstances, applications, allActivity] = pending(res.data, [
-    null,
-    [],
-    [],
-    [],
-    [],
-    [],
-    [],
-  ]);
+  const [account, allClients, allSubs, allItems, allInvoices, allInstances, applications, allActivity] =
+    pending(res.data, [null, [], [], [], [], [], [], []]);
   const appById = useMemo(() => lut(applications), [applications]);
-  const cliById = useMemo(() => lut(allClients), [allClients]);
 
   if (!can('show accounts')) return <Forbidden perm="show accounts" />;
   if (res.error) {
@@ -63,30 +82,35 @@ export function AccountDetailPage() {
   const subs = allSubs.filter((s) => s.account_id === account.id);
   const invoices = allInvoices.filter((i) => i.account_id === account.id);
   const instances = allInstances.filter((i) => i.account_id === account.id);
-  const activity = allActivity.filter((a) => a.account_id === account.id);
+  const activity = allActivity.filter((a) => a.account_id === account.id).slice(0, 30);
 
-  const mrr = contractualMrr(subs);
-  const unpaid = unpaidInvoices(invoices);
+  const unpaidTotal = unpaidInvoices(invoices).reduce((total, i) => total + i.total, 0);
   const healthy = healthyInstances(instances);
-  const deletable = isAccountDeletable(clients, subs, invoices);
+  const troubled = troubledInstances(instances);
+  const blockers = deletionBlockers(clients, subs, invoices);
+  const health = instances.length
+    ? `${healthy.length} de ${instances.length} instancias sirven tráfico sin incidencia.`
+    : 'La cuenta no tiene instancias.';
 
   return (
     <>
       <PageHeader
         title={account.name}
-        crumbs={[{ label: 'Cuentas', to: '/accounts' }, { label: account.name }]}
-        lede={
-          <>
-            <StatusTag catalog={ENTITY_STATUS} value={account.status} />{' '}
-            <span className="cmd-mono">{account.tax_id}</span>
-          </>
-        }
+        kicker={`Cuenta · ID ${account.id}`}
+        crumbs={[{ label: 'Cuentas', to: '/accounts' }]}
+        lede={`${account.email} · ${account.payment_terms} · ${account.tax_id}`}
+        statuses={<StatusTag catalog={ENTITY_STATUS} value={account.status} />}
         actions={
-          can('update accounts') && (
-            <Button kind="tertiary" onClick={() => navigate(`/accounts/${account.id}/edit`)}>
-              Editar cuenta
-            </Button>
-          )
+          <>
+            {can('update accounts') && (
+              <Button onClick={() => navigate(`/accounts/${account.id}/edit`)}>Editar cuenta</Button>
+            )}
+            {can('provision instances') && (
+              <Button kind="tertiary" onClick={() => navigate(`/provisioning/new?account=${account.id}`)}>
+                Nueva alta
+              </Button>
+            )}
+          </>
         }
       />
 
@@ -94,146 +118,296 @@ export function AccountDetailPage() {
         <div className="cmd-stack">
           {tab === 'summary' && (
             <>
+              <KpiGrid
+                items={[
+                  {
+                    label: 'MRR contractual',
+                    value: fmtMoney(contractualMrr(subs)),
+                    note: 'contratos active y trialing',
+                  },
+                  {
+                    label: 'Facturación pendiente',
+                    value: fmtMoney(unpaidTotal),
+                    note: `${invoices.filter((i) => i.status === 'overdue').length} vencidas`,
+                    tone: unpaidTotal > 0 ? 'warn' : undefined,
+                  },
+                  {
+                    label: 'Clientes',
+                    value: fmtNum(clients.length),
+                    note: `${clients.filter((c) => c.status === 'active').length} activos`,
+                  },
+                  {
+                    label: 'Instancias con incidencia',
+                    value: fmtNum(troubled.length),
+                    note: `de ${instances.length}`,
+                    tone: troubled.length > 0 ? 'crit' : undefined,
+                  },
+                ]}
+              />
+
+              {/* Los avisos van tras los indicadores: las cifras son el estado y el aviso
+                  explica lo que se acaba de leer. */}
               <Callout
-                kind={healthy.length === instances.length ? 'success' : 'warning'}
+                kind={troubled.length ? 'warning' : 'success'}
                 lowContrast
                 title="Salud de sus clientes"
-                subtitle={`${healthy.length} de ${instances.length} instancias sirven tráfico sin incidencia.`}
+                subtitle={`${health}${troubled.length ? ` ${troubled.length} requieren atención.` : ''}`}
               />
-              {!deletable && (
+              {blockers.length > 0 && (
                 <Callout
                   kind="info"
                   lowContrast
                   title="No se ofrece borrar esta cuenta"
-                  subtitle={`Tiene ${clients.length} clientes, ${subs.length} contratos y ${invoices.length} facturas. Lo que corresponde es desactivarla y conservar la historia.`}
+                  subtitle={`Tiene ${blockers.join(', ')}. Lo que corresponde es desactivarla y conservar la historia.`}
                 />
               )}
+
               <div className="cmd-panels">
-                <Panel title="Contacto">
+                <ChartBlock
+                  title="Contacto y facturación"
+                  help="A quién se factura y con qué condiciones. La cuenta es el pagador: no contiene datos de negocio de ningún tenant."
+                >
                   <Defs
                     items={[
+                      { label: 'Estado', value: <StatusTag catalog={ENTITY_STATUS} value={account.status} /> },
                       { label: 'Correo', value: account.email },
-                      { label: 'Teléfono', value: account.phone },
                       { label: 'Correo de facturación', value: account.billing_email },
-                    ]}
-                  />
-                </Panel>
-                <Panel title="Facturación">
-                  <Defs
-                    items={[
                       { label: 'NIF', value: <span className="cmd-mono">{account.tax_id}</span> },
                       { label: 'Condiciones de pago', value: account.payment_terms },
-                      { label: 'MRR contractual', value: fmtMoney(mrr) },
+                      { label: 'Teléfono', value: <span className="cmd-mono">{account.phone}</span> },
+                      { label: 'Dirección', value: account.address },
+                      { label: 'País', value: account.country },
                       {
-                        label: 'Pendiente de cobro',
-                        value: `${fmtMoney(unpaid.reduce((t, i) => t + i.total, 0))} en ${unpaid.length} facturas`,
+                        label: 'Alta',
+                        value: fmtDateTime(account.created_at),
+                        hint: fmtRel(account.created_at),
                       },
                     ]}
                   />
-                </Panel>
-                <Panel title="Dirección">
-                  <Defs
-                    items={[
-                      { label: 'Dirección', value: account.address },
-                      { label: 'País', value: account.country },
-                    ]}
-                  />
-                </Panel>
+                </ChartBlock>
+
                 {account.notes && (
-                  <Panel title="Notas internas">
-                    <p className="cmd-page__lede">{account.notes}</p>
-                  </Panel>
+                  <ChartBlock
+                    title="Notas internas"
+                    help="Solo las ve el operador. No se envían al tenant ni aparecen en su instancia."
+                  >
+                    <Defs items={[{ label: 'Nota', value: account.notes }]} />
+                  </ChartBlock>
                 )}
               </div>
             </>
           )}
 
-          {tab === 'clients' && (
-            <DataView
-              label="Clientes de la cuenta"
-              rows={clients}
-              columns={[
-                { key: 'name', header: 'Nombre', value: (c) => c.name, render: (c) => <Link to={`/clients/${c.id}`}>{c.name}</Link> },
-                { key: 'slug', header: 'Subdominio', value: (c) => c.slug, render: (c) => <span className="cmd-mono">{c.slug}</span> },
-                { key: 'status', header: 'Estado', value: (c) => c.status, render: (c) => <StatusTag catalog={ENTITY_STATUS} value={c.status} /> },
-                {
-                  key: 'instances',
-                  header: 'Instancias',
-                  align: 'right',
-                  value: (c) => instances.filter((i) => i.client_id === c.id).length,
-                },
-              ]}
-              emptyTitle="Sin clientes"
-              emptyBody="Esta cuenta todavía no tiene tenants. El alta crea cuenta, cliente, contrato e instancia de una vez."
-            />
-          )}
+          {tab === 'clients' &&
+            (clients.length ? (
+              <ChartBlock
+                title="Tenants de la cuenta"
+                help="Los clientes que paga esta cuenta, con su subdominio y cuántas instancias ejecuta cada uno."
+                linkTo={can('create clients') ? `/clients/new?account=${account.id}` : undefined}
+                linkLabel="Añadir cliente"
+              >
+                <TableContainer className="cmd-table-scroll">
+                  <Table size="sm" aria-label="Tenants de la cuenta">
+                    <TableHead>
+                      <TableRow>
+                        <TableHeader>Cliente</TableHeader>
+                        <TableHeader>Subdominio</TableHeader>
+                        <TableHeader>Estado</TableHeader>
+                        <TableHeader style={RIGHT}>Instancias</TableHeader>
+                        <TableHeader>Alta</TableHeader>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {clients.map((c) => (
+                        <TableRow key={c.id}>
+                          <TableCell>
+                            <Link to={`/clients/${c.id}`}>{c.name}</Link>
+                          </TableCell>
+                          <TableCell className="cmd-mono cmd-dim">{c.slug}</TableCell>
+                          <TableCell>
+                            <StatusTag catalog={ENTITY_STATUS} value={c.status} />
+                          </TableCell>
+                          <TableCell style={RIGHT}>
+                            {fmtNum(allInstances.filter((i) => i.client_id === c.id).length)}
+                          </TableCell>
+                          <TableCell className="cmd-dim">{fmtDate(c.created_at)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </ChartBlock>
+            ) : (
+              <EmptyBlock
+                head="Clientes"
+                title="Sin clientes"
+                body="Una cuenta puede existir antes de tener tenants: es el paso previo a un contrato negociado."
+              />
+            ))}
 
-          {tab === 'subscriptions' && (
-            <DataView
-              label="Contratos de la cuenta"
-              rows={subs}
-              columns={subscriptionColumns(appById)}
-              emptyTitle="Sin contratos"
-              emptyBody="Un contrato de catálogo se crea con el alta; uno negociado se crea a mano antes de añadir cabeceras."
-            />
-          )}
+          {tab === 'subscriptions' &&
+            (subs.length ? (
+              <ChartBlock title="Contratos" help={CONTRACTS_HELP}>
+                <TableContainer className="cmd-table-scroll">
+                  <Table size="sm" aria-label="Contratos de la cuenta">
+                    <TableHead>
+                      <TableRow>
+                        <TableHeader>Contrato</TableHeader>
+                        <TableHeader>Aplicación</TableHeader>
+                        <TableHeader>Modalidad</TableHeader>
+                        <TableHeader>Estado</TableHeader>
+                        <TableHeader style={RIGHT}>Importe</TableHeader>
+                        <TableHeader style={RIGHT}>Capacidad</TableHeader>
+                        <TableHeader>Inicio</TableHeader>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {subs.map((s) => (
+                        <TableRow key={s.id}>
+                          <TableCell>
+                            <Link to={`/subscriptions/${s.id}`}>{s.name}</Link>
+                          </TableCell>
+                          <TableCell className="cmd-dim">{appById.get(s.application_id)?.name ?? '—'}</TableCell>
+                          <TableCell>
+                            <StatusTag catalog={SUBSCRIPTION_MODE_CATALOG} value={s.mode} />
+                          </TableCell>
+                          <TableCell>
+                            <StatusTag catalog={SUB_STATUS} value={s.status} />
+                          </TableCell>
+                          <TableCell style={RIGHT}>{fmtMoney(s.monthly_amount, s.currency)}</TableCell>
+                          {/* Capacidad es la fracción: las cabeceras activas frente al máximo pactado. */}
+                          <TableCell className="cmd-dim" style={RIGHT}>
+                            {`${allItems.filter((it) => it.subscription_id === s.id && it.status === 'active').length} / ${s.max_instances}`}
+                          </TableCell>
+                          <TableCell className="cmd-dim">{fmtDate(s.starts_at)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </ChartBlock>
+            ) : (
+              <EmptyBlock
+                head="Contratos"
+                help={CONTRACTS_HELP}
+                title="Sin contratos"
+                body="El alta normal crea un contrato de catálogo; uno negociado se crea desde Contratos."
+              />
+            ))}
 
-          {tab === 'invoices' && (
-            <DataView
-              label="Facturas de la cuenta"
-              rows={invoices}
-              columns={[
-                {
-                  key: 'number',
-                  header: 'Número',
-                  value: (i) => i.number,
-                  render: (i) => (
-                    <Link className="cmd-mono" to={`/invoices/${i.id}`}>
-                      {i.number}
-                    </Link>
-                  ),
-                },
-                { key: 'status', header: 'Estado', value: (i) => i.status, render: (i) => <StatusTag catalog={INVOICE_STATUS} value={i.status} /> },
-                { key: 'issued_at', header: 'Emisión', value: (i) => i.issued_at, render: (i) => fmtDate(i.issued_at) },
-                { key: 'due_at', header: 'Vencimiento', value: (i) => i.due_at, render: (i) => fmtDate(i.due_at) },
-                { key: 'total', header: 'Total', align: 'right', value: (i) => i.total, render: (i) => fmtMoney(i.total, i.currency) },
-              ]}
-              defaultSort={{ key: 'issued_at', dir: 'desc' }}
-              emptyTitle="Sin facturas"
-              emptyBody="Todavía no se ha emitido ninguna factura a esta cuenta."
-            />
-          )}
+          {tab === 'invoices' &&
+            (invoices.length ? (
+              <ChartBlock
+                title="Ledger de la cuenta"
+                help="Facturas emitidas a esta cuenta. Resaltar una vencida no altera el servicio por sí solo."
+                summary={`${fmtMoney(unpaidTotal)} pendientes de cobro`}
+              >
+                <TableContainer className="cmd-table-scroll">
+                  <Table size="sm" aria-label="Ledger de la cuenta">
+                    <TableHead>
+                      <TableRow>
+                        <TableHeader>Número</TableHeader>
+                        <TableHeader>Estado</TableHeader>
+                        <TableHeader>Emisión</TableHeader>
+                        <TableHeader>Vencimiento</TableHeader>
+                        <TableHeader style={RIGHT}>Total</TableHeader>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {invoices.map((i) => (
+                        <TableRow key={i.id}>
+                          <TableCell>
+                            <Link to={`/invoices/${i.id}`}>{i.number}</Link>
+                          </TableCell>
+                          <TableCell>
+                            <StatusTag catalog={INVOICE_STATUS} value={i.status} />
+                          </TableCell>
+                          <TableCell className="cmd-dim">{fmtDate(i.issued_at)}</TableCell>
+                          {/* El vencimiento de una vencida se lee en rojo: es el dato que la explica. */}
+                          <TableCell className={i.status === 'overdue' ? 'cmd-text-error' : 'cmd-dim'}>
+                            {fmtDate(i.due_at)}
+                          </TableCell>
+                          <TableCell style={RIGHT}>{fmtMoney(i.total, i.currency)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </ChartBlock>
+            ) : (
+              <EmptyBlock head="Facturas" title="Sin facturas" body="No hay ledger para esta cuenta todavía." />
+            ))}
 
-          {tab === 'activity' && (
-            <DataView
-              label="Actividad de la cuenta"
-              rows={activity}
-              columns={[
-                { key: 'created_at', header: 'Fecha', value: (a) => a.created_at, render: (a) => fmtDateTime(a.created_at) },
-                { key: 'label', header: 'Tipo', value: (a) => a.label, render: (a) => <Link to={`/activity/${a.id}`}>{a.label}</Link> },
-                {
-                  key: 'instance',
-                  header: 'Instancia',
-                  value: (a) => a.instance_id,
-                  render: (a) =>
-                    a.instance_id ? (
-                      <Link to={`/instances/${a.instance_id}`}>
-                        {cliById.get(allInstances.find((i) => i.id === a.instance_id)?.client_id ?? -1)?.name ??
-                          a.instance_id}
-                      </Link>
-                    ) : (
-                      '—'
-                    ),
-                },
-                { key: 'message', header: 'Mensaje', value: (a) => a.message },
-              ]}
-              defaultSort={{ key: 'created_at', dir: 'desc' }}
-              emptyTitle="Sin actividad"
-              emptyBody="No hay eventos registrados para las entidades de esta cuenta."
-            />
-          )}
+          {tab === 'activity' &&
+            (activity.length ? (
+              <ChartBlock
+                title="Eventos de sus instancias, contratos y facturas"
+                help="Auditoría operativa de todo lo que cuelga de la cuenta, no un sistema de tareas."
+              >
+                <TableContainer className="cmd-table-scroll">
+                  <Table size="sm" aria-label="Actividad de la cuenta">
+                    <TableHead>
+                      <TableRow>
+                        <TableHeader>Fecha</TableHeader>
+                        <TableHeader>Tipo</TableHeader>
+                        <TableHeader>Instancia</TableHeader>
+                        <TableHeader>Razón</TableHeader>
+                        <TableHeader>Mensaje</TableHeader>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {activity.map((a) => (
+                        <TableRow key={a.id}>
+                          <TableCell className="cmd-dim">{fmtDateTime(a.created_at)}</TableCell>
+                          <TableCell>{a.label}</TableCell>
+                          <TableCell>
+                            {a.instance_id ? (
+                              <Link to={`/instances/${a.instance_id}`}>{a.instance_id}</Link>
+                            ) : (
+                              <span className="cmd-dim">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="cmd-mono cmd-dim">{a.reason}</TableCell>
+                          <TableCell className="cmd-dim">{a.message}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </ChartBlock>
+            ) : (
+              <EmptyBlock
+                head="Actividad"
+                title="Sin actividad"
+                body="Cuando el endpoint emita eventos de esta cuenta aparecerán aquí."
+              />
+            ))}
         </div>
       </DetailTabs>
     </>
+  );
+}
+
+/**
+ * Un bloque vacío es su título fuera de la caja y el motivo dentro. `ChartBlock`
+ * no sirve: su cuerpo ya trae fondo y relleno, y encajaría una caja dentro de otra.
+ */
+function EmptyBlock({
+  head,
+  help,
+  title,
+  body,
+}: {
+  head: string;
+  help?: string;
+  title: string;
+  body: string;
+}) {
+  return (
+    <section className="cmd-chart">
+      <h2 className="cmd-chart__title">{head}</h2>
+      {help && <span className="cmd-chart__help">{help}</span>}
+      <EmptyState title={title} body={body} />
+    </section>
   );
 }

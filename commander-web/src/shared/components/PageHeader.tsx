@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { Breadcrumb, BreadcrumbItem } from '@carbon/react';
+import { useLocation } from 'react-router-dom';
 import { Link } from '@shared/components/AppLink';
+import { kickerFor } from '@shared/lib/section';
 
 export interface Crumb {
   label: string;
@@ -16,17 +18,28 @@ export function PageHeader({
   title,
   kicker,
   lede,
+  statuses,
   crumbs,
   actions,
 }: {
   title: string;
-  /** Sección de la navegación a la que pertenece la página, o su identificador. */
+  /**
+   * Lo propio de la página —«Instancia 42»—. La sección de la navegación la pone
+   * la ruta: decir dónde estás antes de decir qué estás mirando es del contrato,
+   * no de cada página.
+   */
   kicker?: string;
   lede?: ReactNode;
+  /**
+   * Las pastillas de estado de la ficha. Van al final de la descripción, no en una fila
+   * propia: son dos palabras y una fila entera solo alarga la cabecera.
+   */
+  statuses?: ReactNode;
   crumbs?: Crumb[];
   actions?: ReactNode;
 }) {
   const heading = useRef<HTMLHeadingElement>(null);
+  const { pathname } = useLocation();
   useEffect(() => {
     heading.current?.focus();
     document.title = `${title} · Commander`;
@@ -35,7 +48,9 @@ export function PageHeader({
   return (
     <header className="cmd-page__head">
       <div>
-        {crumbs && crumbs.length > 0 && (
+        {/* Migas o rótulo, nunca los dos: ambos dicen dónde estás, y juntos son la misma
+            frase escrita dos veces. */}
+        {crumbs?.length ? (
           <Breadcrumb noTrailingSlash>
             {crumbs.map((c) =>
               c.to ? (
@@ -49,13 +64,19 @@ export function PageHeader({
               ),
             )}
           </Breadcrumb>
+        ) : (
+          <span className="cmd-page__kicker">{kickerFor(pathname, kicker)}</span>
         )}
-        {kicker && <span className="cmd-page__kicker">{kicker}</span>}
-        <h1 className="cmd-page__title" tabIndex={-1} ref={heading}>
-          {title}
-        </h1>
-        {/* Un `div`, no un `p`: varias fichas ponen Tags en el lede y Carbon los renderiza como `div`. */}
-        {lede && <div className="cmd-page__lede">{lede}</div>}
+        {/* Las pastillas acompañan al título, no a la descripción: el estado es de la
+            cosa, no de la frase que la explica. Y van fuera del `h1`, que solo admite
+            contenido de texto. */}
+        <div className="cmd-page__headline">
+          <h1 className="cmd-page__title" tabIndex={-1} ref={heading}>
+            {title}
+          </h1>
+          {statuses && <span className="cmd-page__tags">{statuses}</span>}
+        </div>
+        {lede && <p className="cmd-page__lede">{lede}</p>}
       </div>
       {actions && <div className="cmd-page__actions">{actions}</div>}
     </header>

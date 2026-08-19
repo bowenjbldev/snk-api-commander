@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { balancedColumns } from './grid.ts';
+import { balancedColumns, formColumns } from './grid.ts';
 
 test('los ocho indicadores del resumen caben en 4×2 sin huecos', () => {
   assert.equal(balancedColumns(8), 4);
@@ -24,4 +24,15 @@ test('pocas celdas ocupan una sola fila', () => {
 
 test('nunca devuelve cero columnas aunque no haya celdas', () => {
   assert.equal(balancedColumns(0), 1);
+});
+
+test('una sección de formulario no pasa de tres campos por fila', () => {
+  assert.equal(formColumns(4), 2); // 2+2
+  assert.equal(formColumns(5), 3); // 3+2
+  assert.equal(formColumns(6), 3); // 3+3
+});
+
+test('un campo suelto ocupa media fila, no toda', () => {
+  assert.equal(formColumns(1), 2);
+  assert.equal(formColumns(0), 1);
 });

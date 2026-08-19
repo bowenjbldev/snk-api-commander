@@ -1,4 +1,5 @@
 import type { Plan } from '@services/api/types';
+import { asEntityStatus } from '@shared/lib/enums';
 import { normalizeLimits } from './planLimits';
 import type { PlanLimitDraft } from './planLimits';
 
@@ -6,7 +7,8 @@ export type PlanFormValues = {
   name: string;
   slug: string;
   description: string;
-  monthly_price: number | string;
+  /** Texto mientras se teclea: el precio lo valida el servidor, no el input. */
+  monthly_price: string;
   status: string;
 };
 
@@ -15,7 +17,7 @@ export function emptyPlanValues(plan?: Plan): PlanFormValues {
     name: plan?.name ?? '',
     slug: plan?.slug ?? '',
     description: plan?.description ?? '',
-    monthly_price: plan?.monthly_price ?? 0,
+    monthly_price: plan ? String(plan.monthly_price) : '',
     status: plan?.status ?? 'active',
   };
 }
@@ -35,8 +37,10 @@ export function toPlanPayload(
     name: values.name.trim(),
     slug: values.slug.trim(),
     description: values.description.trim(),
-    monthly_price: Number(values.monthly_price),
-    status: values.status === 'inactive' ? 'inactive' : 'active',
+    // Un precio vacío no es cero: viaja como NaN para que el servidor lo rechace en vez
+    // de dejar creado un plan gratis por descuido.
+    monthly_price: values.monthly_price.trim() === '' ? NaN : Number(values.monthly_price),
+    status: asEntityStatus(values.status),
     limits: normalizeLimits(limits),
   };
 }
