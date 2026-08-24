@@ -2,40 +2,35 @@
 
 namespace Packages\Kilkana\Database\Seeders;
 
-use Carbon\Carbon;
 use Illuminate\Database\Seeder;
-use Illuminate\Http\File;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Packages\Core\Models\CoreUserModel;
+use Packages\Core\Support\CorePackageSelectorSupport;
 use Packages\Kilkana\Enums\SnkKilkanaCategoryStatusEnum;
 use Packages\Kilkana\Enums\SnkKilkanaCommentStatusEnum;
 use Packages\Kilkana\Enums\SnkKilkanaConsentSourceEnum;
-use Packages\Kilkana\Enums\SnkKilkanaMediaRightsEnum;
+use Packages\Kilkana\Enums\SnkKilkanaPostStatusEnum;
 use Packages\Kilkana\Enums\SnkKilkanaSubscriberStatusEnum;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaCommentModel;
-use Packages\Kilkana\Models\SnkKilkanaLayoutModel;
-use Packages\Kilkana\Models\SnkKilkanaMediaCollectionModel;
 use Packages\Kilkana\Models\SnkKilkanaMediaModel;
-use Packages\Kilkana\Models\SnkKilkanaMediaTagModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Models\SnkKilkanaPostViewModel;
 use Packages\Kilkana\Models\SnkKilkanaSettingModel;
 use Packages\Kilkana\Models\SnkKilkanaSubscriberModel;
 use Packages\Kilkana\Models\SnkKilkanaTagModel;
 use Packages\Kilkana\Models\SnkKilkanaThemeModel;
+use Packages\Kilkana\Services\SnkKilkanaMediaService;
 use Packages\Kilkana\Services\SnkKilkanaThemeCatalogSyncService;
 use Packages\Kilkana\Services\SnkKilkanaThemeWearService;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 /**
- * Permisos de los recursos del CMS + taxonomía base (7 mesas + 12 subsecciones) + los 60
- * artículos demo de kilkana (data/posts.json) resolviendo strings → relaciones
- * (autor, media de portada, tags). firstOrCreate: re-sembrar no duplica ni pisa.
+ * Permisos del CMS y snapshot local de kilkana.app: taxonomía y 522 artículos
+ * (data/posts.json) resolviendo strings a autor, sección, portada y tags.
  */
 class SnkKilkanaDatabaseSeeder extends Seeder
 {
@@ -46,87 +41,34 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      * `seedCategories` resuelve `parent_id` con los ids ya creados. `position` se numera
      * por nivel, así que las hermanas se ordenan entre ellas y no contra el resto.
      *
-     * `motor` nace sin artículos a propósito: una sección recién abierta es un estado
-     * real, y es el que ejercita el bloque vacío del builder y la página de sección sin
-     * contenido.
+     * `medio-ambiente` nace sin artículos a propósito: una sección recién abierta es un
+     * estado real y ejercita la página de sección sin contenido.
      */
     private const CATEGORIES = [
-        'politics' => ['name' => 'Politics', 'description' => 'Government, parliament, elections and public policy.'],
-
-        'economy' => ['name' => 'Economy', 'description' => 'Markets, business, employment and personal finance.'],
-        'housing' => ['name' => 'Housing', 'parent' => 'economy', 'description' => 'Prices, rent, mortgages and public housing policy.'],
-        'labour' => ['name' => 'Labour', 'parent' => 'economy', 'description' => 'Jobs, wages, collective bargaining and working conditions.'],
-
-        'culture' => ['name' => 'Culture', 'description' => 'Books, film, music, arts and heritage.'],
-        'cinema' => ['name' => 'Cinema', 'parent' => 'culture', 'description' => 'Premieres, festivals and the people behind the camera.'],
-        'books' => ['name' => 'Books', 'parent' => 'culture', 'description' => 'Publishing, libraries, reading and the book trade.'],
-        'heritage' => ['name' => 'Heritage', 'parent' => 'culture', 'description' => 'Archaeology, museums, restoration and cultural property.'],
-
-        'society' => ['name' => 'Society', 'description' => 'Education, health, housing and everyday life.'],
-        'education' => ['name' => 'Education', 'parent' => 'society', 'description' => 'Schools, universities, teaching and student life.'],
-
-        'sports' => ['name' => 'Sports', 'description' => 'Results, matches and the stories behind the game.'],
-        'football' => ['name' => 'Football', 'parent' => 'sports', 'description' => 'Leagues, cups and the national teams.'],
-        'basketball' => ['name' => 'Basketball', 'parent' => 'sports', 'description' => 'Domestic league, European competition and the youth ranks.'],
-        'cycling' => ['name' => 'Cycling', 'parent' => 'sports', 'description' => 'Grand tours, classics and the local teams.'],
-        'motor' => ['name' => 'Motor', 'parent' => 'sports', 'description' => 'Rallies, circuits and the motorcycling calendar.'],
-
-        'technology' => ['name' => 'Technology', 'description' => 'Science, innovation and the digital world.'],
-        'ai' => ['name' => 'Artificial intelligence', 'parent' => 'technology', 'description' => 'Models, regulation and how AI reaches everyday work.'],
-        'networks' => ['name' => 'Networks', 'parent' => 'technology', 'description' => 'Connectivity, infrastructure and the outages that expose it.'],
-
-        'international' => ['name' => 'International', 'description' => 'World news and global affairs.'],
-    ];
-
-    /**
-     * Metadatos de publicación, solo donde de verdad se separan de lo editorial.
-     *
-     * `seo_title` y `seo_description` existen para cuando el titular que vende la pieza en
-     * el periodico no es el que la encuentra en un buscador: el editorial puede permitirse
-     * ser elíptico, el de búsqueda tiene que decir de qué va y caber. Estas cuatro no están
-     * para llenar columnas, están para que se vea la diferencia entre las dos escrituras —el
-     * resto de las 60 piezas se queda sin ellas, que es el caso normal.
-     */
-    private const SEO = [
-        'climate-summit-reaches-a-historic-agreement-after-14-hours-of-negotiation' => [
-            'seo_title' => 'Acuerdo de la cumbre del clima 2026: qué se ha firmado y a quién obliga',
-            'seo_description' => 'Las 14 horas de negociación, punto por punto: los compromisos de emisiones, el fondo de adaptación y los países que se han quedado fuera.',
-        ],
-        'the-central-bank-cuts-rates-for-the-first-time-in-two-years' => [
-            'seo_title' => 'Bajada de tipos 2026: cuánto baja la hipoteca y desde cuándo',
-            'seo_description' => 'El banco central recorta por primera vez en dos años. Qué significa para una hipoteca variable, para el ahorro y para el crédito a empresas.',
-            // En redes gana la consecuencia; en el buscador, la consulta que se teclea.
-            'og_title' => 'Baja el euríbor: esto es lo que dejarás de pagar cada mes',
-            'og_description' => 'Primera bajada en dos años. Te contamos con números qué cambia en tu hipoteca.',
-        ],
-        'public-debt-falls-below-100-of-gdp-for-the-first-time-since-the-pandemic' => [
-            'seo_title' => 'La deuda pública baja del 100% del PIB: los datos',
-            'seo_description' => 'Primera vez desde la pandemia. De dónde viene la caída y qué parte es crecimiento y qué parte es inflación.',
-            // Breve de agencia: la canónica apunta FUERA. Sin esto, dos medios compiten por
-            // la misma pieza y el buscador elige por su cuenta cuál es el original.
-            'canonical_url' => 'https://agencia.example/economia/deuda-publica-baja-del-100-del-pib',
-        ],
-        'remains-of-the-ancient-roman-port-unearthed-in-seville' => [
-            'seo_title' => 'Hallazgo del puerto romano de Sevilla: qué se ha encontrado',
-            'seo_description' => 'Los restos aparecidos bajo la ciudad, su datación y qué cambia en lo que se sabía del trazado del Guadalquivir.',
-            // Cerrada, y su cuerpo lleva el bloque `paywall` que dice por dónde corta.
-            'content_tier' => 'locked',
-        ],
-        'festival-season-kicks-off-with-record-attendance' => [
-            // Medida: se lee entera hasta agotar la cuota. Sin bloque de muro, por eso.
-            'content_tier' => 'metered',
-        ],
-        'pets-can-now-ride-the-subway-at-any-hour' => [
-            // Retirada de buscadores pero VISIBLE en el periódico: sigue publicada y
-            // enlazada, solo que no se anuncia en el sitemap ni se pide que se indexe.
-            'noindex' => true,
-        ],
+        'local' => ['name' => 'Local'],
+        'comarca' => ['name' => 'Comarca', 'parent' => 'local'],
+        'municipios' => ['name' => 'Municipios', 'parent' => 'local'],
+        'barrios' => ['name' => 'Barrios', 'parent' => 'local'],
+        'politica' => ['name' => 'Política'],
+        'economia' => ['name' => 'Economía'],
+        'agricultura' => ['name' => 'Agricultura', 'parent' => 'economia'],
+        'empleo' => ['name' => 'Empleo', 'parent' => 'economia'],
+        'deportes' => ['name' => 'Deportes'],
+        'futbol' => ['name' => 'Fútbol', 'parent' => 'deportes'],
+        'polideportivo' => ['name' => 'Polideportivo', 'parent' => 'deportes'],
+        'cultura' => ['name' => 'Cultura'],
+        'patrimonio' => ['name' => 'Patrimonio', 'parent' => 'cultura'],
+        // ponytail: Kilkana tiene `hidden`; el backend solo draft/live. Añadir el tercer
+        // estado al migrar la fixture de categorías. Por ahora debe ser live porque tiene posts.
+        'agenda' => ['name' => 'Agenda', 'parent' => 'cultura'],
+        'sucesos' => ['name' => 'Sucesos'],
+        'opinion' => ['name' => 'Opinión'],
+        'medio-ambiente' => ['name' => 'Medio ambiente', 'status' => SnkKilkanaCategoryStatusEnum::Draft],
     ];
 
     public function run(): void
     {
         $this->seedPermissions();
-        $this->seedLayouts();
         // Antes que los ajustes: la fila de settings apunta a una variante con RESTRICT, así
         // que la variante tiene que existir para que haya a qué apuntar.
         $this->seedThemes();
@@ -139,11 +81,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         $this->seedCategories();
         $this->seedPosts();
         $this->seedViews();
-        $this->seedSocialImage();
         $this->seedAuthorProfiles();
         $this->seedStaff();
-        // Después de los posts: reasigna dos breves a la firma de la casa.
-        $this->seedCollectiveByline();
         $this->seedComments();
         $this->seedSubscribers();
     }
@@ -190,89 +129,57 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      * La redacción, en un solo sitio: lo que va a `users` (cuenta) y lo que va a
      * `kilkana_authors` (firma) salen del mismo registro, porque son la misma persona.
      *
-     * COMPLETO a propósito. Un usuario a medias —sin nombre completo, sin teléfono— hace
-     * que media UI parezca rota sin estarlo: la columna de organización sale vacía y no hay
-     * forma de ver si el listado aguanta nombres largos.
-     *
      * `job_title` es el cargo PUBLICABLE y va a la firma, no a la cuenta: aquí llegó a estar
      * la mesa («Mesa de Deportes») metida en `users.company`, que significa «Organización» y no
      * sale al público — el dato editorial vivía en la columna del CRM.
      * Ahora `company` dice lo que promete: el periódico para la plantilla, la organización
      * propia de quien colabora desde fuera.
      *
-     * Los teléfonos son extensiones ficticias de una centralita. Sin foto: la del periodista
-     * se sube a la biblioteca de medios y cuelga de su FIRMA (`avatar_media_id`), que es la
-     * que se publica; sin ella, la UI dibuja el monograma.
+     * Sin foto: la del periodista se sube a la biblioteca de medios y cuelga de su FIRMA
+     * (`avatar_media_id`); sin ella, la UI dibuja el monograma.
      */
     private const REDACCION = [
-        'Pedro Aranda' => [
-            'job_title' => 'Redactor de Clima y Energía',
-            'full_name' => 'Pedro Aranda Gil',
-            'phone' => '+34 985 100 201',
-            'bio' => 'Cubre clima y energía desde 2014. Antes en agencia, donde aprendió que una cifra sin contexto no es una noticia.',
-            'website' => 'https://pedroaranda.example',
-            'socials' => ['x' => 'https://x.com/ejemplo_paranda', 'linkedin' => 'https://linkedin.com/in/ejemplo-paranda'],
+        'Marta Beneyto' => [
+            'email' => 'marta@eldiario.example',
+            'job_title' => 'Editora jefe',
+            'bio' => 'Dirige El Diario desde 2021. Antes cubrió tribunales en la prensa provincial durante doce años.',
+            'website' => 'https://martabeneyto.es',
+            'socials' => ['x' => 'https://x.com/martabeneyto', 'linkedin' => 'https://www.linkedin.com/in/martabeneyto'],
         ],
-        'Lucía Ferrer' => [
-            'job_title' => 'Redactora de Economía',
-            'full_name' => 'Lucía Ferrer Bosch',
-            'phone' => '+34 985 100 202',
-            'bio' => 'Economía y vivienda. Le interesan los datos que la gente nota en el recibo antes que en el titular.',
-            'website' => 'https://luciaferrer.example',
-            'socials' => ['x' => 'https://x.com/ejemplo_lferrer'],
+        'Ramón Clavel' => [
+            'email' => 'ramon@eldiario.example',
+            'job_title' => 'Gobierno local',
+            'bio' => 'Cubre el pleno y el urbanismo de la comarca. Premio de periodismo local 2019.',
+            'website' => 'https://ramonclavel.info',
+            'socials' => ['x' => 'https://x.com/rclavel', 'bluesky' => 'https://bsky.app/profile/rclavel.bsky.social'],
         ],
-        'Marta Gil' => [
-            'job_title' => 'Redactora de Cultura',
-            'full_name' => 'Marta Gil Otero',
-            'phone' => '+34 985 100 203',
-            'bio' => 'Cultura y oficios. Doce años siguiendo festivales, salas pequeñas y a quien las sostiene.',
-            'website' => null,
-            'socials' => ['instagram' => 'https://instagram.com/ejemplo_mgil'],
-        ],
-        'Iván Soto' => [
-            'job_title' => 'Redactor de Tribunales',
-            'full_name' => 'Iván Soto Peña',
-            'phone' => '+34 985 100 204',
-            'bio' => 'Tribunales y administración. Escribe despacio y comprueba dos veces.',
+        'Iván Sagredo' => [
+            'email' => 'ivan@eldiario.example',
+            'job_title' => 'Economía y agricultura',
+            'bio' => 'Escribe sobre agricultura, agua y empleo en la comarca.',
             'website' => null,
             'socials' => [],
         ],
-        'Clara Méndez' => [
-            'job_title' => 'Redactora de Sanidad y Ciencia',
-            'full_name' => 'Clara Méndez Arroyo',
-            'phone' => '+34 985 100 205',
-            'bio' => 'Sanidad y ciencia. Traduce estudios a consecuencias, que es lo que se puede usar.',
-            'website' => 'https://claramendez.example',
-            'socials' => ['x' => 'https://x.com/ejemplo_cmendez', 'mastodon' => 'https://mastodon.social/@ejemplo_cmendez'],
+        'Nuria Espí' => [
+            'email' => 'nuria@eldiario.example',
+            'job_title' => 'Sanidad y sociedad',
+            'bio' => 'Reportajes de sanidad y servicios sociales. Colabora en el podcast semanal.',
+            'website' => 'https://nuriaespi.com',
+            'socials' => ['x' => 'https://x.com/nuriaespi', 'linkedin' => 'https://www.linkedin.com/in/nuriaespi'],
         ],
-        'Diego Cano' => [
-            'job_title' => 'Redactor de Deportes',
-            'full_name' => 'Diego Cano Ferrán',
-            'phone' => '+34 985 100 206',
-            'bio' => 'Deportes. Del vestuario al presupuesto municipal que paga el polideportivo.',
+        'Lucía Ferrándiz' => [
+            'email' => 'lucia@eldiario.example',
+            'job_title' => 'Cultura y patrimonio',
+            'bio' => 'Patrimonio, arqueología y oficios. Licenciada en Historia del Arte.',
             'website' => null,
-            'socials' => ['x' => 'https://x.com/ejemplo_dcano'],
+            'socials' => ['linkedin' => 'https://www.linkedin.com/in/luciaferrandiz'],
         ],
-        'Nora Ibáñez' => [
-            'job_title' => 'Corresponsal de Internacional',
-            'full_name' => 'Nora Ibáñez Cruz',
-            'phone' => '+34 985 100 207',
-            'bio' => 'Internacional. Ha reporteado desde ocho países y desconfía de las cronologías limpias.',
-            'website' => 'https://noraibanez.example',
-            'socials' => ['linkedin' => 'https://linkedin.com/in/ejemplo-nibanez'],
-        ],
-        'Sara Lores' => [
-            'job_title' => 'Redactora de Política',
-            'full_name' => 'Sara Lores Vidal',
-            'phone' => '+34 985 100 208',
-            // La única de las ocho con seudónimo, y está aquí para que el alias se VEA: firma
-            // «S. Lores» aunque su cuenta se llame Sara Lores. Su URL sigue siendo
-            // /author/sara-lores —el slug se fija al crear la firma y no persigue al nombre—,
-            // que es justo el contraste que hay que poder mirar en la tabla.
-            'alias' => 'S. Lores',
-            'bio' => 'Política y parlamento. Cuenta el trámite porque ahí es donde se decide.',
+        'Óscar Tomás' => [
+            'email' => 'oscar@eldiario.example',
+            'job_title' => 'Deportes y fotografía',
+            'bio' => null,
             'website' => null,
-            'socials' => ['x' => 'https://x.com/ejemplo_slores'],
+            'socials' => [],
         ],
     ];
 
@@ -280,31 +187,86 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      * El periódico de la demo. `users.company` es la ORGANIZACIÓN de cada cuenta: para la
      * plantilla, esta; para quien colabora desde fuera, la suya. Antes aquí iba la mesa.
      */
-    private const PERIODICO = 'The Beacon';
+    private const PERIODICO = 'El Diario';
+
+    /**
+     * Quien firma sin estar en plantilla.
+     *
+     * Las firmas del snapshot que no salen en `REDACCION` caían todas en el mismo molde:
+     * `redactor`, organización «El Diario» y correo `@eldiario.example`. Eso convierte a una
+     * agencia de noticias en una redactora del periódico con permiso para publicar, que es
+     * exactamente lo que la demo no tiene que enseñar — y borra la diferencia entre la
+     * plantilla, quien colabora desde fuera y lo que llega por teletipo.
+     *
+     * `role` a null es una CUENTA DE SERVICIO: existe para satisfacer la FK de la firma y no
+     * entra en ningún sitio. Es el mismo mecanismo que ya usa «Redacción», y por eso las tres
+     * salen de aquí.
+     *
+     * @var array<string, array{email: string, name: string, alias?: string, company: ?string, job_title: ?string, bio: ?string, role: ?string, full_name?: string}>
+     */
+    private const FIRMAS_EXTERNAS = [
+        // Firma colectiva de la casa. La cuenta se llama como lo que es —para quien mira el
+        // listado de Usuarios— y el ALIAS es lo que sale publicado: llamarla «Redacción» a
+        // secas habría dado el mismo nombre publicado sin alias, y la columna no demostraría nada.
+        'Redacción' => [
+            'email' => 'redaccion@eldiario.example',
+            'name' => 'Redacción (cuenta de servicio)',
+            'full_name' => 'Cuenta de servicio de la redacción',
+            'alias' => 'Redacción',
+            'company' => self::PERIODICO,
+            'job_title' => self::PERIODICO,
+            'bio' => 'Piezas firmadas por el equipo de redacción.',
+            'role' => null,
+        ],
+        // El teletipo. Su organización es la agencia, no el periódico, y sin rol: nadie de
+        // fuera escribe en este CMS, sus piezas las vuelca la redacción.
+        'Agencia EFE' => [
+            'email' => 'efe@eldiario.example',
+            'name' => 'Agencia EFE (cuenta de servicio)',
+            'full_name' => 'Cuenta de servicio de agencia',
+            'alias' => 'Agencia EFE',
+            'company' => 'Agencia EFE',
+            'job_title' => 'Agencia de noticias',
+            'bio' => 'Teletipos de agencia editados por la redacción.',
+            'role' => null,
+        ],
+        // Columnista: escribe de verdad y entra al CMS, pero no es plantilla. Sin organización
+        // —la suya es ninguna— y con `colaborador`, que no puede publicar lo que firma.
+        'Josep Miralles' => [
+            'email' => 'josep.miralles@colaboradores.eldiario.example',
+            'name' => 'Josep Miralles',
+            'company' => null,
+            'job_title' => 'Columnista',
+            'bio' => 'Escribe la columna de los jueves. Fue jefe de Local entre 1998 y 2014.',
+            'role' => 'colaborador',
+        ],
+    ];
 
     /**
      * Firma de demo: la CUENTA del periodista más su fila editorial.
      *
-     * La firma es un usuario del CMS, así que la identidad es el correo y el fixture solo
-     * trae el nombre («Pedro Aranda») — se deriva. Eso es también lo que hace idempotente
-     * la siembra: buscando por nombre, dos formas del mismo periodista abrirían dos firmas,
-     * dos páginas públicas y partirían su hemeroteca.
+     * La firma es un usuario del CMS, así que la identidad es el correo. Las seis firmas de
+     * plantilla conservan el correo del fixture; las firmas externas reciben uno local y
+     * determinista para poder satisfacer la FK sin inventar una identidad pública.
      *
      * Con rol `redactor`: escribe y publica lo suyo. Es el rol de plantilla, y con él la
      * demo enseña de verdad el acotado por `created_by` — cada periodista ve sus piezas.
      */
     private function authorFor(string $name): SnkKilkanaAuthorModel
     {
+        if (isset(self::FIRMAS_EXTERNAS[$name])) {
+            return $this->externalByline($name);
+        }
+
         $ficha = self::REDACCION[$name] ?? [];
 
         $user = CoreUserModel::firstOrCreate(
-            ['email' => Str::slug($name, '.').'@thebeacon.example'],
-            // Sin Hash::make: el cast 'hashed' del modelo ya lo hace.
+            ['email' => $ficha['email'] ?? Str::slug($name, '.').'@eldiario.example'],
+            // Sin Hash::make: `CoreUserModel::setPasswordAttribute` ya la hashea al asignarla.
             ['password' => $this->demoPassword(), 'name' => $name]
         );
         // Fuera del create y solo sobre lo vacío: así una siembra sobre una base que ya
-        // tenía la cuenta también la completa, en vez de dejarla a medias — que es como
-        // estaban las ocho, con `full_name` y teléfono a NULL.
+        // tenía la cuenta también la completa.
         $user->forceFill(array_filter([
             'full_name' => $user->full_name ?: ($ficha['full_name'] ?? $name),
             'company' => $user->company ?: self::PERIODICO,
@@ -316,8 +278,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         $user->assignRole('redactor');
 
         // Sin alias ni cargo aquí: la firma nace publicando el nombre de la cuenta y su URL
-        // se deriva de él (`deriveSlug`). Lo editorial lo pone después `seedAuthorProfiles`,
-        // que es lo que hace que el slug de Sara Lores NO siga a su seudónimo.
+        // se deriva de él. Lo editorial lo pone después `seedAuthorProfiles`.
         return SnkKilkanaAuthorModel::firstOrCreate(['user_id' => $user->id]);
     }
 
@@ -343,7 +304,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     }
 
     /**
-     * El resto de la plantilla: quien no firma los 60 artículos del fixture pero existe en
+     * El resto de la plantilla: quien no firma los artículos del fixture pero existe en
      * cualquier redacción. Sin ellos, la demo solo cubre dos de los siete roles y no prueba
      * sus permisos distintos.
      *
@@ -354,7 +315,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     {
         $staff = [
             [
-                'name' => 'Elena Vara', 'email' => 'elena.vara@thebeacon.example',
+                'name' => 'Elena Vara', 'email' => 'elena.vara@estudiovara.example',
                 // Su organización es la SUYA, no el periódico: colabora desde fuera, y esa
                 // diferencia es lo que la columna «Organización» sirve para ver.
                 'full_name' => 'Elena Vara Ruiz', 'company' => 'Estudio Vara Urbanismo',
@@ -363,7 +324,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 'bio' => 'Escribe de urbanismo y memoria de barrio desde fuera de la redacción. Entrega y espera al cierre.',
             ],
             [
-                'name' => 'Rubén Nieto', 'email' => 'ruben.nieto@thebeacon.example',
+                'name' => 'Rubén Nieto', 'email' => 'ruben.nieto@eldiario.example',
                 'full_name' => 'Rubén Nieto Salas', 'company' => self::PERIODICO,
                 'phone' => '+34 985 100 210', 'role' => 'moderador',
                 'job_title' => null,
@@ -394,52 +355,48 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         }
     }
 
-    /** Los breves que firma la casa. Piezas cortas y factuales, como en cualquier diario. */
-    private const BREVES_DE_REDACCION = [
-        'public-debt-falls-below-100-of-gdp-for-the-first-time-since-the-pandemic',
-        'telecoms-switch-on-the-6g-pilot-network-in-three-cities',
-    ];
-
     /**
-     * La firma colectiva: «Redacción».
+     * Una firma que no es plantilla: la colectiva, la de agencia y la del columnista.
      *
      * Es el caso que el modelo parecía no admitir. Una firma ES una cuenta (`user_id` es
-     * obligatorio y único), y «Redacción» no es una persona — pero tampoco hace falta cambiar
-     * el esquema: se le da una CUENTA DE SERVICIO, sin rol y por tanto sin acceso operativo,
-     * y la firma cuelga de ella con `alias`. Un breve de agencia deja de necesitar
-     * que alguien se lo atribuya.
+     * obligatorio y único), y «Redacción» no es una persona — pero tampoco hace falta cambiar el
+     * esquema: se le da una CUENTA DE SERVICIO, sin rol y por tanto sin acceso operativo, y la
+     * firma cuelga de ella con `alias`. Un breve de agencia deja de necesitar que alguien se lo
+     * atribuya.
      *
-     * Y de paso enseña lo otro: estos dos breves los TECLEÓ una redactora —`created_by` sigue
-     * siendo la suya, que es lo que mira el acotado por rol— pero los FIRMA la casa. Quien
-     * escribe y quien firma no tienen por qué coincidir, y hasta ahora la demo no lo mostraba.
+     * Sin rol no es lo mismo que sin cuenta: la fila existe, sale en el listado de Usuarios y se
+     * ve que no puede entrar. Es lo que hay que poder enseñar.
      */
-    private function seedCollectiveByline(): void
+    private function externalByline(string $nombre): SnkKilkanaAuthorModel
     {
-        // La cuenta se llama como lo que es —para quien mira el listado de Usuarios— y el
-        // ALIAS es lo que sale publicado. Llamarla «Redacción» a secas habría dado el mismo
-        // nombre publicado sin alias, y entonces la columna no demostraría nada.
+        $ficha = self::FIRMAS_EXTERNAS[$nombre];
+
         $cuenta = CoreUserModel::firstOrCreate(
-            ['email' => 'redaccion@thebeacon.example'],
-            ['password' => $this->demoPassword(), 'name' => 'Redacción (cuenta de servicio)']
+            ['email' => $ficha['email']],
+            ['password' => $this->demoPassword(), 'name' => $ficha['name']]
         );
-        $cuenta->forceFill([
-            'full_name' => $cuenta->full_name ?: 'Cuenta de servicio de la redacción',
-            'company' => $cuenta->company ?: self::PERIODICO,
-            // Sin rol, sin teléfono y sin verificar: nadie entra con ella.
-        ])->save();
+        $cuenta->forceFill(array_filter([
+            'full_name' => $cuenta->full_name ?: ($ficha['full_name'] ?? $ficha['name']),
+            'company' => $cuenta->company ?: $ficha['company'],
+            // Verificada solo si puede entrar: una cuenta de servicio sin rol no verifica
+            // nada porque nadie va a usarla para acceder.
+            'email_verified_at' => $ficha['role'] === null
+                ? null
+                : ($cuenta->email_verified_at ?: now()),
+        ], fn ($v) => $v !== null))->save();
 
-        $firma = SnkKilkanaAuthorModel::firstOrCreate(
+        if ($ficha['role'] !== null) {
+            $cuenta->assignRole($ficha['role']);
+        }
+
+        return SnkKilkanaAuthorModel::firstOrCreate(
             ['user_id' => $cuenta->id],
-            [
-                'alias' => 'Redacción',
-                'bio' => 'Piezas breves elaboradas por la redacción de '.self::PERIODICO.' con información de agencias.',
-            ]
+            array_filter([
+                'alias' => $ficha['alias'] ?? null,
+                'job_title' => $ficha['job_title'],
+                'bio' => $ficha['bio'],
+            ], fn ($v) => $v !== null)
         );
-
-        // Solo el autor: `created_by` se queda con quien la escribió.
-        SnkKilkanaPostModel::query()
-            ->whereIn('slug', self::BREVES_DE_REDACCION)
-            ->update(['author_id' => $firma->id]);
     }
 
     /** Contraseña de las cuentas de demo; sin config utilizable, una aleatoria (no login). */
@@ -570,7 +527,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             $user = CoreUserModel::firstOrCreate(
                 ['email' => $person['email']],
                 [
-                    // Sin Hash::make: el cast 'hashed' del modelo ya lo hace.
+                    // Sin Hash::make: `CoreUserModel::setPasswordAttribute` ya la hashea al asignarla.
                     'password' => $password,
                     'name' => $person['name'],
                     'full_name' => $person['full_name'],
@@ -588,15 +545,6 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         }
 
         return $readers;
-    }
-
-    /** Composición de arranque (snapshot del builder): un fresh ya no deja la portada en blanco. */
-    private function seedLayouts(): void
-    {
-        $layouts = json_decode((string) file_get_contents(__DIR__.'/data/layouts.json'), true);
-        foreach ($layouts as $row) {
-            SnkKilkanaLayoutModel::firstOrCreate(['layout' => $row['layout']], ['schema' => $row['schema']]);
-        }
     }
 
     /** El catálogo que envía el producto, publicado desde los ficheros maestros. */
@@ -634,7 +582,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             'tenant_name' => $tenant['name'] ?? null,
             'tenant_tagline' => $tenant['tagline'] ?? null,
             'tenant_city' => $tenant['city'] ?? null,
-            'tenant_url' => $tenant['url'] ?? null,
+            'tenant_url' => $this->tenantUrl(),
             'onboarded' => (bool) ($settings['onboarded'] ?? false),
         ]);
 
@@ -644,6 +592,37 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         if ($tema && $fila->theme_spec === null) {
             app(SnkKilkanaThemeWearService::class)->wear($tema);
         }
+    }
+
+    /**
+     * La URL pública del periódico, deducida de la base sobre la que se está sembrando.
+     *
+     * **No puede venir del snapshot.** Un host escrito en `settings.json` es el de UN inquilino,
+     * y el mismo fichero siembra a los cuatro: el segundo se despertaría con la dirección del
+     * primero, que es lo que firma los enlaces del boletín. Aquí llegó a haber
+     * `https://demo.kilkana.test` dentro de datos de producto.
+     *
+     * La base se llama `{cliente}_{paquete}` y el subdominio del cliente es su slug con guiones,
+     * así que el host sale del mismo par (cliente, dominio base) con el que
+     * `subdomainFromHost` resuelve al inquilino en cada petición: una sola regla, no dos que se
+     * separen. Si no se puede deducir, null — y `subscriptionLanding()` ya sabe qué hacer con
+     * un periódico sin URL puesta.
+     */
+    private function tenantUrl(): ?string
+    {
+        $base = (string) config('core.tenant_base_domain', '');
+        $bd = (string) config('database.connections.tenant.database', '');
+        $sufijo = '_kilkana';
+
+        if ($base === '' || ! str_ends_with($bd, $sufijo)) {
+            return null;
+        }
+
+        $cliente = str_replace('_', '-', substr($bd, 0, -strlen($sufijo)));
+
+        return CorePackageSelectorSupport::isValidClientSubdomain($cliente)
+            ? "https://{$cliente}.{$base}"
+            : null;
     }
 
     /**
@@ -769,7 +748,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             $admin = CoreUserModel::create([
                 'name' => 'Admin',
                 'email' => $adminEmail,
-                // En claro: `CoreUserModel` castea `password => 'hashed'` y pasarla por
+                // En claro: `CoreUserModel::setPasswordAttribute` la hashea al asignarla, y pasarla por
                 // `Hash::make` aquí la hashearía dos veces.
                 'password' => 'secret1234',
             ]);
@@ -804,27 +783,39 @@ class SnkKilkanaDatabaseSeeder extends Seeder
 
             $ids[$slug] = SnkKilkanaCategoryModel::firstOrCreate(['slug' => $slug], [
                 'name' => $attrs['name'],
-                'description' => $attrs['description'],
+                'description' => $attrs['description'] ?? null,
                 'parent_id' => $parent ? ($ids[$parent] ?? null) : null,
                 'position' => $position[$branch],
-                // El periódico de muestra está abierto: sus mesas ya se lanzaron.
-                'status' => SnkKilkanaCategoryStatusEnum::Live,
+                'status' => $attrs['status'] ?? SnkKilkanaCategoryStatusEnum::Live,
             ])->id;
         }
     }
 
     private function seedPosts(): void
     {
-        $posts = json_decode((string) file_get_contents(__DIR__.'/data/posts.json'), true);
-        foreach ($posts as $i => $post) {
-            $category = SnkKilkanaCategoryModel::query()->where('slug', $post['cat'])->first();
+        $posts = json_decode(
+            (string) file_get_contents(__DIR__.'/data/posts.json'),
+            true,
+            flags: JSON_THROW_ON_ERROR,
+        );
+
+        foreach ($posts as $post) {
+            $category = SnkKilkanaCategoryModel::query()->where('slug', $post['cat'])->firstOrFail();
             $author = $this->authorFor(trim($post['author']));
-            // El fixture de imagen es posicional: posts.json[N] ↔ data/media/unsplash-N.jpg.
             $media = ! empty($post['image'])
-                ? $this->seedCoverMedia($post, $category, $i + 1)
+                ? SnkKilkanaMediaModel::firstOrCreateByUrl($post['image'])
+                : null;
+            $publishAt = $this->publishAt($post);
+            $urlDate = $post['status'] === SnkKilkanaPostStatusEnum::Published->value
+                ? substr($publishAt, 0, 10)
                 : null;
 
-            $row = SnkKilkanaPostModel::firstOrCreate(['slug' => $post['slug']], [
+            // La URL es fecha + slug. El snapshot contiene dos slugs repetidos en días
+            // distintos y ambos son piezas legítimas, no duplicados que haya que colapsar.
+            $row = SnkKilkanaPostModel::updateOrCreate([
+                'url_date' => $urlDate,
+                'slug' => $post['slug'],
+            ], [
                 'category_id' => $category->id,
                 'author_id' => $author->id,
                 // Quien la escribió, que NO es lo mismo que quien la firma: el acotado por
@@ -833,40 +824,67 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 'cover_media_id' => $media?->id,
                 'title' => $post['title'],
                 'excerpt' => $post['excerpt'],
-                ...self::SEO[$post['slug']] ?? [],
-                'publish_at' => $post['publish_at'],
+                'publish_at' => $publishAt,
                 'status' => $post['status'],
-                'body_blocks' => $post['body_blocks'],
+                'content_tier' => $post['content_tier'],
+                // El snapshot no trae cuerpo y sin cuerpo media demo no significa nada: el
+                // artículo público sale en blanco y `content_tier` no corta por ningún sitio
+                // porque no hay muro que colocar. Se compone aquí, determinista desde el slug.
+                'body_blocks' => SnkKilkanaDemoBodyFactory::blocks($post, $media?->id),
                 'featured' => $post['featured'] ?? false,
+                'seo_title' => $post['seo_title'] ?? null,
+                'seo_description' => $post['seo_description'] ?? null,
+                'og_title' => $post['og_title'] ?? null,
+                'og_description' => $post['og_description'] ?? null,
+                'noindex' => $post['noindex'] ?? false,
             ]);
 
-            $tagIds = collect($post['tags'] ?? [])
-                ->map(fn (string $name) => SnkKilkanaTagModel::firstOrCreate(['name' => $name])->id);
-            $row->tags()->syncWithoutDetaching($tagIds);
+            // `syncWithoutDetaching` y no `sync`: re-sembrar repone lo que trae el snapshot y
+            // **no quita** lo que alguien etiquetó a mano encima. Un seeder que borra trabajo
+            // ajeno se convierte en un comando que da miedo ejecutar, y entonces no se ejecuta.
+            $row->tags()->syncWithoutDetaching(
+                collect($post['tags'] ?? [])
+                    ->map(fn (string $name) => SnkKilkanaTagModel::firstOrCreateByName($name)->id)
+                    ->all()
+            );
         }
+
+        // Una portada entra por `firstOrCreateByUrl`, que solo sabe la URL: sin esto la
+        // mediateca de la demo son filas con dirección y nada más —sin título, sin alt y sin
+        // pie—, y una biblioteca así no se puede ni buscar ni auditar. El mismo relleno que
+        // aplica `kilkana:enrich-media` en producción, aquí desde el servicio porque el
+        // comando recorre TODOS los inquilinos y el seeder está sembrando uno.
+        app(SnkKilkanaMediaService::class)->enrichFromPosts();
     }
 
     /**
-     * Una pieza con imagen social propia, distinta de su portada.
+     * Cuándo sale la pieza — y para una programada, cuándo sale **a partir de hoy**.
      *
-     * Va aparte del resto de metadatos porque es lo único que necesita un ID: la portada se
-     * recorta 16:9 para la tarjeta y las redes piden algo cercano a 1200×630, así que un
-     * periódico acaba subiendo una versión aparte. Aquí se toma prestada la portada de otra
-     * pieza —el fixture no trae un segundo juego de imágenes— y basta para que se vea que
-     * son dos campos distintos y que el de redes manda cuando existe.
+     * El snapshot es estático y su calendario envejece. Las tres piezas `scheduled` se
+     * escribieron con fecha de julio, así que unos meses después están programadas para el
+     * pasado: `kilkana:publish-scheduled` corre cada minuto y las publica antes de que nadie
+     * abra el CMS. La demo se queda sin el único estado que hay que ver para creerse el
+     * programador, y re-sembrar además DUPLICA la fila —su `url_date` ya no es nulo, así que
+     * `updateOrCreate` no la reconoce y crea otra—.
+     *
+     * Se mueve solo la fecha y se conserva la hora del snapshot: un cierre a las 6:30 sigue
+     * siendo un cierre a las 6:30, que es lo que hace creíble la parrilla. El desplazamiento
+     * sale del slug, así que las tres caen en días distintos y dos siembras del mismo día dan
+     * lo mismo.
      */
-    private function seedSocialImage(): void
+    private function publishAt(array $post): string
     {
-        $destino = SnkKilkanaPostModel::query()
-            ->where('slug', 'the-central-bank-cuts-rates-for-the-first-time-in-two-years')
-            ->first();
-        $prestada = SnkKilkanaPostModel::query()
-            ->where('slug', 'festival-season-kicks-off-with-record-attendance')
-            ->value('cover_media_id');
+        $cuando = $post['publish_at'];
 
-        if ($destino && $prestada) {
-            $destino->update(['og_image_id' => $prestada]);
+        if ($post['status'] !== SnkKilkanaPostStatusEnum::Scheduled->value
+            || Carbon::parse($cuando)->isFuture()) {
+            return $cuando;
         }
+
+        return now()
+            ->addDays(crc32($post['slug']) % 5 + 1)
+            ->setTimeFromTimeString(substr($cuando, 11))
+            ->toDateTimeString();
     }
 
     /**
@@ -894,12 +912,19 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         }
         $suma = array_sum($pesos);
 
-        $posts = json_decode((string) file_get_contents(__DIR__.'/data/posts.json'), true);
-        $porSlug = collect($posts)->pluck('reads', 'slug');
+        $posts = json_decode(
+            (string) file_get_contents(__DIR__.'/data/posts.json'),
+            true,
+            flags: JSON_THROW_ON_ERROR,
+        );
+        $porPost = collect($posts)->mapWithKeys(fn (array $post) => [
+            substr($post['publish_at'], 0, 10).'|'.$post['slug'] => $post['reads'],
+        ]);
         $hoy = now()->startOfDay();
 
         foreach (SnkKilkanaPostModel::query()->published()->get(['id', 'slug', 'publish_at']) as $post) {
-            $total = (int) ($porSlug[$post->slug] ?? 0);
+            $key = $post->publish_at?->toDateString().'|'.$post->slug;
+            $total = (int) ($porPost[$key] ?? 0);
             if ($total <= 0 || $post->publish_at === null) {
                 continue; // una pieza sin lecturas es un estado real; no se inventa
             }
@@ -929,126 +954,6 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                     ],
                 );
             }
-        }
-    }
-
-    /**
-     * Portada como fichero propio del tenant, no como URL remota: copia el JPG del
-     * fixture (data/media/unsplash-N.jpg) al disco del tenant con la misma convención
-     * que la subida real (SnkKilkanaMediaController::upload) y crea la fila con los
-     * metadatos completos que pide la biblioteca. La URL de Unsplash de posts.json
-     * queda como `source_url` (la procedencia), no como origen de servicio.
-     *
-     * Dedup por `content_hash`, igual que la subida: re-sembrar no duplica.
-     * Sin fixture, cae a la fila con URL remota para no romper la siembra.
-     */
-    private function seedCoverMedia(array $post, ?SnkKilkanaCategoryModel $category, int $n): SnkKilkanaMediaModel
-    {
-        $fixture = __DIR__.'/data/media/unsplash-'.$n.'.jpg';
-        if (! is_file($fixture)) {
-            return SnkKilkanaMediaModel::firstOrCreateByUrl($post['image']);
-        }
-
-        $name = 'unsplash-'.$n.'.jpg';
-        $path = 'media/'.DB::connection()->getDatabaseName().'/'.$name;
-        // putFileAs es idempotente por nombre: re-sembrar reescribe el mismo fichero.
-        Storage::disk('public')->putFileAs(dirname($path), new File($fixture), $name);
-
-        [$width, $height] = @getimagesize($fixture) ?: [null, null];
-        $media = SnkKilkanaMediaModel::firstOrCreate(
-            ['content_hash' => hash_file('sha256', $fixture)],
-            [
-                'url' => '/storage/'.$path,
-                'original_name' => $name,
-                'path' => $path,
-                'disk' => 'public',
-                'mime' => 'image/jpeg',
-                'width' => $width,
-                'height' => $height,
-                'size_bytes' => filesize($fixture),
-                'title' => $post['title'],
-                'alt' => $post['title'],
-                'caption' => $post['excerpt'],
-                'description' => 'Editorial cover for: '.$post['title'],
-                'credit' => 'Unsplash',
-                'source_url' => $post['image'],
-                'rights_status' => SnkKilkanaMediaRightsEnum::Licensed,
-                'license' => 'Unsplash License',
-            ]
-        );
-
-        $this->tagMedia($media, $post, $n);
-
-        return $media;
-    }
-
-    /**
-     * Vocabulario de FICHERO, que es lo que etiqueta una fototeca.
-     *
-     * Aquí se copiaban los tags del artículo y el nombre de su sección, así que
-     * `kilkana_media_tags` acababa con las mismas 151 filas que `kilkana_tags` y las
-     * colecciones eran las 18 secciones. Dos tablas con el mismo contenido hacen que la
-     * taxonomía de medios parezca una duplicación inútil, y esconden para qué sirve: un tag
-     * de medio responde «qué ES esta foto», no «de qué habla la noticia». La misma imagen de
-     * un pleno vale para una pieza de política y para otra de vivienda, y no cambia de
-     * naturaleza al reutilizarse.
-     *
-     * Dos de los tres grupos salen del propio fichero. El tercero NO se puede derivar: qué
-     * hay dentro de un JPEG de 800×450 lo sabe quien lo mira, así que aquí se asigna de una
-     * lista corta y en rotación fija por índice. Es fixture y se dice: son los valores que
-     * un editor gráfico pone a mano, incluidos para probar variedad real en vez de una etiqueta
-     * repetida sesenta veces.
-     */
-    /** Meses en español. `translatedFormat` depende del locale de la app y devolvía «June». */
-    private const MESES = [
-        1 => 'enero', 2 => 'febrero', 3 => 'marzo', 4 => 'abril', 5 => 'mayo', 6 => 'junio',
-        7 => 'julio', 8 => 'agosto', 9 => 'septiembre', 10 => 'octubre', 11 => 'noviembre', 12 => 'diciembre',
-    ];
-
-    private const TAGS_DE_IMAGEN = [
-        'plano general', 'primer plano', 'detalle', 'interior',
-        'exterior', 'nocturna', 'con personas', 'sin personas', 'archivo',
-    ];
-
-    private function tagMedia(SnkKilkanaMediaModel $media, array $post, int $n): void
-    {
-        $nombres = [];
-
-        // 1 · Del fichero: proporción real, no la que se supone.
-        if ($media->width && $media->height) {
-            $ratio = $media->width / $media->height;
-            $nombres[] = $ratio > 1.2 ? 'apaisado' : ($ratio < 0.85 ? 'vertical' : 'cuadrado');
-        }
-
-        // 2 · Del uso: esta imagen abre una pieza. Es un hecho del fichero, no un tema.
-        $nombres[] = 'portada';
-
-        // 3 · De la mirada de alguien. Dos por medio, rotando para que cubran la lista.
-        $lista = self::TAGS_DE_IMAGEN;
-        $nombres[] = $lista[$n % count($lista)];
-        $nombres[] = $lista[($n * 3 + 4) % count($lista)];
-
-        $media->tags()->syncWithoutDetaching(
-            collect($nombres)->unique()
-                // trim antes de la clave: `name` es única, pero « archivo» y «archivo» son
-                // dos nombres distintos para el índice y saldrían dos etiquetas.
-                ->map(fn (string $tag) => SnkKilkanaMediaTagModel::firstOrCreate(['name' => trim($tag)])->id)
-        );
-
-        // La colección es el LOTE con el que entró el material, no la sección donde se usó:
-        // una foto se archiva por cuándo y para qué se encargó, y puede acabar en tres
-        // secciones distintas sin dejar de ser del mismo encargo.
-        //
-        // Por SEMANA y no por mes: las 60 portadas del fixture caen en el mismo mes, y una
-        // colección con los sesenta medios dentro no deja probar nada —ni el filtro, ni el
-        // selector, ni que un medio pertenezca a varias—.
-        $fecha = $post['publish_at'] ?? null;
-        if ($fecha) {
-            $lunes = Carbon::parse($fecha)->startOfWeek();
-            $lote = 'Portadas semana del '.$lunes->day.' de '.self::MESES[$lunes->month].' '.$lunes->year;
-            $media->collections()->syncWithoutDetaching(
-                [SnkKilkanaMediaCollectionModel::firstOrCreate(['name' => trim($lote)])->id]
-            );
         }
     }
 }

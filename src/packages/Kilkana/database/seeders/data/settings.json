@@ -1,10 +1,9 @@
 {
  "theme": "folio",
  "tenant": {
-  "name": "The Beacon",
-  "tagline": "The news, told slowly · Digital edition",
-  "city": "Springfield",
-  "url": "https://demo.kilkana.test"
+  "name": "El Diario",
+  "tagline": "La comarca, contada despacio · Edición digital",
+  "city": "Alzira"
  },
  "onboarded": true
 }
