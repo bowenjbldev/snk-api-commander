@@ -15,6 +15,8 @@ use Packages\Kilkana\Enums\SnkKilkanaSubscriberStatusEnum;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaCommentModel;
+use Packages\Kilkana\Models\SnkKilkanaMediaCollectionModel;
+use Packages\Kilkana\Models\SnkKilkanaMediaModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Models\SnkKilkanaPostViewModel;
 use Packages\Kilkana\Models\SnkKilkanaSettingModel;
@@ -859,6 +861,54 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         // `kilkana:enrich-media` en producción, aquí desde el servicio porque el comando
         // recorre TODOS los inquilinos y el seeder está sembrando uno.
         app(SnkKilkanaMediaService::class)->enrichFromPosts();
+        $this->seedMediaDesks();
+    }
+
+    /**
+     * La firma de la foto y el estante donde la archiva la mesa que la usa.
+     *
+     * `enrichFromPosts()` rellena lo que la pieza sabe de su portada —título, alt, pie— y ahí se
+     * paraba: la mediateca quedaba con las columnas «Credit» y «Collection» vacías en las
+     * sesenta filas. Dos columnas muertas en una tabla se leen como que la tabla no ha cargado,
+     * y las dos son datos que una redacción sí tiene.
+     *
+     * **El crédito sale de quien la hizo**, no del titular: en la plantilla hay un fotógrafo
+     * —«Deportes y fotografía»— y dos agencias, que es exactamente el reparto de un diario
+     * comarcal. Determinista por el nombre del fichero, como todo lo demás del seeder.
+     *
+     * **Y el estante es la mesa que la estrena.** Una colección es un estante de la redacción y
+     * no una categoría del periódico —no sale nunca a la calle—, así que archivar por la mesa
+     * que usa el material es lo que hace una redacción de verdad. No es copiar la taxonomía del
+     * artículo: es de qué mesa es esta foto, que es una propiedad del FICHERO. Una foto que no
+     * usa nadie no entra en ningún estante, y así «sin clasificar» significa algo.
+     */
+    private function seedMediaDesks(): void
+    {
+        $creditos = ['Óscar Tomás', 'Agencia EFE', 'Redacción'];
+        $estantes = [];
+
+        foreach (SnkKilkanaMediaModel::query()->with('coveredPosts.category')->get() as $media) {
+            $cambios = [];
+
+            if (! $media->credit) {
+                $cambios['credit'] = $creditos[crc32((string) $media->original_name) % count($creditos)];
+            }
+            if ($cambios) {
+                $media->update($cambios);
+            }
+
+            $mesa = $media->coveredPosts->first()?->category;
+            if (! $mesa) {
+                continue;
+            }
+
+            // La mesa de una subsección es su madre: un diario comarcal archiva «Deportes», no
+            // «Polideportivo». Sin `parent`, la propia sección.
+            $nombre = $mesa->parent?->name ?? $mesa->name;
+            $estantes[$nombre] ??= SnkKilkanaMediaCollectionModel::firstOrCreate(['name' => $nombre]);
+
+            $media->collections()->syncWithoutDetaching([$estantes[$nombre]->id]);
+        }
     }
 
     /**
