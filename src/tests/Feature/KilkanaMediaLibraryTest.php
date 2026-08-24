@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
@@ -107,6 +109,56 @@ class KilkanaMediaLibraryTest extends TestCase
         );
         $this->assertSame(['Portada', 'Social', 'Marta Beneyto'], array_column($usos, 'title'));
         $this->assertSame(3, $foto->fresh()->usage_count);
+    }
+
+    /**
+     * Dos peticiones con el MISMO fichero: la segunda vuelve como duplicada, no como error.
+     *
+     * El dedup es comprobar-y-luego-insertar, y entre las dos mitades cabe otra peticion con el
+     * mismo contenido: las dos ven la biblioteca sin el, las dos escriben, y la segunda choca
+     * contra el indice unico de `content_hash`. Salia como un 500, asi que el panel decia
+     * «rechazada» de un fichero que SI estaba dentro —y dejaba su copia huerfana en el disco—.
+     * Se veia soltando la misma foto dos veces en una tanda, porque el panel sube en paralelo.
+     *
+     * El entrelazado se fuerza y no se espera: un oyente de `creating` mete la fila rival
+     * justo DESPUES de que el servicio haya mirado y justo ANTES de que escriba, que es
+     * exactamente el hueco de la carrera. Sin eso, la prueba dependeria de que dos hilos se
+     * crucen, que es como se escribe una prueba que pasa siempre y no comprueba nada.
+     */
+    public function test_el_mismo_fichero_a_la_vez_vuelve_como_duplicado(): void
+    {
+        Storage::fake('public');
+        // PNG y no JPEG: la GD de esta imagen viene sin `imagejpeg`, y el generador de
+        // Laravel lanza en vez de devolver un fichero. El formato da igual para lo que se prueba.
+        $fichero = UploadedFile::fake()->image('puerto.png', 800, 450);
+        $hash = hash_file('sha256', $fichero->getRealPath());
+        $rival = null;
+
+        SnkKilkanaMediaModel::creating(function () use ($hash, &$rival) {
+            if ($rival !== null) {
+                return;
+            }
+            $rival = DB::table('kilkana_media')->insertGetId([
+                'url' => '/storage/media/pruebas/la-que-gano.jpg',
+                'url_hash' => sha1('/storage/media/pruebas/la-que-gano.jpg'),
+                'content_hash' => $hash,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        });
+
+        try {
+            $resultado = $this->media->upload(['file' => $fichero], 1);
+        } finally {
+            SnkKilkanaMediaModel::flushEventListeners();
+        }
+
+        $this->assertTrue($resultado['duplicate'], 'el choque se contó como fallo y no como duplicado');
+        $this->assertSame($rival, $resultado['media']->id, 'no devuelve la fila que ganó la carrera');
+        // Una sola fila con ese contenido: eso es lo que el indice unico existe para garantizar.
+        $this->assertSame(1, SnkKilkanaMediaModel::withTrashed()->where('content_hash', $hash)->count());
+        // Y sin dejar su copia en el disco, que es basura que nadie va a reclamar.
+        $this->assertCount(0, Storage::disk('public')->allFiles());
     }
 
     private function foto(): SnkKilkanaMediaModel

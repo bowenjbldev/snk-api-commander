@@ -3,6 +3,7 @@
 namespace Packages\Kilkana\Services;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -10,6 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use Packages\Kilkana\Enums\SnkKilkanaMediaRightsEnum;
 use Packages\Kilkana\Models\SnkKilkanaMediaModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
+use RuntimeException;
 
 class SnkKilkanaMediaService
 {
@@ -169,20 +171,41 @@ class SnkKilkanaMediaService
         $path = $file->store($dir, 'public');
         [$width, $height] = $this->dimensions($file->getRealPath(), $data);
 
-        $media = SnkKilkanaMediaModel::create([
-            'url' => '/storage/'.$path,
-            'original_name' => $file->getClientOriginalName(),
-            'title' => pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
-            'mime' => $file->getMimeType(),
-            'width' => $width,
-            'height' => $height,
-            'duration' => $data['duration'] ?? null,
-            'size_bytes' => $file->getSize(),
-            'content_hash' => $hash,
-            'disk' => 'public',
-            'path' => $path,
-            'uploaded_by' => $userId,
-        ]);
+        try {
+            $media = SnkKilkanaMediaModel::create([
+                'url' => '/storage/'.$path,
+                'original_name' => $file->getClientOriginalName(),
+                'title' => pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
+                'mime' => $file->getMimeType(),
+                'width' => $width,
+                'height' => $height,
+                'duration' => $data['duration'] ?? null,
+                'size_bytes' => $file->getSize(),
+                'content_hash' => $hash,
+                'disk' => 'public',
+                'path' => $path,
+                'uploaded_by' => $userId,
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            // El indice unico gana la carrera que el `first()` de arriba no puede cerrar.
+            //
+            // Comprobar y luego insertar deja un hueco entre las dos mitades, y por ahi caben dos
+            // peticiones con el MISMO fichero: las dos ven la biblioteca sin el, las dos escriben,
+            // y la segunda choca. Pasaba soltando la misma foto dos veces en una tanda —el panel
+            // sube en paralelo—, y el operador leia «rechazada» de un fichero que si esta dentro.
+            // La respuesta correcta es la misma que si hubiera llegado un segundo despues:
+            // duplicada, con la fila que gano.
+            Storage::disk('public')->delete($path);
+            $ganadora = SnkKilkanaMediaModel::withTrashed()->where('content_hash', $hash)->first();
+
+            // Sin fila que devolver el choque era de otra columna, y eso no es un duplicado:
+            // se relanza para que se vea en vez de contarlo como «ya estaba».
+            if (! $ganadora) {
+                throw new RuntimeException('media upload clashed on something other than its content hash');
+            }
+
+            return ['media' => $this->serialize($ganadora), 'duplicate' => true];
+        }
 
         return ['media' => $this->serialize($media), 'duplicate' => false];
     }
