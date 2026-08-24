@@ -47,6 +47,12 @@ class CommanderServiceProvider extends ServiceProvider
                 $schedule->command('commander:usage:rollup --prune')->hourly()->withoutOverlapping();
                 $schedule->command('commander:quota:measure')->everySixHours()->withoutOverlapping();
                 $schedule->command('commander:git:sync')->hourly()->withoutOverlapping();
+
+                // Los tokens caducados dejan de autenticar solos, pero la fila se queda:
+                // `personal_access_tokens` solo crece. Esto poda **la base de control**,
+                // que es la única que ve la conexión por defecto; los tokens de cada
+                // inquilino viven en su propia base y necesitan un recorrido aparte.
+                $schedule->command('sanctum:prune-expired --hours=24')->daily()->withoutOverlapping();
             });
         }
     }
