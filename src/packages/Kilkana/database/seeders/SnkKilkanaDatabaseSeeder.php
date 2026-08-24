@@ -15,7 +15,6 @@ use Packages\Kilkana\Enums\SnkKilkanaSubscriberStatusEnum;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaCommentModel;
-use Packages\Kilkana\Models\SnkKilkanaMediaModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Models\SnkKilkanaPostViewModel;
 use Packages\Kilkana\Models\SnkKilkanaSettingModel;
@@ -799,12 +798,16 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             flags: JSON_THROW_ON_ERROR,
         );
 
+        // La dirección que trae el snapshot es de un servicio de fotos de relleno; lo que
+        // acaba en la base es el JPEG de `data/media/` que le corresponde, copiado al disco
+        // del periódico. El porqué, en la propia clase.
+        $fototeca = new SnkKilkanaDemoMediaLibrary;
+        $fototeca->seedAll();
+
         foreach ($posts as $post) {
             $category = SnkKilkanaCategoryModel::query()->where('slug', $post['cat'])->firstOrFail();
             $author = $this->authorFor(trim($post['author']));
-            $media = ! empty($post['image'])
-                ? SnkKilkanaMediaModel::firstOrCreateByUrl($post['image'])
-                : null;
+            $media = ! empty($post['image']) ? $fototeca->forUrl($post['image']) : null;
             $publishAt = $this->publishAt($post);
             $urlDate = $post['status'] === SnkKilkanaPostStatusEnum::Published->value
                 ? substr($publishAt, 0, 10)
@@ -849,11 +852,12 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             );
         }
 
-        // Una portada entra por `firstOrCreateByUrl`, que solo sabe la URL: sin esto la
-        // mediateca de la demo son filas con dirección y nada más —sin título, sin alt y sin
-        // pie—, y una biblioteca así no se puede ni buscar ni auditar. El mismo relleno que
-        // aplica `kilkana:enrich-media` en producción, aquí desde el servicio porque el
-        // comando recorre TODOS los inquilinos y el seeder está sembrando uno.
+        // La fototeca sabe del fichero —medidas, peso, tipo, derechos— pero no de lo que la
+        // foto CUENTA: eso solo lo sabe la pieza que la estrena. Sin esto la mediateca de la
+        // demo son sesenta filas tituladas `unsplash-7.jpg`, sin alt y sin pie, y una
+        // biblioteca así no se puede ni buscar ni auditar. El mismo relleno que aplica
+        // `kilkana:enrich-media` en producción, aquí desde el servicio porque el comando
+        // recorre TODOS los inquilinos y el seeder está sembrando uno.
         app(SnkKilkanaMediaService::class)->enrichFromPosts();
     }
 

@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use Packages\Kilkana\Database\Seeders\SnkKilkanaDemoBodyFactory;
+use Packages\Kilkana\Database\Seeders\SnkKilkanaDemoMediaLibrary;
 use Packages\Kilkana\Enums\SnkKilkanaBlockTypeEnum;
 use PHPUnit\Framework\TestCase;
 
@@ -122,6 +123,64 @@ class SnkKilkanaSeederDataTest extends TestCase
      * Sin esta prueba, F-2 volveria a pasar en verde: 522 piezas sin cuerpo son 522 articulos en
      * blanco y un `content_tier` que no corta por ningun sitio.
      */
+    /**
+     * La fototeca de la demo sale del disco, y el disco tiene que estar completo.
+     *
+     * Esto es lo que faltaba el dia que las 176 filas de medios se sembraron con una direccion
+     * de un servicio de terceros y nada mas: sin ancho, sin alto, sin peso y sin `content_hash`,
+     * asi que la mediateca no podia deduplicar ni filtrar por orientacion, y el lector pagaba
+     * DNS, TLS y una cookie ajena por cada foto. Aqui se mira el material ANTES de sembrar:
+     * que cada JPEG este, que se pueda leer y que diga sus medidas.
+     */
+    public function test_la_fototeca_de_la_demo_esta_entera_y_da_medidas(): void
+    {
+        $fototeca = new SnkKilkanaDemoMediaLibrary;
+
+        $this->assertSame(60, $fototeca->size(), 'faltan fotos en database/seeders/data/media');
+
+        foreach (glob(__DIR__.'/../../packages/Kilkana/database/seeders/data/media/*.jpg') ?: [] as $fichero) {
+            $medidas = @getimagesize($fichero);
+            $nombre = basename($fichero);
+
+            $this->assertNotFalse($medidas, "«{$nombre}» no se lee como imagen");
+            $this->assertGreaterThan(0, $medidas[0], "«{$nombre}» no declara ancho");
+            $this->assertGreaterThan(0, $medidas[1], "«{$nombre}» no declara alto");
+            $this->assertSame('image/jpeg', $medidas['mime'], "«{$nombre}» no es un JPEG");
+        }
+    }
+
+    /**
+     * Cada portada del snapshot cae en un fichero que existe, y siempre en el mismo.
+     *
+     * El reparto es `crc32` de la direccion original: dos piezas que compartian foto la siguen
+     * compartiendo, y una re-siembra no renumera la biblioteca. Lo que esto impide es lo unico
+     * que puede salir mal —una direccion que no encuentre fichero— y que el reparto deje de ser
+     * determinista, que se veria como una mediateca distinta despues de cada `--fresh`.
+     */
+    public function test_cada_portada_cae_en_una_foto_que_existe_y_siempre_en_la_misma(): void
+    {
+        $fototeca = new SnkKilkanaDemoMediaLibrary;
+        $urls = array_values(array_unique(array_filter(array_column($this->snapshot(), 'image'))));
+
+        $this->assertSame(176, count($urls));
+
+        $usadas = [];
+        foreach ($urls as $url) {
+            $fichero = $fototeca->fileFor($url);
+
+            $this->assertNotNull($fichero, "«{$url}» no encuentra foto");
+            $this->assertFileExists($fichero);
+            $this->assertSame($fichero, $fototeca->fileFor($url), 'el reparto no es determinista');
+            $usadas[$fichero] = true;
+        }
+
+        // Sesenta ficheros para 176 direcciones: cuatro fotos se quedan sin reclamar. Entran en
+        // la biblioteca igual (`seedAll`), y son las que dan filas a las dos vistas que existen
+        // para encontrar trabajo pendiente: «sin usar» y «Missing alt».
+        $this->assertSame(56, count($usadas));
+        $this->assertSame(60, $fototeca->size());
+    }
+
     public function test_el_cuerpo_generado_habla_el_vocabulario_del_contrato(): void
     {
         $tipos = SnkKilkanaBlockTypeEnum::values();
