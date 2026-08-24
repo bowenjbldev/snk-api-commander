@@ -26,6 +26,21 @@ final class CorePackageSelectorSupport
         return self::dbSlug($clientSlug).'_'.self::dbSlug($package);
     }
 
+    /**
+     * La clave con la que se cachean los permisos de UNA base.
+     *
+     * Existe como funcion y no como una concatenacion suelta porque es una invariante de
+     * seguridad, no un detalle: la cache de permisos de Spatie es global al proceso, y dos
+     * inquilinos que compartieran clave compartirian permisos. Que la clave lleve el nombre de
+     * la base es lo que hace imposible ese cruce, y por eso se escribe —y se comprueba— en un
+     * solo sitio. El identificador se valida antes: una base con un nombre raro no puede
+     * fabricar la clave de otra.
+     */
+    public static function permissionCacheKey(string $database): string
+    {
+        return 'spatie.permission.cache.'.self::validatedDatabaseIdentifier($database);
+    }
+
     public static function validatedDatabaseIdentifier(?string $value): string
     {
         if (! is_string($value) || preg_match('/\A[a-z0-9_]{1,64}\z/', $value) !== 1) {
