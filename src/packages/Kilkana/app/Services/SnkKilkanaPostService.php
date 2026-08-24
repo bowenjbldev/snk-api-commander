@@ -3,6 +3,7 @@
 namespace Packages\Kilkana\Services;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -239,6 +240,31 @@ class SnkKilkanaPostService
 
             return $count;
         });
+    }
+
+    /**
+     * Que fecha lleva una pieza que sale a la calle, dado lo que ya tiene y lo que se pide.
+     *
+     * **Publicar es AHORA**, y por eso la fecha no se le pide a nadie: un borrador no tiene
+     * `publish_at` —se sella al salir— asi que exigirsela al panel es exigirle un dato que no
+     * tiene donde pedir, y era por lo que desde el editor **no se podia publicar una pieza**.
+     *
+     * Y pisa una fecha futura: publicar a mano una programada la saca ahora, y dejarle la
+     * prevista la ordenaria manana en la portada, el sitemap y el feed.
+     *
+     * `scheduled` no entra: una programada sin fecha es un error de verdad, no una que haya
+     * que inventar. Devuelve `null` cuando no hay nada que sellar, y quien llama deja lo que
+     * hubiera.
+     */
+    public static function stampFor(string $status, ?string $wanted): ?string
+    {
+        if ($status !== SnkKilkanaPostStatusEnum::Published->value) {
+            return null;
+        }
+
+        $vacia = $wanted === null || trim($wanted) === '';
+
+        return $vacia || Carbon::parse($wanted)->isFuture() ? now()->toDateTimeString() : null;
     }
 
     /**

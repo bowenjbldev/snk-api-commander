@@ -311,6 +311,27 @@ class SnkKilkanaPostsController extends CoreBaseApiController
                 'excerpt' => $post->excerpt,
                 'publish_at' => $post->publish_at?->toDateTimeString(),
             ], fn ($v) => $v !== null);
+
+            // **Publicar es AHORA**, y por eso la fecha no se le pide a nadie.
+            //
+            // Un borrador no tiene `publish_at` —se sella al salir a la calle—, asi que la
+            // linea de arriba no tenia nada con que rellenar y `required_if` rechazaba: desde
+            // el editor **no se podia publicar una pieza**, y el 422 hablaba de una fecha que
+            // el panel no tiene donde pedir. Es la misma regla que la accion en tanda aplica
+            // desde el primer dia; lo que faltaba era que las dos puertas se comportaran igual.
+            //
+            // Y pisa una fecha futura por lo mismo que el `bulk`: publicar a mano una pieza
+            // programada la saca ahora, y dejarle la prevista la ordenaria manana en la
+            // portada, el sitemap y el feed. `scheduled` NO entra aqui — una programada sin
+            // fecha es un error de verdad, no una que haya que inventar.
+            $sello = SnkKilkanaPostService::stampFor(
+                (string) $entrada['status'],
+                isset($entrada['publish_at']) ? (string) $entrada['publish_at'] : null,
+            );
+
+            if ($sello !== null) {
+                $entrada['publish_at'] = $sello;
+            }
         }
 
         $rules = $this->interpolateRules($this->validationRulesUpdate, $id);

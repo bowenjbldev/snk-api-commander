@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
@@ -339,6 +340,37 @@ class KilkanaPostsListTest extends TestCase
         foreach (['body_blocks', 'seo_title', 'url_path', 'og_title', 'noindex'] as $campo) {
             $this->assertArrayHasKey($campo, $json, "el editor necesita «{$campo}»");
         }
+    }
+
+    /**
+     * Publicar es AHORA, y por eso la fecha no se le pide a nadie.
+     *
+     * Un borrador no tiene `publish_at` —se sella al salir a la calle—, asi que `required_if`
+     * la exigia y **desde el editor no se podia publicar una pieza**: el 422 hablaba de una
+     * fecha que el panel no tiene donde pedir. La accion en tanda ya sellaba; lo que faltaba
+     * era que las dos puertas se comportaran igual.
+     */
+    public function test_publicar_sella_la_fecha_cuando_falta_o_apunta_al_futuro(): void
+    {
+        $manana = now()->addDay()->toDateTimeString();
+        $ayer = now()->subDay()->toDateTimeString();
+
+        // Sin fecha: se sella ahora.
+        $this->assertNotNull(SnkKilkanaPostService::stampFor('published', null));
+        $this->assertNotNull(SnkKilkanaPostService::stampFor('published', ''));
+
+        // Programada para manana y publicada a mano: sale AHORA, no manana. Dejarle la fecha
+        // prevista la ordenaria manana en la portada, el sitemap y el feed.
+        $sello = SnkKilkanaPostService::stampFor('published', $manana);
+        $this->assertNotNull($sello);
+        $this->assertTrue(Carbon::parse($sello)->lessThan(Carbon::parse($manana)));
+
+        // Una fecha pasada es una decision editorial y se respeta.
+        $this->assertNull(SnkKilkanaPostService::stampFor('published', $ayer));
+
+        // Y `scheduled` no se inventa: una programada sin fecha es un error de verdad.
+        $this->assertNull(SnkKilkanaPostService::stampFor('scheduled', null));
+        $this->assertNull(SnkKilkanaPostService::stampFor('draft', null));
     }
 
     private function category(string $name, string $slug): SnkKilkanaCategoryModel
