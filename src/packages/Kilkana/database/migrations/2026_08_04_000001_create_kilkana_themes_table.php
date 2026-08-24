@@ -62,10 +62,13 @@ return new class extends Migration
             $table->index(['status', 'published_at']);
         });
 
-        // El buscador del catalogo, sin motor externo — mismo patron que `kilkana_posts`.
-        Schema::table('kilkana_themes', function (Blueprint $table) {
-            $table->fullText(['name', 'tagline', 'description']);
-        });
+        // El buscador del catalogo, sin motor externo — mismo patron que `kilkana_posts`,
+        // guarda de driver incluida: sqlite no compila FULLTEXT y tumbaría la migración.
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            Schema::table('kilkana_themes', function (Blueprint $table) {
+                $table->fullText(['name', 'tagline', 'description']);
+            });
+        }
     }
 
     public function down(): void

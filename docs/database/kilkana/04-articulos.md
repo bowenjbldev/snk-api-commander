@@ -15,7 +15,7 @@ audiencia y sus etiquetas.
 | `cover_media_id` | bigint unsigned | sí | Foto de portada. |
 | `og_image_id` | bigint unsigned | sí | Imagen para redes, cuando la portada no vale. |
 | `title` | varchar(500) | no | Titular. |
-| `excerpt` | text | no | Entradilla. |
+| `excerpt` | text | sí | Entradilla. **Nula = todavía no escrita**: un borrador nace con el titular y poco más. La API la exige al pasar a `scheduled` o `published`. |
 | `slug` | varchar(200) | no | Parte legible de la URL. Se deriva del titular si no llega, recortando a 200. |
 | `seo_title` | varchar(500) | sí | Titular para buscadores. Nulo = se usa `title`. |
 | `seo_description` | text | sí | Descripción para buscadores. Nula = se usa `excerpt`. |
@@ -500,13 +500,21 @@ Cada bloque tiene tres campos:
 
 ```json
 { "id": "identificador único dentro del artículo",
-  "type": "text | quote | image | gallery | video | paywall | divider",
+  "type": "paragraph | heading | image | quote | list | embed | divider | paywall | factbox | related",
   "config": { … lo que necesite ese tipo … } }
 ```
 
 El HTML de dentro de un bloque **se sanea al escribir**, no al leer. Es la frontera de
 confianza: lo que está guardado ya es seguro de emitir, y quien lo sirva no tiene que
-volver a limpiarlo ni acordarse de hacerlo.
+volver a limpiarlo ni acordarse de hacerlo. Y se sanea **por traer `config.html`, no por ser
+de un tipo**: atarlo a un tipo dejaba fuera el HTML del día que el editor compone una cita o
+un recuadro de datos con marcado.
+
+**La lista de tipos la manda el editor**, y son diez. Vive en `SnkKilkanaBlockTypeEnum` y
+duplicada a la fuerza en `src/lib/data/article.ts` del frontend —PHP no lee un tipo de
+TypeScript—, con una prueba a cada lado que se pone roja si divergen. Aquí hubo siete, con
+`text` donde el editor dice `paragraph`: el síntoma fue que guardar una pieza con un
+intertítulo devolvía un 422.
 
 ### Hubo una segunda columna `body`, y sobraba
 

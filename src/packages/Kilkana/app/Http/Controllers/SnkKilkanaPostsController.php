@@ -6,9 +6,12 @@ use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
+use Packages\Kilkana\Enums\SnkKilkanaBlockTypeEnum;
 use Packages\Kilkana\Enums\SnkKilkanaContentTierEnum;
 use Packages\Kilkana\Enums\SnkKilkanaPostStatusEnum;
+use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Models\SnkKilkanaTagModel;
 use Packages\Kilkana\Services\SnkKilkanaPostService;
@@ -87,21 +90,27 @@ class SnkKilkanaPostsController extends CoreBaseApiController
     {
         $this->validationRulesStore['status'] = 'required|'.SnkKilkanaPostStatusEnum::rule();
         $this->validationRulesUpdate['status'] = 'sometimes|required|'.SnkKilkanaPostStatusEnum::rule();
+
+        // Lo que hace falta para SALIR, no para existir. Un borrador se crea con el titular y
+        // poco mas —el texto llega despues—, pero publicarlo sin entradilla ni fecha es
+        // publicar media pieza. La lista de estados sale del propio enum.
+        $alPublicar = 'required_if:status,'.implode(',', SnkKilkanaPostStatusEnum::publishing());
+
         foreach (['validationRulesStore', 'validationRulesUpdate'] as $reglas) {
             $this->{$reglas}['content_tier'] = 'nullable|'.SnkKilkanaContentTierEnum::rule();
+            $this->{$reglas}['body_blocks.*.type'] = 'required|'.SnkKilkanaBlockTypeEnum::rule();
+            $this->{$reglas}['excerpt'] = $alPublicar.'|nullable|string';
+            $this->{$reglas}['publish_at'] = $alPublicar.'|nullable|date';
         }
     }
 
     protected array $validationRulesStore = [
         'title' => 'required|string|max:500',
-        'excerpt' => 'required|string',
         'category' => 'required|string|exists:kilkana_categories,slug',
         'author_id' => 'required|integer|exists:kilkana_authors,id',
-        'publish_at' => 'required|date',
         'image' => 'nullable|string|max:2048',
         'body_blocks' => 'nullable|array',
         'body_blocks.*.id' => 'required|string|max:128',
-        'body_blocks.*.type' => 'required|in:text,quote,image,gallery,video,paywall,divider',
         'body_blocks.*.config' => 'nullable|array',
         'tags' => 'nullable|array',
         'tags.*' => 'string|max:'.SnkKilkanaTagModel::NAME_MAX,
@@ -122,14 +131,11 @@ class SnkKilkanaPostsController extends CoreBaseApiController
 
     protected array $validationRulesUpdate = [
         'title' => 'sometimes|required|string|max:500',
-        'excerpt' => 'sometimes|required|string',
         'category' => 'sometimes|required|string|exists:kilkana_categories,slug',
         'author_id' => 'sometimes|required|integer|exists:kilkana_authors,id',
-        'publish_at' => 'sometimes|required|date',
         'image' => 'nullable|string|max:2048',
         'body_blocks' => 'nullable|array',
         'body_blocks.*.id' => 'required|string|max:128',
-        'body_blocks.*.type' => 'required|in:text,quote,image,gallery,video,paywall,divider',
         'body_blocks.*.config' => 'nullable|array',
         'tags' => 'nullable|array',
         'tags.*' => 'string|max:'.SnkKilkanaTagModel::NAME_MAX,
@@ -145,6 +151,104 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         'canonical_url' => 'nullable|url|max:2048',
         'noindex' => 'nullable|boolean',
     ];
+
+    /** Página por defecto, y el techo que impide restaurar el volcado entero. */
+    private const PER_PAGE = 25;
+
+    private const PER_PAGE_MAX = 100;
+
+    private const SORTS = ['date', 'title', 'reads'];
+
+    /**
+     * El listado editorial: paginado, filtrado y con las cifras de las pestañas.
+     *
+     * Sustituye al `index()` del controlador base, que devuelve `->get()` pelado. No se
+     * cambia allí porque lo comparten Commander, DemoApp y el resto de recursos: lo que
+     * aquí se concreta es el listado de artículos, que es el único con quinientas filas,
+     * cuatro relaciones cargadas y tres sumas de vistas por pieza.
+     */
+    public function index(): JsonResponse
+    {
+        if ($response = $this->requirePermission($this->indexPermission)) {
+            return $response;
+        }
+
+        // Sin parámetro: la firma la fija `CoreBaseApiController::index()`, que la comparten
+        // todos los recursos. La petición se pide al contenedor, que es lo mismo que inyectarla.
+        $request = request();
+        $filters = $this->listFilters($request);
+        $perPage = $this->perPage($request);
+
+        // Sin `applyWith`: cortocircuita en cuanto `$allowedWith` está vacío, y este
+        // controlador no declara ninguna relación pedible. Las cuatro que sirven el listado
+        // ya vienen del `$with` del modelo.
+        $page = $this->posts
+            ->filter($this->newQuery(), $filters)
+            ->paginate($perPage);
+
+        // Una página fuera de rango enseña la última, no una tabla vacía: es lo que hace que
+        // un enlace con `?page=999` siga significando algo. La consulta se rehace porque
+        // paginar deja el `limit` puesto en el constructor.
+        if ($page->currentPage() > $page->lastPage() && $page->total() > 0) {
+            $page = $this->posts
+                ->filter($this->newQuery(), $filters)
+                ->paginate($perPage, ['*'], 'page', $page->lastPage());
+        }
+
+        $page->getCollection()->each($this->posts->asListRow(...));
+
+        return response()->json([
+            'data' => $page->items(),
+            'meta' => [
+                'current_page' => $page->currentPage(),
+                'per_page' => $page->perPage(),
+                'total' => $page->total(),
+                'last_page' => $page->lastPage(),
+            ],
+            'counts' => $this->posts->countsByStatus((int) auth()->id(), $this->canEditOthers()),
+        ]);
+    }
+
+    /**
+     * La query es una frontera de entrada, y se lee validando.
+     *
+     * Un valor desconocido **cae al de por defecto**; no devuelve 422 ni vacía la tabla.
+     * Es la misma regla que aplica el panel al leer sus propios `searchParams`: quien
+     * teclea `?status=banana` a mano se merece la lista entera, no una pantalla en blanco.
+     */
+    private function listFilters(Request $request): array
+    {
+        $sort = (string) $request->query('sort', '');
+        $term = trim((string) $request->query('q', ''));
+        $category = trim((string) $request->query('category', ''));
+
+        return [
+            'status' => SnkKilkanaPostStatusEnum::tryFrom((string) $request->query('status', ''))?->value,
+            // Una sección que no existe se **ignora**, no filtra a cero: dejar la tabla vacía
+            // sin decir por qué es exactamente lo que la validación en la frontera evita.
+            'category' => $this->knownCategory($category),
+            // Con una sola letra la búsqueda no acota nada y recorre la tabla entera.
+            'q' => mb_strlen($term) >= 2 ? mb_substr($term, 0, 128) : null,
+            'sort' => in_array($sort, self::SORTS, true) ? $sort : 'date',
+            'dir' => $request->query('dir') === 'asc' ? 'asc' : 'desc',
+        ];
+    }
+
+    private function knownCategory(string $name): ?string
+    {
+        if ($name === '') {
+            return null;
+        }
+
+        return SnkKilkanaCategoryModel::query()->where('name', $name)->exists() ? $name : null;
+    }
+
+    private function perPage(Request $request): int
+    {
+        $asked = (int) $request->query('per_page', (string) self::PER_PAGE);
+
+        return $asked < 1 ? self::PER_PAGE : min($asked, self::PER_PAGE_MAX);
+    }
 
     public function store(Request $request): JsonResponse
     {
@@ -179,8 +283,23 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             return response()->json(['error' => 'Record not found'], 404);
         }
 
+        // Lo que `required_if` tiene que mirar es el estado RESULTANTE, y una edición es
+        // parcial por definición: publicar una pieza es `PUT {status:"published"}` y nada más.
+        // Validando solo el payload, la regla exige una entradilla que la fila YA TIENE y
+        // devuelve un 422 que no significa nada — y obliga al panel a reenviar campos que no
+        // está editando, que es exactamente como se pisa lo que otro acaba de escribir.
+        //
+        // Solo rellena lo que falta: mandar la entradilla vacía a propósito sigue siendo un 422.
+        $entrada = $request->all();
+        if (in_array($entrada['status'] ?? null, SnkKilkanaPostStatusEnum::publishing(), true)) {
+            $entrada += array_filter([
+                'excerpt' => $post->excerpt,
+                'publish_at' => $post->publish_at?->toDateTimeString(),
+            ], fn ($v) => $v !== null);
+        }
+
         $rules = $this->interpolateRules($this->validationRulesUpdate, $id);
-        $validator = validator($request->all(), $rules, $this->validationMessages);
+        $validator = validator($entrada, $rules, $this->validationMessages);
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
@@ -198,38 +317,69 @@ class SnkKilkanaPostsController extends CoreBaseApiController
     }
 
     /**
-     * Acción masiva sobre varios artículos: cambio de estado o borrado.
+     * Acción masiva sobre varios artículos: cambio de estado, etiquetado o borrado.
      *
      * Un endpoint y no N peticiones: publicar veinte eran veinte PUT, cada
      * uno con su carrera y su fallo parcial. `publish` sella `publish_at` cuando falta o
      * cuando apunta al futuro: publicar a mano una pieza programada la saca AHORA, y dejarle
      * la fecha prevista la ordenaría mañana en la portada, el sitemap y el feed.
+     *
+     * **Etiquetar entra aquí por lo mismo.** Reetiquetar es lo que más se hace en tanda
+     * después de publicar —una cobertura entera comparte etiquetas—, y hacerlo con N `PUT`
+     * obliga a que el cliente mande las etiquetas RESULTANTES de cada pieza, o sea a que
+     * calcule la unión con lo que ya tenían. Ese cálculo lo hace bien quien tiene las filas
+     * delante, y quien las tiene es este lado.
      */
     public function bulk(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'ids' => 'required|array|min:1',
+            // Con techo, y el mismo que el de la página: el lote lo dispara la barra de
+            // selección, que solo puede marcar lo que tiene delante. Sin `max`, un `?/bulk`
+            // con cincuenta mil ids entra entero en la transacción y hace cincuenta mil
+            // `save()` dentro de ella.
+            'ids' => 'required|array|min:1|max:'.self::PER_PAGE_MAX,
             'ids.*' => 'integer',
-            'action' => 'required|in:publish,draft,delete',
+            // Los cinco que ofrece la barra de selección del panel, más los dos del
+            // reetiquetado. Faltaban `review` y `scheduled`, así que dos de sus botones no
+            // tenían endpoint y el panel habría tenido que mandar N peticiones — justo lo
+            // que este existe para evitar.
+            'action' => 'required|in:publish,draft,review,scheduled,delete,tag,untag',
+            // Nombres y no ids: es lo que el backend ya escribe (`firstOrCreateByName`) y lo
+            // que un humano lee. Un id de etiqueta no significa nada fuera de esta base.
+            'tags' => 'required_if:action,tag,untag|array|min:1|max:'.self::PER_PAGE_MAX,
+            'tags.*' => 'string|max:'.SnkKilkanaTagModel::NAME_MAX,
         ]);
 
         $permission = $data['action'] === 'delete' ? $this->destroyPermission : $this->updatePermission;
         if ($response = $this->requirePermission($permission)) {
             return $response;
         }
-        if ($data['action'] === 'publish' && ! auth()->user()?->can('publish posts')) {
+        if ($this->deniesPublish(SnkKilkanaPostStatusEnum::fromBulkAction($data['action'])?->value)) {
             return $this->forbidPublish();
         }
 
-        return response()->json([
-            'ok' => true,
-            'count' => $this->posts->bulk(
-                $data['ids'],
-                $data['action'],
-                (int) auth()->id(),
-                $this->canEditOthers(),
-            ),
+        $movidas = $this->posts->bulk(
+            $data['ids'],
+            $data['action'],
+            (int) auth()->id(),
+            $this->canEditOthers(),
+            $data['tags'] ?? [],
+        );
+
+        // Una escritura en tanda que no deja rastro no se puede reconstruir después. La
+        // respuesta dice cuántas se movieron y quien la lee es el navegador; si mañana
+        // alguien jura que publicó veinte, esto es lo único que hay dónde mirar. Y la
+        // diferencia entre lo pedido y lo movido es justo el dato que interesa.
+        Log::info('kilkana: acción en tanda sobre artículos', [
+            'action' => $data['action'],
+            'user_id' => auth()->id(),
+            'asked' => count($data['ids']),
+            'moved' => $movidas,
+            'ids' => $data['ids'],
+            'tags' => $data['tags'] ?? [],
         ]);
+
+        return response()->json(['ok' => true, 'count' => $movidas]);
     }
 
     /** Historial de versiones de un post (más reciente primero). */

@@ -3,6 +3,7 @@
 namespace Packages\Kilkana\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -32,10 +33,38 @@ class SnkKilkanaPostModel extends Model
 
     protected $appends = ['cover', 'url_path'];
 
+    /**
+     * El `config` de un bloque es un OBJETO, tambien cuando esta vacio.
+     *
+     * En PHP no hay diferencia entre una lista vacia y un mapa vacio —los dos son `[]`—, asi
+     * que `json_encode` guardaba `"config": []` en cuanto un bloque no tenia nada dentro: un
+     * separador, un muro, unos relacionados. Y `[]` no es un objeto: el editor rechazaba la
+     * pieza entera al abrirla y devolvia un 502. Con el seeder poniendo muros en ciento
+     * treinta y nueve piezas, eran ciento treinta y nueve piezas que no se podian abrir.
+     *
+     * Se fuerza al ESCRIBIR y en el modelo, que es por donde pasan los tres caminos —el
+     * controlador, el seeder y una restauracion de revision—. En el cast, no en cada uno.
+     */
+    protected function bodyBlocks(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => $value === null ? null : json_decode($value, true),
+            set: fn (?array $value) => $value === null ? null : json_encode(array_map(
+                // `array_replace` y no `+`: el segundo antepone la clave y cambia el orden
+                // del JSON, que es contrato para quien compara la respuesta entera.
+                fn (array $bloque) => array_replace($bloque, [
+                    'config' => (object) ($bloque['config'] ?? []),
+                ]),
+                $value,
+            ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        );
+    }
+
     protected function casts(): array
     {
         return [
-            'body_blocks' => 'array',
+            // `body_blocks` NO va aqui: lo gobierna el accesor de arriba, que ademas fuerza
+            // `config` a objeto. Un cast `array` aqui ganaria y el problema volveria.
             // Enum respaldado: sale al JSON como su cadena, así que el contrato de la API
             // no cambia — lo que cambia es que dentro ya no se compara con literales.
             'status' => SnkKilkanaPostStatusEnum::class,
@@ -115,6 +144,32 @@ class SnkKilkanaPostModel extends Model
     public function scopeIndexable(Builder $query): Builder
     {
         return $query->published()->where('noindex', false);
+    }
+
+    /**
+     * ¿Tiene entradilla escrita? Es lo que hace falta para SALIR, no para existir.
+     *
+     * Los dos lectores van pegados a propósito: la comprueban dos puertas —el lote y el cron—
+     * y llegaron a leerla distinto, con `whereNotNull` en una y `null || ''` en la otra. El
+     * resultado era que una pieza con la entradilla EN BLANCO salía a la calle por el cron y
+     * no por el lote, y esa diferencia solo se ve poniendo las dos consultas una al lado de
+     * la otra.
+     *
+     * Vacía cuenta como no escrita, que es lo contrario de lo que significan las dos en la
+     * columna: nula es «todavía no escrita» y `''` es «escrita y en blanco». Para publicar
+     * dan igual —las dos dejan la pieza sin entradilla en la calle— y el `down()` de
+     * `make_post_excerpt_nullable` convierte las nulas en vacías, así que un rollback y su
+     * reaplicación no pueden cambiar quién se publica.
+     */
+    public function hasExcerpt(): bool
+    {
+        return trim((string) $this->excerpt) !== '';
+    }
+
+    /** La misma regla, en la consulta. Ver `hasExcerpt()`. */
+    public function scopeHasExcerpt(Builder $query): Builder
+    {
+        return $query->whereNotNull('excerpt')->where('excerpt', '<>', '');
     }
 
     /**

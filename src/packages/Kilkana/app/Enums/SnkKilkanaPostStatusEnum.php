@@ -62,4 +62,38 @@ enum SnkKilkanaPostStatusEnum: string
     {
         return $this === self::Published;
     }
+
+    /**
+     * A que estado mueve cada accion masiva de la barra de seleccion.
+     *
+     * Casi todas se llaman como su estado; la unica irregular es `publish`, que es un verbo
+     * porque en la barra lo son las cinco. `delete` no esta: no mueve de estado, borra, y por
+     * eso devuelve nulo en vez de un caso.
+     *
+     * Vive aqui y no en el controlador ni en el servicio porque los dos la necesitan —uno para
+     * decidir si hace falta el permiso de publicacion, el otro para escribir— y dos copias de
+     * este mapa es como una acaba aceptando un estado que la otra no sabe escribir.
+     */
+    public static function fromBulkAction(string $action): ?self
+    {
+        return $action === 'publish' ? self::Published : self::tryFrom($action);
+    }
+
+    /**
+     * Los estados que sacan la pieza a la calle, derivados del muro de arriba.
+     *
+     * Existen para lo que la validacion no sabe preguntar de otra forma: un borrador nace sin
+     * entradilla y sin fecha —el titular llega antes que el texto—, pero publicarlo asi es
+     * publicar media pieza. `required_if` necesita la lista, y sale de aqui para que anadir un
+     * estado no obligue a acordarse de ampliarla.
+     *
+     * @return list<string>
+     */
+    public static function publishing(): array
+    {
+        return array_values(array_column(
+            array_filter(self::cases(), fn (self $estado) => $estado->requiresPublishPermission()),
+            'value',
+        ));
+    }
 }

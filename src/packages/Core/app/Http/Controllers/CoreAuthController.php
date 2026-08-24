@@ -57,6 +57,10 @@ class CoreAuthController extends Controller
         return response()->json([
             'token' => $token->plainTextToken,
             'token_type' => 'Bearer',
+            // Cuando deja de servir. Sin esto, quien lo guarda no tiene forma de saberlo salvo
+            // por un 401, y el minuto acaba escrito tambien en el cliente — dos fuentes para el
+            // mismo numero, y la que manda es la que lo emite.
+            'expires_at' => $token->accessToken->expires_at?->toIso8601String(),
             'user' => $user,
             'token_id' => $token->accessToken->id,
         ]);

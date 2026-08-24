@@ -27,7 +27,15 @@ class SnkKilkanaRichText
         return self::purifier()->purify($html);
     }
 
-    /** Recorre body_blocks y sanea `config.html` de los bloques de texto. */
+    /**
+     * Recorre body_blocks y sanea el `config.html` de cualquier bloque que lo traiga.
+     *
+     * **Por tener HTML, no por ser de un tipo.** Antes solo miraba el bloque de texto, y eso
+     * ataba la seguridad al vocabulario: el dia que el editor compone una cita, un recuadro de
+     * datos o un intertitulo con marcado, ese HTML entraba sin pasar por aqui y nadie lo veia
+     * hasta que alguien lo emitiera. Saneando por presencia del campo, un tipo nuevo nace
+     * cubierto.
+     */
     public static function cleanBlocks(?array $blocks): ?array
     {
         if ($blocks === null) {
@@ -35,7 +43,7 @@ class SnkKilkanaRichText
         }
 
         return array_map(function (array $block): array {
-            if (($block['type'] ?? null) === 'text' && isset($block['config']['html'])) {
+            if (isset($block['config']['html']) && is_string($block['config']['html'])) {
                 $block['config']['html'] = self::clean($block['config']['html']);
             }
 
