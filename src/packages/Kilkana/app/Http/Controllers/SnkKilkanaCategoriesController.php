@@ -23,6 +23,21 @@ class SnkKilkanaCategoriesController extends CoreBaseApiController
 
     protected string $modelClass = SnkKilkanaCategoryModel::class;
 
+    /**
+     * Cada seccion sale con cuantas piezas archiva.
+     *
+     * Es una subconsulta por fila y diecisiete filas, no un `COUNT(*)` por peticion: el panel
+     * enseña «Local 40» y sin esto la unica forma de saberlo era traerse el archivo entero al
+     * cliente y contarlo alli, que es exactamente lo que se vino a quitar del listado.
+     *
+     * Va en `newQuery()` y no en el modelo porque **solo lo quiere quien lista**: pedir una
+     * seccion para editarla no necesita contar sus piezas.
+     */
+    protected function newQuery()
+    {
+        return parent::newQuery()->withCount('posts');
+    }
+
     protected string $indexPermission = 'index categories';
 
     protected string $showPermission = 'show categories';

@@ -38,7 +38,22 @@ class SnkKilkanaPostsController extends CoreBaseApiController
      */
     protected function newQuery()
     {
-        return $this->posts->query((int) auth()->id(), $this->canEditOthers());
+        return $this->posts->query((int) auth()->id(), $this->canEditOthers(), $this->readsWindow());
+    }
+
+    /**
+     * Sobre cuantos dias se cuentan las lecturas, si la peticion lo acota.
+     *
+     * El panel enseña «lo mas leido» de siete o de treinta dias, y sin esto la unica forma de
+     * tener las dos cifras era inventarse la segunda — el prototipo multiplicaba la de siete
+     * por 3,4. Solo dos valores porque solo hay dos botones: una ventana libre invita a pedir
+     * mil dias y a pagar la subconsulta entera sin que nadie mire el resultado.
+     */
+    private function readsWindow(): ?int
+    {
+        $dias = (int) request()->query('reads', '0');
+
+        return in_array($dias, [7, 30], true) ? $dias : null;
     }
 
     /** Una pieza ajena no existe: 404, no 403 — el id es correlativo y un 403 confirmaría cuántas hay. */

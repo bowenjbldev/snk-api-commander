@@ -30,10 +30,17 @@ class SnkKilkanaPostService
      *
      * `engaged`, no `opens`: la API de audiencia cuenta lecturas reales.
      */
-    public function query(int $userId, bool $canEditOthers): Builder
+    public function query(int $userId, bool $canEditOthers, ?int $dias = null): Builder
     {
+        // Con ventana, la suma cuenta solo esos dias; sin ella, el archivo entero. Es UNA suma
+        // y no dos, porque el panel enseña una cifra: mandar las dos y elegir en el cliente
+        // seria pagar la subconsulta que no se pinta, que es lo que ya costo antes.
+        $audiencia = $dias === null
+            ? fn (Builder $q) => $q
+            : fn (Builder $q) => $q->where('date', '>=', now()->subDays($dias - 1)->toDateString());
+
         return $this->scopeToOwner(
-            SnkKilkanaPostModel::query()->withSum('views as views_total', 'engaged'),
+            SnkKilkanaPostModel::query()->withSum(['views as views_total' => $audiencia], 'engaged'),
             $userId,
             $canEditOthers,
         );

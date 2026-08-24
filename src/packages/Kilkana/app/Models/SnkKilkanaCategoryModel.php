@@ -92,6 +92,19 @@ class SnkKilkanaCategoryModel extends Model
         return 'category_id';
     }
 
+    /**
+     * Las piezas archivadas en esta seccion.
+     *
+     * Existe para poder CONTARLAS sin traerlas: el panel enseña «Local 40» y con una
+     * relacion declarada eso es un `withCount` —una subconsulta— en vez de diecisiete
+     * peticiones o un listado entero en el cliente. No se carga nunca entera: una seccion de
+     * un diario de verdad tiene decenas de miles.
+     */
+    public function posts(): HasMany
+    {
+        return $this->hasMany(SnkKilkanaPostModel::class, 'category_id');
+    }
+
     public function children(): HasMany
     {
         return $this->hasMany(self::class, 'parent_id')->orderBy('position');
