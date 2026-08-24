@@ -52,6 +52,35 @@ class SnkKilkanaMediaTaxonomiesController
     }
 
     /**
+     * Vuelca un término en otro: el destino se queda con todo y el origen desaparece.
+     *
+     * Es lo que hace un vocabulario que se ha duplicado —«Retratos» y «Retrato»— y la
+     * alternativa desde fuera es mover foto a foto y borrar, que a mitad de camino deja dos
+     * estantes con lo mismo.
+     */
+    public function merge(Request $request, string $taxonomy, $id): JsonResponse
+    {
+        $desde = $this->taxonomies->find($taxonomy, $id);
+        if (! $desde) {
+            return response()->json(['error' => 'Record not found'], 404);
+        }
+
+        $data = $request->validate([
+            'into' => 'required|integer|different:'.$id.'|exists:'.$this->taxonomies->table($taxonomy).',id',
+        ]);
+
+        $hasta = $this->taxonomies->find($taxonomy, $data['into']);
+        if (! $hasta) {
+            return response()->json(['error' => 'Record not found'], 404);
+        }
+
+        return response()->json([
+            'id' => (string) $hasta->id,
+            'moved' => $this->taxonomies->merge($desde, $hasta),
+        ]);
+    }
+
+    /**
      * Borra y DICE a cuántos medios ha afectado.
      *
      * El pivote se va por CASCADE sin preguntar. Que la respuesta lo cuente es lo que

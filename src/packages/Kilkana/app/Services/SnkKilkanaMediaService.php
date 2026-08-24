@@ -13,13 +13,45 @@ use Packages\Kilkana\Models\SnkKilkanaPostModel;
 
 class SnkKilkanaMediaService
 {
+    /**
+     * Lo que una ficha publica al panel, y **nada mas**.
+     *
+     * Lista blanca y no lista negra, igual que `FILA_DEL_LISTADO` en los articulos: una
+     * columna nueva en `kilkana_media` no se publica sola el dia que alguien la anada. Aqui
+     * no era hipotetico —la fila salia entera— y lo que se colaba era `disk` y `path`, que son
+     * exactamente los dos campos con los que se borra un fichero del disco. Leerlos no borra
+     * nada; publicarlos es contarle a cualquiera con sesion como esta montado el
+     * almacenamiento del inquilino, y no hay una sola pantalla que los pinte.
+     *
+     * Fuera tambien lo editorial que el panel no ensena hoy —`caption`, `description`,
+     * `source_url`, la caducidad de derechos— y `uploaded_by`. Que entren es anadirlos aqui,
+     * que es justo el momento en el que alguien decide publicarlos.
+     */
+    public const FILA_DE_LA_BIBLIOTECA = [
+        'id', 'url', 'original_name', 'title', 'mime', 'size_bytes', 'width', 'height',
+        'duration', 'alt', 'credit', 'license', 'rights_status', 'content_hash',
+        'focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h',
+        'created_at', 'deleted_at', 'usage_count', 'tags', 'collections',
+    ];
+
+    public function asLibraryRow(SnkKilkanaMediaModel $media): SnkKilkanaMediaModel
+    {
+        $media->setVisible(self::FILA_DE_LA_BIBLIOTECA);
+        // De las dos taxonomias basta el par que dibuja un chip: el id para escribir y el
+        // nombre para leer. Los pivotes no pintan nada.
+        $media->tags->each->setVisible(['id', 'name']);
+        $media->collections->each->setVisible(['id', 'name']);
+
+        return $media;
+    }
+
     public function index(Request $request): array
     {
         $perPage = max(1, min((int) $request->integer('per_page', 24), 100));
         $page = $this->filtered($request)->paginate($perPage);
 
         return [
-            'data' => $page->items(),
+            'data' => array_map($this->asLibraryRow(...), $page->items()),
             'meta' => [
                 'current_page' => $page->currentPage(),
                 'last_page' => $page->lastPage(),
@@ -226,6 +258,12 @@ class SnkKilkanaMediaService
             $query->where('rights_status', SnkKilkanaMediaRightsEnum::Unknown);
         } elseif ($status === 'unused') {
             $query->unused();
+        } elseif ($status === 'missing_alt') {
+            // La faceta existia y el filtro no, asi que el panel podia decir «19 sin alt» y no
+            // tenia como ensenar cuales. Es el unico filtro de la mediateca que bloquea un
+            // despliegue: un fichero sin texto alternativo tumba la puerta de toda ruta que lo
+            // use, y esta pantalla es donde se resuelve.
+            $query->where(fn (Builder $sub) => $sub->whereNull('alt')->orWhere('alt', ''));
         }
 
         if ($search = $request->string('q')->trim()->toString()) {
@@ -243,6 +281,12 @@ class SnkKilkanaMediaService
         }
         if ($collectionId = $request->integer('collection_id')) {
             $query->whereHas('collections', fn (Builder $sub) => $sub->where('kilkana_media_collections.id', $collectionId));
+        }
+        // Y por NOMBRE, que es lo que se lee en el rail y lo que cabe en una URL compartible.
+        // El nombre es unico en la tabla, asi que no es un filtro mas laxo que el id: es el
+        // mismo filtro sin obligar a quien pregunta a traerse antes el catalogo para traducir.
+        if ($collection = $request->string('collection')->trim()->toString()) {
+            $query->whereHas('collections', fn (Builder $sub) => $sub->where('kilkana_media_collections.name', $collection));
         }
 
         if ($orientation = $request->string('orientation')->toString()) {
@@ -290,11 +334,46 @@ class SnkKilkanaMediaService
         };
     }
 
+    /**
+     * Cuantos hay de cada familia y cuanto pesa la biblioteca, en UNA consulta.
+     *
+     * Las pestanas del panel llevan su cifra y la tira de estadisticas dice lo que ocupa el
+     * archivo; eso son cuatro numeros, y pedirlos por separado son cuatro `LIKE 'image/%'`
+     * sobre una columna sin indice. Agrupando por la familia del `mime` sale todo de un
+     * recorrido: la misma tabla se lee una vez en vez de cuatro.
+     *
+     * @return array{image: int, video: int, audio: int, bytes: int}
+     */
+    private function porFamilia(): array
+    {
+        $conteo = ['image' => 0, 'video' => 0, 'audio' => 0, 'bytes' => 0];
+
+        // Se agrupa por el `mime` entero y la familia se parte aqui: `SUBSTRING_INDEX` es de
+        // MariaDB y las pruebas corren sobre SQLite, asi que un SQL que solo funciona en
+        // produccion es un fallo que no se ve hasta produccion. Los mimes distintos son una
+        // docena, no una fila por foto.
+        $filas = SnkKilkanaMediaModel::query()
+            ->selectRaw('mime, COUNT(*) AS piezas, COALESCE(SUM(size_bytes), 0) AS peso')
+            ->groupBy('mime')
+            ->get();
+
+        foreach ($filas as $fila) {
+            $conteo['bytes'] += (int) $fila->peso;
+            $familia = explode('/', (string) $fila->mime)[0];
+            if (array_key_exists($familia, $conteo)) {
+                $conteo[$familia] += (int) $fila->piezas;
+            }
+        }
+
+        return $conteo;
+    }
+
     private function facets(): array
     {
         $soon = Carbon::today()->addDays(30)->toDateString();
 
         return [
+            ...$this->porFamilia(),
             'all' => SnkKilkanaMediaModel::query()->count(),
             'review' => SnkKilkanaMediaModel::query()->where('rights_status', SnkKilkanaMediaRightsEnum::Unknown)->count(),
             'unused' => SnkKilkanaMediaModel::query()->unused()->count(),
@@ -362,8 +441,52 @@ class SnkKilkanaMediaService
         return $enriched;
     }
 
+    /**
+     * Quien usa este fichero, por su nombre y diciendo como.
+     *
+     * Las tres formas de estar en uso son las de `SnkKilkanaMediaModel::USOS`, y salen de ahi
+     * para que una cuarta clave foranea hacia un medio aparezca aqui sola en vez de dejar una
+     * lista corta que parece completa.
+     *
+     * El tope es por relacion y no del total: con un tope global, una foto usada en cuarenta
+     * portadas dejaria fuera la firma que tambien la lleva de retrato, que es justo la que
+     * sorprende al borrarla.
+     *
+     * @return list<array{kind: string, id: int, title: string}>
+     */
+    public function uses(SnkKilkanaMediaModel $media, int $porRelacion = 8): array
+    {
+        $titulo = [
+            'coveredPosts' => 'title',
+            'socialPosts' => 'title',
+            'avatarAuthors' => 'name',
+        ];
+
+        $usos = [];
+        foreach (SnkKilkanaMediaModel::USOS as $relacion) {
+            foreach ($media->{$relacion}()->limit($porRelacion)->get() as $fila) {
+                $usos[] = [
+                    'kind' => $relacion,
+                    'id' => (int) $fila->id,
+                    'title' => (string) $fila->{$titulo[$relacion]},
+                ];
+            }
+        }
+
+        return $usos;
+    }
+
+    /**
+     * La ficha recien escrita, con la MISMA forma que trae el listado.
+     *
+     * Update, restore, upload y reemplazo devuelven una fila que el panel mete en la lista que
+     * ya tiene delante. Si esa fila viniera con mas campos que las demas, la lista dejaria de
+     * ser homogenea justo en la fila que se acaba de tocar.
+     */
     public function serialize(SnkKilkanaMediaModel $media): SnkKilkanaMediaModel
     {
-        return $media->fresh(['tags', 'collections'])->loadCount(SnkKilkanaMediaModel::USOS);
+        return $this->asLibraryRow(
+            $media->fresh(['tags', 'collections'])->loadCount(SnkKilkanaMediaModel::USOS)
+        );
     }
 }

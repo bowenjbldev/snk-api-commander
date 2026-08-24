@@ -86,6 +86,7 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::get('media-{taxonomy}', [SnkKilkanaMediaTaxonomiesController::class, 'index'])->whereIn('taxonomy', ['tags', 'collections'])->middleware('can:index media');
     Route::post('media-{taxonomy}', [SnkKilkanaMediaTaxonomiesController::class, 'store'])->whereIn('taxonomy', ['tags', 'collections'])->middleware('can:update media');
     Route::put('media-{taxonomy}/{id}', [SnkKilkanaMediaTaxonomiesController::class, 'update'])->whereIn('taxonomy', ['tags', 'collections'])->middleware('can:update media');
+    Route::post('media-{taxonomy}/{id}/merge', [SnkKilkanaMediaTaxonomiesController::class, 'merge'])->whereIn('taxonomy', ['tags', 'collections'])->middleware('can:update media');
     Route::delete('media-{taxonomy}/{id}', [SnkKilkanaMediaTaxonomiesController::class, 'destroy'])->whereIn('taxonomy', ['tags', 'collections'])->middleware('can:update media');
     Route::apiResource('tags', SnkKilkanaTagsController::class);
     // Antes del apiResource, como en posts: si no, `show` se traga «bulk» como id.

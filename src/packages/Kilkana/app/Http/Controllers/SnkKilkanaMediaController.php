@@ -47,6 +47,35 @@ class SnkKilkanaMediaController extends CoreBaseApiController
         return response()->json($this->media->index(request()));
     }
 
+    /**
+     * La ficha, con **quien la usa por su nombre**.
+     *
+     * El listado ya trae `usage_count`, que es un numero; el inspector del panel ensena la
+     * lista —«Used in», con los titulares—, y ese dato es justo por el que se entra a una
+     * ficha antes de borrarla. Un contador a 3 no dice si esos 3 son borradores viejos o la
+     * portada de hoy.
+     *
+     * Va en `show` y no en el listado a proposito: son tres consultas por fila, y multiplicarlas
+     * por las veinticinco de una pagina para pintar un numero que ya viene contado es pagar
+     * setenta y cinco consultas por nada.
+     */
+    public function show($id = null): JsonResponse
+    {
+        if ($response = $this->requirePermission($this->showPermission)) {
+            return $response;
+        }
+
+        $media = $this->media->findWithTrashed($id);
+        if (! $media) {
+            return response()->json(['error' => 'Record not found'], 404);
+        }
+
+        return response()->json([
+            ...$this->media->serialize($media)->toArray(),
+            'uses' => $this->media->uses($media),
+        ]);
+    }
+
     public function update(Request $request, $id = null): JsonResponse
     {
         if ($response = $this->requirePermission($this->updatePermission)) {
@@ -70,6 +99,13 @@ class SnkKilkanaMediaController extends CoreBaseApiController
             'rights_expires_at' => 'sometimes|nullable|date',
             'focal_x' => 'sometimes|numeric|between:0,1',
             'focal_y' => 'sometimes|numeric|between:0,1',
+            // El marco: de donde salen las derivadas, en fracciones del original. Ancho y
+            // alto empiezan en 0.0001 y no en 0 — un marco de area cero no acota nada, es un
+            // recorte que deja la foto en nada y no hay forma de deshacerlo desde el panel.
+            'crop_x' => 'sometimes|numeric|between:0,1',
+            'crop_y' => 'sometimes|numeric|between:0,1',
+            'crop_w' => 'sometimes|numeric|between:0.0001,1',
+            'crop_h' => 'sometimes|numeric|between:0.0001,1',
             // `exists` y no solo `integer`: el sync mete la fila en el pivote, así que un id
             // inventado chocaba contra la clave foránea y salía como 500.
             'tag_ids' => 'sometimes|array',

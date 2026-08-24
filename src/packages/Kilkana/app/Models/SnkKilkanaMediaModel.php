@@ -31,6 +31,13 @@ class SnkKilkanaMediaModel extends Model
         'size_bytes' => 'integer',
         'focal_x' => 'float',
         'focal_y' => 'float',
+        // Como el punto, y por lo mismo: un `decimal` de MariaDB llega al JSON como cadena
+        // —«0.0000»—, y al otro lado un `x * ancho` con una cadena da concatenacion, no
+        // aritmetica. Las dos mitades del encuadre tienen que llegar del mismo tipo.
+        'crop_x' => 'float',
+        'crop_y' => 'float',
+        'crop_w' => 'float',
+        'crop_h' => 'float',
         'rights_expires_at' => 'date:Y-m-d',
         'rights_status' => SnkKilkanaMediaRightsEnum::class,
     ];
