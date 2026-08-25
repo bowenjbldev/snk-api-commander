@@ -61,6 +61,12 @@ class KilkanaPlanTest extends CommanderTestCase
         $this->assertSame(3, $seats['limit']);
         $this->assertSame(80, $seats['warning_percent']);
 
+        // Qué pasa al pasarse lo decide el contrato, no el panel: `suspend` apaga la instancia
+        // y `recommend` solo recomienda subir. Sin estos dos campos, la tarjeta solo puede
+        // escribir «no se corta nada», que es falso justo en el caso que más importa.
+        $this->assertSame('recommend', $seats['action']);
+        $this->assertSame(2, $seats['consecutive_periods']);
+
         // Pasarse del tope se lee de las dos cifras y no de una bandera: el panel decide con
         // ellas si enciende el naranja, y así el umbral vive en un solo sitio.
         $this->assertGreaterThan($seats['limit'], $seats['used']);
@@ -98,6 +104,12 @@ class KilkanaPlanTest extends CommanderTestCase
 
         // Cinco de las siete métricas se miden para verlas, no para acotarlas. Un cero ahí
         // convertiría «sin tope» en «tope agotado», que es el aviso contrario.
+        //
+        // Y esto es **respuesta válida y no un fallo**, que es lo que su prueba gemela del panel
+        // —`plan.server.test.ts`— tiene que afirmar también: dos suites verdes diciendo lo
+        // contrario del mismo campo es el modo en que este contrato se rompe sin que nada avise.
+        // Es alcanzable por dos caminos legales: un plan sin fila en `commander_plan_limits`
+        // para esa métrica, y una cuota de suscripción creada a propósito sin tope.
         $this->assertNull($this->meter($this->payloadFor($instance), 'editorial_seats')['limit']);
     }
 

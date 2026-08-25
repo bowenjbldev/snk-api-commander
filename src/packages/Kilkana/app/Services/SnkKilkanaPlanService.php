@@ -53,6 +53,15 @@ class SnkKilkanaPlanService
                 // se miden para verlas, no para acotarlas.
                 'limit' => $quota->limit_value,
                 'warning_percent' => $quota->warning_percent,
+                // Qué pasa de verdad al pasarse, que no es lo mismo en todos los contratos:
+                // `suspend` apaga la instancia (`CommanderQuotaMeasurerService::enforce`) y
+                // `recommend` solo enciende la recomendación de subir. Sin este campo el panel
+                // solo puede decir «no pasa nada», que es cierto en tres de los cuatro casos.
+                'action' => $quota->action,
+                // Cuántos periodos seguidos por encima hacen falta para que esa acción ocurra.
+                // Es `settable` de 1 a 12, así que un «dos meses» escrito en el panel es una
+                // afirmación sobre un contrato que el panel no ve.
+                'consecutive_periods' => $quota->consecutive_periods,
             ])->values()->all(),
             // La MÁS VIEJA de las mediciones, no la más nueva: es la única fecha con la que
             // «todo esto es de las 06:00» sigue siendo cierto de todas las cifras a la vez.
