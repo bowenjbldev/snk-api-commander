@@ -139,11 +139,14 @@ class KilkanaPlanTest extends CommanderTestCase
     }
 
     /**
-     * La puerta de un dato de facturación, comprobada en CI y no a mano con curl.
+     * Que la ruta **declara** su puerta. Quién pasa por ella lo fija `KilkanaPanelPermissionsTest`
+     * sobre el reparto de roles, y hacen falta las dos: esta se queda verde si alguien le da
+     * `index posts` a `reader`, y aquella se queda verde si alguien quita el `can:` de la ruta.
      *
-     * `index posts` la tienen los seis roles que abren el panel y ningún lector, y un lector sí
-     * recibe token porque el acceso no mira el rol. Sin esta prueba, quitar el `can:` no rompe
-     * nada visible.
+     * Lo que ninguna de las dos cubre es que el middleware **se ejecute**: eso pide una petición
+     * autenticada contra un inquilino —instancia en Commander, base migrada, resolución por host y
+     * token de Sanctum en la base del periódico— y la suite no tiene ese arnés. Ningún test toca
+     * hoy una ruta protegida de `api/v1/kilkana`, no solo esta.
      */
     public function test_la_ruta_del_plan_va_tras_el_permiso_del_panel(): void
     {
