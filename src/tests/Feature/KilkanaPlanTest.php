@@ -66,6 +66,15 @@ class KilkanaPlanTest extends CommanderTestCase
         // escribir «no se corta nada», que es falso justo en el caso que más importa.
         $this->assertSame('recommend', $seats['action']);
         $this->assertSame(2, $seats['consecutive_periods']);
+        $this->assertSame('instance', $seats['scope']);
+
+        // El plazo de la gracia es del despliegue, no del inquilino, y sin él el aviso solo
+        // puede decir «se suspende» sin decir cuándo.
+        $this->assertSame(72, $payload['grace_hours']);
+
+        // El precio del catálogo y el modo, juntos: con `negotiated` la cifra de arriba no es lo
+        // que paga esta cabecera, y quien la rotule tiene que poder saberlo.
+        $this->assertSame('catalog', $payload['plan']['pricing_mode']);
 
         // Pasarse del tope se lee de las dos cifras y no de una bandera: el panel decide con
         // ellas si enciende el naranja, y así el umbral vive en un solo sitio.
@@ -73,27 +82,29 @@ class KilkanaPlanTest extends CommanderTestCase
         $this->assertSame(0, $this->meter($payload, 'reads_month')['used']);
     }
 
-    public function test_un_tope_puesto_en_la_suscripcion_tambien_llega_y_la_instancia_le_gana(): void
+    public function test_el_tope_propio_y_el_del_contrato_llegan_los_dos_y_no_se_tapan(): void
     {
         [$basic] = $this->plans();
         $instance = $this->periodico($basic);
         $subscriptionId = $instance->subscriptionItem->subscription_id;
 
-        // El contrato negociado pone los dos topes arriba…
-        $this->quota(null, $subscriptionId, 'editorial_seats', used: 30, limit: 40);
-        $this->quota(null, $subscriptionId, 'reads_month', used: 900, limit: 1_000);
-        // …y este periódico tiene además el suyo propio para uno de ellos.
+        // Así es como sale una cabecera del provisioning: cuota **propia para cada métrica**.
+        $this->quota($instance->id, null, 'editorial_seats', used: 2, limit: 10);
         $this->quota($instance->id, null, 'reads_month', used: 120, limit: 500);
+        // Y encima, el contrato del grupo, que mide y aplica por su cuenta.
+        $this->quota(null, $subscriptionId, 'editorial_seats', used: 30, limit: 40);
 
-        $payload = $this->payloadFor($instance);
+        $seats = collect($this->payloadFor($instance)['meters'])
+            ->where('key', 'editorial_seats')
+            ->keyBy('scope');
 
-        // Sin mirar la suscripción, este medidor saldría vacío: no hay fila de asientos para
-        // la instancia. Vacío se dibuja igual que «aún no ha cargado», y por eso no basta.
-        $this->assertSame(40, $this->meter($payload, 'editorial_seats')['limit']);
-
-        // Y donde están las dos, gana la de la instancia, que es la más específica.
-        $this->assertSame(500, $this->meter($payload, 'reads_month')['limit']);
-        $this->assertSame(120, $this->meter($payload, 'reads_month')['used']);
+        // Deduplicar por métrica pierde siempre la compartida, porque la de instancia existe
+        // siempre. Y no son alternativas: este periódico está dentro de su tope (2 de 10) y el
+        // grupo está a 30 de 40, que es la cifra que puede apagarle la cabecera.
+        $this->assertCount(2, $seats);
+        $this->assertSame(10, $seats['instance']['limit']);
+        $this->assertSame(40, $seats['subscription']['limit']);
+        $this->assertSame(30, $seats['subscription']['used']);
     }
 
     public function test_un_tope_ausente_es_sin_tope_y_no_un_cero(): void
@@ -111,6 +122,37 @@ class KilkanaPlanTest extends CommanderTestCase
         // Es alcanzable por dos caminos legales: un plan sin fila en `commander_plan_limits`
         // para esa métrica, y una cuota de suscripción creada a propósito sin tope.
         $this->assertNull($this->meter($this->payloadFor($instance), 'editorial_seats')['limit']);
+    }
+
+    /**
+     * Un contrato negociado no tiene precio por cabecera: el importe es del contrato entero y de
+     * la cuenta. Rotular el del catálogo ahí es decirle a la redacción una cifra que no paga.
+     */
+    public function test_un_contrato_negociado_se_declara_como_tal(): void
+    {
+        [$basic] = $this->plans();
+        $instance = $this->periodico($basic, pricingMode: 'negotiated');
+        $this->quota($instance->id, null, 'editorial_seats', used: 1, limit: 10);
+        $this->quota($instance->id, null, 'reads_month', used: 1, limit: 10);
+
+        $this->assertSame('negotiated', $this->payloadFor($instance)['plan']['pricing_mode']);
+    }
+
+    /**
+     * La puerta de un dato de facturación, comprobada en CI y no a mano con curl.
+     *
+     * `index posts` la tienen los seis roles que abren el panel y ningún lector, y un lector sí
+     * recibe token porque el acceso no mira el rol. Sin esta prueba, quitar el `can:` no rompe
+     * nada visible.
+     */
+    public function test_la_ruta_del_plan_va_tras_el_permiso_del_panel(): void
+    {
+        $ruta = collect(app('router')->getRoutes()->getRoutes())
+            ->first(fn ($r) => str_ends_with($r->uri(), 'kilkana/plan') && in_array('GET', $r->methods(), true));
+
+        $this->assertNotNull($ruta, 'La ruta GET plan no está registrada.');
+        $this->assertContains('can:index posts', $ruta->gatherMiddleware());
+        $this->assertContains('auth:sanctum', $ruta->gatherMiddleware());
     }
 
     public function test_sin_inquilino_no_hay_plan_que_contar(): void
@@ -133,7 +175,7 @@ class KilkanaPlanTest extends CommanderTestCase
             ->all();
     }
 
-    private function periodico(CommanderPlanModel $plan): CommanderInstanceModel
+    private function periodico(CommanderPlanModel $plan, string $pricingMode = 'catalog'): CommanderInstanceModel
     {
         $account = CommanderAccountModel::create([
             'name' => 'Grupo Kilkana',
@@ -156,6 +198,7 @@ class KilkanaPlanTest extends CommanderTestCase
             'account_id' => $account->id,
             'application_id' => $this->application->id,
             'name' => 'Kilkana Grupo 2026',
+            'pricing_mode' => $pricingMode,
             'status' => 'active',
             'started_at' => now(),
         ]);

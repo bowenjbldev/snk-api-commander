@@ -33,7 +33,7 @@ class SnkKilkanaPlanService
             return null;
         }
 
-        $item = $instance->subscriptionItem()->with('plan')->first();
+        $item = $instance->subscriptionItem()->with(['plan', 'subscription'])->first();
         $plan = $item?->plan;
         $quotas = $this->quotas($instance, $item?->subscription_id);
 
@@ -41,11 +41,27 @@ class SnkKilkanaPlanService
             'plan' => $plan === null ? null : [
                 'slug' => $plan->slug,
                 'name' => $plan->name,
+                // El precio del CATÁLOGO, que es lo que cuesta ese plan a quien lo compra suelto.
+                // Con `pricing_mode = negotiated` **no es lo que paga este periódico**: el importe
+                // vive en la suscripción, es del contrato entero y no tiene reparto por cabecera.
+                // Quien rotule esto tiene que mirar el modo antes que la cifra.
                 'price_monthly' => $plan->price_monthly,
+                'pricing_mode' => $item?->subscription?->pricing_mode,
                 'next' => $this->next($plan),
             ],
+            // Cuánto dura la gracia antes de que una cuota con `action = suspend` apague la
+            // cabecera. Es configuración del despliegue, no del inquilino, y sin ella el aviso
+            // solo puede decir «se suspende» sin decir cuándo.
+            'grace_hours' => (int) config('core.quotas.grace_hours', 72),
             'meters' => $quotas->map(fn (CommanderQuotaModel $quota) => [
                 'key' => $quota->metric->key,
+                // A quién acota esta fila. **No son alternativas**: una cabecera puede tener a la
+                // vez su propio tope y el del contrato que comparte con sus hermanas, y las dos se
+                // miden y las dos se aplican —una de suscripción que suspende apaga todas las
+                // cabeceras del grupo (`targetInstanceIds`)—. Quien las funda en una pierde la que
+                // no dibuja, y el provisioning crea SIEMPRE la de instancia, así que la que se
+                // perdía era la compartida.
+                'scope' => $quota->subscription_id !== null ? 'subscription' : 'instance',
                 'name' => $quota->metric->name,
                 'unit' => $quota->metric->unit,
                 'used' => $quota->current_value,
@@ -70,15 +86,18 @@ class SnkKilkanaPlanService
     }
 
     /**
-     * Las cuotas que gobiernan a esta instancia, que pueden estar en dos sitios.
+     * Las cuotas que gobiernan a esta cabecera, que son de dos ámbitos y **se suman**.
      *
-     * Una cuota es de la instancia **o** de la suscripción —la base lo obliga con un CHECK—,
-     * y un contrato negociado para tres periódicos pone el tope arriba, en la suscripción. Con
-     * mirar solo `instance_id` el medidor sale vacío el día que alguien mueve el tope, y sin
-     * error: una lista vacía se dibuja igual que una que aún no ha cargado.
+     * Una fila es de la instancia o de la suscripción —la base lo obliga con un CHECK—, pero eso
+     * no las hace alternativas: `commander:quota:measure` mide los dos ámbitos por separado y
+     * aplica los dos, y una de suscripción que suspende apaga **todas** las cabeceras activas del
+     * contrato (`targetInstanceIds`). Un periódico de un grupo puede estar dentro de su tope y
+     * fuera del compartido a la vez.
      *
-     * Cuando la misma métrica está en los dos sitios gana la de la instancia, que es la más
-     * específica.
+     * Por eso aquí no se deduplica por métrica. Quien lo hace pierde una de las dos, y siempre la
+     * misma: el provisioning crea una cuota de instancia para **cada** métrica activa
+     * (`CommanderProvisioningController`), así que la de instancia tapa siempre a la compartida y
+     * el contrato de grupo deja de existir para el panel sin que nada falle.
      */
     private function quotas(CommanderInstanceModel $instance, ?int $subscriptionId): Collection
     {
@@ -86,14 +105,8 @@ class SnkKilkanaPlanService
             ? collect()
             : CommanderQuotaModel::query()->with('metric')->where($columna, $id)->get();
 
-        // Encadenar y **luego** indexar, en vez de fusionar dos colecciones ya indexadas: la de
-        // la instancia va después y `keyBy` se queda con la última de cada métrica. `merge` no
-        // sirve para esto por dos caminos distintos —el de Eloquent deduplica por clave primaria
-        // del modelo, y el de base es `array_merge`, que RENUMERA las claves enteras—, y en los
-        // dos casos sobreviven las dos filas y gana la equivocada. Sin decirlo.
-        return $de('subscription_id', $subscriptionId)
-            ->concat($de('instance_id', $instance->getKey()))
-            ->keyBy('metric_id')
+        return $de('instance_id', $instance->getKey())
+            ->concat($de('subscription_id', $subscriptionId))
             ->filter(fn (CommanderQuotaModel $quota) => $quota->metric !== null);
     }
 
