@@ -9,6 +9,7 @@ use Packages\Kilkana\Http\Controllers\SnkKilkanaCommentsController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaLayoutsController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaMediaController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaMediaTaxonomiesController;
+use Packages\Kilkana\Http\Controllers\SnkKilkanaPlanController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaPostsController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaPublicController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaSettingsController;
@@ -106,6 +107,15 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::get('themes', [SnkKilkanaThemesController::class, 'catalog']);
     Route::get('theme-categories', [SnkKilkanaThemesController::class, 'categories']);
     Route::post('themes/{id}/wear', [SnkKilkanaThemesController::class, 'wear']);
+
+    // El consumo del propio periódico contra su plan. Solo lectura, y lo mide Commander.
+    //
+    // `can:index posts` y no `auth:sanctum` a secas: la decisión de producto es que la tarjeta de
+    // plan la ve TODA LA REDACCIÓN, y esa lista son exactamente los seis roles que abren el panel.
+    // Un lector también recibe token —`login` no mira el rol— y esta sería la única ruta
+    // autenticada que podría leer, con el precio, los asientos y la banda del periódico dentro.
+    // Tampoco `can:show settings`, que dejaría sin plan a cuatro de los seis que sí deben verlo.
+    Route::get('plan', [SnkKilkanaPlanController::class, 'show'])->middleware('can:index posts');
 
     Route::get('settings', [SnkKilkanaSettingsController::class, 'show'])->middleware('can:show settings');
     Route::put('settings', [SnkKilkanaSettingsController::class, 'update'])->middleware('can:update settings');
