@@ -109,6 +109,11 @@ cambios contra MariaDB. Reporta test, build y lint por separado: uno verde no im
 
 ## Riesgos conocidos
 
+- **El contenedor `app` cachea rutas en `bootstrap/cache/routes-v7.php`**, que NO está
+  bind-mounteado: una ruta nueva no aparece en `route:list` hasta correr `php artisan route:clear`
+  dentro de `app`. El contenedor `provisioner` sí la ve, y **esa discrepancia entre los dos es la
+  pista** — desde fuera parece que la ruta no se registró.
+
 - Enqueue sin outbox puede dejar pending/failed; de-provisioning puede dejar recursos si falla el
   worker. No ocultes esos estados creando otra instancia.
 - Las igualdades cross-relation (métrica/plan/aplicación y cuenta/contrato/cliente) se garantizan en

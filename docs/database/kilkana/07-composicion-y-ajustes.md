@@ -258,5 +258,11 @@ reconstruir las decisiones hechas después por una redacción. Un `--fresh` sin 
 seed recupera los defaults, no la portada, ni los ajustes del tema, ni la identidad.
 
 Y arrastra algo que no está en estas tablas: **`--fresh` vacía también `users`**, y el admin del
-periódico lo crea el provisioning, no el seeder. Una base recreada a mano se queda sin cuenta
-administradora aunque el contenido demo vuelva entero.
+periódico lo crea el provisioning, no el seeder.
+
+Con **datos demo y en local o testing** el seeder de Kilkana lo repone si falta, y solo entonces:
+nace con `secret1234`, que **no es la contraseña del alta**. Es el agujero de recrear la base a
+mano, y está cubierto a propósito.
+
+Fuera de ese caso —un inquilino de verdad, o sin `KILKANA_SEED_DEMO`— la base recreada se queda
+**sin cuenta administradora** aunque el contenido vuelva entero, y hay que reaprovisionar.
