@@ -38,7 +38,7 @@ class SnkKilkanaPlanService
         // rotular un contrato que no se aplica.
         $item = $instance->subscriptionItem()
             ->where('status', 'active')
-            ->with(['plan', 'subscription'])
+            ->with(['plan', 'subscription.account'])
             ->first();
         $plan = $item?->plan;
         $quotas = $this->quotas($instance, $item?->subscription_id);
@@ -53,6 +53,12 @@ class SnkKilkanaPlanService
                 // Quien rotule esto tiene que mirar el modo antes que la cifra.
                 'price_monthly' => $plan->price_monthly,
                 'pricing_mode' => $item?->subscription?->pricing_mode,
+                // A quién le llega la factura, que es lo ÚNICO cierto que se puede decir de un
+                // contrato negociado sin inventar un reparto. Las tres cabeceras del mismo
+                // contrato tienen planes distintos —Basic, Pro y Business— y sus precios de
+                // catálogo suman 187 contra los 180 que se pagan: ni la cifra del catálogo, ni el
+                // importe entero, ni ninguna división de él dicen la verdad sobre una sola.
+                'account' => $item?->subscription?->account?->name,
                 'next' => $this->next($plan),
             ],
             // Cuánto dura la gracia antes de que una cuota con `action = suspend` apague la

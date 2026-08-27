@@ -129,6 +129,23 @@ class KilkanaPlanTest extends CommanderTestCase
         $this->assertFalse($claves->contains('reads_month'), 'una métrica retirada no se informa');
     }
 
+    /**
+     * **A quién le llega la factura**, que en un contrato negociado es lo único cierto que se
+     * puede decir del dinero sin inventar un reparto: el importe es del contrato entero y no tiene
+     * precio por cabecera.
+     */
+    public function test_el_plan_dice_a_que_cuenta_se_factura(): void
+    {
+        [$basic] = $this->plans();
+        $instance = $this->periodico($basic, 'negotiated');
+        $this->quota($instance->id, null, 'editorial_seats', used: 1, limit: 10);
+
+        $payload = $this->payloadFor($instance);
+
+        $this->assertSame('negotiated', $payload['plan']['pricing_mode']);
+        $this->assertNotNull($payload['plan']['account'], 'el rótulo no puede nombrar a nadie sin esto');
+    }
+
     /** Un ítem dado de baja no acota nada: el medidor solo cuenta los activos. */
     public function test_un_item_dado_de_baja_no_rotula_su_plan(): void
     {
