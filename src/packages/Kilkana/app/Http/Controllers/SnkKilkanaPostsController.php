@@ -212,6 +212,8 @@ class SnkKilkanaPostsController extends CoreBaseApiController
 
         $page->getCollection()->each($this->posts->asListRow(...));
 
+        $counts = $this->posts->countsByStatus((int) auth()->id(), $this->canEditOthers());
+
         return response()->json([
             'data' => $page->items(),
             'meta' => [
@@ -220,7 +222,12 @@ class SnkKilkanaPostsController extends CoreBaseApiController
                 'total' => $page->total(),
                 'last_page' => $page->lastPage(),
             ],
-            'counts' => $this->posts->countsByStatus((int) auth()->id(), $this->canEditOthers()),
+            // `counts` sigue significando lo mismo que antes —lo que ve quien mira— para que
+            // las pestanas de Posts no se enteren de nada. `counts_all` se ANADE: el tablero
+            // las ensena juntas, y sin la segunda su cifra queda al lado de una seccion del
+            // periodico entero y se lee como una contradiccion.
+            'counts' => $counts['scoped'],
+            'counts_all' => $counts['all'],
         ]);
     }
 

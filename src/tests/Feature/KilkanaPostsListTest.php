@@ -91,8 +91,56 @@ class KilkanaPostsListTest extends TestCase
         // desaparece al quedarse vacía es una pestaña a la que no se puede volver.
         $this->assertSame(
             ['draft' => 1, 'review' => 0, 'scheduled' => 0, 'published' => 2],
-            $counts,
+            $counts['scoped'],
         );
+    }
+
+    /**
+     * Las dos escalas, que es lo que el tablero enseña junto.
+     *
+     * «Published 34» sin el «of 467» queda al lado de una sección con 40 del periódico entero
+     * y se lee como una contradicción: una sección parece tener más piezas que todo lo
+     * publicado. Las dos cifras son ciertas, y la de al lado es la que lo explica.
+     */
+    public function test_las_cifras_llegan_en_las_dos_escalas_y_solo_una_esta_acotada(): void
+    {
+        $local = $this->category('Local', 'local');
+        $firma = $this->author('Marta Beneyto');
+
+        // Dos de la cuenta 7 y una de otra: así se distingue lo suyo de lo de la casa.
+        $this->makePost('Suya publicada', $local, $firma, 'published', '2026-06-01 10:00:00', createdBy: 7);
+        $this->makePost('Suyo borrador', $local, $firma, 'draft', createdBy: 7);
+        $this->makePost('De otro', $local, $firma, 'published', '2026-06-02 10:00:00', createdBy: 9);
+
+        $acotada = $this->posts->countsByStatus(7, false);
+        $this->assertSame(1, $acotada['scoped']['published'], 'lo acotado tiene que contar solo lo suyo');
+        $this->assertSame(2, $acotada['all']['published'], 'la otra escala cuenta el periódico entero');
+        $this->assertSame(1, $acotada['scoped']['draft']);
+
+        // Con `edit others posts` las dos escalas son la misma, y el panel enseña una cifra
+        // sola en vez de «2 of 2».
+        $abierta = $this->posts->countsByStatus(7, true);
+        $this->assertSame($abierta['all'], $abierta['scoped']);
+        $this->assertSame(2, $abierta['scoped']['published']);
+    }
+
+    /**
+     * Las dos escalas salen del **mismo recorrido**: un `COUNT(*)` y un `SUM(created_by = ?)`
+     * sobre el mismo `GROUP BY`. Pedirlas por separado sería pasar dos veces por la tabla para
+     * contestar dos mitades de la misma pregunta, y esta prueba es lo único que lo impide.
+     */
+    public function test_las_dos_escalas_cuestan_una_sola_consulta(): void
+    {
+        $local = $this->category('Local', 'local');
+        $firma = $this->author('Marta Beneyto');
+        $this->makePost('Una', $local, $firma, 'published', '2026-06-01 10:00:00', createdBy: 7);
+
+        DB::enableQueryLog();
+        $this->posts->countsByStatus(7, false);
+        $consultas = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        $this->assertSame(1, $consultas, "las dos escalas cuestan {$consultas} consultas y tienen que costar 1");
     }
 
     /**
@@ -404,6 +452,7 @@ class KilkanaPostsListTest extends TestCase
         SnkKilkanaAuthorModel $author,
         string $status,
         ?string $publishAt = null,
+        int $createdBy = 1,
     ): SnkKilkanaPostModel {
         return SnkKilkanaPostModel::create([
             'title' => $title,
@@ -413,8 +462,8 @@ class KilkanaPostsListTest extends TestCase
             'status' => $status,
             'publish_at' => $publishAt,
             'url_date' => $status === 'published' ? substr((string) $publishAt, 0, 10) : null,
-            'created_by' => 1,
-            'updated_by' => 1,
+            'created_by' => $createdBy,
+            'updated_by' => $createdBy,
         ]);
     }
 }

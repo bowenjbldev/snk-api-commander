@@ -125,19 +125,47 @@ class SnkKilkanaPostService
      *
      * Las claves salen del enum, así que un estado nuevo aparece aquí sin tocar nada.
      */
+    /**
+     * Cuantas piezas hay de cada estado, **en las dos escalas y en una sola consulta**.
+     *
+     * Devuelve `scoped` —lo que ve quien mira, que es lo mismo que le devuelve el listado— y
+     * `all` —el periodico entero—. Con `edit others posts` las dos son iguales.
+     *
+     * Las dos juntas porque el tablero las ensena juntas: «34 of 467» dice a la vez lo que ha
+     * publicado quien mira y lo que hay en la casa, y sin la segunda cifra ese 34 aparece al
+     * lado de una seccion con 40 y se lee como una contradiccion. Y en la misma consulta
+     * porque son el mismo recorrido: un `COUNT(*)` y un `SUM(created_by = ?)` sobre el mismo
+     * `GROUP BY`. Pedirlas por separado seria pasar dos veces por la misma tabla para
+     * contestar dos mitades de la misma pregunta.
+     *
+     * @return array{scoped: array<string, int>, all: array<string, int>}
+     */
     public function countsByStatus(int $userId, bool $canEditOthers): array
     {
-        $rows = $this->scopeToOwner(SnkKilkanaPostModel::query(), $userId, $canEditOthers)
-            ->select('status', DB::raw('count(*) as total'))
+        $rows = SnkKilkanaPostModel::query()
+            ->select('status')
+            ->selectRaw('count(*) as total')
+            ->selectRaw('sum(created_by = ?) as own', [$userId])
             ->groupBy('status')
-            ->pluck('total', 'status');
+            // `toBase()` y no `get()`: hidratar modelos para un agregado arrastra la carga
+            // ansiosa que el modelo declara, y eso es una segunda consulta —de etiquetas, con
+            // `post_id in (0)`— para unas filas que no son piezas sino recuentos.
+            ->toBase()
+            ->get()
+            ->keyBy('status');
 
-        $counts = [];
+        $scoped = [];
+        $all = [];
         foreach (SnkKilkanaPostStatusEnum::cases() as $estado) {
-            $counts[$estado->value] = (int) ($rows[$estado->value] ?? 0);
+            $fila = $rows[$estado->value] ?? null;
+            $total = (int) ($fila->total ?? 0);
+            $propias = (int) ($fila->own ?? 0);
+
+            $all[$estado->value] = $total;
+            $scoped[$estado->value] = $canEditOthers ? $total : $propias;
         }
 
-        return $counts;
+        return ['scoped' => $scoped, 'all' => $all];
     }
 
     /**
