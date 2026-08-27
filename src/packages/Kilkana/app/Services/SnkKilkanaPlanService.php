@@ -33,7 +33,13 @@ class SnkKilkanaPlanService
             return null;
         }
 
-        $item = $instance->subscriptionItem()->with(['plan', 'subscription'])->first();
+        // **Activo, como lo exige el medidor.** `targetInstanceIds` solo cuenta los ítems con
+        // `status = active`, así que un ítem dado de baja ya no acota nada: servir su plan sería
+        // rotular un contrato que no se aplica.
+        $item = $instance->subscriptionItem()
+            ->where('status', 'active')
+            ->with(['plan', 'subscription'])
+            ->first();
         $plan = $item?->plan;
         $quotas = $this->quotas($instance, $item?->subscription_id);
 
@@ -105,9 +111,15 @@ class SnkKilkanaPlanService
             ? collect()
             : CommanderQuotaModel::query()->with('metric')->where($columna, $id)->get();
 
+        // **Y solo las de métricas vivas.** `CommanderQuotaMeasurerService` salta las inactivas
+        // —deja de medirlas y deja de aplicarlas—, así que su `current_value` se queda congelado
+        // en la última pasada. Servirlo igual pone al panel a informar sobre un tope que ya no
+        // acota: una cifra rancia que solo se dibujaba mal ahora enciende un aviso que promete una
+        // suspensión que no puede ocurrir. Lo que se aplica y lo que se informa tienen que
+        // decidirse con la misma condición.
         return $de('instance_id', $instance->getKey())
             ->concat($de('subscription_id', $subscriptionId))
-            ->filter(fn (CommanderQuotaModel $quota) => $quota->metric !== null);
+            ->filter(fn (CommanderQuotaModel $quota) => $quota->metric?->status === 'active');
     }
 
     /**

@@ -107,6 +107,40 @@ class KilkanaPlanTest extends CommanderTestCase
         $this->assertSame(30, $seats['subscription']['used']);
     }
 
+    /**
+     * Una métrica retirada deja de medirse y deja de aplicarse —`CommanderQuotaMeasurerService`
+     * salta las que no están activas—, así que su `current_value` se queda congelado en la última
+     * pasada. Servirla igual pone al panel a informar sobre un tope que ya no acota: lo que se
+     * aplica y lo que se informa tienen que decidirse con la misma condición.
+     */
+    public function test_una_metrica_retirada_deja_de_contarse(): void
+    {
+        [$basic] = $this->plans();
+        $instance = $this->periodico($basic);
+
+        $this->quota($instance->id, null, 'editorial_seats', used: 10, limit: 3);
+        $this->quota($instance->id, null, 'reads_month', used: 0, limit: 100_000);
+        $this->application->metrics()->where('key', 'reads_month')->update(['status' => 'inactive']);
+
+        $payload = $this->payloadFor($instance);
+        $claves = collect($payload['meters'])->pluck('key');
+
+        $this->assertTrue($claves->contains('editorial_seats'));
+        $this->assertFalse($claves->contains('reads_month'), 'una métrica retirada no se informa');
+    }
+
+    /** Un ítem dado de baja no acota nada: el medidor solo cuenta los activos. */
+    public function test_un_item_dado_de_baja_no_rotula_su_plan(): void
+    {
+        [$basic] = $this->plans();
+        $instance = $this->periodico($basic);
+        $this->quota($instance->id, null, 'editorial_seats', used: 1, limit: 10);
+
+        $instance->subscriptionItem()->update(['status' => 'canceled']);
+
+        $this->assertNull($this->payloadFor($instance)['plan']);
+    }
+
     public function test_un_tope_ausente_es_sin_tope_y_no_un_cero(): void
     {
         [$basic] = $this->plans();
