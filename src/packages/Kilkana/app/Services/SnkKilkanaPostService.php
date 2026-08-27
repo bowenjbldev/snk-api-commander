@@ -142,10 +142,15 @@ class SnkKilkanaPostService
      */
     public function countsByStatus(int $userId, bool $canEditOthers): array
     {
+        // El `SUM` **solo cuando hace falta**: con `edit others posts` las dos escalas son la
+        // misma y calcularlo seria calcular algo para tirarlo. Y no es gratis — `created_by`
+        // no esta en `(status, publish_at)`, asi que la suma saca la consulta del indice
+        // cubridor y la manda a barrer la tabla con temporal y filesort. Sin el, tres de los
+        // seis roles del panel vuelven al indice.
         $rows = SnkKilkanaPostModel::query()
             ->select('status')
             ->selectRaw('count(*) as total')
-            ->selectRaw('sum(created_by = ?) as own', [$userId])
+            ->when(! $canEditOthers, fn ($q) => $q->selectRaw('sum(created_by = ?) as own', [$userId]))
             ->groupBy('status')
             // `toBase()` y no `get()`: hidratar modelos para un agregado arrastra la carga
             // ansiosa que el modelo declara, y eso es una segunda consulta —de etiquetas, con
@@ -159,10 +164,9 @@ class SnkKilkanaPostService
         foreach (SnkKilkanaPostStatusEnum::cases() as $estado) {
             $fila = $rows[$estado->value] ?? null;
             $total = (int) ($fila->total ?? 0);
-            $propias = (int) ($fila->own ?? 0);
 
             $all[$estado->value] = $total;
-            $scoped[$estado->value] = $canEditOthers ? $total : $propias;
+            $scoped[$estado->value] = $canEditOthers ? $total : (int) ($fila->own ?? 0);
         }
 
         return ['scoped' => $scoped, 'all' => $all];
