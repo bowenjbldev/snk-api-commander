@@ -637,6 +637,10 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      *   cuándo sale; sin este permiso solo puede dejarla en borrador o «en revisión».
      * - `edit others posts`: tocar lo que no has escrito. Sin él, listado, editor y borrado
      *   se acotan a `created_by` — el muro entre plantilla y colaboración externa.
+     * - `view others posts`: **saber que existe** lo que no has escrito, que es otra pregunta.
+     *   Abre el sumario de la redacción —cuánto hay sin publicar y en qué fase— sin dar
+     *   acceso a una sola letra ajena. Lo tienen los cinco de dentro de la sala; quien
+     *   entrega desde fuera ve lo suyo y ya.
      *
      * La portada NO necesita permiso nuevo: componerla ya es `update layouts`, y separarla
      * de `update posts` es justo lo que distingue a un editor de mesa de la dirección.
@@ -651,6 +655,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         }
         $names[] = 'publish posts';
         $names[] = 'edit others posts';
+        $names[] = 'view others posts';
         foreach ($names as $name) {
             Permission::findOrCreate($name, 'sanctum');
         }
@@ -675,14 +680,14 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             // identidad. No administra la instalación (usuarios) — eso es otro oficio.
             'director' => [
                 ...$crud('posts', 'categories', 'authors', 'media', 'tags', 'comments', 'subscribers', 'layouts', 'settings', 'themes'),
-                'publish posts', 'edit others posts',
+                'publish posts', 'edit others posts', 'view others posts',
             ],
             // Mesa de edición: publica y corrige lo de cualquiera, modera y gestiona el
             // material. NO compone la portada ni cambia la identidad del periódico.
             'editor' => [
                 ...$crud('posts', 'media', 'tags', 'comments'),
                 ...$read('categories', 'authors'),
-                'publish posts', 'edit others posts',
+                'publish posts', 'edit others posts', 'view others posts',
             ],
             // Plantilla: escribe y publica LO SUYO. Es la diferencia real con un externo.
             'redactor' => [
@@ -691,6 +696,9 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 'index tags', 'create tags',
                 ...$read('categories', 'authors', 'comments'),
                 'publish posts',
+                // Escribe lo suyo, pero está en la reunión de sumario: ve en qué anda el resto
+                // sin poder tocarlo.
+                'view others posts',
             ],
             // Colaborador externo: escribe lo suyo y lo deja «en revisión». No publica y no
             // borra: una pieza entregada no la retira quien la escribió.
@@ -705,6 +713,10 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             'moderador' => [
                 ...$crud('comments', 'subscribers'),
                 ...$read('posts'),
+                // Está en la casa, así que ve el sumario. Por necesidad no le hace falta
+                // —modera comentarios de piezas ya publicadas—, pero dejarlo fuera
+                // reintroduce la excepción por rol que este permiso viene a quitar.
+                'view others posts',
             ],
         ];
         foreach ($roles as $name => $permissions) {

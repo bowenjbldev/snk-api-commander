@@ -85,7 +85,7 @@ class KilkanaPostsListTest extends TestCase
         $this->makePost('Dos', $local, $firma, 'published', '2026-06-02 10:00:00');
         $this->makePost('Tres', $local, $firma, 'draft');
 
-        $counts = $this->posts->countsByStatus(1, true);
+        $counts = $this->posts->countsByStatus(1, true, true);
 
         // Las cuatro claves están siempre, también las que valen cero: una pestaña que
         // desaparece al quedarse vacía es una pestaña a la que no se puede volver.
@@ -112,16 +112,48 @@ class KilkanaPostsListTest extends TestCase
         $this->makePost('Suyo borrador', $local, $firma, 'draft', createdBy: 7);
         $this->makePost('De otro', $local, $firma, 'published', '2026-06-02 10:00:00', createdBy: 9);
 
-        $acotada = $this->posts->countsByStatus(7, false);
+        $acotada = $this->posts->countsByStatus(7, false, true);
         $this->assertSame(1, $acotada['scoped']['published'], 'lo acotado tiene que contar solo lo suyo');
         $this->assertSame(2, $acotada['all']['published'], 'la otra escala cuenta el periódico entero');
         $this->assertSame(1, $acotada['scoped']['draft']);
 
         // Con `edit others posts` las dos escalas son la misma, y el panel enseña una cifra
         // sola en vez de «2 of 2».
-        $abierta = $this->posts->countsByStatus(7, true);
+        $abierta = $this->posts->countsByStatus(7, true, true);
         $this->assertSame($abierta['all'], $abierta['scoped']);
         $this->assertSame(2, $abierta['scoped']['published']);
+    }
+
+    /**
+     * Quien escribe desde fuera no ve el sumario de la redacción.
+     *
+     * `counts_all` publica cuánto hay sin publicar y en qué fase, y eso es actividad editorial
+     * ajena. Choca con la regla que el listado ya aplica tres métodos más arriba —una pieza
+     * ajena no existe: 404, no 403, porque un 403 confirmaría cuántas hay—, así que el
+     * recuento tiene que respetarla igual.
+     *
+     * Y la segunda escala **se iguala, no se calla**: el panel deduce de que las dos cifras
+     * coincidan que hay una sola escala que dibujar, y omitir la clave le dejaría la barra sin
+     * saber qué medir.
+     */
+    public function test_sin_ver_lo_ajeno_las_dos_escalas_son_lo_suyo(): void
+    {
+        $local = $this->category('Local', 'local');
+        $firma = $this->author('Marta Beneyto');
+
+        $this->makePost('Suya publicada', $local, $firma, 'published', '2026-06-01 10:00:00', createdBy: 7);
+        $this->makePost('De otro', $local, $firma, 'published', '2026-06-02 10:00:00', createdBy: 9);
+        $this->makePost('Borrador de otro', $local, $firma, 'draft', createdBy: 9);
+
+        $fuera = $this->posts->countsByStatus(7, false, false);
+
+        $this->assertSame($fuera['scoped'], $fuera['all'], 'sin ver lo ajeno las dos escalas coinciden');
+        $this->assertSame(1, $fuera['scoped']['published']);
+        $this->assertSame(0, $fuera['scoped']['draft'], 'el borrador de otro no puede aparecer ni contado');
+
+        // Y las cuatro claves siguen estando, también las de cero: una pestaña que desaparece
+        // al quedarse vacía es una pestaña a la que no se puede volver.
+        $this->assertSame(['draft', 'review', 'scheduled', 'published'], array_keys($fuera['all']));
     }
 
     /**
@@ -136,7 +168,7 @@ class KilkanaPostsListTest extends TestCase
         $this->makePost('Una', $local, $firma, 'published', '2026-06-01 10:00:00', createdBy: 7);
 
         DB::enableQueryLog();
-        $this->posts->countsByStatus(7, false);
+        $this->posts->countsByStatus(7, false, true);
         $consultas = count(DB::getQueryLog());
         DB::disableQueryLog();
 

@@ -55,25 +55,51 @@ es único y es lo que identifica a alguien**, no el nombre.
 | `admin` | Control total, incluida la gestión de cuentas. |
 | `director` | Dirección: publica, edita cualquier pieza y compone la portada. |
 | `editor` | Mesa de edición: publica y edita piezas ajenas. |
-| `redactor` | Plantilla: escribe y publica **lo suyo**. |
-| `colaborador` | Escribe lo suyo pero **no publica**: entrega y espera. |
+| `redactor` | Plantilla: escribe y publica **lo suyo**, y ve el sumario de la redacción. |
+| `colaborador` | Escribe lo suyo pero **no publica**: entrega y espera. Único rol fuera de la sala. |
 | `moderador` | Comentarios y suscriptores. No escribe artículos. |
 | `reader` | Cuenta de lectura registrada. Sin acceso editorial. |
 
-### Los dos permisos que no salen del CRUD
+### Los tres permisos que no salen del CRUD
 
 El CRUD por recurso (`index/show/create/update/delete` × recurso) no describe un periódico,
 porque funde en «editar artículos» tres cosas que en una redacción están separadas. Por eso
-existen dos permisos más, y son los que de verdad reparten el poder:
+existen tres permisos más, y son los que de verdad reparten el poder:
 
 - **`publish posts`** — quien firma no decide cuándo sale. Sin este permiso, una cuenta
   puede crear y editar sus piezas pero no ponerlas en estado `published` ni `scheduled`.
 - **`edit others posts`** — sin él, el listado, la edición, el historial y el borrado se
   acotan a las piezas cuyo `created_by` es esa cuenta. Una pieza ajena responde **404, no
   403**: los identificadores son correlativos y un 403 confirmaría cuántas piezas hay.
+- **`view others posts`** — **saber que existe** lo ajeno, que es otra pregunta. Abre el
+  sumario de la redacción —los recuentos por estado del periódico entero, `counts_all` en
+  `GET posts`— sin dar acceso a una sola letra ajena.
 
 Componer la portada no necesita permiso propio: ya es `update layouts`, y ahí está la línea
 entre la dirección y la mesa de edición.
+
+### Ver lo ajeno y editarlo son dos preguntas, y hasta el 2026-08-27 eran un permiso
+
+`edit others posts` contestaba las dos, así que el sumario de la redacción se le servía a
+cualquiera que abriese el panel —`colaborador` incluido— o no se le servía a nadie que no
+pudiera editar. Ninguna de las dos es correcta: la primera publica actividad editorial ajena a
+quien entrega desde fuera; la segunda deja al redactor con su «Published 34» al lado de una
+sección con 40 del periódico entero, que se lee como una contradicción.
+
+**La línea no es «puede editar / no puede editar», es plantilla contra fuera**, y ya estaba
+escrita en el producto: un redactor «writes and sends to review», un colaborador «files drafts
+from outside the newsroom». Así funciona una redacción — la reunión de sumario es todo el mundo
+sabiendo en qué anda el resto, y a quien se le oculta la planificación es a quien no está en la
+sala. Por eso lo decide el rol y **no hay ajuste por cliente**: para recortar visibilidad ya
+existe una palanca, y dos mecanismos que hacen lo mismo por caminos distintos son dos fuentes de
+verdad que un día discrepan.
+
+`moderador` entra aunque por necesidad no le haga falta —modera comentarios de piezas ya
+publicadas—: dejarlo fuera reintroduce la excepción por rol que este permiso viene a quitar.
+
+Sin el permiso, `counts_all` **se iguala a `counts`, no se omite**. El panel deduce de que las
+dos cifras coincidan que hay una sola escala que dibujar, así que quitar la clave le dejaría la
+barra sin saber qué medir.
 
 ### Acotar mira quién TECLEÓ, no quién firma
 

@@ -117,36 +117,36 @@ class SnkKilkanaPostService
     }
 
     /**
-     * Cuántas piezas hay de cada estado, **sin ningún filtro puesto**.
+     * Cuantas piezas hay de cada estado, **sin ningun filtro puesto y en las dos escalas**.
      *
-     * Es lo que sostiene que «Draft 35» siga diciendo 35 mientras se miran los publicados:
-     * la pestaña cuenta el archivo, no la página. Solo respeta el acotado por propietario,
-     * porque quien no puede editar lo de otros tampoco debe contarlo.
+     * Es lo que sostiene que «Draft 35» siga diciendo 35 mientras se miran los publicados: la
+     * pestana cuenta el archivo, no la pagina. Las claves salen del enum, asi que un estado
+     * nuevo aparece aqui sin tocar nada.
      *
-     * Las claves salen del enum, así que un estado nuevo aparece aquí sin tocar nada.
-     */
-    /**
-     * Cuantas piezas hay de cada estado, **en las dos escalas y en una sola consulta**.
+     * Devuelve `scoped` —lo que ve quien mira, que es **siempre** lo mismo que le devuelve el
+     * listado— y `all` —el periodico entero—. El tablero las ensena juntas: «34 of 467» dice a
+     * la vez lo que ha publicado quien mira y lo que hay en la casa, y sin la segunda cifra ese
+     * 34 aparece al lado de una seccion con 40 y se lee como una contradiccion.
      *
-     * Devuelve `scoped` —lo que ve quien mira, que es lo mismo que le devuelve el listado— y
-     * `all` —el periodico entero—. Con `edit others posts` las dos son iguales.
-     *
-     * Las dos juntas porque el tablero las ensena juntas: «34 of 467» dice a la vez lo que ha
-     * publicado quien mira y lo que hay en la casa, y sin la segunda cifra ese 34 aparece al
-     * lado de una seccion con 40 y se lee como una contradiccion. Y en la misma consulta
-     * porque son el mismo recorrido: un `COUNT(*)` y un `SUM(created_by = ?)` sobre el mismo
-     * `GROUP BY`. Pedirlas por separado seria pasar dos veces por la misma tabla para
-     * contestar dos mitades de la misma pregunta.
+     * **Son dos permisos y no uno.** `edit others posts` contesta «puedes cambiar la pieza de
+     * otro» y acota el listado; `view others posts` contesta «puedes saber que existe» y es lo
+     * unico que abre la segunda escala. Fundirlos obliga a elegir entre dejar la contradiccion
+     * puesta para media redaccion o publicarle el sumario a quien escribe desde fuera.
      *
      * @return array{scoped: array<string, int>, all: array<string, int>}
      */
-    public function countsByStatus(int $userId, bool $canEditOthers): array
+    public function countsByStatus(int $userId, bool $canEditOthers, bool $canViewOthers): array
     {
         // El `SUM` **solo cuando hace falta**: con `edit others posts` las dos escalas son la
-        // misma y calcularlo seria calcular algo para tirarlo. Y no es gratis — `created_by`
-        // no esta en `(status, publish_at)`, asi que la suma saca la consulta del indice
-        // cubridor y la manda a barrer la tabla con temporal y filesort. Sin el, tres de los
-        // seis roles del panel vuelven al indice.
+        // misma y calcularlo seria calcular algo para tirarlo. Y no es gratis — `created_by` no
+        // esta en `(status, publish_at)`, asi que sin el indice `(status, created_by)` la suma
+        // saca la consulta del indice cubridor y la manda a barrer la tabla con temporal y
+        // filesort.
+        //
+        // Filtrar por autor en vez de sumar **no ahorra nada** y esta medido: `GROUP BY status`
+        // recorre el indice entero en los dos casos —mismas 457 filas, `Using index` en los
+        // dos—, porque `status` es la columna que manda y `created_by` solo se comprueba al
+        // pasar. La segunda escala se descarta abajo, que es donde importa.
         $rows = SnkKilkanaPostModel::query()
             ->select('status')
             ->selectRaw('count(*) as total')
@@ -164,9 +164,13 @@ class SnkKilkanaPostService
         foreach (SnkKilkanaPostStatusEnum::cases() as $estado) {
             $fila = $rows[$estado->value] ?? null;
             $total = (int) ($fila->total ?? 0);
+            $propias = $canEditOthers ? $total : (int) ($fila->own ?? 0);
 
-            $all[$estado->value] = $total;
-            $scoped[$estado->value] = $canEditOthers ? $total : (int) ($fila->own ?? 0);
+            $scoped[$estado->value] = $propias;
+            // Sin `view others posts` la segunda escala **no se calla, se iguala**: el panel
+            // deduce que hay una sola escala de que las dos cifras coincidan, asi que omitirla
+            // le dejaria la barra sin saber que dibujar.
+            $all[$estado->value] = $canViewOthers ? $total : $propias;
         }
 
         return ['scoped' => $scoped, 'all' => $all];

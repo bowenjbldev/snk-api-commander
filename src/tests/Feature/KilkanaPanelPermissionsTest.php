@@ -49,6 +49,36 @@ class KilkanaPanelPermissionsTest extends TestCase
         }
     }
 
+    /**
+     * El sumario de la redacción es de quien está en la sala, y eso lo decide el rol.
+     *
+     * Son **dos preguntas y hasta hoy un solo permiso**: `edit others posts` contesta «puedes
+     * cambiar la pieza de otro» y `view others posts` contesta «puedes saber que existe». Un
+     * redactor y un moderador tienen la segunda sin la primera, que es justo el reparto que un
+     * permiso único no sabe expresar.
+     *
+     * Esto no lo puede fijar la ruta: `index posts` la abren los seis, y lo que separa a la
+     * plantilla de quien entrega desde fuera es este reparto y nada más.
+     */
+    public function test_ver_lo_ajeno_y_editarlo_son_dos_permisos_distintos(): void
+    {
+        $tiene = fn (string $rol, string $permiso) => Role::findByName($rol, 'sanctum')
+            ->hasPermissionTo($permiso);
+
+        foreach (['admin', 'director', 'editor', 'redactor', 'moderador'] as $rol) {
+            $this->assertTrue($tiene($rol, 'view others posts'), "El rol {$rol} está en la sala y no ve el sumario.");
+        }
+
+        // Quien entrega desde fuera ve lo suyo: ni el sumario ni la copia de nadie.
+        $this->assertFalse($tiene('colaborador', 'view others posts'));
+        $this->assertFalse($tiene('colaborador', 'edit others posts'));
+
+        // Y ver no arrastra editar: sin esto, conceder el sumario a la plantilla le daría de
+        // paso la pieza de cualquiera.
+        $this->assertFalse($tiene('redactor', 'edit others posts'));
+        $this->assertFalse($tiene('moderador', 'edit others posts'));
+    }
+
     public function test_un_lector_no_pasa_de_la_puerta_aunque_tenga_sesion(): void
     {
         $lector = Role::findByName('reader', 'sanctum');

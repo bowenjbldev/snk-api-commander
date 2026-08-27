@@ -68,6 +68,19 @@ class SnkKilkanaPostsController extends CoreBaseApiController
     }
 
     /**
+     * Saber que una pieza ajena existe, que **no es lo mismo que poder tocarla**.
+     *
+     * Un solo permiso contestaba las dos preguntas, y por eso el sumario de la redaccion
+     * —cuanto hay sin publicar y en que fase— viajaba tambien a quien escribe desde fuera.
+     * La linea no es «puede editar / no puede editar», es plantilla contra fuera: dentro de
+     * la sala se sabe en que anda el resto.
+     */
+    private function canViewOthers(): bool
+    {
+        return auth()->user()?->can('view others posts') === true;
+    }
+
+    /**
      * El muro entre escribir y publicar: quien firma no decide cuándo sale.
      *
      * `draft` y `review` los mueve cualquiera que pueda editar la pieza; pasarla a
@@ -212,7 +225,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
 
         $page->getCollection()->each($this->posts->asListRow(...));
 
-        $counts = $this->posts->countsByStatus((int) auth()->id(), $this->canEditOthers());
+        $counts = $this->posts->countsByStatus((int) auth()->id(), $this->canEditOthers(), $this->canViewOthers());
 
         return response()->json([
             'data' => $page->items(),
@@ -222,10 +235,12 @@ class SnkKilkanaPostsController extends CoreBaseApiController
                 'total' => $page->total(),
                 'last_page' => $page->lastPage(),
             ],
-            // `counts` sigue significando lo mismo que antes —lo que ve quien mira— para que
-            // las pestanas de Posts no se enteren de nada. `counts_all` se ANADE: el tablero
-            // las ensena juntas, y sin la segunda su cifra queda al lado de una seccion del
-            // periodico entero y se lee como una contradiccion.
+            // `counts` es lo que ve quien mira, que es lo que cuentan las pestanas de Posts.
+            // `counts_all` es el periodico entero, y el tablero las ensena juntas: sin la
+            // segunda su cifra queda al lado de una seccion del periodico entero y se lee como
+            // una contradiccion. Sin `view others posts` las dos vienen iguales — el servicio
+            // las iguala, no las calla, porque el panel deduce de esa igualdad que hay una
+            // sola escala que dibujar.
             'counts' => $counts['scoped'],
             'counts_all' => $counts['all'],
         ]);
