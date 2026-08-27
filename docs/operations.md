@@ -142,6 +142,24 @@ El comando carga instancias ready y hace preflight de cliente, aplicación, cód
 credenciales antes del primer DDL. No combina `--all-tenants` con client, package, seed, fresh o
 rollback.
 
+**Y por eso migrar no basta: `--all-tenants` rechaza `--seed` por diseño.** Lo que vive
+replicado por base y no lo escribe una migración —el catálogo de temas y el reparto de roles—
+no llega a un periódico que ya existía. Son dos comandos, y van tras el mismo deploy:
+
+```bash
+docker compose exec -T provisioner php artisan kilkana:sync-themes
+docker compose exec -T provisioner php artisan kilkana:sync-permissions
+```
+
+El de permisos, siempre que un despliegue traiga un permiso o cambie qué lleva un rol. Saltárselo
+**no rompe nada de forma visible**, que es lo que lo hace peligroso: los periódicos dados de alta
+después del cambio tienen el reparto nuevo y los de antes el viejo, y un permiso que solo decide
+para algunos roles deja al resto pareciendo correctos. Pasó con `view others posts`: tres de las
+cuatro bases locales se quedaron sin él, los roles que editan lo ajeno seguían viendo el sumario
+—no les hace falta el permiso, la consulta ya se lo da— y el redactor lo perdía en silencio.
+
+Los dos son idempotentes y reaplicarlos repara lo tocado a mano, así que ante la duda se corren.
+
 ### Fresh local
 
 El esquema Commander de esta rama parte limpio y no mantiene compatibilidad con datos anteriores.

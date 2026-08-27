@@ -24,9 +24,9 @@ use Packages\Kilkana\Models\SnkKilkanaSubscriberModel;
 use Packages\Kilkana\Models\SnkKilkanaTagModel;
 use Packages\Kilkana\Models\SnkKilkanaThemeModel;
 use Packages\Kilkana\Services\SnkKilkanaMediaService;
+use Packages\Kilkana\Services\SnkKilkanaRoleCatalogService;
 use Packages\Kilkana\Services\SnkKilkanaThemeCatalogSyncService;
 use Packages\Kilkana\Services\SnkKilkanaThemeWearService;
-use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 /**
@@ -627,105 +627,17 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     }
 
     /**
-     * Permisos y roles de una redacción.
+     * Las cuentas de la redacción, sobre el reparto que aplica
+     * {@see SnkKilkanaRoleCatalogService}.
      *
-     * El CRUD por recurso no describe un periódico: funde en un solo `update posts` tres
-     * poderes que allí están repartidos —escribir, publicar y decidir la portada—. Por eso
-     * hay dos permisos que no salen del CRUD:
-     *
-     * - `publish posts`: pasar una pieza a publicada o programada. Quien la firma no decide
-     *   cuándo sale; sin este permiso solo puede dejarla en borrador o «en revisión».
-     * - `edit others posts`: tocar lo que no has escrito. Sin él, listado, editor y borrado
-     *   se acotan a `created_by` — el muro entre plantilla y colaboración externa.
-     * - `view others posts`: **saber que existe** lo que no has escrito, que es otra pregunta.
-     *   Abre el sumario de la redacción —cuánto hay sin publicar y en qué fase— sin dar
-     *   acceso a una sola letra ajena. Lo tienen los cinco de dentro de la sala; quien
-     *   entrega desde fuera ve lo suyo y ya.
-     *
-     * La portada NO necesita permiso nuevo: componerla ya es `update layouts`, y separarla
-     * de `update posts` es justo lo que distingue a un editor de mesa de la dirección.
+     * El reparto no se escribe aquí a propósito: `kilkana:sync-permissions` lo reaplica sobre
+     * los periódicos que ya existían cuando cambia, y un despliegue no vuelve a sembrar. Dos
+     * copias serían dos escritores de `role_has_permissions` que un día divergen.
      */
     private function seedPermissions(): void
     {
-        $names = [];
-        foreach (['posts', 'categories', 'authors', 'media', 'tags', 'comments', 'subscribers', 'layouts', 'settings', 'themes'] as $resource) {
-            foreach (['index', 'show', 'create', 'update', 'delete'] as $action) {
-                $names[] = "$action $resource";
-            }
-        }
-        $names[] = 'publish posts';
-        $names[] = 'edit others posts';
-        $names[] = 'view others posts';
-        foreach ($names as $name) {
-            Permission::findOrCreate($name, 'sanctum');
-        }
-        // Aditivo, no sync: los permisos de `users` se los da el seeder de Core y un sync
-        // con esta lista se los quitaría.
-        $admin = Role::findOrCreate('admin', 'sanctum');
-        $admin->givePermissionTo($names);
-
-        $crud = fn (string ...$resources) => collect($resources)
-            ->crossJoin(['index', 'show', 'create', 'update', 'delete'])
-            ->map(fn ($pair) => "$pair[1] $pair[0]")
-            ->all();
-        $read = fn (string ...$resources) => collect($resources)
-            ->crossJoin(['index', 'show'])
-            ->map(fn ($pair) => "$pair[1] $pair[0]")
-            ->all();
-
-        // Cada rol es un reparto de poder, no una lista de casillas. `syncPermissions`
-        // (no `give`) para que reseedear REPARE un rol tocado a mano.
-        $roles = [
-            // Dirección editorial: manda en el periódico entero, incluida la portada y la
-            // identidad. No administra la instalación (usuarios) — eso es otro oficio.
-            'director' => [
-                ...$crud('posts', 'categories', 'authors', 'media', 'tags', 'comments', 'subscribers', 'layouts', 'settings', 'themes'),
-                'publish posts', 'edit others posts', 'view others posts',
-            ],
-            // Mesa de edición: publica y corrige lo de cualquiera, modera y gestiona el
-            // material. NO compone la portada ni cambia la identidad del periódico.
-            'editor' => [
-                ...$crud('posts', 'media', 'tags', 'comments'),
-                ...$read('categories', 'authors'),
-                'publish posts', 'edit others posts', 'view others posts',
-            ],
-            // Plantilla: escribe y publica LO SUYO. Es la diferencia real con un externo.
-            'redactor' => [
-                ...$crud('posts'),
-                ...$crud('media'),
-                'index tags', 'create tags',
-                ...$read('categories', 'authors', 'comments'),
-                'publish posts',
-                // Escribe lo suyo, pero está en la reunión de sumario: ve en qué anda el resto
-                // sin poder tocarlo.
-                'view others posts',
-            ],
-            // Colaborador externo: escribe lo suyo y lo deja «en revisión». No publica y no
-            // borra: una pieza entregada no la retira quien la escribió.
-            'colaborador' => [
-                'index posts', 'show posts', 'create posts', 'update posts',
-                'index media', 'show media', 'create media',
-                'index tags',
-                ...$read('categories', 'authors'),
-            ],
-            // Comunidad: comentarios y boletín. Ni un permiso sobre artículos, que es
-            // justo por lo que este rol existe.
-            'moderador' => [
-                ...$crud('comments', 'subscribers'),
-                ...$read('posts'),
-                // Está en la casa, así que ve el sumario. Por necesidad no le hace falta
-                // —modera comentarios de piezas ya publicadas—, pero dejarlo fuera
-                // reintroduce la excepción por rol que este permiso viene a quitar.
-                'view others posts',
-            ],
-        ];
-        foreach ($roles as $name => $permissions) {
-            Role::findOrCreate($name, 'sanctum')->syncPermissions($permissions);
-        }
-
-        // Lector registrado: solo puede comentar (la lectura pública no exige auth).
-        $reader = Role::findOrCreate('reader', 'sanctum');
-        $reader->givePermissionTo('create comments');
+        app(SnkKilkanaRoleCatalogService::class)->sync();
+        $reader = Role::findByName('reader', 'sanctum');
 
         if (config('kilkana.kilkana.seed_demo', false)) {
             $readerPassword = config('kilkana.kilkana.demo_reader_password');

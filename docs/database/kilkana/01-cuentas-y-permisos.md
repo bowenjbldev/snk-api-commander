@@ -97,6 +97,17 @@ verdad que un día discrepan.
 `moderador` entra aunque por necesidad no le haga falta —modera comentarios de piezas ya
 publicadas—: dejarlo fuera reintroduce la excepción por rol que este permiso viene a quitar.
 
+**`edit others posts` implica ver, y la implicación es de la consulta.** Quien edita lo ajeno lo
+tiene delante en el listado, así que `countsByStatus()` le devuelve las dos escalas iguales sin
+mirar el segundo permiso: a `director` y `editor` se les concede `view others posts` para que el
+reparto se lea entero en una columna, pero quitárselo no les cambiaría el tablero. Donde el
+permiso decide de verdad es en `redactor` y `moderador`, que no editan lo ajeno.
+
+Esa implicación es lo que disfraza un despliegue a medias: si el permiso no llega a un periódico
+—**`core:migrate --all-tenants` rechaza `--seed`**, así que no llega solo—, los tres roles que
+editan siguen viendo el sumario y los dos que no lo pierden en silencio. Lo reparte
+`kilkana:sync-permissions`, y por eso el comando existe ([`operations.md`](../../operations.md)).
+
 Sin el permiso, `counts_all` **se iguala a `counts`, no se omite**. El panel deduce de que las
 dos cifras coincidan que hay una sola escala que dibujar, así que quitar la clave le dejaría la
 barra sin saber qué medir.

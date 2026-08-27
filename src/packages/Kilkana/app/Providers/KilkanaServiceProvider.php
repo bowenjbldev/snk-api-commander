@@ -10,6 +10,7 @@ use Illuminate\Support\ServiceProvider;
 use Packages\Core\Support\CoreActiveInstanceSupport;
 use Packages\Kilkana\Console\Commands\SnkKilkanaEnrichMediaCommand;
 use Packages\Kilkana\Console\Commands\SnkKilkanaPublishScheduledCommand;
+use Packages\Kilkana\Console\Commands\SnkKilkanaSyncPermissionsCommand;
 use Packages\Kilkana\Console\Commands\SnkKilkanaSyncThemesCommand;
 
 class KilkanaServiceProvider extends ServiceProvider
@@ -37,6 +38,7 @@ class KilkanaServiceProvider extends ServiceProvider
             $this->commands([
                 SnkKilkanaPublishScheduledCommand::class,
                 SnkKilkanaEnrichMediaCommand::class,
+                SnkKilkanaSyncPermissionsCommand::class,
                 SnkKilkanaSyncThemesCommand::class,
             ]);
 

@@ -125,6 +125,29 @@ class KilkanaPostsListTest extends TestCase
     }
 
     /**
+     * **Editar lo ajeno implica verlo**, y la implicación es de la consulta, no del reparto.
+     *
+     * Con `edit others posts` el listado ya devuelve la pieza de cualquiera, así que las dos
+     * escalas son la misma y `view others posts` no decide nada. Se prueba porque es el sitio
+     * donde un permiso puede parecer necesario sin serlo: quitárselo a un director no le
+     * cambiaría el tablero, y quien lo comprobara ahí concluiría que el permiso no hace nada.
+     * Donde sí decide es en el redactor, que es la prueba de abajo.
+     */
+    public function test_editar_lo_ajeno_implica_verlo_aunque_falte_el_permiso(): void
+    {
+        $local = $this->category('Local', 'local');
+        $firma = $this->author('Marta Beneyto');
+
+        $this->makePost('Suya', $local, $firma, 'published', '2026-06-01 10:00:00', createdBy: 7);
+        $this->makePost('De otro', $local, $firma, 'published', '2026-06-02 10:00:00', createdBy: 9);
+
+        $sinElPermiso = $this->posts->countsByStatus(7, true, false);
+
+        $this->assertSame(2, $sinElPermiso['scoped']['published'], 'quien edita lo ajeno lo cuenta');
+        $this->assertSame($sinElPermiso['scoped'], $sinElPermiso['all']);
+    }
+
+    /**
      * Quien escribe desde fuera no ve el sumario de la redacción.
      *
      * `counts_all` publica cuánto hay sin publicar y en qué fase, y eso es actividad editorial

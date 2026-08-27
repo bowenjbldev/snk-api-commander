@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
 use Packages\Kilkana\Database\Seeders\SnkKilkanaDatabaseSeeder;
+use Packages\Kilkana\Services\SnkKilkanaRoleCatalogService;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -77,6 +78,28 @@ class KilkanaPanelPermissionsTest extends TestCase
         // paso la pieza de cualquiera.
         $this->assertFalse($tiene('redactor', 'edit others posts'));
         $this->assertFalse($tiene('moderador', 'edit others posts'));
+    }
+
+    /**
+     * Reaplicar el reparto REPARA, que es de lo que vive `kilkana:sync-permissions`.
+     *
+     * Un despliegue no vuelve a sembrar —`core:migrate --all-tenants` rechaza `--seed`—, así
+     * que un permiso nuevo no llega solo a un periódico que ya existía. El comando reaplica
+     * este catálogo sobre cada inquilino, y lo que lo hace seguro es que sea idempotente y
+     * que un rol al que le falte algo vuelva entero.
+     */
+    public function test_reaplicar_el_reparto_devuelve_un_rol_al_que_le_falta_un_permiso(): void
+    {
+        $redactor = Role::findByName('redactor', 'sanctum');
+        $antes = $redactor->permissions->pluck('name')->sort()->values()->all();
+
+        $redactor->revokePermissionTo('view others posts');
+        $this->assertFalse($redactor->fresh()->hasPermissionTo('view others posts'));
+
+        app(SnkKilkanaRoleCatalogService::class)->sync();
+
+        $despues = Role::findByName('redactor', 'sanctum')->permissions->pluck('name')->sort()->values()->all();
+        $this->assertSame($antes, $despues, 'el rol tiene que volver exactamente a como estaba');
     }
 
     public function test_un_lector_no_pasa_de_la_puerta_aunque_tenga_sesion(): void
