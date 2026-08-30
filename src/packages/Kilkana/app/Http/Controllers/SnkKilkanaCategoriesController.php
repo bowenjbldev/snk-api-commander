@@ -24,18 +24,31 @@ class SnkKilkanaCategoriesController extends CoreBaseApiController
     protected string $modelClass = SnkKilkanaCategoryModel::class;
 
     /**
-     * Cada seccion sale con cuantas piezas archiva.
+     * Cada seccion sale con cuantas piezas archiva, cuando publico la ultima y que URLs dejo
+     * atras — y en el orden del menu.
      *
-     * Es una subconsulta por fila y diecisiete filas, no un `COUNT(*)` por peticion: el panel
-     * enseña «Local 40» y sin esto la unica forma de saberlo era traerse el archivo entero al
-     * cliente y contarlo alli, que es exactamente lo que se vino a quitar del listado.
+     * Las dos primeras son subconsultas por fila y diecisiete filas, no un recuento por
+     * peticion: el panel enseña «Local 40 · 28 Jun» y sin esto la unica forma de saberlo era
+     * traerse el archivo entero al cliente y contarlo alli, que es exactamente lo que se vino
+     * a quitar del listado. `last_published_at` mira solo lo publicado: un borrador de hoy no
+     * es actividad de la seccion.
+     *
+     * El orden es `position` y no la clave: el menu del periodico es esta lista, y ordenar por
+     * id devolveria el orden de creacion en cuanto alguien reordene. `id` desempata, porque
+     * `position` nace a cero en todas y sin segundo criterio el orden seria el que quisiera la
+     * base.
      *
      * Va en `newQuery()` y no en el modelo porque **solo lo quiere quien lista**: pedir una
      * seccion para editarla no necesita contar sus piezas.
      */
     protected function newQuery()
     {
-        return parent::newQuery()->withCount('posts');
+        return parent::newQuery()
+            ->withCount('posts')
+            ->withMax(['posts as last_published_at' => fn ($query) => $query->published()], 'publish_at')
+            ->with(['retiredSlugs' => fn ($query) => $query->orderByDesc('created_at')])
+            ->orderBy('position')
+            ->orderBy('id');
     }
 
     protected string $indexPermission = 'index categories';

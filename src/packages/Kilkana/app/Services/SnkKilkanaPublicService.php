@@ -118,10 +118,22 @@ class SnkKilkanaPublicService
         return 'ref_other';
     }
 
-    /** Solo las lanzadas: una sección en preparación no existe para el lector. */
+    /**
+     * Solo las del menú: una sección en preparación no existe para el lector, y una retirada
+     * dejó de ofrecerse.
+     *
+     * Sin `status` ni `position`: son la cocina del panel. Desde que hay tres estados, decir el
+     * estado en la calle es contarle a cualquiera **qué secciones retiró el periódico del menú
+     * a propósito**, que es justo lo que se estaba tapando.
+     */
     public function categories()
     {
-        return SnkKilkanaCategoryModel::query()->live()->orderBy('position')->orderBy('id')->get();
+        return SnkKilkanaCategoryModel::query()
+            ->inMenu()
+            ->orderBy('position')
+            ->orderBy('id')
+            ->get()
+            ->makeHidden(['status', 'position']);
     }
 
     /**
@@ -136,9 +148,11 @@ class SnkKilkanaPublicService
      */
     public function category(string $slug): SnkKilkanaCategoryModel|string|null
     {
-        $category = SnkKilkanaCategoryModel::query()->live()->where('slug', $slug)->first();
+        $category = SnkKilkanaCategoryModel::query()->reachable()->where('slug', $slug)->first();
         if ($category) {
-            return $category;
+            // Igual que el catálogo: que responda ya dice que es alcanzable, y el estado con el
+            // que lo es —del menú o retirada de él— es cosa de la redacción.
+            return $category->makeHidden(['status', 'position']);
         }
 
         $retirada = SnkKilkanaCategorySlugModel::query()->where('path', $slug)->first();
@@ -148,7 +162,7 @@ class SnkKilkanaPublicService
 
         return SnkKilkanaCategoryModel::query()
             ->whereKey($retirada->category_id)
-            ->live()
+            ->reachable()
             ->value('slug');
     }
 

@@ -160,6 +160,14 @@ cuatro bases locales se quedaron sin él, los roles que editan lo ajeno seguían
 
 Los dos son idempotentes y reaplicarlos repara lo tocado a mano, así que ante la duda se corren.
 
+**El seeder de Kilkana no es de esa clase, y conviene saberlo antes de perseguir un fantasma.**
+Siembra con `firstOrCreate`, así que **no reescribe lo que ya existe**: eso es deliberado —una
+demo tocada a mano no se pisa— pero significa que un cambio en el catálogo de secciones, firmas o
+temas **solo lo estrena una base nueva**. Cuando `agenda` pasó a `hidden`, las cuatro bases locales
+ya sembradas siguieron con ella `live` hasta que se les cambió el estado a mano. Si algo del juego
+de datos no aparece donde el código dice que debería, esa es la primera pregunta: ¿esta base se
+sembró antes o después?
+
 ### Fresh local
 
 El esquema Commander de esta rama parte limpio y no mantiene compatibilidad con datos anteriores.

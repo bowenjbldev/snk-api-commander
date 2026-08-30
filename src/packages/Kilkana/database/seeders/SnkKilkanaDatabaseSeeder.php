@@ -44,6 +44,12 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      *
      * `medio-ambiente` nace sin artículos a propósito: una sección recién abierta es un
      * estado real y ejercita la página de sección sin contenido.
+     *
+     * **Y el estado de cada una también manda**: el modelo rechaza una sección más visible que
+     * su madre —`draft` < `hidden` < `live`— y esa regla corre igual en el alta, así que una
+     * entrada con madre `draft` e hija `live` no rompe una pantalla: rompe el aprovisionamiento
+     * de cada periódico nuevo. Hoy la tabla la cumple —`agenda` es `hidden` bajo `cultura`, que
+     * es `live`—.
      */
     private const CATEGORIES = [
         'local' => ['name' => 'Local'],
@@ -59,9 +65,9 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         'polideportivo' => ['name' => 'Polideportivo', 'parent' => 'deportes'],
         'cultura' => ['name' => 'Cultura'],
         'patrimonio' => ['name' => 'Patrimonio', 'parent' => 'cultura'],
-        // ponytail: Kilkana tiene `hidden`; el backend solo draft/live. Añadir el tercer
-        // estado al migrar la fixture de categorías. Por ahora debe ser live porque tiene posts.
-        'agenda' => ['name' => 'Agenda', 'parent' => 'cultura'],
+        // Retirada del menu con el archivo lleno, que es justo lo que `hidden` sabe hacer y
+        // `draft` no: sus piezas siguen abriendose por su URL.
+        'agenda' => ['name' => 'Agenda', 'parent' => 'cultura', 'status' => SnkKilkanaCategoryStatusEnum::Hidden],
         'sucesos' => ['name' => 'Sucesos'],
         'opinion' => ['name' => 'Opinión'],
         'medio-ambiente' => ['name' => 'Medio ambiente', 'status' => SnkKilkanaCategoryStatusEnum::Draft],

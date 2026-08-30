@@ -17,7 +17,7 @@ Un árbol de **exactamente dos niveles**: secciones madre (Deportes, Economía) 
 | `slug` | varchar(64) | no · **único** | Segmento de la URL pública de la sección. Único en todo el periódico, también entre niveles. |
 | `seo_title` | varchar(500) | sí | Titular para buscadores. **Nulo = se usa `name`.** |
 | `seo_description` | text | sí | Descripción para buscadores, unos 155 caracteres. **Nulo = se usa `description`.** |
-| `status` | enum | no · def. `draft` | Si existe para el lector: `draft` (en preparación) · `live` (lanzada). |
+| `status` | enum | no · def. `draft` | Si existe para el lector: `draft` (en preparación) · `live` (lanzada) · `hidden` (retirada del menú, alcanzable por su URL). |
 | `description` | text | sí | Descripción visible en la página de la sección. |
 | `position` | smallint unsigned | no | Orden dentro de su nivel. Las hermanas se ordenan entre ellas, no contra el resto del árbol. |
 | `noindex` | boolean | no · def. `false` | Pide a los buscadores que no la indexen. La sección sigue existiendo y navegable. |
@@ -117,18 +117,97 @@ Una sección **nace en `draft`** y de ahí no sale sola. Mientras lo esté:
 - Admite borradores, que es justo para lo que sirve.
 - **No admite piezas publicadas**: intentar publicar en ella responde 422.
 
-Y la vuelta también está cerrada: **no se devuelve a preparación una sección con publicados**,
+Y la vuelta también está cerrada: **no se devuelve a preparación una sección con publicados**
+—**suyos o de sus subsecciones**, porque el árbol tiene dos niveles y la madre de una sección viva
+no puede estar en preparación—,
 porque se llegaría al mismo sitio por la puerta de atrás —lanzarla, publicar, retirarla— y
 esas piezas quedarían colgando de una mesa que el lector no puede abrir, con su rótulo
 enlazando a una página que ya no existe. El error dice cuántas hay que mover o despublicar.
 
-Tres cosas parecidas que conviene no confundir:
+## Retirarla del menú es otra cosa, y sí se puede con el archivo lleno
+
+`hidden` es la salida que `draft` no puede ser: la sección **desaparece de la navegación y
+sigue abriéndose por su URL**. Es lo que necesita una mesa que se deja de ofrecer sin romper
+lo que ya está enlazado —sus piezas siguen respondiendo, y su página también—, y por eso el
+muro de arriba no la alcanza: pasar de `live` a `hidden` con cuarenta publicados es legítimo,
+y publicar en una oculta también.
+
+De ahí que el modelo tenga **dos scopes y no uno**, y confundirlos publica en el menú lo que se
+retiró de él:
+
+| Scope | Quién lo pregunta |
+|---|---|
+| `inMenu()` | El catálogo público: la navegación del periódico. Solo `live`. |
+| `reachable()` | La página de la sección, su redirección de slug antiguo y el muro que exige sección lanzada para publicar. `live` y `hidden`. |
+
+Los dos **le preguntan al enum** (`inMenu()` · `isPublic()`) en vez de enumerar los valores: con la
+lista escrita en el modelo, un estado nuevo entra en el enum y los scopes siguen contestando lo de
+ayer sin que nada falle.
+
+**Y el estado no sale a la calle.** `GET public/categories` y `GET public/categories/{slug}`
+esconden `status` y `position`: que la respuesta exista ya dice que la sección es alcanzable, y
+decir con cuál de los dos estados lo es le cuenta a cualquiera qué retiró la redacción del menú a
+propósito. Con dos estados eso no decía nada, porque todo lo público era `live`.
+
+**Revertir la migración se niega si queda alguna oculta.** Las dos salidas automáticas mienten —a
+`live` publica en el menú lo que alguien retiró a mano; a `draft` retira de la calle URLs que
+respondían, y además choca con el muro de arriba—, así que el `down()` aborta diciendo cuántas hay.
+El motivo mecánico refuerza al semántico: el DDL de MariaDB no es transaccional, así que un `UPDATE`
+masivo seguido de un `ALTER` que falle deja lo peor de las dos.
+
+Cuatro cosas parecidas que conviene no confundir:
 
 | | Significa |
 |---|---|
 | `status = draft` | Todavía **no se ve**. |
-| `noindex` | **Se ve**, pero no se anuncia a los buscadores. |
+| `status = hidden` | **Se ve por su URL**, y no está en el menú. |
+| `noindex` | **Se ve y se enlaza**, pero no se anuncia a los buscadores. |
 | Sección `live` y vacía | Abierta y sin piezas aún — `motor` en el juego de datos. Estado legítimo. |
+
+## Una sección no se ve más que su madre
+
+Los tres estados están **ordenados** —`draft` < `hidden` < `live`— y de esa escala cuelga la regla
+del árbol: una hija no puede ser más visible que la sección de la que cuelga. No es simetría por
+gusto: el menú tiene dos niveles, así que **el de una hija se pinta dentro del desplegable de su
+madre**; una hija `live` bajo una madre `hidden` no está en el menú de nadie, y bajo una `draft`
+además cuelga de una página que responde 404.
+
+Se comprueba en las **dos direcciones**, porque las dos escrituras llegan al mismo estado
+imposible:
+
+| Se escribe | Se rechaza si |
+|---|---|
+| `parent_id` | la madre nueva se ve menos que la sección que se mueve |
+| `status` | queda alguna subsección más visible que el estado nuevo |
+
+Y **falla cerrado**: si el estado de la madre no se puede resolver —un `parent_id` que apunta a
+una fila que no existe— se rechaza en vez de dejar pasar. Ese caso llega hasta aquí porque la regla
+`exists:` es del controlador y ni el seeder ni la consola pasan por él, y `guardTree` no lo caza:
+su consulta devuelve `null` igual que la de una raíz.
+
+Sin la primera, el muro del estado se rodea por la puerta de la jerarquía: `guardStatus` impide
+devolver a preparación una sección con archivo, pero mover una sección viva **bajo** una en
+preparación pasaba limpio y dejaba exactamente lo mismo. `guardTree` comprueba la forma —dos
+niveles, sin ciclos— y no mira el estado de nadie; esto es lo que faltaba.
+
+## Lo que el listado calcula por fila
+
+`GET /categories` no devuelve la tabla pelada: el panel de secciones enseña «Local · 40 · 26 Aug»
+y necesita tres cosas que no son columnas.
+
+| Campo | De dónde sale | Por qué no lo calcula el cliente |
+|---|---|---|
+| `posts_count` | `withCount('posts')` | Contarlo fuera exige traerse el archivo entero: son decenas de miles de filas para pintar un número. |
+| `last_published_at` | `withMax` sobre las **publicadas** | Un borrador de hoy no es actividad de la sección, y ordenar por él en el cliente exige lo mismo que arriba. |
+| `retired_slugs` | La relación, de la última a la primera | La ficha enseña el 301 vigente; sin esto, el historial se guardaba y no había dónde consultarlo. |
+
+Y el listado va **ordenado por `position` y desempatado por `id`**, que es el orden del menú.
+`position` se numera **por nivel** —las hermanas de distinta madre comparten número—, así que
+la lista plana mezcla niveles a propósito: quien la pinta reconstruye el árbol y dentro de cada
+grupo de hermanas el orden relativo es el correcto.
+
+Las tres viven en `newQuery()` del controlador y no en el modelo porque **solo las quiere quien
+lista**: pedir una sección para editarla no necesita contar sus piezas.
 
 ## `kilkana_category_slugs` — las URLs que dejó atrás
 

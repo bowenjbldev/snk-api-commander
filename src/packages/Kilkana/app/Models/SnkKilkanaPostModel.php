@@ -290,7 +290,7 @@ class SnkKilkanaPostModel extends Model
                 && ($post->isDirty('status') || $post->isDirty('category_id'))) {
                 $seccionViva = SnkKilkanaCategoryModel::query()
                     ->whereKey($post->category_id)
-                    ->live()
+                    ->reachable()
                     ->exists();
 
                 if (! $seccionViva) {
