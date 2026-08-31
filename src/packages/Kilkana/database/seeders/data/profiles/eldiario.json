@@ -1,4 +1,6 @@
 {
+ "clients": ["demo"],
+ "demo": true,
  "theme": "folio",
  "tenant": {
   "name": "El Diario",

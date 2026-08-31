@@ -28,6 +28,12 @@ class CoreSeedCommand extends Command
         $client = trim((string) $this->option('client')) ?: null;
         $package = trim((string) $this->option('package')) ?: null;
 
+        // La conexión `tenant` es del PROCESO, no de este comando: apuntarla a una base y
+        // dejarla ahí hace que lo siguiente que corra en el mismo proceso —otro job del worker,
+        // un `db:seed` a pelo— herede el destino de esta siembra sin haberlo pedido. Se guarda
+        // lo que había y se devuelve al salir, pase lo que pase.
+        $tenantPrevio = null;
+
         if ($client !== null || $package !== null) {
             if ($client === null || $package === null) {
                 $this->fail('TENANT requiere --client Y --package. Sin ambos => commander.');
@@ -40,6 +46,7 @@ class CoreSeedCommand extends Command
             }
 
             $connection = 'tenant';
+            $tenantPrevio = config('database.connections.tenant');
             config([
                 'database.connections.tenant.database' => CorePackageSelectorSupport::validatedDatabaseIdentifier(
                     CorePackageSelectorSupport::databaseName($client, $package)
@@ -56,20 +63,26 @@ class CoreSeedCommand extends Command
 
         $args = ['--force' => (bool) $this->option('force'), '--database' => $connection];
 
-        if ($this->option('class')) {
-            $this->info("Running seeder [{$this->option('class')}]...");
-
-            return Artisan::call('db:seed', $args + ['--class' => $this->option('class')], $this->output);
-        }
-
-        CorePackagesDatabaseSeeder::$targetPackage = $target;
-
-        $label = is_array($target) ? implode(' + ', $target) : $target;
-        $this->info("Running seeders for [{$label}] on [{$connection}]...");
         try {
+            if ($this->option('class')) {
+                $this->info("Running seeder [{$this->option('class')}]...");
+
+                return Artisan::call('db:seed', $args + ['--class' => $this->option('class')], $this->output);
+            }
+
+            CorePackagesDatabaseSeeder::$targetPackage = $target;
+
+            $label = is_array($target) ? implode(' + ', $target) : $target;
+            $this->info("Running seeders for [{$label}] on [{$connection}]...");
+
             return Artisan::call('db:seed', $args, $this->output);
         } finally {
             CorePackagesDatabaseSeeder::$targetPackage = null;
+
+            if ($tenantPrevio !== null) {
+                config(['database.connections.tenant' => $tenantPrevio]);
+                DB::purge('tenant');
+            }
         }
     }
 }

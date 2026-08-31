@@ -1,0 +1,114 @@
+<?php
+
+namespace Tests\Feature;
+
+use Illuminate\Support\Facades\DB;
+use Packages\Core\Models\CoreUserModel;
+use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
+use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
+use Packages\Kilkana\Models\SnkKilkanaPostModel;
+use Packages\Kilkana\Services\SnkKilkanaPostService;
+use Tests\TestCase;
+
+/**
+ * Sembrar dos veces tiene que dejar el mismo periodico, y esa es la parte que cede.
+ *
+ * El juego de datos de demo no solo crea filas: **edita**. Siembra dos revisiones de una pieza
+ * y la ruta que esa edicion dejo atras, para que el historial del editor y los tres bloques de
+ * «Route history» tengan algo dentro. El riesgo esta en la segunda siembra: el snapshot vuelve
+ * a volcar el titulo con el que la pieza NACIO, y sin la regla que separa lo editorial de lo
+ * estructural se quedaba con la URL nueva, su 301 y su revision — y el titular de antes. Un 301
+ * que apunta a un titular que no cambio es lo contrario de lo que ese fixture viene a ensenar.
+ *
+ * No hace falta el snapshot entero para verlo: son tres piezas.
+ */
+class KilkanaDemoSeedTest extends TestCase
+{
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        DB::setDefaultConnection('tenant');
+        foreach (['Core', 'Kilkana'] as $paquete) {
+            $this->artisan('migrate', [
+                '--database' => 'tenant',
+                '--path' => "packages/{$paquete}/database/migrations",
+            ])->run();
+        }
+    }
+
+    public function test_volver_a_sembrar_no_revierte_lo_que_se_edito_encima(): void
+    {
+        $pieza = $this->sembrar();
+
+        // Lo que hace `seedEditHistory`: editar de verdad, con el servicio.
+        app(SnkKilkanaPostService::class)->update($pieza, [
+            'title' => $pieza->title.' (actualizado)',
+            'slug' => $pieza->slug.'-actualizado',
+        ], (int) $pieza->created_by, false);
+
+        // Y la siembra siguiente, que encuentra la pieza por la ruta que dejo atras.
+        $otra = $this->sembrar();
+
+        $this->assertSame($pieza->id, $otra->id, 'La encuentra por su ruta retirada.');
+        $this->assertSame('Pleno de julio (actualizado)', $otra->title, 'Y no le devuelve el titulo del snapshot.');
+        $this->assertSame('pleno-de-julio-actualizado', $otra->slug);
+    }
+
+    /** Lo estructural sí se sincroniza: es lo que ata la pieza al resto del juego de datos. */
+    public function test_volver_a_sembrar_repara_la_seccion_y_el_estado(): void
+    {
+        $pieza = $this->sembrar();
+        $otra = SnkKilkanaCategoryModel::create([
+            'name' => 'Sucesos', 'slug' => 'sucesos', 'status' => 'live', 'position' => 1,
+        ]);
+
+        $pieza->forceFill(['category_id' => $otra->id, 'featured' => true])->save();
+
+        $resembrada = $this->sembrar();
+
+        $this->assertSame('local', $resembrada->category->slug, 'La sección vuelve a la del catálogo.');
+        $this->assertFalse((bool) $resembrada->featured);
+    }
+
+    /**
+     * La misma siembra que hace el seeder para una pieza, reducida a lo que la regla decide:
+     * lo editorial solo al crear, lo estructural siempre.
+     */
+    private function sembrar(): SnkKilkanaPostModel
+    {
+        $seccion = SnkKilkanaCategoryModel::firstOrCreate(
+            ['slug' => 'local'],
+            ['name' => 'Local', 'status' => 'live', 'position' => 0]
+        );
+        $cuenta = CoreUserModel::firstOrCreate(
+            ['email' => 'ramon@eldiario.example'],
+            ['name' => 'Ramón Clavel', 'password' => 'secret1234']
+        );
+        $firma = SnkKilkanaAuthorModel::firstOrCreate(['user_id' => $cuenta->id]);
+
+        $editorial = ['title' => 'Pleno de julio', 'excerpt' => 'Entradilla del snapshot.'];
+        $estructura = [
+            'category_id' => $seccion->id,
+            'author_id' => $firma->id,
+            'created_by' => $cuenta->id,
+            'status' => 'published',
+            'publish_at' => '2026-07-01 08:00:00',
+            'featured' => false,
+        ];
+
+        $retirada = DB::table('kilkana_post_slugs')->where('path', '2026/07/01/pleno-de-julio')->first();
+        $anterior = $retirada === null
+            ? null
+            : SnkKilkanaPostModel::query()->whereKey($retirada->post_id)->first();
+
+        $fila = SnkKilkanaPostModel::firstOrCreate([
+            'url_date' => $anterior?->getRawOriginal('url_date') ?? '2026-07-01',
+            'slug' => $anterior?->slug ?? 'pleno-de-julio',
+        ], $editorial + $estructura);
+
+        $fila->fill($estructura)->save();
+
+        return $fila->fresh();
+    }
+}

@@ -105,6 +105,21 @@ final class SnkKilkanaDemoMediaLibrary
         return $this->ficheros[crc32($url) % count($this->ficheros)];
     }
 
+    /**
+     * La fila de una foto por su nombre de fichero, para lo que no se reparte por dirección.
+     *
+     * Los retratos de firma no salen del snapshot de artículos: cada uno es de una persona
+     * concreta, así que se piden por nombre en vez de por `crc32`. Entran por el mismo camino
+     * que las demás —al disco del inquilino, con hash y medidas—, que es lo que las hace
+     * ficheros y no direcciones.
+     */
+    public function forName(string $nombre): ?SnkKilkanaMediaModel
+    {
+        $fichero = $this->directorio.'/'.$nombre;
+
+        return is_file($fichero) ? $this->fromFile($fichero) : null;
+    }
+
     /** La fila de medio que le toca a una dirección del snapshot, creándola si hace falta. */
     public function forUrl(string $url): ?SnkKilkanaMediaModel
     {

@@ -106,7 +106,7 @@ diario_norte_kilkana
 ├── usuarios, roles y tokens de Diario Norte
 └── tablas kilkana_*
 
-diario_sur_kilkana
+demo_kilkana
 └── identidades y datos distintos
 ```
 

@@ -154,19 +154,88 @@ docker compose exec -T provisioner php artisan kilkana:sync-permissions
 El de permisos, siempre que un despliegue traiga un permiso o cambie qué lleva un rol. Saltárselo
 **no rompe nada de forma visible**, que es lo que lo hace peligroso: los periódicos dados de alta
 después del cambio tienen el reparto nuevo y los de antes el viejo, y un permiso que solo decide
-para algunos roles deja al resto pareciendo correctos. Pasó con `view others posts`: tres de las
-cuatro bases locales se quedaron sin él, los roles que editan lo ajeno seguían viendo el sumario
+para algunos roles deja al resto pareciendo correctos. Pasó con `view others posts`: las bases dadas de alta antes del cambio
+se quedaron sin él, los roles que editan lo ajeno seguían viendo el sumario
 —no les hace falta el permiso, la consulta ya se lo da— y el redactor lo perdía en silencio.
 
 Los dos son idempotentes y reaplicarlos repara lo tocado a mano, así que ante la duda se corren.
+Y los dos sueltan la caché persistente del reparto, igual que hace `core:seed` al sembrar los
+permisos: la de consola es `array` y muere con el proceso, así que sin soltarla los FPM vivos
+siguen repartiendo el reparto anterior hasta que caduque.
 
-**El seeder de Kilkana no es de esa clase, y conviene saberlo antes de perseguir un fantasma.**
-Siembra con `firstOrCreate`, así que **no reescribe lo que ya existe**: eso es deliberado —una
-demo tocada a mano no se pisa— pero significa que un cambio en el catálogo de secciones, firmas o
-temas **solo lo estrena una base nueva**. Cuando `agenda` pasó a `hidden`, las cuatro bases locales
-ya sembradas siguieron con ella `live` hasta que se les cambió el estado a mano. Si algo del juego
-de datos no aparece donde el código dice que debería, esa es la primera pregunta: ¿esta base se
-sembró antes o después?
+**El seeder de Kilkana no es de esa clase, y son DOS cosas que conviene saber antes de perseguir
+un fantasma.**
+
+La primera es que **el contenido de demo no se siembra por defecto**: todo lo que va después de los
+permisos, los temas y los ajustes —categorías, piezas, firmas, comentarios— cuelga de
+`config('kilkana.kilkana.seed_demo')`, que es `KILKANA_SEED_DEMO` y viene en `false`. Sin la
+variable, `core:seed` termina con éxito y **no toca ni una fila** de contenido:
+
+```bash
+docker compose exec -T -e KILKANA_SEED_DEMO=1 provisioner php artisan core:seed   --client=demo --package=Kilkana --force
+```
+
+Y la variable sola no basta, porque **qué periódico se siembra no lo decide quien lanza el comando,
+lo decide la base**. `database/seeders/data/profiles/*.json` declara un periódico por fichero —su
+cabecera, su tema y de qué clientes es—, y el seeder busca el que reclame al cliente de la conexión.
+Un perfil con `"demo": false` se queda en la cabecera aunque la variable esté puesta, y una base sin
+perfil no recibe ni identidad ni contenido: es lo que le toca a un cliente real, que se nombra a sí
+mismo al darse de alta.
+
+Las dos puertas hacen falta. Con solo la variable, `core:seed --client=otro` vuelca el archivo de un
+periódico dentro de la base de otro, y eso no se ve hasta que alguien cuenta las piezas: 523 de El
+Diario acabaron dentro de dos bases que no eran suyas. De las dos puertas cuelgan también **las dos
+cuentas de demo** —el administrador y el lector—, porque una contraseña conocida dentro de la base
+de un cliente es un acceso ajeno a su panel.
+
+De ahí sale una consecuencia que muerde al recrear una base a mano: **un inquilino con `demo: false`
+se queda sin administrador**. En un alta de verdad no pasa —el provisioning crea la cuenta elegida y
+fija `core.auth.admin_email` antes de llamar a `core:seed`—, pero quien recree una base local sin
+saberlo se queda mirando un login que no abre nadie. La cuenta se pone a mano, con su rol `admin`.
+
+La segunda es **qué reescribe y qué no**, porque no es todo igual:
+
+| Se **sincroniza** en cada siembra | Se **rellena solo si está vacío** |
+| --- | --- |
+| La estructura que declara el catálogo: el estado, la madre y la posición de una sección; la clase de una firma y si tiene cuenta. | Lo editorial: nombre, cargo, biografía, web, redes, correo público. |
+| De cada pieza del snapshot: su sección, su firma, su estado, su fecha y si va destacada. | El titular y la entradilla de una pieza que ya existe. |
+
+El reparto no es capricho. La estructura es lo que hace que la demo enseñe lo que dice enseñar
+—una sección retirada del menú, una agencia que firma sin asiento— y un juego de datos que solo
+estrena un periódico nuevo es una foto del pasado: cuando `agenda` pasó a `hidden` y cuando las
+firmas de agencia dejaron de tener cuenta, las bases ya sembradas se quedaron atrás y hubo que
+cambiarlas a mano. Lo editorial, en cambio, es justo lo que alguien toca al probar la demo, y
+pisarlo en cada siembra sería perder su trabajo.
+
+**Y retira lo que él mismo dejó de crear.** Mientras una firma exigió cuenta, el seeder creaba una
+de servicio por agencia solo para satisfacer la clave foránea; ahora las borra —y solo si siguen
+siendo lo que eran: sin rol, sin firma y con el correo que él les puso—. Ojo con lo que arrastran:
+`kilkana_posts.created_by` es `ON DELETE SET NULL`, así que las piezas que apunten a esas cuentas
+**se quedan sin creador**, que es lo correcto para un teletipo que no tecleó nadie en el CMS pero
+no se deshace.
+
+Si algo del juego de datos no aparece donde el código dice que debería, la primera pregunta sigue
+siendo si corrió con `KILKANA_SEED_DEMO`.
+
+### Qué trae el juego de datos, y por qué esas cosas
+
+No es «datos de relleno»: es lo que hace que las quince pantallas del panel se puedan **probar**.
+Una pantalla cuya tabla está vacía no se puede mirar, y una funcionalidad construida que el juego
+de datos no ejercita se rompe sin que nadie lo note.
+
+| Lo que trae | Para qué existe |
+| --- | --- |
+| Las **seis cuentas del panel**: admin, dirección, mesa, cuatro redactoras, dos colaboraciones y comunidad | Son los seis roles que abren el panel. Sin dirección y sin mesa no hay forma de probar lo que los separa: publicar lo ajeno, componer la portada, tocar la identidad. Y el cargo de cada firma cuadra con su rol —la editora jefe es `director`— porque una ficha que dice una cosa y unos permisos que dicen otra es una demo que engaña. |
+| Nueve cuentas de **lector**, sin acceso al panel | El otro lado de la puerta: reciben token y no entran. |
+| Dos **firmas sin cuenta** —colectivo y agencia— y ocho con ella | Una firma es una página pública; un asiento es acceso. Sin las dos clases, la pantalla de firmas no enseña la diferencia que existe para enseñar. |
+| **Ocho retratos** servidos desde el disco del inquilino | El retrato es uno de los cuatro requisitos de una página de autor. Con ninguno puesto, la pantalla solo enseña su lista de trabajo; con todos, no enseña la lista. Son caras reales de un banco de fotos y van con el juego de datos: sirven para probar el panel, no para ilustrar material comercial. |
+| **Dos revisiones** de una pieza y **tres rutas retiradas** (pieza, sección y firma) | El historial del editor y los tres bloques de «Route history». Las revisiones se crean **editando de verdad** con el servicio: es la misma transacción que corre en producción. |
+| **Dos fotos en la papelera** | `kilkana_media` es la única tabla con `deleted_at`: es lo único que una papelera puede tener dentro. |
+| Una sección **oculta**, una **en preparación** y una **viva y vacía** | Los tres estados que decide la pantalla de secciones, y el caso legítimo que se confunde con un defecto. |
+| Fotos **sin usar** y **sin alt** | Las dos vistas de la mediateca que existen para encontrar trabajo pendiente. Con todo completo salen a cero y no se pueden ni mirar. |
+
+Lo que **no** trae, y por qué: portadas compuestas (`kilkana_layouts`), etiquetas de mediateca y
+revisiones de portada. Son de pantallas que todavía leen de fixtures en el CMS; entrarán con ellas.
 
 ### Fresh local
 

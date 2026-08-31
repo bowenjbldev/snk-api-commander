@@ -15,7 +15,7 @@ diario_norte_kilkana
 ├── users, roles, permissions y tokens de esa cabecera
 └── tablas kilkana_*
 
-diario_sur_kilkana
+demo_kilkana
 └── otro esquema completo
 ```
 

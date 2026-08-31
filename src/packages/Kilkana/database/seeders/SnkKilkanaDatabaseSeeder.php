@@ -4,9 +4,11 @@ namespace Packages\Kilkana\Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Core\Support\CorePackageSelectorSupport;
+use Packages\Kilkana\Enums\SnkKilkanaAuthorKindEnum;
 use Packages\Kilkana\Enums\SnkKilkanaCategoryStatusEnum;
 use Packages\Kilkana\Enums\SnkKilkanaCommentStatusEnum;
 use Packages\Kilkana\Enums\SnkKilkanaConsentSourceEnum;
@@ -14,16 +16,20 @@ use Packages\Kilkana\Enums\SnkKilkanaPostStatusEnum;
 use Packages\Kilkana\Enums\SnkKilkanaSubscriberStatusEnum;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
+use Packages\Kilkana\Models\SnkKilkanaCategorySlugModel;
 use Packages\Kilkana\Models\SnkKilkanaCommentModel;
 use Packages\Kilkana\Models\SnkKilkanaMediaCollectionModel;
 use Packages\Kilkana\Models\SnkKilkanaMediaModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
+use Packages\Kilkana\Models\SnkKilkanaPostRevisionModel;
+use Packages\Kilkana\Models\SnkKilkanaPostSlugModel;
 use Packages\Kilkana\Models\SnkKilkanaPostViewModel;
 use Packages\Kilkana\Models\SnkKilkanaSettingModel;
 use Packages\Kilkana\Models\SnkKilkanaSubscriberModel;
 use Packages\Kilkana\Models\SnkKilkanaTagModel;
 use Packages\Kilkana\Models\SnkKilkanaThemeModel;
 use Packages\Kilkana\Services\SnkKilkanaMediaService;
+use Packages\Kilkana\Services\SnkKilkanaPostService;
 use Packages\Kilkana\Services\SnkKilkanaRoleCatalogService;
 use Packages\Kilkana\Services\SnkKilkanaThemeCatalogSyncService;
 use Packages\Kilkana\Services\SnkKilkanaThemeWearService;
@@ -35,6 +41,9 @@ use Spatie\Permission\Models\Role;
  */
 class SnkKilkanaDatabaseSeeder extends Seeder
 {
+    /** El perfil resuelto, o `[]` si esta base no es de ningun periodico declarado. */
+    private ?array $perfil = null;
+
     /**
      * Taxonomía del periódico. Dos niveles: las mesas de redacción y sus subsecciones.
      *
@@ -68,7 +77,10 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         // Retirada del menu con el archivo lleno, que es justo lo que `hidden` sabe hacer y
         // `draft` no: sus piezas siguen abriendose por su URL.
         'agenda' => ['name' => 'Agenda', 'parent' => 'cultura', 'status' => SnkKilkanaCategoryStatusEnum::Hidden],
-        'sucesos' => ['name' => 'Sucesos'],
+        // Una sección que cambió de nombre, con la ruta que dejó atrás: el catálogo la declara
+        // en vez de renombrarla al sembrar, porque el slug es su identidad aquí y renombrarla
+        // dejaba a la siembra siguiente intentando recrear una URL que ya está retirada.
+        'sucesos-y-tribunales' => ['name' => 'Sucesos', 'retired' => ['sucesos']],
         'opinion' => ['name' => 'Opinión'],
         'medio-ambiente' => ['name' => 'Medio ambiente', 'status' => SnkKilkanaCategoryStatusEnum::Draft],
     ];
@@ -81,7 +93,24 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         $this->seedThemes();
         $this->seedSettings();
 
-        if (! config('kilkana.kilkana.seed_demo', false)) {
+        // Dos interruptores, y hacen falta los dos: el entorno dice si esta instalacion admite
+        // datos de demo, y el PERFIL dice si este periodico en concreto los tiene. Con uno solo,
+        // `core:seed --client=otro` con la variable puesta vuelca el archivo de un periodico
+        // dentro de la base de otro.
+        if (! $this->demoData()) {
+            // Y se dice cuál de las dos paró: una siembra que termina con éxito y sin escribir una
+            // fila es indistinguible de una correcta, y la pregunta que sigue —«¿corrió con la
+            // variable?»— tiene dos respuestas posibles desde que el perfil también puede pararla.
+            $cliente = $this->clientSlug() ?? 'esta base';
+            $this->command?->getOutput()->writeln(match (true) {
+                ! config('kilkana.kilkana.seed_demo', false) => '<comment>demo: KILKANA_SEED_DEMO no está puesta.</comment>',
+                // Las dos significan lo mismo hoy y son diagnósticos distintos el día que alguien
+                // escriba mal un slug en `clients`: sin perfil, el fichero no existe o no la
+                // reclama; con perfil, es una decisión escrita.
+                $this->profile() === [] => "<comment>demo: ningún perfil reclama {$cliente}.</comment>",
+                default => "<comment>demo: el perfil de {$cliente} dice que no lleva datos de demo.</comment>",
+            });
+
             return;
         }
 
@@ -90,6 +119,11 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         $this->seedViews();
         $this->seedAuthorProfiles();
         $this->seedStaff();
+        // Después de las firmas: lo que decide si una cuenta de servicio sobra es que ninguna
+        // firma cuelgue ya de ella, y eso lo acaba de escribir `seedAuthorProfiles`.
+        $this->retireServiceAccounts();
+        $this->seedPortraits();
+        $this->seedEditHistory();
         $this->seedComments();
         $this->seedSubscribers();
     }
@@ -148,6 +182,9 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     private const REDACCION = [
         'Marta Beneyto' => [
             'email' => 'marta@eldiario.example',
+            // Dirige el periódico: manda en la portada y en la identidad, y su cargo lo decía
+            // mientras sus permisos eran los de una redactora.
+            'role' => 'director',
             'job_title' => 'Editora jefe',
             'bio' => 'Dirige El Diario desde 2021. Antes cubrió tribunales en la prensa provincial durante doce años.',
             'website' => 'https://martabeneyto.es',
@@ -155,7 +192,10 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         ],
         'Ramón Clavel' => [
             'email' => 'ramon@eldiario.example',
-            'job_title' => 'Gobierno local',
+            // Mesa de edición: publica y corrige lo de cualquiera, y no compone la portada.
+            // Es el rol que faltaba para poder probar el muro de `edit others posts`.
+            'role' => 'editor',
+            'job_title' => 'Jefe de Local · mesa de edición',
             'bio' => 'Cubre el pleno y el urbanismo de la comarca. Premio de periodismo local 2019.',
             'website' => 'https://ramonclavel.info',
             'socials' => ['x' => 'https://x.com/rclavel', 'bluesky' => 'https://bsky.app/profile/rclavel.bsky.social'],
@@ -216,25 +256,20 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         // listado de Usuarios— y el ALIAS es lo que sale publicado: llamarla «Redacción» a
         // secas habría dado el mismo nombre publicado sin alias, y la columna no demostraría nada.
         'Redacción' => [
-            'email' => 'redaccion@eldiario.example',
-            'name' => 'Redacción (cuenta de servicio)',
-            'full_name' => 'Cuenta de servicio de la redacción',
             'alias' => 'Redacción',
-            'company' => self::PERIODICO,
             'job_title' => self::PERIODICO,
             'bio' => 'Piezas firmadas por el equipo de redacción.',
+            'public_email' => 'redaccion@eldiario.example',
+            'kind' => SnkKilkanaAuthorKindEnum::Collective,
             'role' => null,
         ],
         // El teletipo. Su organización es la agencia, no el periódico, y sin rol: nadie de
         // fuera escribe en este CMS, sus piezas las vuelca la redacción.
         'Agencia EFE' => [
-            'email' => 'efe@eldiario.example',
-            'name' => 'Agencia EFE (cuenta de servicio)',
-            'full_name' => 'Cuenta de servicio de agencia',
             'alias' => 'Agencia EFE',
-            'company' => 'Agencia EFE',
             'job_title' => 'Agencia de noticias',
             'bio' => 'Teletipos de agencia editados por la redacción.',
+            'kind' => SnkKilkanaAuthorKindEnum::Agency,
             'role' => null,
         ],
         // Columnista: escribe de verdad y entra al CMS, pero no es plantilla. Sin organización
@@ -245,6 +280,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             'company' => null,
             'job_title' => 'Columnista',
             'bio' => 'Escribe la columna de los jueves. Fue jefe de Local entre 1998 y 2014.',
+            'public_email' => 'josep.miralles@colaboradores.eldiario.example',
+            'kind' => SnkKilkanaAuthorKindEnum::Contributor,
             'role' => 'colaborador',
         ],
     ];
@@ -256,8 +293,11 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      * plantilla conservan el correo del fixture; las firmas externas reciben uno local y
      * determinista para poder satisfacer la FK sin inventar una identidad pública.
      *
-     * Con rol `redactor`: escribe y publica lo suyo. Es el rol de plantilla, y con él la
-     * demo enseña de verdad el acotado por `created_by` — cada periodista ve sus piezas.
+     * El rol sale de la ficha y `redactor` es el de por defecto: escribe y publica lo suyo, que
+     * es el rol de plantilla y con el que la demo enseña el acotado por `created_by`. Los otros
+     * dos que abren el panel —dirección y mesa— tienen que existir en el juego de datos o no hay
+     * forma de probar lo que los separa: publicar lo ajeno, componer la portada, tocar la
+     * identidad del periódico.
      */
     private function authorFor(string $name): SnkKilkanaAuthorModel
     {
@@ -282,7 +322,9 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             // redacción «sin verificar» sin que eso signifique nada.
             'email_verified_at' => $user->email_verified_at ?: now(),
         ], fn ($v) => $v !== null))->save();
-        $user->assignRole('redactor');
+        // `syncRoles` y no `assignRole`: una demo sembrada antes tiene a la editora jefe como
+        // redactora, y reaplicar el catálogo tiene que corregirlo.
+        $user->syncRoles([$ficha['role'] ?? 'redactor']);
 
         // Sin alias ni cargo aquí: la firma nace publicando el nombre de la cuenta y su URL
         // se deriva de él. Lo editorial lo pone después `seedAuthorProfiles`.
@@ -306,6 +348,12 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 'bio' => $autor->bio ?: ($ficha['bio'] ?? null),
                 'website' => $autor->website ?: ($ficha['website'] ?? null),
                 'socials' => $autor->socials ?: ($ficha['socials'] ?: null),
+                // La clase la manda el catálogo —es estructura, no redacción— y el contacto
+                // público solo rellena lo vacío. En un diario local se le escribe a la
+                // periodista a su correo del periódico, así que en la demo coincide con el de
+                // acceso; son dos columnas distintas aunque coincidan, y solo una sale a la calle.
+                'kind' => SnkKilkanaAuthorKindEnum::Staff,
+                'public_email' => $autor->public_email ?: ($ficha['email'] ?? null),
             ], fn ($v) => $v !== null))->save();
         }
     }
@@ -367,16 +415,36 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      *
      * Es el caso que el modelo parecía no admitir. Una firma ES una cuenta (`user_id` es
      * obligatorio y único), y «Redacción» no es una persona — pero tampoco hace falta cambiar el
-     * esquema: se le da una CUENTA DE SERVICIO, sin rol y por tanto sin acceso operativo, y la
-     * firma cuelga de ella con `alias`. Un breve de agencia deja de necesitar que alguien se lo
-     * atribuya.
+     * esquema **hasta que dejó de obligar**: una firma con `kind` colectivo o de agencia se
+     * siembra ahora SIN CUENTA, que es lo que es —publica y no entra—, y el listado de firmas
+     * enseña «No seat» de verdad en vez de una cuenta de servicio que nadie usa.
      *
-     * Sin rol no es lo mismo que sin cuenta: la fila existe, sale en el listado de Usuarios y se
-     * ve que no puede entrar. Es lo que hay que poder enseñar.
+     * Quien sí entra —un columnista con rol— conserva la suya: sin rol no es lo mismo que sin
+     * cuenta, y las dos cosas hay que poder enseñarlas.
      */
     private function externalByline(string $nombre): SnkKilkanaAuthorModel
     {
         $ficha = self::FIRMAS_EXTERNAS[$nombre];
+
+        // Sin cuenta: la firma se identifica por su alias, que es lo que sale publicado.
+        if (! isset($ficha['email'])) {
+            $firma = SnkKilkanaAuthorModel::firstOrCreate(
+                ['slug' => Str::slug($ficha['alias'])],
+                array_filter([
+                    'alias' => $ficha['alias'],
+                    'job_title' => $ficha['job_title'],
+                    'bio' => $ficha['bio'],
+                    'public_email' => $ficha['public_email'] ?? null,
+                ], fn ($v) => $v !== null)
+            );
+
+            // **Y se desvincula si venía de cuando el esquema exigía cuenta.** Una base sembrada
+            // antes tiene esta firma colgando de una cuenta de servicio; el catálogo dice que no
+            // tiene ninguna, y eso es lo que hay que poder enseñar.
+            $firma->fill(['kind' => $ficha['kind'], 'user_id' => null])->save();
+
+            return $firma;
+        }
 
         $cuenta = CoreUserModel::firstOrCreate(
             ['email' => $ficha['email']],
@@ -396,14 +464,195 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             $cuenta->assignRole($ficha['role']);
         }
 
-        return SnkKilkanaAuthorModel::firstOrCreate(
+        $firma = SnkKilkanaAuthorModel::firstOrCreate(
             ['user_id' => $cuenta->id],
             array_filter([
                 'alias' => $ficha['alias'] ?? null,
                 'job_title' => $ficha['job_title'],
                 'bio' => $ficha['bio'],
+                'public_email' => $ficha['public_email'] ?? null,
             ], fn ($v) => $v !== null)
         );
+
+        $firma->fill(['kind' => $ficha['kind'] ?? SnkKilkanaAuthorKindEnum::Contributor])->save();
+
+        return $firma;
+    }
+
+    /**
+     * La cuenta de la mesa de edición: quien vuelca lo que firma alguien sin asiento.
+     *
+     * Se busca por rol y no por correo porque el reparto es lo que define el oficio; si un día
+     * no hubiera mesa, `created_by` vuelve a ser nulo, que es lo que era antes de esto.
+     */
+    private function deskUserId(): ?int
+    {
+        return $this->mesa ??= CoreUserModel::query()
+            ->whereHas('roles', fn ($rol) => $rol->where('name', 'editor'))
+            ->value('id');
+    }
+
+    private ?int $mesa = null;
+
+    /**
+     * El retrato de cada firma de persona, servido desde el disco del periódico.
+     *
+     * Una página de autor sin foto es uno de los cuatro requisitos que la pantalla de firmas
+     * existe para contar, y sin ninguna puesta esa pantalla enseña su lista de trabajo entera y
+     * nunca el otro lado. **No las tienen todas a propósito**: una agencia y un colectivo no
+     * tienen cara, así que el contador se queda en tres y sigue enseñando las dos cosas.
+     *
+     * Las fotos son de Unsplash, la misma licencia que las sesenta del archivo, y el crédito va
+     * en la fila del medio porque es lo que la mediateca pide de cualquier foto publicable.
+     *
+     * Se emparejan por el **correo de la cuenta** y no por el slug de la firma: el slug se
+     * mueve —renombrar una firma deja el viejo redirigiendo— y el correo es la identidad.
+     *
+     * @var array<string, array{0: string, 1: string}>
+     */
+    private const RETRATOS = [
+        'marta@eldiario.example' => ['marta-beneyto.jpg', 'Janko Ferlič'],
+        'ramon@eldiario.example' => ['ramon-clavel.jpg', 'Abdullah Ali'],
+        'ivan@eldiario.example' => ['ivan-sagredo.jpg', 'Aditya Sethia'],
+        'nuria@eldiario.example' => ['nuria-espi.jpg', 'Circling Sea'],
+        'lucia@eldiario.example' => ['lucia-ferrandiz.jpg', 'Imani Bahati'],
+        'oscar@eldiario.example' => ['oscar-tomas.jpg', 'Aditya Sethia'],
+        'josep.miralles@colaboradores.eldiario.example' => ['josep-miralles.jpg', 'Glen Hodson'],
+        'elena.vara@estudiovara.example' => ['elena-vara.jpg', 'Vladislav Nikonov'],
+    ];
+
+    private function seedPortraits(): void
+    {
+        $fototeca = new SnkKilkanaDemoMediaLibrary(__DIR__.'/data/portraits');
+
+        foreach (self::RETRATOS as $email => [$fichero, $autor]) {
+            $firma = SnkKilkanaAuthorModel::query()
+                ->whereHas('user', fn ($cuenta) => $cuenta->where('email', $email))
+                ->first();
+
+            if ($firma === null || $firma->avatar_media_id !== null) {
+                continue;
+            }
+
+            $foto = $fototeca->forName($fichero);
+            if ($foto === null) {
+                continue;
+            }
+
+            // El alt y el crédito los pone quien sabe de quién es la cara: la fototeca solo
+            // sabe de ficheros, y una foto de la mediateca sin alt es trabajo pendiente.
+            $foto->fill([
+                'alt' => $foto->alt ?: "Retrato de {$firma->name}",
+                'credit' => $foto->credit ?: $autor,
+            ])->save();
+
+            $firma->update(['avatar_media_id' => $foto->id]);
+        }
+    }
+
+    /**
+     * El rastro de haber trabajado: revisiones, URLs retiradas y papelera.
+     *
+     * Sin esto hay tres funcionalidades **construidas** que el juego de datos no ejercita: el
+     * historial del editor sale vacío, las tres fichas que enseñan «Route history» dicen siempre
+     * «Never renamed», y la papelera de la mediateca no tiene nada que restaurar. Un periódico
+     * con quinientas piezas y cero ediciones no existe.
+     *
+     * **Y se hace por el camino de la aplicación, no escribiendo filas.** Editar una pieza con
+     * el servicio es lo que crea su revisión y mueve su URL —cinco escrituras en una
+     * transacción—, así que sembrarlo a mano sería mantener una segunda versión de esa regla
+     * que se separa de la primera en cuanto alguien la toque. Es lo mismo que ya hace la
+     * fototeca, que entra por donde entra una subida real.
+     */
+    private function seedEditHistory(): void
+    {
+        $posts = app(SnkKilkanaPostService::class);
+
+        // Una pieza concreta y estable —la más antigua de la sección más poblada— para que
+        // resembrar no reparta el historial por otra distinta cada vez.
+        $pieza = SnkKilkanaPostModel::query()
+            ->published()
+            ->orderBy('publish_at')
+            ->orderBy('id')
+            ->first();
+
+        $sinHistorial = $pieza !== null
+            && SnkKilkanaPostRevisionModel::query()->where('post_id', $pieza->id)->doesntExist();
+
+        if ($sinHistorial) {
+            // Dos ediciones: la primera cambia el titular —y con él la URL, que deja su 301— y
+            // la segunda solo la entradilla. Dos revisiones y una ruta retirada.
+            $posts->update($pieza, [
+                'title' => $pieza->title.' (actualizado)',
+                'slug' => $pieza->slug.'-actualizado',
+            ], (int) $pieza->created_by, false);
+
+            $posts->update($pieza->fresh(), [
+                'excerpt' => trim((string) $pieza->excerpt).' Ampliada con la reacción del pleno.',
+            ], (int) $pieza->created_by, false);
+        }
+
+        // Una firma que cambió de ruta: el trait guarda la vieja y la deja redirigiendo, que es
+        // lo que la ficha enseña como «301». La sección equivalente la declara el catálogo —su
+        // slug es su identidad al sembrar, así que renombrarla aquí rompía la siembra siguiente—.
+        $firma = SnkKilkanaAuthorModel::query()->where('slug', 'lucia-ferrandiz')->first();
+        if ($firma !== null && $firma->retiredSlugs()->count() === 0) {
+            $firma->update(['slug' => 'lucia-ferrandiz-marco']);
+        }
+
+        // Y dos fotos en la papelera: `kilkana_media` es la única tabla del inquilino con
+        // `deleted_at`, así que es lo único que una papelera puede tener dentro.
+        //
+        // Solo si está vacía: sin la guarda, cada siembra mandaba dos más y la papelera crecía
+        // sola —una demo resembrada tres veces enseñaba seis—.
+        if (SnkKilkanaMediaModel::onlyTrashed()->doesntExist()) {
+            SnkKilkanaMediaModel::query()
+                ->unused()
+                ->orderByDesc('id')
+                ->take(2)
+                ->get()
+                ->each
+                ->delete();
+        }
+    }
+
+    /**
+     * Retira las cuentas de servicio que este seeder creaba y ya no crea.
+     *
+     * Mientras una firma exigió cuenta, «Redacción» y «Agencia EFE» tenían una **solo para
+     * satisfacer la clave foránea**. Ya no: cuelgan de nadie, y en una base sembrada antes esas
+     * dos cuentas se quedaron sin rol y sin firma — dos cuentas de nadie en el listado de
+     * usuarios, que además pueden autenticarse aunque la puerta del panel las rechace.
+     *
+     * **Se borra solo lo que sigue siendo lo que era**: sin rol, sin firma y con el correo que
+     * este seeder les puso. Si alguien le dio un rol o le colgó una firma, es una cuenta en uso y
+     * no se toca — un seeder que borra cuentas de gente es peor que dos filas de más.
+     *
+     * Las piezas que quedan apuntando a ellas con `created_by` pasan a no tener creador, por la
+     * clave foránea. Es lo correcto: **a un teletipo no lo tecleó nadie en el CMS**, y el acotado
+     * por rol se comporta igual que hoy —una cuenta que nadie usa ya no era de nadie—.
+     */
+    private function retireServiceAccounts(): void
+    {
+        $correos = collect(self::FIRMAS_EXTERNAS)
+            ->reject(fn (array $ficha) => isset($ficha['email']))
+            ->keys()
+            ->map(fn (string $nombre) => Str::slug($nombre).'@eldiario.example')
+            ->push('redaccion@eldiario.example', 'efe@eldiario.example')
+            ->unique();
+
+        foreach ($correos as $email) {
+            $cuenta = CoreUserModel::query()->where('email', $email)->first();
+
+            if ($cuenta === null || $cuenta->roles()->exists()) {
+                continue;
+            }
+            if (SnkKilkanaAuthorModel::query()->where('user_id', $cuenta->id)->exists()) {
+                continue;
+            }
+
+            $cuenta->delete();
+        }
     }
 
     /** Contraseña de las cuentas de demo; sin config utilizable, una aleatoria (no login). */
@@ -570,18 +819,14 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     /** Identidad/tema de arranque; firstOrCreate: nunca pisa lo que el tenant ya editó. */
     private function seedSettings(): void
     {
-        // El snapshot solo se usa con datos demo; sin ellos basta con vestir el primer tema
-        // que envía el producto.
-        $settings = config('kilkana.kilkana.seed_demo', false)
-            ? json_decode((string) file_get_contents(__DIR__.'/data/settings.json'), true)
-            : [];
-        $tenant = $settings['tenant'] ?? [];
+        $perfil = $this->profile();
+        $tenant = $perfil['tenant'] ?? [];
 
         // El fichero guarda el SLUG del tema, nunca su id: un id de una base no significa nada
-        // en otra, y este snapshot tiene que poder sembrarse en cualquiera.
+        // en otra, y un perfil tiene que poder sembrarse en cualquiera.
         $catalogo = SnkKilkanaThemeModel::query()->published();
-        $tema = (isset($settings['theme'])
-            ? (clone $catalogo)->where('slug', $settings['theme'])->first()
+        $tema = (isset($perfil['theme'])
+            ? (clone $catalogo)->where('slug', $perfil['theme'])->first()
             : null)
             ?? (clone $catalogo)->orderByDesc('featured')->orderBy('position')->first();
 
@@ -590,8 +835,17 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             'tenant_tagline' => $tenant['tagline'] ?? null,
             'tenant_city' => $tenant['city'] ?? null,
             'tenant_url' => $this->tenantUrl(),
-            'onboarded' => (bool) ($settings['onboarded'] ?? false),
+            'onboarded' => (bool) ($perfil['onboarded'] ?? false),
         ]);
+
+        // La cabecera escrita manda —el inquilino puede renombrarse desde el panel—, pero que no
+        // coincida con la del perfil también es la firma de estar sembrando el periódico
+        // equivocado, y eso no puede pasar callado.
+        if (isset($tenant['name']) && $fila->tenant_name !== null && $fila->tenant_name !== $tenant['name']) {
+            $this->command?->getOutput()->writeln(
+                "<comment>demo: la base se llama «{$fila->tenant_name}» y el perfil dice «{$tenant['name']}».</comment>"
+            );
+        }
 
         // Vestir COPIA el spec, no lo apunta: apuntar a la fila del catálogo rompería el
         // congelado, porque la siguiente sincronización le cambiaría el tema al periódico. Solo
@@ -602,34 +856,98 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     }
 
     /**
-     * La URL pública del periódico, deducida de la base sobre la que se está sembrando.
+     * El periódico que se siembra en ESTA base, declarado en `data/profiles/`.
      *
-     * **No puede venir del snapshot.** Un host escrito en `settings.json` es el de UN inquilino,
-     * y el mismo fichero siembra a los cuatro: el segundo se despertaría con la dirección del
-     * primero, que es lo que firma los enlaces del boletín. Aquí llegó a haber
-     * `https://demo.kilkana.test` dentro de datos de producto.
+     * **El perfil no lo elige quien lanza el comando, lo elige la base.** Cada fichero declara
+     * de qué clientes es, y aquí se busca el que reclame el de esta conexión. Con una variable
+     * de entorno, `core:seed --client=otro` con la variable puesta vuelca la cabecera y el
+     * archivo de un periódico dentro de la base de otro: pasó, y fueron 523 piezas de El Diario
+     * dentro de dos bases ajenas.
+     *
+     * Sin perfil no hay identidad ni datos de demo, que es lo que le toca a un cliente real: se
+     * nombra a sí mismo al darse de alta, y nadie le siembra un archivo encima.
+     *
+     * @return array<string, mixed>
+     */
+    /**
+     * Si esta base lleva datos de demo, que son DOS condiciones y hacen falta las dos.
+     *
+     * El entorno dice si esta instalación los admite; el perfil, si este periódico en concreto
+     * los tiene. Cuelgan de aquí las cuentas de demo igual que el archivo: una cuenta con
+     * contraseña conocida dentro de la base de un cliente es un acceso ajeno a su panel.
+     */
+    private function demoData(): bool
+    {
+        return (bool) config('kilkana.kilkana.seed_demo', false) && ($this->profile()['demo'] ?? false);
+    }
+
+    private function profile(): array
+    {
+        if ($this->perfil !== null) {
+            return $this->perfil;
+        }
+
+        $cliente = $this->clientSlug();
+        $encontrados = [];
+
+        foreach (glob(__DIR__.'/data/profiles/*.json') ?: [] as $ruta) {
+            $perfil = json_decode((string) file_get_contents($ruta), true, flags: JSON_THROW_ON_ERROR);
+
+            if ($cliente !== null && in_array($cliente, $perfil['clients'] ?? [], true)) {
+                $encontrados[basename($ruta, '.json')] = $perfil;
+            }
+        }
+
+        // Dos perfiles que reclaman el mismo cliente es un catálogo roto, y quedarse con el
+        // primero por orden de fichero convierte el fallo en «el periódico amaneció con otro
+        // nombre», que es de las cosas que nadie mira hasta que un cliente lo dice.
+        if (count($encontrados) > 1) {
+            throw new \RuntimeException(
+                "Dos perfiles reclaman el cliente {$cliente}: ".implode(', ', array_keys($encontrados))
+            );
+        }
+
+        return $this->perfil = $encontrados === [] ? [] : (array) reset($encontrados);
+    }
+
+    /**
+     * El cliente sobre cuya base se está sembrando, deducido del nombre de la base.
      *
      * La base se llama `{cliente}_{paquete}` y el subdominio del cliente es su slug con guiones,
-     * así que el host sale del mismo par (cliente, dominio base) con el que
-     * `subdomainFromHost` resuelve al inquilino en cada petición: una sola regla, no dos que se
-     * separen. Si no se puede deducir, null — y `subscriptionLanding()` ya sabe qué hacer con
-     * un periódico sin URL puesta.
+     * así que sale del mismo par con el que `subdomainFromHost` resuelve al inquilino en cada
+     * petición: una sola regla, no dos que se separen.
      */
-    private function tenantUrl(): ?string
+    private function clientSlug(): ?string
     {
-        $base = (string) config('core.tenant_base_domain', '');
         $bd = (string) config('database.connections.tenant.database', '');
         $sufijo = '_kilkana';
 
-        if ($base === '' || ! str_ends_with($bd, $sufijo)) {
+        if (! str_ends_with($bd, $sufijo)) {
             return null;
         }
 
         $cliente = str_replace('_', '-', substr($bd, 0, -strlen($sufijo)));
 
-        return CorePackageSelectorSupport::isValidClientSubdomain($cliente)
-            ? "https://{$cliente}.{$base}"
-            : null;
+        return CorePackageSelectorSupport::isValidClientSubdomain($cliente) ? $cliente : null;
+    }
+
+    /**
+     * La URL pública del periódico, deducida de la base sobre la que se está sembrando.
+     *
+     * **No puede venir del perfil.** Un host escrito en un fichero de datos es el de UN
+     * inquilino, y el mismo fichero puede sembrar a varios: el segundo se despertaría con la
+     * dirección del primero, que es lo que firma los enlaces del boletín. Aquí llegó a haber
+     * `https://demo.kilkana.test` dentro de datos de producto.
+     *
+     * Si no se puede deducir, null — y `subscriptionLanding()` ya sabe qué hacer con un
+     * periódico sin URL puesta.
+     */
+    private function tenantUrl(): ?string
+    {
+        $base = (string) config('core.tenant_base_domain', '');
+        $cliente = $this->clientSlug();
+
+        return $base !== '' && $cliente !== null ? "https://{$cliente}.{$base}" : null;
     }
 
     /**
@@ -643,9 +961,27 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     private function seedPermissions(): void
     {
         app(SnkKilkanaRoleCatalogService::class)->sync();
+
+        // Y se suelta la caché persistente del reparto, la misma que borra
+        // `kilkana:sync-permissions`: la de consola es `array` y muere con el proceso, así que
+        // sin esto los FPM vivos siguen repartiendo el reparto anterior hasta que caduque —con
+        // el panel dejando fuera a quien acaba de recibir un permiso—.
+        // La clave se compone con el nombre de la base, y `permissionCacheKey` rechaza el que no
+        // sea un identificador de inquilino —`:memory:` en pruebas, un nombre con guion—. Se
+        // atrapa en vez de repetir aquí su patrón: copiado, el día que Core lo endurezca este
+        // seguiría con el viejo y dejaría pasar justo lo que Core ya no acepta.
+        $base = (string) config('database.connections.tenant.database', '');
+        if (str_ends_with($base, '_kilkana')) {
+            try {
+                Cache::forget(CorePackageSelectorSupport::permissionCacheKey($base));
+            } catch (\RuntimeException) {
+                // Sin nombre válido no hay inquilino, y sin inquilino no hay caché suya que soltar.
+            }
+        }
+
         $reader = Role::findByName('reader', 'sanctum');
 
-        if (config('kilkana.kilkana.seed_demo', false)) {
+        if ($this->demoData()) {
             $readerPassword = config('kilkana.kilkana.demo_reader_password');
             if ((! is_string($readerPassword) || $readerPassword === '') && app()->environment(['local', 'testing'])) {
                 $readerPassword = 'password';
@@ -675,7 +1011,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         // verdad lo crea el provisioning con las credenciales que se eligen en el alta; aquí lo
         // que se cubre es el agujero de recrear la base a mano: `--fresh` vacía también `users`,
         // así que el juego demo volvía entero pero sin ninguna cuenta con la que entrar.
-        if ($admin === null && config('kilkana.kilkana.seed_demo', false) && app()->environment(['local', 'testing'])) {
+        if ($admin === null && $this->demoData() && app()->environment(['local', 'testing'])) {
             $admin = CoreUserModel::create([
                 'name' => 'Admin',
                 'email' => $adminEmail,
@@ -701,6 +1037,17 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         SnkKilkanaAuthorModel::firstOrCreate(['user_id' => $admin->id]);
     }
 
+    /**
+     * El árbol de secciones, y **la estructura se sincroniza**.
+     *
+     * `firstOrCreate` a secas deja una base ya sembrada con lo que se creó el primer día: cuando
+     * el catálogo cambia el estado de una sección, la base sigue con el de antes hasta que
+     * alguien lo cambia a mano. Un juego de datos que solo estrena un periódico nuevo no es un
+     * juego de datos: es una foto del pasado.
+     *
+     * Lo que se sincroniza es lo que el catálogo declara —el estado, la madre y el sitio en el
+     * menú—; lo demás no se toca. Reseedear repara la estructura y no pisa lo escrito encima.
+     */
     private function seedCategories(): void
     {
         $ids = [];
@@ -712,13 +1059,29 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             $branch = $parent ?? '';
             $position[$branch] = ($position[$branch] ?? -1) + 1;
 
-            $ids[$slug] = SnkKilkanaCategoryModel::firstOrCreate(['slug' => $slug], [
+            $categoria = SnkKilkanaCategoryModel::firstOrCreate(['slug' => $slug], [
                 'name' => $attrs['name'],
                 'description' => $attrs['description'] ?? null,
+            ]);
+
+            // Va en orden de catálogo, así que la madre existe y ya tiene su estado cuando le
+            // toca a la hija: el modelo rechaza una sección más visible que la suya.
+            $categoria->fill([
                 'parent_id' => $parent ? ($ids[$parent] ?? null) : null,
                 'position' => $position[$branch],
                 'status' => $attrs['status'] ?? SnkKilkanaCategoryStatusEnum::Live,
-            ])->id;
+            ])->save();
+
+            foreach ($attrs['retired'] ?? [] as $vieja) {
+                // La URL que dejó atrás sigue redirigiendo: es lo que la ficha enseña como 301,
+                // y sin una fila así esa mitad de la pantalla no se puede ni mirar.
+                SnkKilkanaCategorySlugModel::firstOrCreate([
+                    'category_id' => $categoria->id,
+                    'path' => $vieja,
+                ]);
+            }
+
+            $ids[$slug] = $categoria->id;
         }
     }
 
@@ -737,7 +1100,17 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         $fototeca->seedAll();
 
         foreach ($posts as $post) {
-            $category = SnkKilkanaCategoryModel::query()->where('slug', $post['cat'])->firstOrFail();
+            // Por su ruta actual **o por una que dejó atrás**: el snapshot es un archivo viejo y
+            // una sección puede haber cambiado de URL desde que se escribió. Es la misma
+            // resolución que hace la web pública con un enlace antiguo, y sin ella una sección
+            // renombrada dejaba la siembra a medias con un `ModelNotFound`.
+            $category = SnkKilkanaCategoryModel::query()
+                ->where('slug', $post['cat'])
+                ->orWhereHas('retiredSlugs', fn ($vieja) => $vieja->where('path', $post['cat']))
+                // Ordenado aunque hoy sea único por construcción: si el muro que impide tomar
+                // un slug retirado cambiara alguna vez, esto elegiría una cualquiera sin avisar.
+                ->orderBy('id')
+                ->firstOrFail();
             $author = $this->authorFor(trim($post['author']));
             $media = ! empty($post['image']) ? $fototeca->forUrl($post['image']) : null;
             $publishAt = $this->publishAt($post);
@@ -747,32 +1120,62 @@ class SnkKilkanaDatabaseSeeder extends Seeder
 
             // La URL es fecha + slug. El snapshot contiene dos slugs repetidos en días
             // distintos y ambos son piezas legítimas, no duplicados que haya que colapsar.
-            $row = SnkKilkanaPostModel::updateOrCreate([
-                'url_date' => $urlDate,
-                'slug' => $post['slug'],
-            ], [
-                'category_id' => $category->id,
-                'author_id' => $author->id,
-                // Quien la escribió, que NO es lo mismo que quien la firma: el acotado por
-                // rol mira esto, no la firma. En la demo coinciden.
-                'created_by' => $author->user_id,
-                'cover_media_id' => $media?->id,
+            // La pieza puede haber cambiado de URL desde que se escribió el snapshot: se busca
+            // primero por la ruta que dejó atrás, igual que con las secciones. Sin esto, una
+            // pieza editada por `seedEditHistory` se intentaba recrear con su slug viejo —que
+            // ya está retirado— y la siembra siguiente reventaba a mitad.
+            $retirada = $urlDate === null ? null : SnkKilkanaPostSlugModel::query()
+                ->where('path', str_replace('-', '/', $urlDate).'/'.$post['slug'])
+                ->first();
+            $anterior = $retirada === null
+                ? null
+                : SnkKilkanaPostModel::query()->whereKey($retirada->post_id)->first();
+
+            // **Lo editorial no se reescribe sobre una pieza que ya existe.** El snapshot es la
+            // versión con la que nació el archivo; lo que alguien —o el propio seeder, al sembrar
+            // el historial de ediciones— haya escrito encima es trabajo posterior, y volver a
+            // volcarlo lo revertía: la pieza editada se quedaba con la URL nueva, su 301 y su
+            // revisión, y con el titular de antes. Un 301 que apunta a un titular que no cambió
+            // es exactamente lo contrario de lo que ese fixture viene a enseñar.
+            $editorial = [
                 'title' => $post['title'],
                 'excerpt' => $post['excerpt'],
-                'publish_at' => $publishAt,
-                'status' => $post['status'],
-                'content_tier' => $post['content_tier'],
                 // El snapshot no trae cuerpo y sin cuerpo media demo no significa nada: el
                 // artículo público sale en blanco y `content_tier` no corta por ningún sitio
                 // porque no hay muro que colocar. Se compone aquí, determinista desde el slug.
                 'body_blocks' => SnkKilkanaDemoBodyFactory::blocks($post, $media?->id),
-                'featured' => $post['featured'] ?? false,
                 'seo_title' => $post['seo_title'] ?? null,
                 'seo_description' => $post['seo_description'] ?? null,
                 'og_title' => $post['og_title'] ?? null,
                 'og_description' => $post['og_description'] ?? null,
+            ];
+
+            // Y esto sí se sincroniza: es lo que ata la pieza al resto del juego de datos —su
+            // sección, su firma, su estado, su fecha— y lo que tiene que seguir cuadrando cuando
+            // el catálogo cambia.
+            $estructura = [
+                'category_id' => $category->id,
+                'author_id' => $author->id,
+                // Quien la escribió, que NO es lo mismo que quien la firma: el acotado por rol
+                // mira esto, no la firma. Una firma sin cuenta —una agencia, la colectiva— no
+                // puede haber tecleado nada, así que su pieza la vuelca **la mesa de edición**,
+                // que es lo que hace una redacción con un teletipo. Sin eso quedaban 149 piezas
+                // que no son de nadie: no las abre ni quien las firma ni quien las volcó.
+                'created_by' => $author->user_id ?? $this->deskUserId(),
+                'cover_media_id' => $media?->id,
+                'publish_at' => $publishAt,
+                'status' => $post['status'],
+                'content_tier' => $post['content_tier'],
+                'featured' => $post['featured'] ?? false,
                 'noindex' => $post['noindex'] ?? false,
-            ]);
+            ];
+
+            $row = SnkKilkanaPostModel::firstOrCreate([
+                'url_date' => $anterior?->getRawOriginal('url_date') ?? $urlDate,
+                'slug' => $anterior?->slug ?? $post['slug'],
+            ], $editorial + $estructura);
+
+            $row->fill($estructura)->save();
 
             // `syncWithoutDetaching` y no `sync`: re-sembrar repone lo que trae el snapshot y
             // **no quita** lo que alguien etiquetó a mano encima. Un seeder que borra trabajo

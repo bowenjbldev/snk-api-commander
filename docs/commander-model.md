@@ -234,8 +234,8 @@ Ejemplo: una cuenta administra tres diarios:
 ```text
 account Grupo Kilkana
 ├── client diario-norte  ─ instance Kilkana ─ diario_norte_kilkana  ─ plan Basic
-├── client diario-centro ─ instance Kilkana ─ diario_centro_kilkana ─ plan Pro
-└── client diario-sur    ─ instance Kilkana ─ diario_sur_kilkana    ─ plan Business
+├── client diario-este   ─ instance Kilkana ─ diario_este_kilkana   ─ plan Pro
+└── client diario-oeste  ─ instance Kilkana ─ diario_oeste_kilkana  ─ plan Business
 
 subscription Kilkana Grupo 2026
 ├── pricing_mode = negotiated
