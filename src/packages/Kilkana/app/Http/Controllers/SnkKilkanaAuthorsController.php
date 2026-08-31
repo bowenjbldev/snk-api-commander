@@ -6,12 +6,23 @@ use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
+use Packages\Core\Models\CoreUserModel;
+use Packages\Kilkana\Enums\SnkKilkanaAuthorKindEnum;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 
 #[Group('Authors')]
 class SnkKilkanaAuthorsController extends CoreBaseApiController
 {
+    /** `rule()` es una llamada, y una propiedad no se puede inicializar con eso: va aqui. */
+    public function __construct()
+    {
+        foreach (['validationRulesStore', 'validationRulesUpdate'] as $reglas) {
+            // Que clase de firma es. Nace `contributor`, que es el alta mas comun.
+            $this->{$reglas}['kind'] = 'sometimes|'.SnkKilkanaAuthorKindEnum::rule();
+        }
+    }
+
     protected string $modelClass = SnkKilkanaAuthorModel::class;
 
     protected string $indexPermission = 'index authors';
@@ -27,6 +38,38 @@ class SnkKilkanaAuthorsController extends CoreBaseApiController
     /** La foto de la firma vive en la biblioteca: `?with=avatarMedia` la resuelve a URL para que
      *  el consumidor no reciba solo un id opaco. */
     protected array $allowedWith = ['avatarMedia'];
+
+    /**
+     * Cada firma sale con cuanto ha publicado, cuando fue la ultima y con que asiento cruza.
+     *
+     * Tres subconsultas por fila y once filas, no un recuento por peticion: el panel enseña
+     * «Marta Beneyto · 34 · 26 Aug» y sin esto la unica forma de saberlo era cruzar el archivo
+     * entero en el cliente. `last_published_at` mira solo lo publicado —un borrador de hoy no
+     * es actividad de la firma— y las URLs retiradas viajan porque la ficha enseña su 301.
+     *
+     * **`seat` es una subconsulta y no un accesor del modelo, y esa diferencia es lo que lo
+     * mantiene dentro del panel.** Es el correo con el que se ENTRA, asi que anexado al modelo
+     * viajaba en cada firma que serializa cualquiera —y la portada publica y la pagina de cada
+     * articulo anidan la firma entera—: el correo de acceso de la redaccion salia a la calle
+     * sin sesion. Aqui solo existe para quien lista firmas en el panel, y ningun serializador
+     * futuro tiene que acordarse de esconderlo.
+     *
+     * Va en `newQuery()` y no en el modelo porque **solo lo quiere quien lista**: pedir una
+     * firma para editarla no necesita contar sus piezas.
+     */
+    protected function newQuery()
+    {
+        return parent::newQuery()
+            ->addSelect(['seat' => CoreUserModel::query()
+                ->select('email')
+                ->whereColumn('users.id', 'kilkana_authors.user_id')
+                ->limit(1),
+            ])
+            ->withCount('posts')
+            ->withMax(['posts as last_published_at' => fn ($query) => $query->published()], 'publish_at')
+            ->with(['retiredSlugs' => fn ($query) => $query->orderByDesc('created_at')])
+            ->orderBy('slug');
+    }
 
     /**
      * Borrar una firma dice QUÉ lo impide, en vez de reventar con el SQL a la vista.
@@ -59,8 +102,12 @@ class SnkKilkanaAuthorsController extends CoreBaseApiController
     }
 
     protected array $validationRulesStore = [
+        // El contacto de la pagina de autor, que **no es el correo de la cuenta**: aquel es
+        // con el que se entra al panel y este es con el que se escribe a quien firma.
+        'public_email' => 'nullable|email|max:255',
         // El nombre NO se manda: se publica el de la cuenta. `alias` solo cuando firma con
-        // seudónimo, y entonces es lo que se ve.
+        // seudónimo, y entonces es lo que se ve — y **es obligatorio si no hay cuenta**, que
+        // es lo que impone el modelo: sin ninguno de los dos no hay nombre que publicar.
         'alias' => 'nullable|string|max:255',
         // Cargo publicable. No es `users.company`: aquella es la organización del CRM y no
         // sale al público; esta es la que firma bajo el nombre.
@@ -78,14 +125,14 @@ class SnkKilkanaAuthorsController extends CoreBaseApiController
         'website' => 'nullable|url:http,https|max:2048',
         'socials' => 'nullable|array',
         'socials.*' => 'url:http,https|max:2048',
-        // IDENTIDAD de la firma: la cuenta. Obligatoria y 1:1 — el correo del periodista no
-        // se duplica aquí, se lee de `users`. Antes esto era opcional y la identidad de
-        // facto era el nombre, que `firstOrCreate` convertía en una firma nueva por cada
-        // variante escrita.
-        'user_id' => 'required|integer|exists:users,id|unique:kilkana_authors,user_id',
+        // La cuenta que firma, **cuando la hay**: una agencia publica sin entrar al panel, y
+        // exigirla obligaba a inventar una cuenta de servicio por agencia solo para satisfacer
+        // la clave foránea. Sigue siendo 1:1 con el resto de firmas cuando se manda.
+        'user_id' => 'nullable|integer|exists:users,id|unique:kilkana_authors,user_id',
     ];
 
     protected array $validationRulesUpdate = [
+        'public_email' => 'nullable|email|max:255',
         'alias' => 'nullable|string|max:255',
         'job_title' => 'nullable|string|max:255',
         // Aquí NO puede ser nulo: la columna es NOT NULL y el derivador solo corre al crear,
@@ -101,7 +148,8 @@ class SnkKilkanaAuthorsController extends CoreBaseApiController
         'socials' => 'nullable|array',
         'socials.*' => 'url:http,https|max:2048',
         // Cambiar de cuenta es cambiar de persona: se admite (una firma mal enlazada hay
-        // que poder arreglarla), pero sigue siendo 1:1 contra el resto de firmas.
-        'user_id' => 'sometimes|required|integer|exists:users,id|unique:kilkana_authors,user_id,{id}',
+        // que poder arreglarla), y desvincularla también —una firma puede dejar de tener
+        // asiento sin dejar de publicar—. Sigue siendo 1:1 contra el resto de firmas.
+        'user_id' => 'sometimes|nullable|integer|exists:users,id|unique:kilkana_authors,user_id,{id}',
     ];
 }

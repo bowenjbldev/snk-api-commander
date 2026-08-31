@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Packages\Core\Models\CoreUserModel;
+use Packages\Kilkana\Enums\SnkKilkanaAuthorKindEnum;
 use Packages\Kilkana\Models\Concerns\SnkKilkanaRetiredSlugsSupport;
 
 // Firma editorial. La IDENTIDAD es la cuenta (`user_id` → `users.email`); aquí solo vive
@@ -20,10 +21,17 @@ class SnkKilkanaAuthorModel extends Model
 
     protected $guarded = [];
 
-    protected $casts = ['socials' => 'array', 'noindex' => 'boolean'];
+    protected $casts = [
+        'socials' => 'array',
+        'noindex' => 'boolean',
+        'kind' => SnkKilkanaAuthorKindEnum::class,
+        // No es una columna: la calcula el `withMax` del listado. Se declara igual para que
+        // salga en ISO como el resto de fechas de la API.
+        'last_published_at' => 'datetime',
+    ];
 
     /**
-     * La cuenta viaja SIEMPRE, porque el nombre que se publica sale de ella.
+     * La cuenta viaja SIEMPRE **si la hay**, porque el nombre que se publica sale de ella.
      *
      * Con columnas: `users` guarda el correo del periodista y esto se sirve anidado en cada
      * post de la salida pública. `$hidden` la esconde del JSON —quien lee la firma quiere
@@ -31,7 +39,17 @@ class SnkKilkanaAuthorModel extends Model
      */
     protected $with = ['user:id,name'];
 
-    protected $hidden = ['user'];
+    /**
+     * Ni la relación ni la clave que la nombra.
+     *
+     * `user` va cargada y escondida porque el accesor del nombre la necesita. Y `user_id` se
+     * esconde porque **decía quién tiene cuenta**: la portada pública anida la firma de cada
+     * pieza, así que cualquiera podía separar las firmas con asiento de las que no —que es
+     * justo la distinción que el panel reserva a quien administra cuentas— y de paso contar
+     * cuántas cuentas hay y en qué orden entraron. No se puede quitar del `select`: sin la
+     * clave no hay relación que cargar, y sin relación no hay nombre publicado.
+     */
+    protected $hidden = ['user', 'user_id'];
 
     protected $appends = ['name'];
 
@@ -46,6 +64,18 @@ class SnkKilkanaAuthorModel extends Model
         $alias = trim((string) ($this->attributes['alias'] ?? ''));
 
         return $alias !== '' ? $alias : (string) ($this->user?->name ?? '');
+    }
+
+    /**
+     * Las piezas firmadas.
+     *
+     * Existe para poder CONTARLAS sin traerlas: el panel enseña «Marta Beneyto · 34» y con una
+     * relacion declarada eso es un `withCount` en vez de once peticiones o el archivo entero en
+     * el cliente.
+     */
+    public function posts(): HasMany
+    {
+        return $this->hasMany(SnkKilkanaPostModel::class, 'author_id');
     }
 
     public function avatarMedia(): BelongsTo
@@ -77,6 +107,18 @@ class SnkKilkanaAuthorModel extends Model
 
     protected static function booted(): void
     {
+        static::saving(function (self $author) {
+            // **Sin cuenta hace falta alias.** El nombre publicado sale del alias o de la
+            // cuenta, asi que una firma sin ninguno de los dos se publica como una cadena
+            // vacia: una fila en la tabla del panel sin nombre y una pagina de autor titulada
+            // «". "». Es la regla que sostiene que la cuenta pueda faltar.
+            if ($author->user_id === null && trim((string) ($author->alias ?? '')) === '') {
+                throw ValidationException::withMessages([
+                    'alias' => 'A byline without an account needs an alias: it is the name that gets published.',
+                ]);
+            }
+        });
+
         static::creating(function (self $author) {
             if ($author->slug) {
                 return;
@@ -106,7 +148,9 @@ class SnkKilkanaAuthorModel extends Model
     private static function deriveSlug(self $author): string
     {
         $alias = trim((string) ($author->attributes['alias'] ?? ''));
-        $user = CoreUserModel::query()->whereKey($author->user_id)->first(['name', 'full_name']);
+        $user = $author->user_id === null
+            ? null
+            : CoreUserModel::query()->whereKey($author->user_id)->first(['name', 'full_name']);
 
         // Con seudónimo no hay segunda vuelta: el nombre de su cuenta no es el que firma.
         $candidatas = $alias !== ''
