@@ -413,15 +413,39 @@ día, y la tabla crece con el catálogo y no con el tráfico.
 | Columna | Tipo | Nulo | Qué es |
 |---|---|---|---|
 | `id` | bigint unsigned | no | Clave primaria. |
-| `name` | varchar(255) | no · **único** | Nombre visible, tal y como se escribió la primera vez. |
-| `slug` | varchar(255) | no · **único** | Forma para URL, y **lo que identifica a la etiqueta**. |
+| `name` | varchar(64) | no · **único** | Nombre visible, tal y como se escribió la primera vez. |
+| `slug` | varchar(64) | no · **único** | Forma para URL, y **lo que identifica a la etiqueta**. |
 | `created_at` · `updated_at` | timestamp | sí | Alta y última modificación. |
+
+Los dos anchos salen de `SnkKilkanaTagModel::NAME_MAX` y `SLUG_MAX`, que son los mismos que
+validan las cuatro reglas de la API: una columna que prometa más de lo que nadie puede escribir
+es una promesa que no se puede cumplir por ninguna puerta.
 
 **`kilkana_post_tag`** — `id`, `post_id`, `tag_id`, con único `(post_id, tag_id)`. Ambas
 claves foráneas en CASCADE: borrar un artículo o una etiqueta limpia el pivote.
 
 Las etiquetas son de **tema** («elecciones», «sequía»), transversales a las secciones. Se
 crean sobre la marcha al escribir una que no existe.
+
+### Lo que el panel lee y escribe de una etiqueta
+
+De un vocabulario no se mira la lista de palabras: se mira su **forma**. Por eso `GET tags` sale
+con dos cifras por fila —`posts_count` y `last_used_at`— y no con las columnas de la tabla:
+
+| Lo que devuelve | Qué cuenta |
+|---|---|
+| `posts_count` | Todo lo que la lleva, **borradores incluidos**: es lo que hay que mover al fundir. |
+| `last_used_at` | La fecha de la última **publicada** que la lleva. Un borrador de hoy es una intención, no un tema vivo. |
+
+Y dos rutas que un `apiResource` no da:
+
+- **`POST tags/{id}/merge`** con `into` — vuelca la etiqueta en otra dentro de una transacción y
+  devuelve cuántas piezas se han movido. `syncWithoutDetaching`, porque una pieza que llevara las
+  dos no puede entrar dos veces en el pivote. Pide `delete tags`: al terminar hay una etiqueta
+  menos, y quien puede renombrar el vocabulario no es necesariamente quien puede recortarlo.
+- **`DELETE tags/{id}`** devuelve `detached` — a cuántas piezas ha desetiquetado. El pivote se va
+  por CASCADE sin preguntar, así que sin esa cifra «he borrado una etiqueta que no usaba nadie» y
+  «acabo de desetiquetar trescientos artículos» se ven igual desde fuera.
 
 ### El slug no es una URL: nadie sirve `/tag/…`, y es una decisión
 

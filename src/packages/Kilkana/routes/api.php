@@ -86,10 +86,18 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     // Taxonomías de medios: tags y colecciones comparten controlador; el segmento {taxonomy} decide el modelo.
     Route::get('media-{taxonomy}', [SnkKilkanaMediaTaxonomiesController::class, 'index'])->whereIn('taxonomy', ['tags', 'collections'])->middleware('can:index media');
     Route::post('media-{taxonomy}', [SnkKilkanaMediaTaxonomiesController::class, 'store'])->whereIn('taxonomy', ['tags', 'collections'])->middleware('can:update media');
-    Route::put('media-{taxonomy}/{id}', [SnkKilkanaMediaTaxonomiesController::class, 'update'])->whereIn('taxonomy', ['tags', 'collections'])->middleware('can:update media');
-    Route::post('media-{taxonomy}/{id}/merge', [SnkKilkanaMediaTaxonomiesController::class, 'merge'])->whereIn('taxonomy', ['tags', 'collections'])->middleware('can:update media');
-    Route::delete('media-{taxonomy}/{id}', [SnkKilkanaMediaTaxonomiesController::class, 'destroy'])->whereIn('taxonomy', ['tags', 'collections'])->middleware('can:update media');
-    Route::apiResource('tags', SnkKilkanaTagsController::class);
+    Route::put('media-{taxonomy}/{id}', [SnkKilkanaMediaTaxonomiesController::class, 'update'])->whereIn('taxonomy', ['tags', 'collections'])->whereNumber('id')->middleware('can:update media');
+    Route::post('media-{taxonomy}/{id}/merge', [SnkKilkanaMediaTaxonomiesController::class, 'merge'])->whereIn('taxonomy', ['tags', 'collections'])->whereNumber('id')->middleware('can:update media');
+    Route::delete('media-{taxonomy}/{id}', [SnkKilkanaMediaTaxonomiesController::class, 'destroy'])->whereIn('taxonomy', ['tags', 'collections'])->whereNumber('id')->middleware('can:update media');
+    // Antes del apiResource: `tags/{id}/merge` no choca con `show`, pero declararla despues
+    // deja la fusion escondida detras del recurso al leer las rutas de una taxonomia.
+    //
+    // Y las dos con `whereNumber`: sin el, `tags/1abc` llega al controlador y MySQL castea el
+    // id al comparar, asi que `DELETE tags/1abc` borra la etiqueta 1 —con sus piezas
+    // desetiquetadas— y `POST tags/1abc/merge` funde la 1. Es el mismo `where` que ya acotan
+    // las taxonomias de medios y las portadas, aplicado a lo que se puede destruir.
+    Route::post('tags/{id}/merge', [SnkKilkanaTagsController::class, 'merge'])->whereNumber('id');
+    Route::apiResource('tags', SnkKilkanaTagsController::class)->whereNumber('tag');
     // Antes del apiResource, como en posts: si no, `show` se traga «bulk» como id.
     Route::post('comments/bulk', [SnkKilkanaCommentsController::class, 'bulk']);
     Route::apiResource('comments', SnkKilkanaCommentsController::class);

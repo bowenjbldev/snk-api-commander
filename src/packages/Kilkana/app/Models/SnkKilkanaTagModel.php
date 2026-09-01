@@ -3,6 +3,7 @@
 namespace Packages\Kilkana\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -56,6 +57,19 @@ class SnkKilkanaTagModel extends Model
     public static function firstOrCreateByName(string $name): self
     {
         return self::firstOrCreate(['slug' => self::slugFor($name)], ['name' => $name]);
+    }
+
+    /**
+     * Las piezas que llevan la etiqueta: lo que hace que su cifra signifique algo.
+     *
+     * Es la inversa de `SnkKilkanaPostModel::tags()`, y de aqui salen las dos cuentas del panel
+     * —cuanto se usa y cuando se uso por ultima vez— y lo que una fusion tiene que mover.
+     *
+     * @return BelongsToMany<SnkKilkanaPostModel, $this>
+     */
+    public function posts(): BelongsToMany
+    {
+        return $this->belongsToMany(SnkKilkanaPostModel::class, 'kilkana_post_tag', 'tag_id', 'post_id');
     }
 
     protected static function booted(): void

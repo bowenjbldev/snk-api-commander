@@ -5,6 +5,7 @@ namespace Packages\Kilkana\Http\Controllers;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Packages\Kilkana\Services\SnkKilkanaMediaTaxonomyService;
 
 /**
@@ -65,8 +66,16 @@ class SnkKilkanaMediaTaxonomiesController
             return response()->json(['error' => 'Record not found'], 404);
         }
 
+        // El id viaja como VALOR y no interpolado en la cadena de reglas: un `|` dentro parte la
+        // cadena y lo que sigue se lee como una regla que no existe, o sea un 500 por lo que
+        // alguien escriba en la URL.
         $data = $request->validate([
-            'into' => 'required|integer|different:'.$id.'|exists:'.$this->taxonomies->table($taxonomy).',id',
+            'into' => [
+                'required',
+                'integer',
+                Rule::notIn([$desde->id]),
+                'exists:'.$this->taxonomies->table($taxonomy).',id',
+            ],
         ]);
 
         $hasta = $this->taxonomies->find($taxonomy, $data['into']);
