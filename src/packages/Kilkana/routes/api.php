@@ -113,7 +113,8 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::apiResource('tags', SnkKilkanaTagsController::class)->whereNumber('tag');
     // Antes del apiResource, como en posts: si no, `show` se traga «bulk» como id.
     Route::post('comments/bulk', [SnkKilkanaCommentsController::class, 'bulk']);
-    Route::apiResource('comments', SnkKilkanaCommentsController::class);
+    Route::post('comments/{id}/block-author', [SnkKilkanaCommentsController::class, 'blockAuthor'])->whereNumber('id');
+    Route::apiResource('comments', SnkKilkanaCommentsController::class)->whereNumber('comment');
 
     Route::apiResource('subscribers', SnkKilkanaSubscribersController::class)->only(['index', 'show', 'store', 'update', 'destroy']);
 

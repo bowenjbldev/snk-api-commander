@@ -12,7 +12,7 @@ Las dos tablas donde escribe el público.
 | `parent_id` | bigint unsigned | sí | Comentario al que responde. Nulo = de primer nivel. **CASCADE.** |
 | `post_id` | bigint unsigned | no | Artículo comentado. **CASCADE.** |
 | `user_id` | bigint unsigned | sí | Quién lo escribió. Nulo = **su cuenta se dio de baja**. **SET NULL.** |
-| `status` | enum | no · def. `pending` | `pending` · `approved` · `spam`. |
+| `status` | enum | no · def. `pending` | `pending` · `approved` · `rejected` · `spam`. Solo `approved` se ve en la calle. |
 | `body` | text | no | El texto. |
 | `created_at` · `updated_at` | timestamp | sí | Alta y última modificación. |
 
@@ -78,6 +78,26 @@ el efecto colateral de dar de baja a alguien.
 Por eso `user_id` es **nulable aunque comentar exija cuenta**: el nulo no significa «anónimo»,
 significa «su cuenta ya no está». Quien pinte el hilo dirá «cuenta eliminada». La API nunca
 acepta un nulo; solo lo produce una baja.
+
+### Rechazado no es spam, y no es borrarlo
+
+Un comentario leído y descartado queda `rejected`: no sale, y **se queda**, porque es el historial
+de la cuenta —dos rechazos son un mal día, seis son una cuenta vigilada— y porque rechazado y spam
+son desenlaces distintos que la moderación necesita ver por separado. Spam sigue siendo lo que
+sirve para reconocer el siguiente; borrar es para lo que no debe quedar ni en el historial.
+
+### Lo que el panel lee y escribe de la cola
+
+`GET comments` es la cola de moderación: acepta `status`, `q` (texto o cuenta, dos letras como
+mínimo), `per_page` y `counts=1` —solo los conteos y la edad del pendiente más viejo, para el raíl—, ordena por fecha descendente y devuelve `data`, `meta`, `counts` por estado
+del periódico entero, `oldest_pending_at` y `blocked_readers`. Cada fila lleva `author` —nombre,
+correo, alta, cuántos ha escrito, cuántos rechazados y si está bloqueada; `null` si la cuenta se
+dio de baja—, `on` —la pieza— y `reply_to` —quién y qué dice el comentario al que responde—.
+
+`POST comments/bulk` acepta `approve`, `reject`, `pending`, `spam` y `delete`.
+`POST comments/{id}/block-author` suspende la cuenta del autor **solo si es únicamente lector** —a un
+compañero no se le bloquea desde la moderación, y a una cuenta dada de baja tampoco: 409—, tira
+sus sesiones y rechaza lo que tenía pendiente. Deshacerlo es de la pantalla de lectores.
 
 ### Un comentario nace `pending`
 

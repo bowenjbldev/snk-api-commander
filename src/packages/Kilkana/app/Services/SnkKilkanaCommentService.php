@@ -7,6 +7,14 @@ use Packages\Kilkana\Models\SnkKilkanaCommentModel;
 
 class SnkKilkanaCommentService
 {
+    /** Las acciones masivas que cambian de estado, por su verbo. Borrar va aparte. */
+    public const STATUS_OF = [
+        'approve' => SnkKilkanaCommentStatusEnum::Approved,
+        'reject' => SnkKilkanaCommentStatusEnum::Rejected,
+        'pending' => SnkKilkanaCommentStatusEnum::Pending,
+        'spam' => SnkKilkanaCommentStatusEnum::Spam,
+    ];
+
     public function create(array $data, int $userId): ?SnkKilkanaCommentModel
     {
         if (! empty($data['parent_id'])) {
@@ -34,8 +42,7 @@ class SnkKilkanaCommentService
             return $count;
         }
 
-        // La accion `approve` no se llama igual que el estado al que lleva; las otras dos si.
-        $estado = SnkKilkanaCommentStatusEnum::from($action === 'approve' ? 'approved' : $action);
+        $estado = self::STATUS_OF[$action] ?? SnkKilkanaCommentStatusEnum::from($action);
 
         return $query->update(['status' => $estado]);
     }

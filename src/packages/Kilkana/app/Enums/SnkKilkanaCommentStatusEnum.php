@@ -5,7 +5,7 @@ namespace Packages\Kilkana\Enums;
 use Packages\Kilkana\Enums\Concerns\SnkKilkanaEnumValuesSupport;
 
 /**
- * Por donde pasa un comentario, y la UNICA definicion de los tres estados.
+ * Por donde pasa un comentario, y la UNICA definicion de los cuatro estados.
  *
  * Es la tabla que recibe escritura de gente SIN CUENTA, asi que aqui la lista cerrada importa
  * mas que en ninguna otra: los tres valores vivian escritos a mano en la regla del
@@ -23,6 +23,13 @@ enum SnkKilkanaCommentStatusEnum: string
 
     /** Publicado bajo el articulo. */
     case Approved = 'approved';
+
+    /**
+     * Leido y descartado: no era basura, era un comentario que no sale. Se guarda porque es el
+     * historial de la cuenta —dos rechazos son un mal dia, seis son una cuenta vigilada— y
+     * porque rechazado y spam son desenlaces distintos que la moderacion necesita distinguir.
+     */
+    case Rejected = 'rejected';
 
     /** Basura. Se guarda en vez de borrarse: sirve para reconocer la siguiente. */
     case Spam = 'spam';
