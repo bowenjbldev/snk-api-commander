@@ -12,6 +12,7 @@ use Packages\Kilkana\Http\Controllers\SnkKilkanaMediaTaxonomiesController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaPlanController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaPostsController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaPublicController;
+use Packages\Kilkana\Http\Controllers\SnkKilkanaRolesController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaSettingsController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaSubscribersController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaTagsController;
@@ -20,11 +21,23 @@ use Packages\Kilkana\Http\Controllers\SnkKilkanaUsersController;
 
 Route::middleware(['api'])->group(function () {
     Route::post('auth/login', [SnkKilkanaAuthController::class, 'login'])->middleware('throttle:login');
+    // Canjea el enlace del correo —invitación o recuperación— por una contraseña. Público, y
+    // con freno propio: el de `login` solo cuenta los 401, y aquí un canje fallido es un 422.
+    Route::post('auth/password', [SnkKilkanaAuthController::class, 'resetPassword'])->middleware('throttle:6,1');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('auth/me', [SnkKilkanaAuthController::class, 'me']);
         Route::post('auth/logout', [SnkKilkanaAuthController::class, 'logout']);
-        Route::apiResource('users', SnkKilkanaUsersController::class);
+        // Las cuentas del panel. `invite` va antes del recurso y los ids se acotan a número:
+        // sin lo segundo MySQL convierte `1abc` en `1` y un gesto con id malformado cae
+        // sobre la cuenta 1.
+        Route::post('users/invite', [SnkKilkanaUsersController::class, 'invite']);
+        Route::post('users/{id}/invitation', [SnkKilkanaUsersController::class, 'resendInvitation'])->whereNumber('id');
+        Route::post('users/{id}/password-link', [SnkKilkanaUsersController::class, 'sendPasswordLink'])->whereNumber('id');
+        Route::post('users/{id}/suspension', [SnkKilkanaUsersController::class, 'suspend'])->whereNumber('id');
+        Route::delete('users/{id}/suspension', [SnkKilkanaUsersController::class, 'restore'])->whereNumber('id');
+        Route::apiResource('users', SnkKilkanaUsersController::class)->whereNumber('user');
+        Route::get('roles', [SnkKilkanaRolesController::class, 'index']);
     });
 });
 

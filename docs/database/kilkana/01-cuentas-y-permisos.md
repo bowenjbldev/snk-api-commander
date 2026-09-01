@@ -20,6 +20,8 @@ es único y es lo que identifica a alguien**, no el nombre.
 | `company` | varchar(255) | sí | Organización a la que pertenece. Para la plantilla, el propio periódico; para quien colabora desde fuera, la suya. **No sale al público.** |
 | `phone` | varchar(50) | sí | Teléfono de contacto interno. |
 | `email` | varchar(255) | no · **único** | La identidad. |
+| `invited_at` | timestamp | sí | Cuándo se invitó. Nulo = ya puso su contraseña. Una cuenta invitada ocupa asiento y no entra. |
+| `suspended_at` | timestamp | sí | Cuándo se le cerró el paso. Nulo = puede entrar. Suspender guarda el asiento y la firma. |
 | `email_verified_at` | timestamp | sí | Cuándo se verificó el correo. Nulo = sin verificar. |
 | `password` | varchar(255) | no | Hash de la contraseña. Nunca texto plano. |
 | `remember_token` | varchar(100) | sí | Testigo de sesión persistente. |
@@ -55,7 +57,7 @@ es único y es lo que identifica a alguien**, no el nombre.
 | `admin` | Control total, incluida la gestión de cuentas. |
 | `director` | Dirección: publica, edita cualquier pieza y compone la portada. |
 | `editor` | Mesa de edición: publica y edita piezas ajenas. |
-| `redactor` | Plantilla: escribe y publica **lo suyo**, y ve el sumario de la redacción. |
+| `redactor` | Plantilla: escribe lo suyo y lo manda a revisión; **no publica** (desde el 2026-09-01: un inquilino sembrado antes lo conserva hasta correr `kilkana:sync-permissions`). Ve el sumario de la redacción. |
 | `colaborador` | Escribe lo suyo pero **no publica**: entrega y espera. Único rol fuera de la sala. |
 | `moderador` | Comentarios y suscriptores. No escribe artículos. |
 | `reader` | Cuenta de lectura registrada. Sin acceso editorial. |
@@ -132,6 +134,29 @@ Tres pivotes. Los dos primeros cuelgan de una cuenta; el tercero une rol y permi
 Los permisos efectivos de una cuenta son la unión de los que le llegan por su rol
 (`model_has_roles` → `role_has_permissions`) y los que tenga asignados directamente
 (`model_has_permissions`).
+
+### Lo que el panel lee y escribe de una cuenta
+
+Solo las cuentas con asiento pasan por `users`: `reader` y `service` no salen en el listado ni se
+pueden asignar desde él (`not_in` en la validación del rol). Cada fila viaja con el rol plano, el
+`state` —`active`, `invited` o `suspended`, derivado de las dos fechas—, `last_active_at` —la
+última vez que un token suyo se usó— y `posts_count` —lo que firma su cuenta—.
+
+- **`POST users/invite`** `{email, full_name, role}` crea la cuenta invitada con una contraseña
+  que nadie conoce y manda el correo con el enlace a `/admin/password` del periódico. Si el
+  correo no sale, la cuenta se borra y contesta 502: una invitada sin invitación es un asiento
+  pagado al que nadie llega.
+- **`POST users/{id}/invitation`** reenvía el enlace; 409 si la cuenta ya entró.
+  **`POST users/{id}/password-link`** manda el de recuperación; 409 si sigue invitada.
+- **`POST` / `DELETE users/{id}/suspension`** suspende y restaura. Suspender tira sus tokens, y
+  `auth/login` contesta 403 «Account suspended» **después** de comprobar la contraseña, para no
+  confirmar a quien no la sabe que la cuenta existe.
+- **`POST auth/password`** `{email, token, password}` canjea el enlace del correo: pone la
+  contraseña, vacía `invited_at`, tira las sesiones y gasta el token. Público, con el freno del
+  login.
+- **Nadie se toca a sí mismo**: cambiarse el rol es 422, y suspenderse o borrarse 409.
+- **`GET roles`** (tras `index users`) lista los siete con sus permisos, cuánta gente los tiene y
+  si ocupan asiento. De solo lectura: el reparto lo escribe `SnkKilkanaRoleCatalogService`.
 
 ### Notas
 
