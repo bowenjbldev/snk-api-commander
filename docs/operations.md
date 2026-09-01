@@ -158,6 +158,12 @@ para algunos roles deja al resto pareciendo correctos. Pasó con `view others po
 se quedaron sin él, los roles que editan lo ajeno seguían viendo el sumario
 —no les hace falta el permiso, la consulta ya se lo da— y el redactor lo perdía en silencio.
 
+**Y en local vale lo mismo.** Los inquilinos aprovisionados no reciben una migración por
+existir: dos rondas seguidas —cuentas el 2026-09-01, comentarios el 2026-09-02— añadieron columnas
+y el panel local se abrió con «Unknown column» hasta correr `core:migrate --all-tenants`. Una
+migración nueva en `packages/Kilkana` pide ese comando el mismo día, y un cambio del catálogo de
+roles, el de permisos.
+
 Los dos son idempotentes y reaplicarlos repara lo tocado a mano, así que ante la duda se corren.
 Y los dos sueltan la caché persistente del reparto, igual que hace `core:seed` al sembrar los
 permisos: la de consola es `array` y muere con el proceso, así que sin soltarla los FPM vivos
