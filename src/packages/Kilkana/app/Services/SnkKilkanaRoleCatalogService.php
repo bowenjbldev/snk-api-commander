@@ -38,6 +38,12 @@ use Spatie\Permission\Models\Role;
  */
 class SnkKilkanaRoleCatalogService
 {
+    /** Los que abren el panel y ocupan asiento, en el orden en que la matriz los pinta. */
+    public const PANEL_ROLES = ['admin', 'director', 'editor', 'redactor', 'colaborador', 'moderador'];
+
+    /** Los que tienen cuenta y no asiento: un lector comenta, y una cuenta de servicio no es nadie. */
+    public const WITHOUT_SEAT = ['reader', 'service'];
+
     /**
      * Aplica el reparto sobre la conexión activa. Idempotente: repetirlo no cambia nada.
      *
@@ -87,13 +93,13 @@ class SnkKilkanaRoleCatalogService
                 ...$read('categories', 'authors'),
                 'publish posts', 'edit others posts', 'view others posts',
             ],
-            // Plantilla: escribe y publica LO SUYO. Es la diferencia real con un externo.
+            // Plantilla: escribe lo suyo y lo manda a revisión. NO publica: la diferencia
+            // real con un externo es que borra lo suyo, ve el sumario y clasifica.
             'redactor' => [
                 ...$crud('posts'),
                 ...$crud('media'),
                 'index tags', 'create tags',
                 ...$read('categories', 'authors', 'comments'),
-                'publish posts',
                 // Escribe lo suyo, pero está en la reunión de sumario: ve en qué anda el resto
                 // sin poder tocarlo. Aquí el permiso SÍ decide algo, porque no hay implicación
                 // que lo cubra.

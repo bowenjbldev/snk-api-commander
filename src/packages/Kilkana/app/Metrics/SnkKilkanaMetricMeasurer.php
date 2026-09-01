@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Packages\Commander\Contracts\CommanderMetricMeasurer;
 use Packages\Commander\Models\CommanderApplicationMetricModel;
 use Packages\Commander\Models\CommanderInstanceModel;
+use Packages\Kilkana\Services\SnkKilkanaRoleCatalogService;
 
 class SnkKilkanaMetricMeasurer implements CommanderMetricMeasurer
 {
@@ -22,7 +23,7 @@ class SnkKilkanaMetricMeasurer implements CommanderMetricMeasurer
             'editorial_seats' => (int) DB::connection('tenant')
                 ->table('model_has_roles as assignments')
                 ->join('roles', 'roles.id', '=', 'assignments.role_id')
-                ->whereNotIn('roles.name', ['reader', 'service'])
+                ->whereNotIn('roles.name', SnkKilkanaRoleCatalogService::WITHOUT_SEAT)
                 ->distinct('assignments.model_id')
                 ->count('assignments.model_id'),
             'reads_month' => (int) DB::connection('tenant')

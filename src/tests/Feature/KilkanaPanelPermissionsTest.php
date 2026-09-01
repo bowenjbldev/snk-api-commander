@@ -112,4 +112,11 @@ class KilkanaPanelPermissionsTest extends TestCase
         $this->assertFalse($lector->hasPermissionTo('index posts'));
         $this->assertSame(['create comments'], $lector->permissions->pluck('name')->all());
     }
+
+    /** Un redactor escribe y manda a revision. Publicar es de la mesa: es lo que separa los dos papeles. */
+    public function test_un_redactor_no_publica(): void
+    {
+        $this->assertFalse(Role::findByName('redactor', 'sanctum')->hasPermissionTo('publish posts'));
+        $this->assertTrue(Role::findByName('editor', 'sanctum')->hasPermissionTo('publish posts'));
+    }
 }
