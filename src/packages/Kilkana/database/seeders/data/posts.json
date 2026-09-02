@@ -8018,5 +8018,175 @@
    "pleno",
    "medio ambiente"
   ]
+ },
+ {
+  "cat": "medio-ambiente",
+  "title": "El embalse arranca el verano al 38 % y los regantes adelantan las restricciones",
+  "excerpt": "La comunidad de regantes fija dos días de riego por semana desde junio, doce puntos por debajo de la media de la última década para estas fechas.",
+  "author": "Iván Sagredo",
+  "publish_at": "2026-06-19 07:30:00",
+  "reads": 7840,
+  "image": "https://loremflickr.com/800/450/water?lock=901",
+  "status": "published",
+  "content_tier": "metered",
+  "slug": "el-embalse-arranca-el-verano-al-38-y-los-regantes",
+  "tags": [
+   "medio ambiente",
+   "agua",
+   "regadío"
+  ]
+ },
+ {
+  "cat": "medio-ambiente",
+  "title": "El humedal cuenta 104 parejas reproductoras, veinte más que el año pasado",
+  "excerpt": "El censo de primavera confirma por primera vez la cría de dos especies que hasta ahora solo estaban de paso, según el informe de los técnicos.",
+  "author": "Redacción",
+  "publish_at": "2026-05-22 09:10:00",
+  "reads": 4310,
+  "image": "https://loremflickr.com/800/450/bird?lock=902",
+  "status": "published",
+  "content_tier": "free",
+  "slug": "el-humedal-cuenta-104-parejas-reproductoras-veinte",
+  "tags": [
+   "medio ambiente",
+   "humedal",
+   "aves"
+  ]
+ },
+ {
+  "cat": "medio-ambiente",
+  "title": "La confederación retirará los tres azudes sin uso del tramo medio del río",
+  "excerpt": "La obra, presupuestada para el próximo ejercicio, renaturaliza dos kilómetros de cauce y abre el paso a la fauna que lleva décadas cortado.",
+  "author": "Marta Beneyto",
+  "publish_at": "2026-06-05 08:00:00",
+  "reads": 6120,
+  "image": "https://loremflickr.com/800/450/river?lock=903",
+  "status": "published",
+  "content_tier": "free",
+  "slug": "la-confederacion-retirara-los-tres-azudes-sin-uso",
+  "tags": [
+   "medio ambiente",
+   "río",
+   "cauce"
+  ]
+ },
+ {
+  "cat": "medio-ambiente",
+  "title": "Reportaje | Tercer verano seguido por encima de la media: qué dicen las estaciones de la comarca",
+  "excerpt": "La serie histórica arranca en 1961 y no registra tres veranos consecutivos tan cálidos; los técnicos advierten de que el dato importa más por la noche que por el día.",
+  "author": "Iván Sagredo",
+  "publish_at": "2026-06-12 10:20:00",
+  "reads": 9280,
+  "image": "https://loremflickr.com/800/450/sun?lock=904",
+  "status": "published",
+  "content_tier": "locked",
+  "slug": "reportaje-tercer-verano-seguido-por-encima-de-la",
+  "tags": [
+   "medio ambiente",
+   "clima",
+   "calor"
+  ]
+ },
+ {
+  "cat": "medio-ambiente",
+  "title": "La planta de compostaje tratará ocho mil toneladas al año de la orgánica de quince municipios",
+  "excerpt": "La mancomunidad arranca en enero la recogida separada y calcula que la mitad de lo que hoy va al vertedero se convertirá en abono.",
+  "author": "Redacción",
+  "publish_at": "2026-04-16 12:00:00",
+  "reads": 3560,
+  "image": "https://loremflickr.com/800/450/compost?lock=905",
+  "status": "published",
+  "content_tier": "free",
+  "slug": "la-planta-de-compostaje-tratara-ocho-mil-toneladas",
+  "tags": [
+   "medio ambiente",
+   "residuos",
+   "reciclaje"
+  ]
+ },
+ {
+  "cat": "medio-ambiente",
+  "title": "El parque solar de doscientas hectáreas recibe 130 alegaciones, la mayoría de agricultores",
+  "excerpt": "La plataforma vecinal pide que la instalación se traslade a suelo sin uso agrícola y el ayuntamiento remite la decisión a la consejería.",
+  "author": "Marta Beneyto",
+  "publish_at": "2026-03-27 08:45:00",
+  "reads": 8150,
+  "image": "https://loremflickr.com/800/450/solar?lock=906",
+  "status": "published",
+  "content_tier": "metered",
+  "slug": "el-parque-solar-de-doscientas-hectareas-recibe-130",
+  "tags": [
+   "medio ambiente",
+   "energía",
+   "secano"
+  ]
+ },
+ {
+  "cat": "medio-ambiente",
+  "title": "Análisis | Reciclar en la comarca: del 41 % al 65 % que exige el plan para 2030",
+  "excerpt": "Ningún municipio de la mancomunidad supera hoy la mitad, y la diferencia con los que sí lo hacen está en la recogida puerta a puerta.",
+  "author": "Iván Sagredo",
+  "publish_at": "2026-02-20 11:30:00",
+  "reads": 5470,
+  "image": "https://loremflickr.com/800/450/recycling?lock=907",
+  "status": "published",
+  "content_tier": "metered",
+  "slug": "analisis-reciclar-en-la-comarca-del-41-al-65-que",
+  "tags": [
+   "medio ambiente",
+   "reciclaje",
+   "residuos"
+  ]
+ },
+ {
+  "cat": "medio-ambiente",
+  "title": "Los voluntarios retiran cuatrocientos kilos de residuos del cauce en la jornada de limpieza",
+  "excerpt": "Plásticos, neumáticos y restos de poda: el grupo ecologista reúne a ochenta personas en un sábado de marzo y anuncia una segunda jornada en otoño.",
+  "author": "Redacción",
+  "publish_at": "2026-03-14 14:00:00",
+  "reads": 2930,
+  "image": "https://loremflickr.com/800/450/cleanup?lock=908",
+  "status": "published",
+  "content_tier": "free",
+  "slug": "los-voluntarios-retiran-cuatrocientos-kilos-de",
+  "tags": [
+   "medio ambiente",
+   "río",
+   "voluntariado"
+  ]
+ },
+ {
+  "cat": "medio-ambiente",
+  "title": "La colonia de murciélagos de la cueva llega a ocho mil ejemplares y el acceso se cierra durante la cría",
+  "excerpt": "Es la mayor de la provincia, según el seguimiento de la universidad, y el ayuntamiento señalizará el cierre desde abril hasta septiembre.",
+  "author": "Marta Beneyto",
+  "publish_at": "2026-04-03 09:30:00",
+  "reads": 4780,
+  "image": "https://loremflickr.com/800/450/cave?lock=909",
+  "status": "published",
+  "content_tier": "free",
+  "slug": "la-colonia-de-murcielagos-de-la-cueva-llega-a-ocho",
+  "tags": [
+   "medio ambiente",
+   "fauna",
+   "cueva"
+  ]
+ },
+ {
+  "cat": "medio-ambiente",
+  "title": "El ayuntamiento plantará mil quinientos árboles en cinco años, primero en los patios de los colegios",
+  "excerpt": "El plan de sombra aprobado en el pleno prioriza colegios y paradas de autobús, y descarta las rotondas que concentraban las plantaciones anteriores.",
+  "author": "Iván Sagredo",
+  "publish_at": "2026-01-23 08:15:00",
+  "reads": 3890,
+  "image": "https://loremflickr.com/800/450/trees?lock=910",
+  "status": "published",
+  "content_tier": "free",
+  "slug": "el-ayuntamiento-plantara-mil-quinientos-arboles-en",
+  "tags": [
+   "medio ambiente",
+   "arbolado",
+   "sombra"
+  ]
  }
 ]

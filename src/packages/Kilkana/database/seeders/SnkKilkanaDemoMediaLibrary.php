@@ -102,7 +102,38 @@ final class SnkKilkanaDemoMediaLibrary
             return null;
         }
 
-        return $this->ficheros[crc32($url) % count($this->ficheros)];
+        return $this->asignadas[$url] ?? $this->ficheros[crc32($url) % count($this->ficheros)];
+    }
+
+    /** @var array<string, string> dirección del snapshot → fichero, por turno */
+    private array $asignadas = [];
+
+    /**
+     * Reparte las direcciones del snapshot entre los ficheros por CARGA, en orden estable.
+     *
+     * Con `crc32` a secas el reparto era el de un hash: un fichero acababa en veinticuatro
+     * piezas y cuatro no salían nunca. Por turno de direcciones tampoco basta, porque una
+     * dirección la comparten hasta ocho piezas. Así que cada dirección, de la más compartida a
+     * la menos, va al fichero que menos piezas lleva: ninguno se queda sin estrenar y el más
+     * cargado queda cerca de la media. Una dirección que no esté en la lista sigue cayendo al
+     * hash, que es lo que mantiene estable a quien no pase por aquí.
+     *
+     * @param  string[]  $urls  una entrada por pieza, con repeticiones
+     */
+    public function assign(array $urls): void
+    {
+        if ($this->ficheros === []) {
+            return;
+        }
+        $porUrl = array_count_values(array_values($urls));
+        uksort($porUrl, fn (string $a, string $b) => [$porUrl[$b], $a] <=> [$porUrl[$a], $b]);
+
+        $carga = array_fill_keys($this->ficheros, 0);
+        foreach ($porUrl as $url => $piezas) {
+            $fichero = array_search(min($carga), $carga, true);
+            $this->asignadas[$url] = $fichero;
+            $carga[$fichero] += $piezas;
+        }
     }
 
     /**

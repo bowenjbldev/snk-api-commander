@@ -15,6 +15,7 @@ del operador vive en `commander-web/` y hoy corre contra un mock, sin tocar la A
 | preparar dominios propios, TLS y una migración SEO | [Dominios propios](domains.md) |
 | diseñar o implementar el SPA de Commander | [Diseño funcional del SPA](design/commander-spa.md) |
 | ejecutar, probar, migrar o desplegar | [Operación](operations.md) |
+| saber qué simula la demo y por qué no envejece | [La demo](demo.md) |
 
 ## Modelo mental
 

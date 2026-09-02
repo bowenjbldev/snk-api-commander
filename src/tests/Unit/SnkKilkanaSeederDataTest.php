@@ -45,13 +45,13 @@ class SnkKilkanaSeederDataTest extends TestCase
     {
         $posts = $this->snapshot();
 
-        $this->assertCount(522, $posts);
+        $this->assertCount(532, $posts);
         $statusCounts = array_count_values(array_column($posts, 'status'));
         ksort($statusCounts);
 
         $this->assertSame([
             'draft' => 35,
-            'published' => 465,
+            'published' => 475,
             'review' => 19,
             'scheduled' => 3,
         ], $statusCounts);
@@ -73,7 +73,7 @@ class SnkKilkanaSeederDataTest extends TestCase
             $identities[] = $urlDate.'|'.$post['slug'];
         }
 
-        $this->assertCount(522, array_unique($identities));
+        $this->assertCount(532, array_unique($identities));
     }
 
     /**
@@ -162,7 +162,7 @@ class SnkKilkanaSeederDataTest extends TestCase
         $fototeca = new SnkKilkanaDemoMediaLibrary;
         $urls = array_values(array_unique(array_filter(array_column($this->snapshot(), 'image'))));
 
-        $this->assertSame(176, count($urls));
+        $this->assertSame(186, count($urls));
 
         $usadas = [];
         foreach ($urls as $url) {
@@ -223,7 +223,7 @@ class SnkKilkanaSeederDataTest extends TestCase
             }
         }
 
-        $this->assertSame(139, $conMuro);
+        $this->assertSame(143, $conMuro);
     }
 
     /** El mismo slug da el mismo cuerpo: dos siembras no pueden dar bases distintas. */

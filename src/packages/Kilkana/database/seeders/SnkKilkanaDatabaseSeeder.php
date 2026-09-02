@@ -42,6 +42,11 @@ use Spatie\Permission\Models\Role;
 class SnkKilkanaDatabaseSeeder extends Seeder
 {
     /** El perfil resuelto, o `[]` si esta base no es de ningun periodico declarado. */
+    private ?int $desfase = null;
+
+    /** @var array<int, array<string, mixed>>|null */
+    private ?array $snapshot = null;
+
     private ?array $perfil = null;
 
     /**
@@ -51,8 +56,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      * `seedCategories` resuelve `parent_id` con los ids ya creados. `position` se numera
      * por nivel, así que las hermanas se ordenan entre ellas y no contra el resto.
      *
-     * `medio-ambiente` nace sin artículos a propósito: una sección recién abierta es un
-     * estado real y ejercita la página de sección sin contenido.
+     * `medio-ambiente` es la sección más joven del snapshot: una decena de piezas de este
+     * año, para que un comarcal de la Ribera hable del río y del embalse.
      *
      * **Y el estado de cada una también manda**: el modelo rechaza una sección más visible que
      * su madre —`draft` < `hidden` < `live`— y esa regla corre igual en el alta, así que una
@@ -82,7 +87,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         // dejaba a la siembra siguiente intentando recrear una URL que ya está retirada.
         'sucesos-y-tribunales' => ['name' => 'Sucesos', 'retired' => ['sucesos']],
         'opinion' => ['name' => 'Opinión'],
-        'medio-ambiente' => ['name' => 'Medio ambiente', 'status' => SnkKilkanaCategoryStatusEnum::Draft],
+        'medio-ambiente' => ['name' => 'Medio ambiente'],
     ];
 
     public function run(): void
@@ -143,18 +148,18 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         $ayer = now()->subMonths(3);
 
         $lista = [
-            'marta.ruiz@snk.test' => [SnkKilkanaSubscriberStatusEnum::Confirmed, SnkKilkanaConsentSourceEnum::PublicForm],
-            'aitor.etxeberria@snk.test' => [SnkKilkanaSubscriberStatusEnum::Confirmed, SnkKilkanaConsentSourceEnum::PublicForm],
-            'nuria.sanchis@snk.test' => [SnkKilkanaSubscriberStatusEnum::Confirmed, SnkKilkanaConsentSourceEnum::PublicForm],
-            'diego.ferreiro@snk.test' => [SnkKilkanaSubscriberStatusEnum::Pending, SnkKilkanaConsentSourceEnum::PublicForm],
-            'lucia.ibarra@snk.test' => [SnkKilkanaSubscriberStatusEnum::Pending, SnkKilkanaConsentSourceEnum::PublicForm],
-            'pau.comas@snk.test' => [SnkKilkanaSubscriberStatusEnum::Pending, SnkKilkanaConsentSourceEnum::PublicForm],
+            'marta.ruiz@mail.example' => [SnkKilkanaSubscriberStatusEnum::Confirmed, SnkKilkanaConsentSourceEnum::PublicForm],
+            'vferrer@mail.example' => [SnkKilkanaSubscriberStatusEnum::Confirmed, SnkKilkanaConsentSourceEnum::PublicForm],
+            'nuria.sanchis@mail.example' => [SnkKilkanaSubscriberStatusEnum::Confirmed, SnkKilkanaConsentSourceEnum::PublicForm],
+            'dferreiro@mail.example' => [SnkKilkanaSubscriberStatusEnum::Pending, SnkKilkanaConsentSourceEnum::PublicForm],
+            'lucia.ibarra@mail.example' => [SnkKilkanaSubscriberStatusEnum::Pending, SnkKilkanaConsentSourceEnum::PublicForm],
+            'pau.comas@mail.example' => [SnkKilkanaSubscriberStatusEnum::Pending, SnkKilkanaConsentSourceEnum::PublicForm],
             // Los dos de la lista que el periódico traía en papel: el consentimiento se dio
             // antes y fuera, y por eso su fecha es vieja.
-            'boletin@bibliotecagijon.test' => [SnkKilkanaSubscriberStatusEnum::Pending, SnkKilkanaConsentSourceEnum::Import],
-            'prensa@puertogijon.test' => [SnkKilkanaSubscriberStatusEnum::Confirmed, SnkKilkanaConsentSourceEnum::Import],
+            'biblioteca@alzira.example' => [SnkKilkanaSubscriberStatusEnum::Pending, SnkKilkanaConsentSourceEnum::Import],
+            'premsa@algemesi.example' => [SnkKilkanaSubscriberStatusEnum::Confirmed, SnkKilkanaConsentSourceEnum::Import],
             // Se dio de baja: la fila SE QUEDA, que es la prueba de que pidió no recibir más.
-            'helene.dubois@snk.test' => [SnkKilkanaSubscriberStatusEnum::Unsubscribed, SnkKilkanaConsentSourceEnum::PublicForm],
+            'helene.dubois@mail.example' => [SnkKilkanaSubscriberStatusEnum::Unsubscribed, SnkKilkanaConsentSourceEnum::PublicForm],
         ];
 
         foreach ($lista as $email => [$estado, $origen]) {
@@ -162,6 +167,39 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 'status' => $estado,
                 'consent_source' => $origen,
                 'consent_at' => $origen === SnkKilkanaConsentSourceEnum::Import ? $ayer : now(),
+            ]);
+        }
+
+        // Y la lista a escala: un comarcal con medio millón de lecturas al mes tiene cientos de
+        // suscriptores, no nueve. Nombres de la Ribera, altas repartidas en año y medio, la
+        // mayoría confirmadas por el formulario y un poso importado de la lista en papel.
+        $nombres = ['Amparo', 'Vicent', 'Carmen', 'Josep', 'Empar', 'Rafa', 'Teresa', 'Salva', 'Pilar', 'Enric', 'Rosa', 'Paco', 'Inma', 'Toni', 'Lola', 'Ximo', 'Encarna', 'Miquel', 'Mireia', 'Jordi', 'Aurora', 'Andreu', 'Neus', 'Batiste', 'Ana', 'Ricard', 'Isabel', 'Nacho', 'Marisa', 'Pep', 'Consol', 'Ferran', 'Maite', 'Joan', 'Elena', 'Pau', 'Carla', 'Lluís', 'Sara', 'Manolo'];
+        $apellidos = ['Ferrer', 'Peris', 'Sanchis', 'Bou', 'Alberola', 'Grau', 'Ribera', 'Serra', 'Company', 'Vidal', 'Chàfer', 'Ortolà', 'Gil', 'Mateu', 'Talens', 'Pellicer', 'Andrés', 'Boluda', 'Cucarella', 'Escrivà', 'Fuster', 'García', 'Llopis', 'Marí', 'Navarro', 'Oltra', 'Pastor', 'Roig', 'Soler', 'Torres', 'Vila', 'Beneyto', 'Climent', 'Domènech', 'Estruch', 'Giner', 'Hernández', 'Lloret', 'Montagud', 'Pons'];
+        $proveedores = ['mail.example', 'correu.example', 'posta.example'];
+        $hoy = now();
+        for ($n = 0; $n < 400; $n++) {
+            $h = crc32("subscriber:{$n}");
+            $nombre = $nombres[$h % count($nombres)];
+            $apellido = $apellidos[intdiv($h, 40) % count($apellidos)];
+            $email = mb_strtolower(str($nombre.'.'.$apellido)->ascii()).($n % 7 === 0 ? '' : $n).'@'.$proveedores[intdiv($h, 1600) % 3];
+            $tramo = intdiv($h, 4800) % 100;
+            $origen = match (true) {
+                $tramo < 85 => SnkKilkanaConsentSourceEnum::PublicForm,
+                $tramo < 97 => SnkKilkanaConsentSourceEnum::Import,
+                default => SnkKilkanaConsentSourceEnum::Admin,
+            };
+            $estadoTramo = intdiv($h, 480000) % 100;
+            $estado = match (true) {
+                $estadoTramo < 78 => SnkKilkanaSubscriberStatusEnum::Confirmed,
+                $estadoTramo < 90 => SnkKilkanaSubscriberStatusEnum::Pending,
+                default => SnkKilkanaSubscriberStatusEnum::Unsubscribed,
+            };
+            $hace = $origen === SnkKilkanaConsentSourceEnum::Import ? 400 + $h % 200 : $h % 540;
+
+            SnkKilkanaSubscriberModel::firstOrCreate(['email' => $email], [
+                'status' => $estado,
+                'consent_source' => $origen,
+                'consent_at' => $hoy->copy()->subDays($hace)->subMinutes($h % 1440),
             ]);
         }
     }
@@ -374,14 +412,14 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 // Su organización es la SUYA, no el periódico: colabora desde fuera, y esa
                 // diferencia es lo que la columna «Organización» sirve para ver.
                 'full_name' => 'Elena Vara Ruiz', 'company' => 'Estudio Vara Urbanismo',
-                'phone' => '+34 985 100 209', 'role' => 'colaborador',
+                'phone' => '+34 962 401 209', 'role' => 'colaborador',
                 'job_title' => 'Colaboradora de Urbanismo',
                 'bio' => 'Escribe de urbanismo y memoria de barrio desde fuera de la redacción. Entrega y espera al cierre.',
             ],
             [
                 'name' => 'Rubén Nieto', 'email' => 'ruben.nieto@eldiario.example',
                 'full_name' => 'Rubén Nieto Salas', 'company' => self::PERIODICO,
-                'phone' => '+34 985 100 210', 'role' => 'moderador',
+                'phone' => '+34 962 401 210', 'role' => 'moderador',
                 'job_title' => null,
                 'bio' => null,
             ],
@@ -605,6 +643,56 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         //
         // Solo si está vacía: sin la guarda, cada siembra mandaba dos más y la papelera crecía
         // sola —una demo resembrada tres veces enseñaba seis—.
+        // Y un historial que se parezca al de una redacción: en la mitad de las doscientas
+        // piezas más recientes hay una edición real, hecha con el servicio para que deje su
+        // revisión. La primera versión no llevaba el antetítulo —se puso al editar— o se quedaba
+        // en la primera frase de la entradilla, que es lo que pasa cuando se publica con prisa.
+        $recientes = SnkKilkanaPostModel::query()->published()->orderByDesc('publish_at')->take(200)->get();
+        foreach ($recientes as $pieza) {
+            $hash = crc32("rev:{$pieza->slug}");
+            if ($hash % 2 !== 0 || SnkKilkanaPostRevisionModel::query()->where('post_id', $pieza->id)->exists()) {
+                continue;
+            }
+
+            // La edición llega entre una y seis horas después de publicar, dentro de lo que
+            // queda hasta ahora; sin una hora de hueco no hay edición, igual que no hay
+            // respuesta. **Esta guarda va ANTES de tocar la pieza**: el `forceFill` de abajo
+            // escribe la versión vieja y es el `update()` del servicio quien devuelve la buena;
+            // salir entre los dos dejó la entradilla de la pieza de portada a la mitad.
+            $hueco = min(6, (int) $pieza->publish_at->diffInHours(now()));
+            if ($hueco < 1) {
+                continue;
+            }
+
+            $titulo = (string) $pieza->title;
+            $entradilla = trim((string) $pieza->excerpt);
+            // La primera versión se quedaba en la primera frase o, si solo hay una, antes de la
+            // última coma: es donde se corta una entradilla escrita con prisa.
+            $frase = mb_strpos($entradilla, '. ');
+            $coma = mb_strrpos($entradilla, ', ');
+            if (str_contains($titulo, ' | ')) {
+                $pieza->forceFill(['title' => trim(str($titulo)->after(' | ')->value())])->save();
+                $cambio = ['title' => $titulo];
+            } elseif ($frase !== false) {
+                $pieza->forceFill(['excerpt' => mb_substr($entradilla, 0, $frase + 1)])->save();
+                $cambio = ['excerpt' => $entradilla];
+            } elseif ($coma !== false && $coma > 40) {
+                $pieza->forceFill(['excerpt' => mb_substr($entradilla, 0, $coma).'.'])->save();
+                $cambio = ['excerpt' => $entradilla];
+            } else {
+                continue;
+            }
+
+            $editor = (int) ($pieza->created_by ?: $this->deskUserId());
+            $posts->update($pieza->fresh(), $cambio, $editor, false);
+
+            // Todas las revisiones de la pieza, que es una: se saltan las que ya tienen alguna,
+            // y la de dos revisiones del bloque de arriba es la publicada más antigua, que no
+            // está entre las doscientas más recientes mientras el archivo pase de doscientas.
+            $cuando = $pieza->publish_at->copy()->addHours($hash % $hueco + 1);
+            SnkKilkanaPostRevisionModel::query()->where('post_id', $pieza->id)->update(['created_at' => $cuando]);
+        }
+
         if (SnkKilkanaMediaModel::onlyTrashed()->doesntExist()) {
             SnkKilkanaMediaModel::query()
                 ->unused()
@@ -680,69 +768,85 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             return;
         }
 
-        // Voces distintas, no una plantilla repetida: la cola de moderación solo se puede
-        // juzgar si los textos se parecen a los de verdad (agradecen, discrepan, corrigen).
-        $bodies = [
-            'Gran cobertura, gracias por el contexto histórico.',
-            'Faltan las cifras de la fuente original, ¿las tenéis?',
-            'Lo he compartido con mi equipo, muy útil.',
-            'No estoy de acuerdo con la conclusión, pero se agradece el dato.',
-            'Seguid así, es el tipo de periodismo que hace falta.',
-            'Yo vivo en el barrio y la situación es bastante peor de lo que se cuenta aquí.',
-            'El titular promete más de lo que luego desarrolla el texto.',
-            '¿Vais a hacer seguimiento del tema dentro de unos meses?',
-            'Enhorabuena por el trabajo de campo, se nota que hay calle detrás.',
-            'Falta la versión de la otra parte, así queda cojo.',
-            'La foto de portada no corresponde con lo que se describe en el tercer párrafo.',
-            'Llevo años suscrito y este es de los mejores reportajes que os he leído.',
-        ];
-        // El spam existe en la vida real y esa pestaña estaba siempre a cero.
-        $spam = [
-            'GANA DINERO DESDE CASA >>> clic aquí, plazas limitadas!!!',
-            'Compra seguidores baratos en www.ejemplo-no-real.test/promo',
-        ];
+        // Las voces viven en `SnkKilkanaDemoVoices`: por familia de seccion, porque la gente
+        // comenta lo que ha leido, y generales, para que dos hilos de la misma mesa no suenen
+        // igual. Dos de cada tres comentarios son de la familia; el resto, generales.
+        $familias = SnkKilkanaCategoryModel::query()->pluck('slug', 'id')
+            ->map(fn (string $slug) => SnkKilkanaDemoBodyFactory::familyOf($slug));
 
         // Solo publicados: un borrador no ha tenido lectores que comenten.
-        $posts = SnkKilkanaPostModel::query()->published()->orderBy('id')->get();
-        foreach ($posts as $i => $post) {
-            // 0, 1, 2 o 3 comentarios según la posición: la tabla enseña la columna con
-            // variedad real en vez de todo a uno.
-            for ($n = 0; $n < $i % 4; $n++) {
-                $slot = $i + $n;
-                $reader = $readers[$slot % count($readers)];
-                $esSpam = $slot % 11 === 5;
+        $posts = SnkKilkanaPostModel::query()->published()->orderBy('id')->get(['id', 'slug', 'publish_at', 'category_id']);
+        $ahora = now();
+        foreach ($posts as $post) {
+            // 0, 1, 2 o 3 comentarios por pieza, decididos por su slug y no por su posición en
+            // la lista: borrar una pieza y resembrarla corría el índice de todas las siguientes
+            // y les regeneraba los comentarios encima de los que ya tenían.
+            for ($n = 0; $n < self::commentsFor($post->slug); $n++) {
+                // Lector, frase y hora salen de tres hashes distintos y no del mismo índice:
+                // con un solo índice el mismo lector decía siempre la misma frase a la misma
+                // hora, y la cola se leía como doce comentarios repetidos treinta veces.
+                // Por slug y no por id: una pieza nueva en medio del snapshot no toca ni un
+                // comentario de las demás, y un `migrate:fresh` que reordene ids tampoco.
+                $clave = "{$post->slug}:{$n}";
+                $reader = $readers[crc32("reader:{$clave}") % count($readers)];
+                $frase = crc32("body:{$clave}");
+                $esSpam = crc32("spam:{$clave}") % 11 === 5;
+
+                // Un comentario llega en los cuatro días que siguen a la pieza, que es cuando
+                // se lee, y nunca antes de que exista ni después de hoy. La ventana se acorta
+                // para las piezas de esta semana en vez de recortarse contra ahora: recortar
+                // apilaba los comentarios de la pieza de hoy en el mismo minuto exacto.
+                $ventana = max(1, min(96, (int) $post->publish_at->diffInHours($ahora)));
+                $fecha = $post->publish_at->copy()->addHours(crc32("at:{$clave}") % $ventana);
+                $reciente = $fecha->greaterThan($ahora->copy()->subDays(21));
+                $estado = match (true) {
+                    $esSpam => SnkKilkanaCommentStatusEnum::Spam,
+                    // La cola son los de las últimas tres semanas: lo de hace meses ya está
+                    // decidido, y una moderación con pendientes de enero no existe.
+                    $reciente && $frase % 3 === 0 => SnkKilkanaCommentStatusEnum::Pending,
+                    $frase % 17 === 0 => SnkKilkanaCommentStatusEnum::Rejected,
+                    default => SnkKilkanaCommentStatusEnum::Approved,
+                };
+
                 // Todo comentario viene de una cuenta: comentar exige registrarse. El spam
                 // también, y eso es justo el filtro — colar publicidad cuesta darse de alta,
                 // y quien lo haga se queda sin cuenta a la primera.
                 $comment = SnkKilkanaCommentModel::firstOrCreate([
                     'user_id' => $reader->id,
                     'post_id' => $post->id,
-                    'body' => $esSpam ? $spam[$slot % count($spam)] : $bodies[$slot % count($bodies)],
+                    'body' => $esSpam
+                        ? SnkKilkanaDemoVoices::SPAM[$frase % count(SnkKilkanaDemoVoices::SPAM)]
+                        // Con su propio hash: atada al de la frase, la elección de voz iba de la
+                        // mano del estado y las generales no salían nunca en la cola.
+                        : self::voice($familias[$post->category_id] ?? 'local', crc32("voice:{$clave}")),
                 ], [
-                    // Uno de cada tres queda pendiente: la moderación tiene cola que enseñar.
-                    'status' => $esSpam
-                        ? SnkKilkanaCommentStatusEnum::Spam
-                        : ($slot % 3 === 0 ? SnkKilkanaCommentStatusEnum::Pending : SnkKilkanaCommentStatusEnum::Approved),
-                    // Repartidos por las últimas cuatro semanas: sin esto entran todos a la
-                    // vez y el filtro de periodo no distingue nada.
-                    'created_at' => now()->subHours(($slot * 7) % 672),
-                    'updated_at' => now()->subHours(($slot * 7) % 672),
+                    'status' => $estado,
+                    'created_at' => $fecha,
+                    'updated_at' => $fecha,
                 ]);
 
                 // Una respuesta cada pocos hilos: la conversación anidada también hay que
                 // poder probarla; la API la borra en cascada.
-                if ($n === 0 && $i % 5 === 3) {
+                if ($n === 0 && crc32("thread:{$post->slug}") % 5 === 3 && ! $esSpam) {
                     // Otra persona, para que el hilo enseñe una conversación y no un monólogo.
-                    $otro = $readers[($slot + 1) % count($readers)];
+                    // La respuesta llega entre una y treinta horas después, dentro de lo que
+                    // queda hasta ahora; sin una hora de hueco no hay respuesta honesta, y un
+                    // hilo sin contestar se lee mejor que uno contestado en el mismo minuto.
+                    $hueco = min(30, (int) $fecha->diffInHours($ahora));
+                    if ($hueco < 1) {
+                        continue;
+                    }
+                    $otro = $readers[(crc32("reader:{$clave}") + 1) % count($readers)];
+                    $contesta = $fecha->copy()->addHours(crc32("reply:{$clave}") % $hueco + 1);
                     SnkKilkanaCommentModel::firstOrCreate([
                         'post_id' => $post->id,
                         'user_id' => $otro->id,
                         'parent_id' => $comment->id,
-                        'body' => 'Justo lo que iba a comentar. Añado que la última parte contradice lo que publicasteis en mayo.',
+                        'body' => SnkKilkanaDemoVoices::REPLIES[crc32("replybody:{$clave}") % count(SnkKilkanaDemoVoices::REPLIES)],
                     ], [
                         'status' => SnkKilkanaCommentStatusEnum::Approved,
-                        'created_at' => now()->subHours(max(0, (($slot * 7) % 672) - 3)),
-                        'updated_at' => now()->subHours(max(0, (($slot * 7) % 672) - 3)),
+                        'created_at' => $contesta,
+                        'updated_at' => $contesta,
                     ]);
                 }
             }
@@ -756,6 +860,38 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      *
      * @return list<CoreUserModel>
      */
+    /** La frase de un comentario: de su familia dos de cada tres veces, general el resto. */
+    private static function voice(string $familia, int $hash): string
+    {
+        $propias = SnkKilkanaDemoVoices::BY_FAMILY[$familia] ?? SnkKilkanaDemoVoices::BY_FAMILY['local'];
+        $general = SnkKilkanaDemoVoices::GENERAL;
+
+        return $hash % 3 === 2
+            ? $general[intdiv($hash, 3) % count($general)]
+            : $propias[intdiv($hash, 3) % count($propias)];
+    }
+
+    /** La descripción SEO de una de cada tres piezas: la entradilla, recortada a 158 caracteres en una palabra. */
+    private static function seoDescription(array $post): ?string
+    {
+        if (crc32("seo:{$post['slug']}") % 3 !== 0) {
+            return null;
+        }
+        $texto = trim((string) $post['excerpt']);
+        if (mb_strlen($texto) <= 158) {
+            return $texto;
+        }
+        $corte = mb_strrpos(mb_substr($texto, 0, 155), ' ');
+
+        return rtrim(mb_substr($texto, 0, $corte ?: 155), ',;:').'…';
+    }
+
+    /** Cuántos comentarios lleva una pieza: 0, 1, 2 o 3, fijados por su slug. */
+    public static function commentsFor(string $slug): int
+    {
+        return crc32("count:{$slug}") % 4;
+    }
+
     private function seedReaders(): array
     {
         $password = config('kilkana.kilkana.demo_reader_password');
@@ -766,15 +902,18 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             return [];
         }
 
+        // La audiencia de un diario comarcal de la Ribera: gente de Alzira y los pueblos de al
+        // lado, con el trabajo que tiene la gente de allí. Una lista que mezcla Gijón, Galicia y
+        // el Institut Français no es una audiencia, es una gira.
         $people = [
-            ['name' => 'Marta Ruiz', 'email' => 'marta.ruiz@snk.test', 'full_name' => 'Marta Ruiz Alonso', 'company' => 'Ayuntamiento de Gijón', 'phone' => '+34 985 112 233'],
-            ['name' => 'Aitor Etxeberria', 'email' => 'aitor.etxeberria@snk.test', 'full_name' => 'Aitor Etxeberria Lasa', 'company' => 'Cooperativa Elkar', 'phone' => '+34 943 445 566'],
-            ['name' => 'Nuria Sanchís', 'email' => 'nuria.sanchis@snk.test', 'full_name' => 'Nuria Sanchís Ferrer', 'company' => 'Universitat de València', 'phone' => '+34 963 778 899'],
-            ['name' => 'Diego Ferreiro', 'email' => 'diego.ferreiro@snk.test', 'full_name' => 'Diego Ferreiro Nogueira', 'company' => 'Portos de Galicia', 'phone' => '+34 981 334 455'],
-            ['name' => 'Lucía Ibarra', 'email' => 'lucia.ibarra@snk.test', 'full_name' => 'Lucía Ibarra Montes', 'company' => 'Fundación Lectura Viva', 'phone' => '+34 917 223 344'],
-            ['name' => 'Samuel Okonkwo', 'email' => 'samuel.okonkwo@snk.test', 'full_name' => 'Samuel Okonkwo Ebele', 'company' => 'Clínica San Rafael', 'phone' => '+34 954 667 788'],
-            ['name' => 'Hélène Dubois', 'email' => 'helene.dubois@snk.test', 'full_name' => 'Hélène Dubois Renard', 'company' => 'Institut Français', 'phone' => '+33 1 44 55 66 77'],
-            ['name' => 'Pau Comas', 'email' => 'pau.comas@snk.test', 'full_name' => 'Pau Comas Vidal', 'company' => 'Mercat de Sant Antoni', 'phone' => '+34 934 556 677'],
+            ['name' => 'Marta Ruiz', 'email' => 'marta.ruiz@mail.example', 'full_name' => 'Marta Ruiz Alonso', 'company' => 'Hospital de la Ribera', 'phone' => '+34 962 411 220'],
+            ['name' => 'Vicent Ferrer', 'email' => 'vferrer@mail.example', 'full_name' => 'Vicent Ferrer Peris', 'company' => 'Cooperativa Agrícola de Carcaixent', 'phone' => '+34 962 430 118'],
+            ['name' => 'Nuria Sanchís', 'email' => 'nuria.sanchis@mail.example', 'full_name' => 'Nuria Sanchís Ferrer', 'company' => 'IES Rei En Jaume', 'phone' => '+34 962 402 733'],
+            ['name' => 'Diego Ferreiro', 'email' => 'dferreiro@mail.example', 'full_name' => 'Diego Ferreiro Nogueira', 'company' => 'Transportes La Ribera', 'phone' => '+34 962 455 019'],
+            ['name' => 'Lucía Ibarra', 'email' => 'lucia.ibarra@mail.example', 'full_name' => 'Lucía Ibarra Montes', 'company' => 'Biblioteca Municipal d\'Algemesí', 'phone' => '+34 962 018 344'],
+            ['name' => 'Samuel Okonkwo', 'email' => 'samuel.okonkwo@mail.example', 'full_name' => 'Samuel Okonkwo Ebele', 'company' => 'Centro de Salud Alzira II', 'phone' => '+34 962 467 588'],
+            ['name' => 'Hélène Dubois', 'email' => 'helene.dubois@mail.example', 'full_name' => 'Hélène Dubois Renard', 'company' => 'Escuela Oficial de Idiomas de Alzira', 'phone' => '+34 962 402 907'],
+            ['name' => 'Pau Comas', 'email' => 'pau.comas@mail.example', 'full_name' => 'Pau Comas Vidal', 'company' => 'Mercat Municipal d\'Alzira', 'phone' => '+34 962 415 677'],
         ];
 
         $role = Role::findOrCreate('reader', 'sanctum');
@@ -1028,7 +1167,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         $admin->forceFill(array_filter([
             'full_name' => $admin->full_name ?: 'Admin User',
             'company' => $admin->company ?: 'Dirección del periódico',
-            'phone' => $admin->phone ?: '+34 985 100 200',
+            'phone' => $admin->phone ?: '+34 962 401 200',
             'email_verified_at' => $admin->email_verified_at ?: now(),
         ], fn ($v) => $v !== null))->save();
         // Misma regla que la API (`SnkKilkanaUsersController::ensureByline`): cuenta que
@@ -1098,6 +1237,19 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         // del periódico. El porqué, en la propia clase.
         $fototeca = new SnkKilkanaDemoMediaLibrary;
         $fototeca->seedAll();
+        // Las direcciones del snapshot se reparten entre los ficheros por turno y no por
+        // hash: con el hash, un fichero acababa en veinticuatro piezas y otros cuatro en ninguna.
+        $fototeca->assign(array_filter(array_column($posts, 'image')));
+
+        // Destacadas: las seis más leídas del último mes. Es lo que una redacción marca a mano
+        // para la portada, y sin ninguna la casilla parece que no funciona.
+        $destacadas = collect($posts)
+            ->where('status', SnkKilkanaPostStatusEnum::Published->value)
+            ->filter(fn (array $p) => Carbon::parse($this->shift($p['publish_at']))->greaterThan(now()->subDays(30)))
+            ->sortByDesc('reads')
+            ->take(6)
+            ->pluck('slug')
+            ->all();
 
         foreach ($posts as $post) {
             // Por su ruta actual **o por una que dejó atrás**: el snapshot es un archivo viejo y
@@ -1145,7 +1297,9 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 // porque no hay muro que colocar. Se compone aquí, determinista desde el slug.
                 'body_blocks' => SnkKilkanaDemoBodyFactory::blocks($post, $media?->id),
                 'seo_title' => $post['seo_title'] ?? null,
-                'seo_description' => $post['seo_description'] ?? null,
+                // Una de cada tres lleva descripción SEO escrita: es lo que una redacción
+                // rellena a ratos, y con las 522 en blanco la pestaña parece rota.
+                'seo_description' => $post['seo_description'] ?? self::seoDescription($post),
                 'og_title' => $post['og_title'] ?? null,
                 'og_description' => $post['og_description'] ?? null,
             ];
@@ -1166,7 +1320,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 'publish_at' => $publishAt,
                 'status' => $post['status'],
                 'content_tier' => $post['content_tier'],
-                'featured' => $post['featured'] ?? false,
+                'featured' => $post['featured'] ?? in_array($post['slug'], $destacadas, true),
                 'noindex' => $post['noindex'] ?? false,
             ];
 
@@ -1259,9 +1413,82 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      * sale del slug, así que las tres caen en días distintos y dos siembras del mismo día dan
      * lo mismo.
      */
+    /**
+     * El archivo se desplaza para que la pieza más reciente del snapshot sea de HOY.
+     *
+     * El snapshot está escrito en fechas de 2026, y una demo que se abre en septiembre con su
+     * última pieza del 28 de junio parece un periódico cerrado: la calle abre con dos meses de
+     * silencio y la audiencia de «hoy» marca cero. Desplazar todo el archivo el mismo número de
+     * días conserva el ritmo real —noventa piezas al mes, los huecos de agosto— y lo pone al día.
+     *
+     * **Anclado a la base, no al reloj**: la primera siembra fija el desplazamiento y las
+     * siguientes lo leen de lo ya sembrado. Si cada siembra desplazara desde hoy, las claves
+     * `(url_date, slug)` cambiarían y resembrar duplicaría el archivo entero.
+     *
+     * El ancla es la pieza publicada MÁS ANTIGUA del snapshot que siga en la base, comparada
+     * con SU propia fecha en el snapshot —la misma pieza en los dos lados—: así el desfase es
+     * exacto se borre lo que se borre, porque las piezas no tienen borrado en blando y quien
+     * enseña la papelera en una demo borra alguna. Un archivo sin ninguna del snapshot es una
+     * base recién creada, y entonces se ancla a hoy.
+     *
+     * `round` y no un `(int)` a secas: entre dos medianoches con cambio de hora la diferencia
+     * no es un múltiplo exacto de 24 h, y truncar dejaría el archivo un día corto.
+     */
+    private function offsetDays(): int
+    {
+        if ($this->desfase !== null) {
+            return $this->desfase;
+        }
+
+        $publicadas = collect($this->snapshot())
+            ->where('status', SnkKilkanaPostStatusEnum::Published->value)
+            ->keyBy('slug');
+
+        $sembrada = SnkKilkanaPostModel::query()
+            ->whereIn('slug', $publicadas->keys()->all())
+            ->orderBy('url_date')
+            ->orderBy('id')
+            ->first(['slug', 'url_date']);
+
+        if ($sembrada === null) {
+            $origen = Carbon::parse((string) $publicadas->max('publish_at'))->startOfDay();
+            $destino = now()->startOfDay();
+        } else {
+            $origen = Carbon::parse((string) $publicadas[$sembrada->slug]['publish_at'])->startOfDay();
+            $destino = Carbon::parse((string) $sembrada->getRawOriginal('url_date'))->startOfDay();
+        }
+
+        return $this->desfase = (int) round($origen->diffInDays($destino, false));
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function snapshot(): array
+    {
+        return $this->snapshot ??= json_decode(
+            (string) file_get_contents(__DIR__.'/data/posts.json'),
+            true,
+            flags: JSON_THROW_ON_ERROR,
+        );
+    }
+
+    /** Una fecha del snapshot, puesta al día. */
+    private function shift(string $fecha): string
+    {
+        return Carbon::parse($fecha)->addDays($this->offsetDays())->toDateTimeString();
+    }
+
     private function publishAt(array $post): string
     {
-        $cuando = $post['publish_at'];
+        $cuando = $this->shift($post['publish_at']);
+
+        // El desplazamiento va por días enteros, así que la pieza más reciente aterriza HOY a
+        // su hora del snapshot, que de madrugada todavía no ha llegado: una pieza publicada
+        // fechada dentro de tres horas es justo la incoherencia que la demo no puede tener. Se
+        // recorta la hora, no el día, para que siga siendo de hoy.
+        if ($post['status'] === SnkKilkanaPostStatusEnum::Published->value
+            && Carbon::parse($cuando)->isFuture()) {
+            return now()->subMinutes(5 + crc32($post['slug']) % 55)->toDateTimeString();
+        }
 
         if ($post['status'] !== SnkKilkanaPostStatusEnum::Scheduled->value
             || Carbon::parse($cuando)->isFuture()) {
@@ -1305,7 +1532,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             flags: JSON_THROW_ON_ERROR,
         );
         $porPost = collect($posts)->mapWithKeys(fn (array $post) => [
-            substr($post['publish_at'], 0, 10).'|'.$post['slug'] => $post['reads'],
+            substr($this->shift($post['publish_at']), 0, 10).'|'.$post['slug'] => $post['reads'],
         ]);
         $hoy = now()->startOfDay();
 
