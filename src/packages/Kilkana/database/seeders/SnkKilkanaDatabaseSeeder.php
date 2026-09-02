@@ -12,6 +12,7 @@ use Packages\Kilkana\Enums\SnkKilkanaAuthorKindEnum;
 use Packages\Kilkana\Enums\SnkKilkanaCategoryStatusEnum;
 use Packages\Kilkana\Enums\SnkKilkanaCommentStatusEnum;
 use Packages\Kilkana\Enums\SnkKilkanaConsentSourceEnum;
+use Packages\Kilkana\Enums\SnkKilkanaContentTierEnum;
 use Packages\Kilkana\Enums\SnkKilkanaPostStatusEnum;
 use Packages\Kilkana\Enums\SnkKilkanaSubscriberStatusEnum;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
@@ -24,6 +25,7 @@ use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Models\SnkKilkanaPostRevisionModel;
 use Packages\Kilkana\Models\SnkKilkanaPostSlugModel;
 use Packages\Kilkana\Models\SnkKilkanaPostViewModel;
+use Packages\Kilkana\Models\SnkKilkanaReaderReadModel;
 use Packages\Kilkana\Models\SnkKilkanaSettingModel;
 use Packages\Kilkana\Models\SnkKilkanaSubscriberModel;
 use Packages\Kilkana\Models\SnkKilkanaTagModel;
@@ -763,10 +765,11 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      */
     private function seedComments(): void
     {
-        $readers = $this->seedReaders();
+        ['readers' => $readers, 'spammers' => $spammers] = $this->seedReaders();
         if ($readers === []) {
             return;
         }
+        $this->seedReads($readers);
 
         // Las voces viven en `SnkKilkanaDemoVoices`: por familia de seccion, porque la gente
         // comenta lo que ha leido, y generales, para que dos hilos de la misma mesa no suenen
@@ -788,9 +791,17 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 // Por slug y no por id: una pieza nueva en medio del snapshot no toca ni un
                 // comentario de las demás, y un `migrate:fresh` que reordene ids tampoco.
                 $clave = "{$post->slug}:{$n}";
-                $reader = $readers[crc32("reader:{$clave}") % count($readers)];
                 $frase = crc32("body:{$clave}");
                 $esSpam = crc32("spam:{$clave}") % 11 === 5;
+                // El spam lo firman cuentas de usar y tirar, no los vecinos que llevan años
+                // comentando: es lo que se ve en cualquier cola real, y lo que hace que
+                // bloquear a su autor sea la respuesta y no un castigo a alguien de casa.
+                // Y en una pieza, cada posición lleva un desechable y una frase distintos: son
+                // cuatro cuentas y seis frases, y dos posiciones que cayeran en el mismo par
+                // serían un solo comentario para `firstOrCreate`.
+                $reader = $esSpam
+                    ? $spammers[(crc32("reader:{$post->slug}") + $n) % count($spammers)]
+                    : $readers[crc32("reader:{$clave}") % count($readers)];
 
                 // Un comentario llega en los cuatro días que siguen a la pieza, que es cuando
                 // se lee, y nunca antes de que exista ni después de hoy. La ventana se acorta
@@ -827,7 +838,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                     'user_id' => $reader->id,
                     'post_id' => $post->id,
                     'body' => $esSpam
-                        ? SnkKilkanaDemoVoices::SPAM[$frase % count(SnkKilkanaDemoVoices::SPAM)]
+                        ? SnkKilkanaDemoVoices::SPAM[(crc32("body:{$post->slug}") + $n) % count(SnkKilkanaDemoVoices::SPAM)]
                         // Con su propio hash: atada al de la frase, la elección de voz iba de la
                         // mano del estado y las generales no salían nunca en la cola.
                         : self::voice($familias[$post->category_id] ?? 'local', crc32("voice:{$clave}")),
@@ -870,7 +881,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      * teléfono). Sin esto la moderación es una columna de «Demo Reader» repetido: no se ve
      * si la tabla aguanta nombres largos ni correos distintos.
      *
-     * @return list<CoreUserModel>
+     * @return array{readers: list<CoreUserModel>, spammers: list<CoreUserModel>}
      */
     /** La frase de un comentario: de su familia dos de cada tres veces, general el resto. */
     private static function voice(string $familia, int $hash): string
@@ -911,7 +922,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             $password = 'password';
         }
         if (! is_string($password) || $password === '') {
-            return [];
+            return ['readers' => [], 'spammers' => []];
         }
 
         // La audiencia de un diario comarcal de la Ribera: gente de Alzira y los pueblos de al
@@ -928,9 +939,19 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             ['name' => 'Pau Comas', 'email' => 'pau.comas@mail.example', 'full_name' => 'Pau Comas Vidal', 'company' => 'Mercat Municipal d\'Alzira', 'phone' => '+34 962 415 677'],
         ];
 
+        // Y las cuentas de usar y tirar que firman el spam: correo de proveedor gratuito, sin
+        // nombre real, de hace días. Tres de las cuatro ya están bloqueadas, que es lo que
+        // pasa con el spam a la primera; la cuarta sigue abierta para que la cola tenga a
+        // quién bloquear.
+        $spammers = [
+            ['name' => 'u9902', 'email' => 'u9902@correo-gratis.example', 'full_name' => null, 'company' => null, 'phone' => null],
+            ['name' => 'u4471', 'email' => 'u4471@correo-gratis.example', 'full_name' => null, 'company' => null, 'phone' => null],
+            ['name' => 'u1188', 'email' => 'u1188@buzon-libre.example', 'full_name' => null, 'company' => null, 'phone' => null],
+            ['name' => 'u7350', 'email' => 'u7350@correo-gratis.example', 'full_name' => null, 'company' => null, 'phone' => null],
+        ];
+
         $role = Role::findOrCreate('reader', 'sanctum');
-        $readers = [];
-        foreach ($people as $i => $person) {
+        $alta = function (array $person, int $antiguedad, bool $bloqueada) use ($password, $role): CoreUserModel {
             $user = CoreUserModel::firstOrCreate(
                 ['email' => $person['email']],
                 [
@@ -943,15 +964,70 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 ]
             );
             // Fuera del create: así una siembra sobre una base que ya tenía al usuario
-            // también le completa la ficha, en vez de dejarla a medias.
+            // también le completa la ficha, en vez de dejarla a medias. La antigüedad solo se
+            // escribe al nacer: una cuenta que ya existía tiene la suya.
             $user->forceFill([
                 'email_verified_at' => $user->email_verified_at ?: now(),
+                'created_at' => $user->wasRecentlyCreated ? now()->subDays($antiguedad) : $user->created_at,
+                'suspended_at' => $bloqueada ? ($user->suspended_at ?: now()->subDays($antiguedad % 5)) : $user->suspended_at,
             ])->save();
             $user->assignRole($role);
-            $readers[] = $user;
+
+            return $user;
+        };
+
+        $readers = [];
+        foreach ($people as $person) {
+            // Altas repartidas en dos años y media: «member since» es lo que ordena la lista.
+            $readers[] = $alta($person, 30 + crc32("since:{$person['email']}") % 900, false);
+        }
+        $cuentasSpam = [];
+        foreach ($spammers as $i => $person) {
+            $cuentasSpam[] = $alta($person, 3 + crc32("since:{$person['email']}") % 40, $i < 3);
         }
 
-        return $readers;
+        return ['readers' => $readers, 'spammers' => $cuentasSpam];
+    }
+
+    /**
+     * Las lecturas medidas del mes: qué piezas con muro abrió cada lector desde el día uno.
+     *
+     * Es lo que el medidor de la ficha enseña —cuántas de las tres del mes lleva gastadas— y
+     * por eso van entre cero y cuatro por cuenta: alguien que no ha gastado ninguna, alguien
+     * a mitad y alguien que ya se ha topado con el muro. Solo piezas medidas, publicadas antes
+     * de la lectura y leídas dentro del mes y antes de ahora.
+     *
+     * @param  list<CoreUserModel>  $readers
+     */
+    private function seedReads(array $readers): void
+    {
+        $ahora = now();
+        $inicio = $ahora->copy()->startOfMonth();
+        $medidas = SnkKilkanaPostModel::query()
+            ->published()
+            ->where('content_tier', SnkKilkanaContentTierEnum::Metered)
+            ->where('publish_at', '<', $ahora)
+            ->orderByDesc('publish_at')
+            ->limit(60)
+            ->get(['id', 'slug', 'publish_at', 'content_tier']);
+        if ($medidas->isEmpty()) {
+            return;
+        }
+
+        foreach ($readers as $reader) {
+            $cuantas = crc32("reads:{$reader->email}") % 5;
+            for ($n = 0; $n < $cuantas; $n++) {
+                $post = $medidas[crc32("read:{$reader->email}:{$n}") % $medidas->count()];
+                // Desde que existe la pieza o desde el día uno, lo que sea más tarde, hasta ahora.
+                $desde = $post->publish_at->greaterThan($inicio) ? $post->publish_at : $inicio;
+                $ventana = (int) $desde->diffInMinutes($ahora);
+                if ($ventana < 2) {
+                    continue;
+                }
+                $cuando = $desde->copy()->addMinutes(1 + crc32("readat:{$reader->email}:{$n}") % ($ventana - 1));
+                SnkKilkanaReaderReadModel::record((int) $reader->getKey(), $post, $cuando);
+            }
+        }
     }
 
     /** El catálogo que envía el producto, publicado desde los ficheros maestros. */

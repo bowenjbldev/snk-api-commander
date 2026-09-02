@@ -33,6 +33,11 @@ use Spatie\Permission\Models\Role;
  * `view others posts` funcionaría, y el día que alguien le quite el de editar perdería el
  * sumario sin que nadie lo hubiera decidido.
  *
+ * `readers` es un recurso aparte de `comments` porque bloquear a una persona no es moderar
+ * una frase: la mesa de edición modera y no bloquea, y esa es la diferencia entre `editor` y
+ * `moderador` que la matriz del panel enseña. Y aparte de `subscribers`, porque una cuenta
+ * lectora y un correo del boletín son dos listas que se cruzan y no se contienen.
+ *
  * La portada NO necesita permiso propio: componerla ya es `update layouts`, y separarla de
  * `update posts` es justo lo que distingue a un editor de mesa de la dirección.
  */
@@ -52,7 +57,7 @@ class SnkKilkanaRoleCatalogService
     public function sync(): array
     {
         $names = [];
-        foreach (['posts', 'categories', 'authors', 'media', 'tags', 'comments', 'subscribers', 'layouts', 'settings', 'themes'] as $resource) {
+        foreach (['posts', 'categories', 'authors', 'media', 'tags', 'comments', 'readers', 'subscribers', 'layouts', 'settings', 'themes'] as $resource) {
             foreach (['index', 'show', 'create', 'update', 'delete'] as $action) {
                 $names[] = "$action $resource";
             }
@@ -83,7 +88,7 @@ class SnkKilkanaRoleCatalogService
             // Dirección editorial: manda en el periódico entero, incluida la portada y la
             // identidad. No administra la instalación (usuarios) — eso es otro oficio.
             'director' => [
-                ...$crud('posts', 'categories', 'authors', 'media', 'tags', 'comments', 'subscribers', 'layouts', 'settings', 'themes'),
+                ...$crud('posts', 'categories', 'authors', 'media', 'tags', 'comments', 'readers', 'subscribers', 'layouts', 'settings', 'themes'),
                 'publish posts', 'edit others posts', 'view others posts',
             ],
             // Mesa de edición: publica y corrige lo de cualquiera, modera y gestiona el
@@ -114,10 +119,10 @@ class SnkKilkanaRoleCatalogService
                 'index tags',
                 ...$read('categories', 'authors'),
             ],
-            // Comunidad: comentarios y boletín. Ni un permiso sobre artículos, que es
-            // justo por lo que este rol existe.
+            // Comunidad: comentarios, lectores y boletín. Ni un permiso sobre artículos, que
+            // es justo por lo que este rol existe.
             'moderador' => [
-                ...$crud('comments', 'subscribers'),
+                ...$crud('comments', 'readers', 'subscribers'),
                 ...$read('posts'),
                 // Está en la casa, así que ve el sumario. Por necesidad no le hace falta
                 // —modera comentarios de piezas ya publicadas—, pero dejarlo fuera

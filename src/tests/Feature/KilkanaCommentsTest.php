@@ -13,6 +13,7 @@ use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaCommentModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
+use Packages\Kilkana\Services\SnkKilkanaPublicService;
 use Packages\Kilkana\Services\SnkKilkanaRoleCatalogService;
 use Tests\TestCase;
 
@@ -172,6 +173,25 @@ class KilkanaCommentsTest extends TestCase
         $this->actingAs($redactor, 'sanctum');
 
         $this->assertSame(403, app(SnkKilkanaCommentsController::class)->blockAuthor(1)->getStatusCode());
+    }
+
+    /** El panel cuenta todo lo que hay que moderar; la calle, solo lo que puede ver. */
+    public function test_la_calle_cuenta_solo_los_comentarios_aprobados(): void
+    {
+        $amparo = $this->lector('amparo@lectores.example', 'Amparo Ruiz');
+        $pieza = $this->pieza('Plan de aparcamientos');
+        $this->comentario($amparo, $pieza, 'Las plazas ya estaban saturadas.', 'approved');
+        $this->comentario($amparo, $pieza, 'Insulto que no sale.', 'rejected');
+        $this->comentario($amparo, $pieza, 'Compra aqui.', 'spam');
+
+        $calle = app(SnkKilkanaPublicService::class);
+        $lista = $calle->posts([])->first();
+        $detalle = $calle->post('2026', '07', '01', $pieza->slug);
+
+        $this->assertSame(3, $pieza->fresh()->comments_count, 'El panel ve que hay algo que moderar.');
+        $this->assertSame(1, $lista->comments_count);
+        $this->assertSame(1, $detalle->comments_count);
+        $this->assertArrayNotHasKey('approved_comments_count', $detalle->toArray());
     }
 
     private function comoModerador(): CoreUserModel

@@ -59,7 +59,7 @@ es único y es lo que identifica a alguien**, no el nombre.
 | `editor` | Mesa de edición: publica y edita piezas ajenas. |
 | `redactor` | Plantilla: escribe lo suyo y lo manda a revisión; **no publica** (desde el 2026-09-01: un inquilino sembrado antes lo conserva hasta correr `kilkana:sync-permissions`). Ve el sumario de la redacción. |
 | `colaborador` | Escribe lo suyo pero **no publica**: entrega y espera. Único rol fuera de la sala. |
-| `moderador` | Comentarios y suscriptores. No escribe artículos. |
+| `moderador` | Comentarios, lectores y suscriptores. No escribe artículos. |
 | `reader` | Cuenta de lectura registrada. Sin acceso editorial. |
 
 ### Los tres permisos que no salen del CRUD

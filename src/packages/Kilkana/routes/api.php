@@ -12,6 +12,7 @@ use Packages\Kilkana\Http\Controllers\SnkKilkanaMediaTaxonomiesController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaPlanController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaPostsController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaPublicController;
+use Packages\Kilkana\Http\Controllers\SnkKilkanaReadersController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaRolesController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaSettingsController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaSubscribersController;
@@ -117,6 +118,11 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::apiResource('comments', SnkKilkanaCommentsController::class)->whereNumber('comment');
 
     Route::apiResource('subscribers', SnkKilkanaSubscribersController::class)->only(['index', 'show', 'store', 'update', 'destroy']);
+    // Las cuentas lectoras: se listan y se bloquean, y nada más. No hay `show` ni `destroy`
+    // a propósito: borrar una cuenta se lleva sus comentarios, y para eso está bloquear.
+    Route::get('readers', [SnkKilkanaReadersController::class, 'index']);
+    Route::post('readers/{id}/block', [SnkKilkanaReadersController::class, 'block'])->whereNumber('id');
+    Route::delete('readers/{id}/block', [SnkKilkanaReadersController::class, 'unblock'])->whereNumber('id');
 
     Route::get('layouts/{layout}/revisions', [SnkKilkanaLayoutsController::class, 'revisions'])->whereIn('layout', SnkKilkanaLayoutEnum::values())->middleware('can:show layouts');
     Route::post('layouts/{layout}/revisions/{revision}/restore', [SnkKilkanaLayoutsController::class, 'restore'])->whereIn('layout', SnkKilkanaLayoutEnum::values())->middleware('can:update layouts');

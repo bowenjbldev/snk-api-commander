@@ -12,7 +12,7 @@ use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Enums\SnkKilkanaCommentStatusEnum;
 use Packages\Kilkana\Models\SnkKilkanaCommentModel;
 use Packages\Kilkana\Services\SnkKilkanaCommentService;
-use Packages\Kilkana\Services\SnkKilkanaRoleCatalogService;
+use Packages\Kilkana\Services\SnkKilkanaReaderService;
 
 /**
  * Comentarios de lectores registrados. `store` lo usa cualquier usuario con
@@ -28,8 +28,10 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
     private const PER_PAGE_MAX = 100;
 
     /** `rule()` es una llamada, y una propiedad no se inicializa con eso: va aqui. */
-    public function __construct(private readonly SnkKilkanaCommentService $comments)
-    {
+    public function __construct(
+        private readonly SnkKilkanaCommentService $comments,
+        private readonly SnkKilkanaReaderService $lectores,
+    ) {
         $this->validationRulesUpdate['status'] = 'required|'.SnkKilkanaCommentStatusEnum::rule();
     }
 
@@ -190,40 +192,29 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
     /**
      * Cierra la puerta a quien escribio el comentario, y rechaza lo que tenia en la cola.
      *
-     * Comentar exige cuenta, asi que bloquear es suspender esa cuenta: tira sus sesiones y el
-     * login le dice que no. Solo a un lector: a un companero no se le bloquea desde la
-     * moderacion, eso es cosa de cuentas, y una cuenta dada de baja ya no esta. Deshacerlo es
-     * de la pantalla de lectores, no de esta.
+     * Comentar exige cuenta, asi que bloquear es suspender esa cuenta: lo hace el servicio
+     * de lectores, el mismo que usa su pantalla, y con SU permiso: bloquear a una persona
+     * no es moderar una frase, y quien modera sin `update readers` no bloquea desde aqui.
+     * Solo a un lector: a un companero no se le bloquea desde la moderacion, eso es cosa de
+     * cuentas, y una cuenta dada de baja ya no esta. Deshacerlo es de la pantalla de lectores.
      */
     public function blockAuthor($id = null): JsonResponse
     {
-        if ($response = $this->requirePermission($this->updatePermission)) {
+        if ($response = $this->requirePermission('update readers')) {
             return $response;
         }
 
-        $comentario = $this->newQuery()->with('user')->find($id);
+        $comentario = $this->newQuery()->with('user.roles')->find($id);
         if ($comentario === null) {
             return response()->json(['error' => 'Record not found'], 404);
         }
 
-        // La pregunta no es «¿es lector?» sino «¿es SOLO lector?»: Spatie admite varios roles, y
-        // quien tenga ademas un asiento es un companero, aunque tambien comente. Falla cerrado.
         $autor = $comentario->user;
-        $roles = $autor?->roles->pluck('name') ?? collect();
-        $soloLector = $roles->contains('reader')
-            && $roles->every(fn (string $rol) => in_array($rol, SnkKilkanaRoleCatalogService::WITHOUT_SEAT, true));
-        if ($autor === null || ! $soloLector) {
+        if (! $this->lectores->isReader($autor)) {
             return response()->json(['error' => 'Not a reader account'], 409);
         }
 
-        $autor->forceFill(['suspended_at' => now()])->save();
-        $autor->tokens()->delete();
-        $rechazados = SnkKilkanaCommentModel::query()
-            ->where('user_id', $autor->getKey())
-            ->where('status', SnkKilkanaCommentStatusEnum::Pending)
-            ->update(['status' => SnkKilkanaCommentStatusEnum::Rejected]);
-
-        return response()->json(['blocked' => (string) $autor->getKey(), 'rejected' => $rechazados]);
+        return response()->json(['blocked' => (string) $autor->getKey(), 'rejected' => $this->lectores->block($autor)]);
     }
 
     /**

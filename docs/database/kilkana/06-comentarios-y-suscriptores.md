@@ -97,7 +97,57 @@ dio de baja—, `on` —la pieza— y `reply_to` —quién y qué dice el coment
 `POST comments/bulk` acepta `approve`, `reject`, `pending`, `spam` y `delete`.
 `POST comments/{id}/block-author` suspende la cuenta del autor **solo si es únicamente lector** —a un
 compañero no se le bloquea desde la moderación, y a una cuenta dada de baja tampoco: 409—, tira
-sus sesiones y rechaza lo que tenía pendiente. Deshacerlo es de la pantalla de lectores.
+sus sesiones y rechaza lo que tenía pendiente. Lo hace `SnkKilkanaReaderService`, el mismo que usa
+la pantalla de lectores, y con **su** permiso, `update readers`: bloquear a una persona no es
+moderar una frase, y la mesa de edición modera sin bloquear. Deshacerlo es de esa pantalla.
+
+## Los lectores — la cuenta detrás del comentario
+
+Un lector es una fila de `users` con el papel `reader` y ningún asiento: no hay tabla propia,
+porque es la misma cuenta que comenta. Lo que la pantalla de lectores necesita es esa cuenta
+**cruzada** con lo que ha hecho: cuántos comentarios y cuántos rechazados, si su correo está en
+`kilkana_subscribers` y en qué estado, cuántas piezas medidas ha abierto este mes y cuándo se la
+vio por última vez —lo más reciente entre usar una sesión, comentar y abrir una pieza medida—.
+
+`readers` es un recurso del catálogo aparte de `comments` y de `subscribers`
+([`01-cuentas-y-permisos.md`](01-cuentas-y-permisos.md)): una cuenta lectora y un correo del
+boletín son dos listas que se cruzan y no se contienen —se recibe el boletín sin cuenta—, y
+gobernar personas no es moderar frases. Lo tienen `director` y `moderador`.
+
+### Lo que el panel lee y escribe de los lectores
+
+`GET readers` (`index readers`) lista **solo** cuentas que son únicamente lectoras —la redacción no
+sale ni con su id a mano—, de la más nueva a la más vieja. Acepta `tab` (`all`, `subscribers`
+—correo confirmado en el boletín—, `commenters` —ha comentado algo que no es spam y no está
+bloqueada—, `blocked`), `q` (nombre o correo, dos letras como mínimo), `per_page`, `counts=1`
+—solo `accounts`, en una consulta, para el raíl— y `all=1` —lo filtrado entero sin paginar, hasta cinco mil, que es lo que se lleva
+un export—. Devuelve `data`, `meta`, `counts` por pestaña y `stats`: cuentas, suscriptores
+confirmados de la lista entera, quién comentó este mes y bloqueados. Cada fila lleva `comments`,
+`rejected`, `reads` —las medidas del mes—, `newsletter` (`status`, `consent_source`, `consent_at`;
+`null` sin suscripción), `last_seen_at` y `blocked`.
+
+`POST readers/{id}/block` y `DELETE readers/{id}/block` (`update readers`) cierran y reabren la
+cuenta. Bloquear tira las sesiones y rechaza lo pendiente; desbloquear no deshace ninguna decisión,
+porque rechazar ya fue una. No hay `show` ni `destroy`: borrar una cuenta se llevaría sus
+comentarios, y para eso está bloquear.
+
+## `kilkana_reader_reads` — las lecturas medidas
+
+Qué pieza **con muro** abrió cada cuenta y en qué mes: una fila por (`user_id`, `post_id`,
+`period`), con `period` el primer día del mes y `read_at` el instante. Es lo que sostiene el
+contador de «lecturas medidas del mes» de una cuenta, que es lo que el muro consume: pasadas las
+del mes, una pieza medida pide suscripción.
+
+- **Una fila por cuenta, pieza y mes, y no un contador.** Releer la misma pieza no gasta otra
+  lectura, y el mes que viene vuelve a contar desde cero.
+- **Solo entran piezas `metered`.** Una gratuita no consume nada y una cerrada no se abre;
+  `SnkKilkanaReaderReadModel::record()` lo comprueba y no escribe.
+- **La apunta el mismo `POST …/view` que cuenta la audiencia**, en el evento `open`, si la
+  petición trae el token de una cuenta: la ruta sigue siendo pública y sin token no hay a quién
+  apuntársela. Hoy ningún cliente lo manda —la calle no tiene sesión lectora—, así que las filas
+  vienen de la demo y de quien llame con token; el día que la calle entre, la tabla ya está.
+- **`period` se compara con la fecha entera**, no con `Y-m-d`: la columna es `date`, pero el cast
+  la escribe con hora y SQLite compara cadenas tal cual.
 
 ### Un comentario nace `pending`
 

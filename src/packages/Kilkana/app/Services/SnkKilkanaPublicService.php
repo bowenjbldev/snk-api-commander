@@ -21,6 +21,7 @@ use Packages\Kilkana\Models\SnkKilkanaLayoutModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Models\SnkKilkanaPostSlugModel;
 use Packages\Kilkana\Models\SnkKilkanaPostViewModel;
+use Packages\Kilkana\Models\SnkKilkanaReaderReadModel;
 use Packages\Kilkana\Models\SnkKilkanaSettingModel;
 use Packages\Kilkana\Models\SnkKilkanaSubscriberModel;
 
@@ -38,6 +39,7 @@ class SnkKilkanaPublicService
             ->withSum(['views as views_day' => fn ($q) => $q->where('date', now()->toDateString())], 'engaged')
             ->withSum(['views as views_week' => fn ($q) => $q->where('date', '>=', now()->subDays(6)->toDateString())], 'engaged')
             ->withSum('views as views_total', 'engaged')
+            ->withCount(['comments as approved_comments_count' => fn ($c) => $c->approved()])
             ->orderByDesc('publish_at');
 
         if (! empty($filters['cat'])) {
@@ -54,7 +56,26 @@ class SnkKilkanaPublicService
 
         // Los listados son tarjetas: además de ahorrar peso, no pueden filtrar el cuerpo
         // completo de una pieza cerrada antes de que el detalle aplique el muro.
-        return $query->limit($filters['count'] ?? 50)->get()->each->makeHidden('body_blocks');
+        return $query->limit($filters['count'] ?? 50)->get()
+            ->each(fn (SnkKilkanaPostModel $post) => $this->publicCount($post))
+            ->each->makeHidden('body_blocks');
+    }
+
+    /**
+     * En la calle, `comments_count` es lo que la calle puede ver: los aprobados.
+     *
+     * El modelo cuenta todos —para moderar hay que ver que hay algo que moderar— y ese
+     * contador viaja en cada pieza; aquí se pisa con el de aprobados, porque para un lector
+     * un número que incluye spam y rechazados no es moderación, es un artículo que dice tres
+     * y enseña dos. Con un alias propio y no con el mismo nombre: dos subconsultas con la
+     * misma etiqueta dejan al orden de las columnas decidir cuál sobrevive.
+     */
+    private function publicCount(SnkKilkanaPostModel $post): SnkKilkanaPostModel
+    {
+        $post->setAttribute('comments_count', (int) $post->getAttribute('approved_comments_count'));
+        $post->offsetUnset('approved_comments_count');
+
+        return $post;
     }
 
     /**
@@ -74,13 +95,21 @@ class SnkKilkanaPublicService
      */
     public function recordView(string $year, string $month, string $day, string $slug, string $event, Request $request): bool
     {
-        $postId = $this->publishedAt($year, $month, $day, $slug)->value('id');
-        if (! $postId) {
+        $post = $this->publishedAt($year, $month, $day, $slug)->first(['id', 'content_tier']);
+        if ($post === null) {
             return false;
         }
+        $postId = (int) $post->getKey();
 
         if ($event === 'open') {
             SnkKilkanaPostViewModel::record($postId, 'opens', $this->referrerCounter($request));
+            // Si quien abre viene con su cuenta, la lectura medida es suya y se le apunta al
+            // mes. La ruta no exige sesion —la calle es publica— pero un token de lector que
+            // viaje en la peticion se resuelve igual, y sin el no hay a quien apuntarsela.
+            $lector = $request->user('sanctum');
+            if ($lector !== null) {
+                SnkKilkanaReaderReadModel::record((int) $lector->getAuthIdentifier(), $post);
+            }
 
             return true;
         }
@@ -207,11 +236,12 @@ class SnkKilkanaPublicService
         $post = $this->publishedAt($year, $month, $day, $slug)
             ->with([self::AUTHOR_PUBLIC, 'ogImage:id,url'])
             ->withSum('views as views_total', 'engaged')
+            ->withCount(['comments as approved_comments_count' => fn ($c) => $c->approved()])
             ->first();
         if ($post) {
             $post->setAttribute('body_blocks', $post->publicBodyBlocks());
 
-            return $post;
+            return $this->publicCount($post);
         }
 
         $history = SnkKilkanaPostSlugModel::query()

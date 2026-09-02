@@ -55,6 +55,12 @@ de hoy. Lector, frase y hora salen de hashes distintos, para que el mismo lector
 la misma frase. La cola de moderación son los de las últimas tres semanas; lo de hace meses ya
 está decidido, y entre lo decidido hay rechazados, que son el historial de la cuenta.
 
+**El spam lo firman cuatro cuentas de usar y tirar** —correo de proveedor gratuito, sin nombre,
+de hace días—, no los vecinos que llevan años comentando: es lo que se ve en cualquier cola real,
+y lo que hace que bloquear a su autor sea la respuesta y no un castigo a alguien de casa. Tres de
+las cuatro ya están bloqueadas; la cuarta sigue abierta para que la cola tenga a quién bloquear.
+Los ocho lectores con nombre tienen altas repartidas en dos años y medio.
+
 ## Lo que rodea a las piezas
 
 - **Historial.** La mitad de las doscientas piezas más recientes lleva una edición real hecha
@@ -63,6 +69,10 @@ está decidido, y entre lo decidido hay rechazados, que son el historial de la c
 - **SEO y destacadas.** Una de cada tres piezas lleva descripción SEO —la entradilla recortada a
   158 caracteres—, como una redacción que lo rellena a ratos; las seis más leídas del último mes
   van marcadas como destacadas.
+- **Lecturas medidas.** Entre cero y cuatro por lector con nombre, sobre piezas con muro, desde el
+  día uno del mes y después de que la pieza exista: alguien que no ha gastado ninguna, alguien a
+  mitad y alguien que ya se ha topado con el muro. Es lo que enseña el medidor de la ficha de un
+  lector en el panel.
 - **Suscriptores.** Unos cuatrocientos, con nombres de la Ribera, altas repartidas en año y medio,
   tres de cada cuatro confirmadas por el formulario y un poso importado de la lista en papel.
 - **Fotos.** Las ciento setenta y seis direcciones del snapshot se reparten entre los sesenta

@@ -160,7 +160,8 @@ se quedaron sin él, los roles que editan lo ajeno seguían viendo el sumario
 
 **Y en local vale lo mismo.** Los inquilinos aprovisionados no reciben una migración por
 existir: dos rondas seguidas —cuentas el 2026-09-01, comentarios el 2026-09-02— añadieron columnas
-y el panel local se abrió con «Unknown column» hasta correr `core:migrate --all-tenants`. Una
+y el panel local se abrió con «Unknown column» hasta correr `core:migrate --all-tenants`; la
+tercera, lectores el mismo día, trajo una tabla y un recurso de permisos, o sea los dos comandos. Una
 migración nueva en `packages/Kilkana` pide ese comando el mismo día, y un cambio del catálogo de
 roles, el de permisos.
 

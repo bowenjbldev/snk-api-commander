@@ -2,12 +2,16 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Database\Seeders\SnkKilkanaDatabaseSeeder;
 use Packages\Kilkana\Enums\SnkKilkanaCommentStatusEnum;
+use Packages\Kilkana\Enums\SnkKilkanaContentTierEnum;
 use Packages\Kilkana\Models\SnkKilkanaCommentModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Models\SnkKilkanaPostViewModel;
+use Packages\Kilkana\Models\SnkKilkanaReaderReadModel;
 use Packages\Kilkana\Services\SnkKilkanaRoleCatalogService;
 use Tests\TestCase;
 
@@ -102,6 +106,25 @@ class KilkanaDemoClockTest extends TestCase
         $this->assertGreaterThan(0, SnkKilkanaCommentModel::query()->where('status', SnkKilkanaCommentStatusEnum::Rejected)->count());
 
         $this->assertGreaterThan(0, SnkKilkanaPostViewModel::query()->where('date', now()->toDateString())->sum('engaged'), 'Hoy se lee.');
+
+        // El spam lo firman las cuentas de usar y tirar, y tres de ellas ya estan bloqueadas.
+        $firmantesSpam = SnkKilkanaCommentModel::query()
+            ->where('status', SnkKilkanaCommentStatusEnum::Spam)
+            ->join('users', 'users.id', '=', 'kilkana_comments.user_id')
+            ->pluck('users.full_name')->unique();
+        $this->assertGreaterThan(0, $firmantesSpam->count());
+        $this->assertTrue($firmantesSpam->every(fn ($nombre) => $nombre === null), 'Un vecino con nombre no firma publicidad.');
+        $this->assertSame(3, CoreUserModel::query()->whereNotNull('suspended_at')->count());
+
+        // Las lecturas medidas: de este mes, sobre piezas con muro, y despues de que existan.
+        $lecturas = SnkKilkanaReaderReadModel::query()
+            ->join('kilkana_posts', 'kilkana_posts.id', '=', 'kilkana_reader_reads.post_id')
+            ->get(['kilkana_reader_reads.period', 'kilkana_reader_reads.read_at', 'kilkana_posts.publish_at', 'kilkana_posts.content_tier']);
+        $this->assertGreaterThan(0, $lecturas->count());
+        $this->assertSame($lecturas->count(), SnkKilkanaReaderReadModel::query()->inMonth()->count());
+        // Columnas de la pieza leidas desde el modelo de lecturas: llegan sin sus casts.
+        $this->assertTrue($lecturas->every(fn ($l) => $l->content_tier === SnkKilkanaContentTierEnum::Metered->value));
+        $this->assertTrue($lecturas->every(fn ($l) => $l->read_at->greaterThan(Carbon::parse($l->publish_at)) && $l->read_at->lessThan(now())));
     }
 
     /** Lo que la tanda C reparte: revisiones, SEO, destacadas, suscriptores y fotos sin amontonar. */
