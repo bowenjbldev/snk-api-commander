@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Packages\Kilkana\Enums\SnkKilkanaLayoutEnum;
+use Packages\Kilkana\Http\Controllers\SnkKilkanaActivityController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaAuthController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaAuthorsController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaCategoriesController;
@@ -144,6 +145,11 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     // autenticada que podría leer, con el precio, los asientos y la banda del periódico dentro.
     // Tampoco `can:show settings`, que dejaría sin plan a cuatro de los seis que sí deben verlo.
     Route::get('plan', [SnkKilkanaPlanController::class, 'show'])->middleware('can:index posts');
+
+    // El registro de la redacción: lo lee quien ve el sumario de la redacción —los cinco de
+    // dentro; un colaborador externo ve lo suyo y ya—, y los movimientos de cuentas solo quien
+    // las administra. Solo lectura: lo escribe el propio panel al escribir.
+    Route::get('activity', [SnkKilkanaActivityController::class, 'index'])->middleware('can:view others posts');
 
     Route::get('settings', [SnkKilkanaSettingsController::class, 'show'])->middleware('can:show settings');
     Route::put('settings', [SnkKilkanaSettingsController::class, 'update'])->middleware('can:update settings');

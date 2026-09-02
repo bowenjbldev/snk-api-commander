@@ -20,8 +20,9 @@ distinción es justo lo que necesita saber quien vaya a tocar algo.
 | 3 | [Secciones](03-secciones.md) | `kilkana_categories` · `kilkana_category_slugs` |
 | 4 | [Artículos](04-articulos.md) | `kilkana_posts` · `kilkana_post_slugs` · `kilkana_post_revisions` · `kilkana_post_views` · `kilkana_tags` · `kilkana_post_tag` |
 | 5 | [Biblioteca de medios](05-medios.md) | `kilkana_media` · `kilkana_media_tags` · `kilkana_media_collections` · sus dos pivotes |
-| 6 | [Comentarios y suscriptores](06-comentarios-y-suscriptores.md) | `kilkana_comments` · `kilkana_subscribers` |
+| 6 | [Comentarios y suscriptores](06-comentarios-y-suscriptores.md) | `kilkana_comments` · `kilkana_subscribers` · `kilkana_reader_reads` |
 | 7 | [Composición y ajustes](07-composicion-y-ajustes.md) | `kilkana_layouts` · `kilkana_layout_revisions` · `kilkana_themes` · `kilkana_settings` |
+| 8 | [Actividad](08-actividad.md) | `kilkana_activity` |
 
 ## Una base de datos por periódico
 

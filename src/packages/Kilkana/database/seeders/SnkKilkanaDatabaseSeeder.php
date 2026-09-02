@@ -15,6 +15,7 @@ use Packages\Kilkana\Enums\SnkKilkanaConsentSourceEnum;
 use Packages\Kilkana\Enums\SnkKilkanaContentTierEnum;
 use Packages\Kilkana\Enums\SnkKilkanaPostStatusEnum;
 use Packages\Kilkana\Enums\SnkKilkanaSubscriberStatusEnum;
+use Packages\Kilkana\Models\SnkKilkanaActivityModel;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaCategorySlugModel;
@@ -30,6 +31,7 @@ use Packages\Kilkana\Models\SnkKilkanaSettingModel;
 use Packages\Kilkana\Models\SnkKilkanaSubscriberModel;
 use Packages\Kilkana\Models\SnkKilkanaTagModel;
 use Packages\Kilkana\Models\SnkKilkanaThemeModel;
+use Packages\Kilkana\Services\SnkKilkanaActivityService;
 use Packages\Kilkana\Services\SnkKilkanaMediaService;
 use Packages\Kilkana\Services\SnkKilkanaPostService;
 use Packages\Kilkana\Services\SnkKilkanaRoleCatalogService;
@@ -92,7 +94,17 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         'medio-ambiente' => ['name' => 'Medio ambiente'],
     ];
 
+    /**
+     * Con el registro de actividad callado: sembrar quinientas piezas no es que la máquina
+     * creara quinientos borradores. El registro de la demo se siembra aparte, al final, con
+     * los verbos y las firmas de una redacción.
+     */
     public function run(): void
+    {
+        app(SnkKilkanaActivityService::class)->quiet(fn () => $this->seedAll());
+    }
+
+    private function seedAll(): void
     {
         $this->seedPermissions();
         // Antes que los ajustes: la fila de settings apunta a una variante con RESTRICT, así
@@ -133,6 +145,86 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         $this->seedEditHistory();
         $this->seedComments();
         $this->seedSubscribers();
+        $this->seedActivity();
+    }
+
+    /**
+     * El registro de los últimos noventa días, deducido de lo que la base ya cuenta.
+     *
+     * Cada pieza publicada en ese tramo es un «published» firmado por quien la firma —o por
+     * el programador, para las de madrugada—, cada revisión un «edited», cada día con
+     * comentarios aprobados un lote de la moderadora, y encima lo que una redacción hace de
+     * vez en cuando: una etiqueta fundida, un tema vestido, una sección renombrada, un
+     * asiento invitado. Las fechas son las de la base, para que el registro y las pantallas
+     * cuenten la misma historia.
+     */
+    private function seedActivity(): void
+    {
+        $registro = app(SnkKilkanaActivityService::class);
+        $desde = now()->subDays(SnkKilkanaActivityModel::DAYS);
+        $staff = CoreUserModel::query()
+            ->whereHas('roles', fn ($q) => $q->whereIn('name', SnkKilkanaRoleCatalogService::PANEL_ROLES))
+            ->with('roles:id,name')
+            ->get()->keyBy('email');
+        $direccion = $staff->first(fn (CoreUserModel $u) => $u->roles->pluck('name')->contains('director')) ?? $staff->first();
+        $moderacion = $staff->first(fn (CoreUserModel $u) => $u->roles->pluck('name')->contains('moderador')) ?? $direccion;
+        if ($direccion === null) {
+            return;
+        }
+        $porUsuario = $staff->keyBy(fn (CoreUserModel $u) => $u->getKey());
+        $apunta = function (string $kind, string $verb, string $what, string $href, Carbon $cuando, ?CoreUserModel $quien, array $extra = []) use ($registro) {
+            if (SnkKilkanaActivityModel::query()->where(['kind' => $kind, 'verb' => $verb, 'what' => $what, 'created_at' => $cuando])->exists()) {
+                return;
+            }
+            Carbon::setTestNow($cuando);
+            try {
+                $registro->log($kind, $verb, $what, $href, [...$extra, 'user' => $quien, 'force' => true]);
+            } finally {
+                Carbon::setTestNow();
+            }
+        };
+
+        $piezas = SnkKilkanaPostModel::query()->published()->where('publish_at', '>=', $desde)->where('publish_at', '<=', now())
+            ->with('author:id,user_id')->orderBy('publish_at')->get(['id', 'title', 'publish_at', 'author_id', 'status']);
+        foreach ($piezas as $pieza) {
+            // De madrugada publica el programador: nadie pulsa a las cinco.
+            $hora = (int) $pieza->publish_at->format('G');
+            $quien = $hora < 7 ? null : ($porUsuario->get($pieza->author?->user_id) ?? $direccion);
+            $apunta('publish', 'published', $pieza->title, '/posts', $pieza->publish_at, $quien);
+        }
+
+        $revisiones = SnkKilkanaPostRevisionModel::query()->where('created_at', '>=', $desde)
+            ->with('post:id,title')->orderBy('created_at')->get(['id', 'post_id', 'user_id', 'created_at']);
+        foreach ($revisiones as $revision) {
+            if ($revision->post === null) {
+                continue;
+            }
+            $apunta('edit', 'edited', $revision->post->title, '/posts', $revision->created_at, $porUsuario->get($revision->user_id) ?? $direccion);
+        }
+
+        // Un lote por día con aprobados: la moderadora vacía la cola por la tarde.
+        $aprobados = SnkKilkanaCommentModel::query()->where('status', SnkKilkanaCommentStatusEnum::Approved)
+            ->where('created_at', '>=', $desde)
+            ->selectRaw('date(created_at) as dia, count(*) as total, count(distinct post_id) as piezas, min(post_id) as pieza')
+            ->groupBy('dia')->orderBy('dia')->get();
+        $titulos = SnkKilkanaPostModel::query()->whereIn('id', $aprobados->pluck('pieza'))->pluck('title', 'id');
+        foreach ($aprobados as $dia) {
+            $cuando = Carbon::parse($dia->dia)->setTime(17, 10 + crc32("mod:{$dia->dia}") % 45);
+            if ($cuando->greaterThan(now())) {
+                continue;
+            }
+            $sobre = (int) $dia->piezas === 1 ? (string) $titulos->get($dia->pieza) : "{$dia->piezas} posts";
+            $apunta('comment', ((int) $dia->total === 1 ? 'approved 1 comment on' : "approved {$dia->total} comments on"), $sobre, '/comments', $cuando, $moderacion);
+        }
+
+        // Lo que pasa de vez en cuando, con la fecha atada a hoy para que no envejezca.
+        $hoy = now();
+        $apunta('theme', 'applied the theme', 'Folio', '/themes', $hoy->copy()->subDays(41)->setTime(11, 20), $direccion, ['before' => 'Chronicle', 'after' => 'Folio']);
+        $apunta('category', 'renamed the category', 'Pueblos → Municipios', '/categories', $hoy->copy()->subDays(23)->setTime(9, 48), $direccion, ['before' => 'Pueblos', 'after' => 'Municipios']);
+        $apunta('tag', 'merged the tags', 'movilidad-urbana into movilidad', '/tags', $hoy->copy()->subDays(12)->setTime(16, 5), $direccion, ['before' => 'movilidad-urbana', 'after' => 'movilidad']);
+        $apunta('front', 'changed the front page of', 'Home', '/front', $hoy->copy()->subDays(1)->setTime(8, 2), $direccion);
+        $apunta('seat', 'invited', 'paula.roig@eldiario.example as Editor', '/roles', $hoy->copy()->subDays(6)->setTime(12, 31), $direccion);
+        $apunta('comment', 'blocked the reader', 'u9902', '/readers', $hoy->copy()->subDays(3)->setTime(18, 44), $moderacion);
     }
 
     /**

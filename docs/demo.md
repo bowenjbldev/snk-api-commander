@@ -73,6 +73,12 @@ Los ocho lectores con nombre tienen altas repartidas en dos años y medio.
   día uno del mes y después de que la pieza exista: alguien que no ha gastado ninguna, alguien a
   mitad y alguien que ya se ha topado con el muro. Es lo que enseña el medidor de la ficha de un
   lector en el panel.
+- **El registro de actividad.** Deducido de lo que la base ya cuenta: cada pieza publicada en los
+  últimos noventa días es un «published» firmado por su firma —o por el programador, las de
+  madrugada—, cada revisión un «edited», cada día con comentarios aprobados un lote de la
+  moderadora, y encima lo que una redacción hace de vez en cuando: un tema vestido, una sección
+  renombrada, dos etiquetas fundidas, un asiento invitado, un lector bloqueado. Todo lo demás que
+  siembra el seeder se siembra con el registro callado.
 - **Suscriptores.** Unos cuatrocientos, con nombres de la Ribera, altas repartidas en año y medio,
   tres de cada cuatro confirmadas por el formulario y un poso importado de la lista en papel.
 - **Fotos.** Las ciento setenta y seis direcciones del snapshot se reparten entre los sesenta

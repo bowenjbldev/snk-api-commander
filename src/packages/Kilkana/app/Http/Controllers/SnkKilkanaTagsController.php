@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Kilkana\Models\SnkKilkanaTagModel;
+use Packages\Kilkana\Services\SnkKilkanaActivityService;
 
 #[Group('Tags')]
 class SnkKilkanaTagsController extends CoreBaseApiController
@@ -91,10 +92,13 @@ class SnkKilkanaTagsController extends CoreBaseApiController
         $hasta = SnkKilkanaTagModel::query()->findOrFail($data['into']);
         $piezas = $desde->posts()->pluck('kilkana_posts.id')->all();
 
-        DB::transaction(function () use ($desde, $hasta, $piezas) {
+        // Callado: fundir borra una etiqueta, y «borró la etiqueta» no es lo que pasó.
+        $registro = app(SnkKilkanaActivityService::class);
+        $registro->quiet(fn () => DB::transaction(function () use ($desde, $hasta, $piezas) {
             $hasta->posts()->syncWithoutDetaching($piezas);
             $desde->delete();
-        });
+        }));
+        $registro->log('tag', 'merged the tags', "{$desde->name} into {$hasta->name}", '/tags', ['before' => $desde->name, 'after' => $hasta->name]);
 
         return response()->json(['id' => (string) $hasta->id, 'moved' => count($piezas)]);
     }

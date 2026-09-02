@@ -15,6 +15,8 @@ use Packages\Kilkana\Models\SnkKilkanaCommentModel;
  */
 class SnkKilkanaReaderService
 {
+    public function __construct(private readonly SnkKilkanaActivityService $registro) {}
+
     /**
      * Si la cuenta es SOLO lectora. Spatie admite varios roles, y quien además tiene un asiento
      * es un compañero aunque también comente: a ese no se le bloquea desde aquí. Falla cerrado.
@@ -36,6 +38,7 @@ class SnkKilkanaReaderService
     {
         $user->forceFill(['suspended_at' => $user->suspended_at ?? now()])->save();
         $user->tokens()->delete();
+        $this->registro->log('comment', 'blocked the reader', $user->full_name ?: $user->name, '/readers');
 
         return SnkKilkanaCommentModel::query()
             ->where('user_id', $user->getKey())
@@ -47,5 +50,6 @@ class SnkKilkanaReaderService
     public function unblock(CoreUserModel $user): void
     {
         $user->forceFill(['suspended_at' => null])->save();
+        $this->registro->log('comment', 'unblocked the reader', $user->full_name ?: $user->name, '/readers');
     }
 }

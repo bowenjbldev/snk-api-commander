@@ -11,6 +11,7 @@ use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Enums\SnkKilkanaCommentStatusEnum;
 use Packages\Kilkana\Models\SnkKilkanaCommentModel;
+use Packages\Kilkana\Services\SnkKilkanaActivityService;
 use Packages\Kilkana\Services\SnkKilkanaCommentService;
 use Packages\Kilkana\Services\SnkKilkanaReaderService;
 
@@ -31,6 +32,7 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
     public function __construct(
         private readonly SnkKilkanaCommentService $comments,
         private readonly SnkKilkanaReaderService $lectores,
+        private readonly SnkKilkanaActivityService $registro,
     ) {
         $this->validationRulesUpdate['status'] = 'required|'.SnkKilkanaCommentStatusEnum::rule();
     }
@@ -183,10 +185,24 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
             return $response;
         }
 
-        return response()->json([
-            'ok' => true,
-            'count' => $this->comments->bulk($data['ids'], $data['action']),
-        ]);
+        // Sobre qué, antes de mover nada: borrar se lleva las filas que lo dirían.
+        $piezas = SnkKilkanaCommentModel::query()->whereIn('kilkana_comments.id', $data['ids'])
+            ->join('kilkana_posts', 'kilkana_posts.id', '=', 'kilkana_comments.post_id')
+            ->distinct()->pluck('kilkana_posts.title');
+        $count = $this->comments->bulk($data['ids'], $data['action']);
+        if ($count > 0) {
+            $verbo = match ($data['action']) {
+                'approve' => 'approved',
+                'reject' => 'rejected',
+                'spam' => 'marked as spam',
+                'pending' => 'reopened',
+                default => 'deleted',
+            };
+            $cuantos = $count === 1 ? '1 comment' : "{$count} comments";
+            $this->registro->log('comment', "{$verbo} {$cuantos} on", $piezas->count() === 1 ? (string) $piezas->first() : "{$piezas->count()} posts", '/comments');
+        }
+
+        return response()->json(['ok' => true, 'count' => $count]);
     }
 
     /**

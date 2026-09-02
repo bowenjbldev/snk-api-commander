@@ -11,6 +11,7 @@ use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Services\SnkKilkanaAccountLinkService;
+use Packages\Kilkana\Services\SnkKilkanaActivityService;
 use Packages\Kilkana\Services\SnkKilkanaBylineService;
 use Packages\Kilkana\Services\SnkKilkanaRoleCatalogService;
 
@@ -28,6 +29,7 @@ class SnkKilkanaUsersController extends CoreUsersController
     public function __construct(
         private readonly SnkKilkanaBylineService $bylines,
         private readonly SnkKilkanaAccountLinkService $links,
+        private readonly SnkKilkanaActivityService $registro,
     ) {
         // Un puesto del panel: ni lector ni cuenta de servicio entran por aquí.
         $sinAsiento = 'not_in:'.implode(',', SnkKilkanaRoleCatalogService::WITHOUT_SEAT);
@@ -116,6 +118,7 @@ class SnkKilkanaUsersController extends CoreUsersController
 
         $user->load('roles:id,name');
         $this->decorate($user);
+        $this->registro->log('seat', 'invited', "{$data['email']} as ".ucfirst($data['role']), '/roles');
 
         return $this->flagPendingByline(response()->json($user, 201), (int) $user->getKey());
     }
@@ -182,6 +185,7 @@ class SnkKilkanaUsersController extends CoreUsersController
 
         $user->forceFill(['suspended_at' => now()])->save();
         $user->tokens()->delete();
+        $this->registro->log('seat', 'suspended', $user->full_name ?: $user->name, '/roles');
 
         return response()->json($this->decorate($user->load('roles:id,name')));
     }
@@ -199,6 +203,7 @@ class SnkKilkanaUsersController extends CoreUsersController
         }
 
         $user->forceFill(['suspended_at' => null])->save();
+        $this->registro->log('seat', 'restored the seat of', $user->full_name ?: $user->name, '/roles');
 
         return response()->json($this->decorate($user->load('roles:id,name')));
     }

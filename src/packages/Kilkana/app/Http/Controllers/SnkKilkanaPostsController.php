@@ -14,6 +14,7 @@ use Packages\Kilkana\Enums\SnkKilkanaPostStatusEnum;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Models\SnkKilkanaTagModel;
+use Packages\Kilkana\Services\SnkKilkanaActivityService;
 use Packages\Kilkana\Services\SnkKilkanaPostService;
 
 /**
@@ -473,6 +474,11 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             return $this->forbidPublish();
         }
 
-        return response()->json($this->posts->restore($post, $revision, (int) auth()->id()));
+        // Callado: restaurar guarda la pieza, y «editó» no es lo que pasó.
+        $registro = app(SnkKilkanaActivityService::class);
+        $restaurada = $registro->quiet(fn () => $this->posts->restore($post, $revision, (int) auth()->id()));
+        $registro->log('restore', 'restored an earlier version of', $post->title, '/posts');
+
+        return response()->json($restaurada);
     }
 }
