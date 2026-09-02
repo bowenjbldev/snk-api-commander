@@ -796,8 +796,20 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 // se lee, y nunca antes de que exista ni después de hoy. La ventana se acorta
                 // para las piezas de esta semana en vez de recortarse contra ahora: recortar
                 // apilaba los comentarios de la pieza de hoy en el mismo minuto exacto.
-                $ventana = max(1, min(96, (int) $post->publish_at->diffInHours($ahora)));
-                $fecha = $post->publish_at->copy()->addHours(crc32("at:{$clave}") % $ventana);
+                // Y en minutos cuando la pieza no lleva ni una hora publicada: con el suelo de
+                // una hora la ventana era de ancho cero y los comentarios de la pieza de hoy
+                // salían clavados en su sello exacto. Una pieza de hace media hora sí tiene
+                // comentarios; lo que no tiene es dos en el mismo segundo.
+                // Siempre al menos un minuto después: `% ventana` puede dar cero, y cero es el
+                // sello exacto de la pieza. Con menos de dos minutos publicada, todavía no hay
+                // nadie que la haya leído.
+                $minutos = (int) $post->publish_at->diffInMinutes($ahora);
+                if ($minutos < 2) {
+                    continue;
+                }
+                $fecha = $minutos < 60
+                    ? $post->publish_at->copy()->addMinutes(1 + crc32("at:{$clave}") % ($minutos - 1))
+                    : $post->publish_at->copy()->addHours(1 + crc32("at:{$clave}") % min(96, intdiv($minutos, 60)));
                 $reciente = $fecha->greaterThan($ahora->copy()->subDays(21));
                 $estado = match (true) {
                     $esSpam => SnkKilkanaCommentStatusEnum::Spam,
@@ -1440,9 +1452,13 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             return $this->desfase;
         }
 
+        // Solo entre los slugs que el snapshot trae UNA vez: los dos que repite en días
+        // distintos son piezas legítimas, pero `keyBy` se quedaría callado con la última y el
+        // desfase saldría con meses de error.
         $publicadas = collect($this->snapshot())
-            ->where('status', SnkKilkanaPostStatusEnum::Published->value)
-            ->keyBy('slug');
+            ->where('status', SnkKilkanaPostStatusEnum::Published->value);
+        $repetidos = $publicadas->countBy('slug')->filter(fn (int $n) => $n > 1)->keys();
+        $publicadas = $publicadas->whereNotIn('slug', $repetidos)->keyBy('slug');
 
         $sembrada = SnkKilkanaPostModel::query()
             ->whereIn('slug', $publicadas->keys()->all())

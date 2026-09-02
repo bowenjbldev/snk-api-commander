@@ -87,6 +87,13 @@ class KilkanaDemoClockTest extends TestCase
             ->count();
         $this->assertSame(0, $pendienteViejo, 'La cola es de las ultimas tres semanas.');
 
+        // Ningún comentario lleva el sello exacto de su pieza: ni los de hoy.
+        $clavados = SnkKilkanaCommentModel::query()
+            ->join('kilkana_posts', 'kilkana_posts.id', '=', 'kilkana_comments.post_id')
+            ->whereColumn('kilkana_comments.created_at', '=', 'kilkana_posts.publish_at')
+            ->count();
+        $this->assertSame(0, $clavados, 'Un comentario en el mismo segundo que la pieza es un artefacto.');
+
         // Los de la pieza de hoy no caen todos en el mismo minuto.
         $hoy = SnkKilkanaCommentModel::query()
             ->whereIn('post_id', SnkKilkanaPostModel::query()->published()->where('publish_at', '>=', now()->subDay())->pluck('id'))
