@@ -198,6 +198,15 @@ columna exista de verdad. Los dos casos apuntan al mismo sitio.
 
 ---
 
+## Lo que la calle lee
+
+`public/posts/{y}/{m}/{d}/{slug}` sirve la pieza con el cuerpo ya recortado por el muro y, aparte
+del cuerpo, **`media`**: las fotos que los bloques de imagen nombran por `media_id`, resueltas a
+`url`, `alt`, `caption`, `credit` y medidas. Van aparte y no dentro del bloque para que el bloque
+siga siendo el que el editor escribe, y porque la calle no tiene con qué pedirlas una a una: la
+mediateca es del panel. `public/site` da la cabecera del periódico y el tema resuelto
+(`themePayload()`), o `null` mientras no se haya vestido ninguno.
+
 ## La papelera: `deleted_at` y `deleted_by`
 
 Borrar una pieza desde el panel es **tirarla**: la fila se queda con `deleted_at` y con quién la

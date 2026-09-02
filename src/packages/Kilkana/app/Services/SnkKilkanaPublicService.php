@@ -18,6 +18,7 @@ use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaCategorySlugModel;
 use Packages\Kilkana\Models\SnkKilkanaCommentModel;
 use Packages\Kilkana\Models\SnkKilkanaLayoutModel;
+use Packages\Kilkana\Models\SnkKilkanaMediaModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Models\SnkKilkanaPostSlugModel;
 use Packages\Kilkana\Models\SnkKilkanaPostViewModel;
@@ -239,7 +240,28 @@ class SnkKilkanaPublicService
             ->withCount(['comments as approved_comments_count' => fn ($c) => $c->approved()])
             ->first();
         if ($post) {
-            $post->setAttribute('body_blocks', $post->publicBodyBlocks());
+            $blocks = $post->publicBodyBlocks();
+            $post->setAttribute('body_blocks', $blocks);
+            // Las fotos del cuerpo, resueltas: un bloque de imagen lleva solo `media_id`, y la
+            // calle no puede pedirlas una a una —ni tiene con qué, que la mediateca es del
+            // panel—. Van aparte y no dentro del bloque para que el bloque siga siendo el que
+            // el editor escribe.
+            $ids = collect($blocks)
+                ->filter(fn (array $b) => ($b['type'] ?? null) === 'image')
+                ->map(fn (array $b) => (int) (($b['config']['media_id'] ?? 0)))
+                ->filter()->unique()->values();
+            $post->setAttribute('media', $ids->isEmpty() ? [] : SnkKilkanaMediaModel::query()
+                ->whereKey($ids)
+                ->get(['id', 'url', 'alt', 'caption', 'credit', 'width', 'height', 'mime'])
+                ->map(fn (SnkKilkanaMediaModel $m) => [
+                    'id' => (string) $m->getKey(),
+                    'url' => $m->url,
+                    'alt' => (string) $m->alt,
+                    'caption' => (string) $m->caption,
+                    'credit' => (string) $m->credit,
+                    'width' => (int) $m->width,
+                    'height' => (int) $m->height,
+                ])->values()->all());
 
             return $this->publicCount($post);
         }
@@ -418,7 +440,7 @@ class SnkKilkanaPublicService
      */
     public function site(): array
     {
-        $ajustes = SnkKilkanaSettingModel::query()->with('themeVariant')->find(1);
+        $ajustes = SnkKilkanaSettingModel::query()->with('theme')->find(1);
 
         return [
             'tenant' => [
@@ -428,7 +450,7 @@ class SnkKilkanaPublicService
             ],
             // La variante resuelta: `base_slug` para buscar en código lo que no baja a la base
             // —layouts, cabecera, lenguaje de bloques— y encima lo que tocó la redacción.
-            'theme' => $ajustes?->themeVariant?->payload(),
+            'theme' => $ajustes?->themePayload(),
         ];
     }
 
