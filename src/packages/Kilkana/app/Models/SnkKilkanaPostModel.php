@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Packages\Kilkana\Enums\SnkKilkanaContentTierEnum;
@@ -18,6 +19,8 @@ use Packages\Kilkana\Enums\SnkKilkanaPostStatusEnum;
 // coverMedia quedan ocultas.
 class SnkKilkanaPostModel extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'kilkana_posts';
 
     protected $guarded = [];
@@ -252,7 +255,9 @@ class SnkKilkanaPostModel extends Model
      */
     public static function pathTaken(string $date, string $slug, ?int $ignoreId = null): bool
     {
-        $enArticulos = self::query()
+        // Con la papelera dentro: una pieza tirada sigue reservando su URL hasta que se purga,
+        // que es lo que hace que restaurarla no rompa ningún enlace entrante.
+        $enArticulos = self::withTrashed()
             ->where('url_date', $date)
             ->where('slug', $slug)
             ->when($ignoreId, fn (Builder $query) => $query->whereKeyNot($ignoreId))
@@ -270,6 +275,15 @@ class SnkKilkanaPostModel extends Model
 
     protected static function booted(): void
     {
+        // Quién la tiró va con la fila: el borrado lógico solo escribe `deleted_at`, así que
+        // se apunta aparte y antes. Purgar no pasa por aquí.
+        static::deleting(function (self $post) {
+            if (! $post->isForceDeleting() && auth()->id() !== null) {
+                $post->newQueryWithoutScopes()->whereKey($post->getKey())->update(['deleted_by' => auth()->id()]);
+                $post->setAttribute('deleted_by', auth()->id());
+            }
+        });
+
         static::saving(function (self $post) {
             // Sin slug no hay URL: se deriva del titular. `articulo` cubre el titular que no
             // deja slug latino (CJK) y el borrador sin título todavía.

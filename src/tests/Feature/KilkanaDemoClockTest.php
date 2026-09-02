@@ -57,11 +57,13 @@ class KilkanaDemoClockTest extends TestCase
         // Los comentarios de primer nivel son exactamente los que el seeder reparte: uno por
         // (pieza, posicion). Si dos lectores o dos frases colapsaran en la misma clave, el
         // `firstOrCreate` se comeria uno en silencio y esta cuenta lo diria.
-        $esperados = SnkKilkanaPostModel::query()->published()->pluck('slug')
+        // Con la papelera dentro: una pieza tirada conserva sus comentarios.
+        $esperados = SnkKilkanaPostModel::withTrashed()->published()->pluck('slug')
             ->sum(fn (string $slug) => SnkKilkanaDatabaseSeeder::commentsFor($slug));
         $this->assertSame($esperados, SnkKilkanaCommentModel::query()->whereNull('parent_id')->count());
 
-        $piezas = SnkKilkanaPostModel::query()->count();
+        // Con la papelera: borrar desde el panel es tirar, y la pieza tirada sigue en la base.
+        $piezas = SnkKilkanaPostModel::withTrashed()->count();
         // De primer nivel: una respuesta al comentario de la pieza de hoy puede nacer en la
         // siembra de dentro de tres dias, porque entonces ya hay hueco para contestar.
         $comentarios = SnkKilkanaCommentModel::query()->whereNull('parent_id')->count();
@@ -71,7 +73,8 @@ class KilkanaDemoClockTest extends TestCase
         $this->travel(3)->days();
         (new SnkKilkanaDatabaseSeeder)->run();
 
-        $this->assertSame($piezas, SnkKilkanaPostModel::query()->count(), 'El reloj se ancla a la base, no a hoy.');
+        $this->assertSame($piezas, SnkKilkanaPostModel::withTrashed()->count(), 'El reloj se ancla a la base, no a hoy.');
+        $this->assertTrue($ultima->fresh()->trashed(), 'Resembrar no saca nada de la papelera.');
         $this->assertSame($comentarios, SnkKilkanaCommentModel::query()->whereNull('parent_id')->count());
     }
 

@@ -232,8 +232,12 @@ class SnkKilkanaPostService
                 ->whereIn('id', $ids);
 
             if ($action === 'delete') {
-                $count = $query->count();
-                $query->delete();
+                // Pieza a pieza y no en una sentencia: el borrado es lógico, y apuntar quién
+                // lo tiró y dejar rastro en el registro pasa por los eventos del modelo.
+                $count = 0;
+                foreach ($query->get() as $post) {
+                    $count += (int) $post->delete();
+                }
 
                 return $count;
             }

@@ -160,6 +160,16 @@ encargo.
 
 ---
 
+## La papelera, y quién lo tiró
+
+`deleted_at` ya estaba; `deleted_by` llega con la papelera del panel, y lo escribe el evento
+`deleting` aparte, porque el borrado lógico solo escribe la fecha. Un medio tirado sale de la
+biblioteca y se queda treinta días en `GET trash`, con **las piezas que siguen apuntando a
+él** —publicadas o no: de portada, de imagen social o dentro del cuerpo, por `media_id` en los
+bloques—, que es el dato con el que se decide: purgarlo deja esas piezas con la imagen rota, y
+las claves foráneas lo hacen callando (`nullOnDelete`). Restaurarlo lo devuelve a todas a la vez.
+Pasados los treinta días lo purga `kilkana:purge-trash`, fichero y fila.
+
 ## Un medio está en uso de TRES formas
 
 A `kilkana_media` apuntan tres claves foráneas, y las tres cuentan:

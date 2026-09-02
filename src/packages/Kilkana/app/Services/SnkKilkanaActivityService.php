@@ -79,7 +79,8 @@ class SnkKilkanaActivityService
     {
         SnkKilkanaPostModel::created(fn (SnkKilkanaPostModel $p) => $this->post($p, true));
         SnkKilkanaPostModel::updated(fn (SnkKilkanaPostModel $p) => $this->post($p, false));
-        SnkKilkanaPostModel::deleted(fn (SnkKilkanaPostModel $p) => $this->log('delete', 'deleted', $p->title, '/posts'));
+        SnkKilkanaPostModel::deleted(fn (SnkKilkanaPostModel $p) => $this->log('delete', $p->isForceDeleting() ? 'deleted for good' : 'deleted', $p->title, $p->isForceDeleting() ? '/posts' : '/trash'));
+        SnkKilkanaPostModel::restored(fn (SnkKilkanaPostModel $p) => $this->log('restore', 'restored', $p->title, '/posts'));
 
         SnkKilkanaCategoryModel::created(fn (SnkKilkanaCategoryModel $c) => $this->log('category', 'created the category', $c->name, '/categories'));
         SnkKilkanaCategoryModel::updated(function (SnkKilkanaCategoryModel $c) {

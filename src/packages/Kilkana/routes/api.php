@@ -19,6 +19,7 @@ use Packages\Kilkana\Http\Controllers\SnkKilkanaSettingsController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaSubscribersController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaTagsController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaThemesController;
+use Packages\Kilkana\Http\Controllers\SnkKilkanaTrashController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaUsersController;
 
 Route::middleware(['api'])->group(function () {
@@ -150,6 +151,13 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     // dentro; un colaborador externo ve lo suyo y ya—, y los movimientos de cuentas solo quien
     // las administra. Solo lectura: lo escribe el propio panel al escribir.
     Route::get('activity', [SnkKilkanaActivityController::class, 'index'])->middleware('can:view others posts');
+
+    // La papelera: cada clase con el permiso de borrarla, y vaciar purga lo que quien pulsa
+    // puede purgar. `kind` se acota a las dos clases en el controlador.
+    Route::get('trash', [SnkKilkanaTrashController::class, 'index']);
+    Route::delete('trash', [SnkKilkanaTrashController::class, 'empty']);
+    Route::post('trash/{kind}/{id}/restore', [SnkKilkanaTrashController::class, 'restore'])->whereNumber('id');
+    Route::delete('trash/{kind}/{id}', [SnkKilkanaTrashController::class, 'purge'])->whereNumber('id');
 
     Route::get('settings', [SnkKilkanaSettingsController::class, 'show'])->middleware('can:show settings');
     Route::put('settings', [SnkKilkanaSettingsController::class, 'update'])->middleware('can:update settings');

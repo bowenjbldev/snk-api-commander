@@ -145,7 +145,70 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         $this->seedEditHistory();
         $this->seedComments();
         $this->seedSubscribers();
+        $this->seedTrash();
         $this->seedActivity();
+    }
+
+    /**
+     * La papelera con algo dentro: dos piezas y dos fotos tiradas por dirección, una de cada
+     * con prisa —a la semana de purgarse— y otra recién caída. Piezas de hace más de diez
+     * días y menos de sesenta, para no tocar ni la portada de hoy ni el ancla del reloj, y
+     * fotos sin uso, para que restaurarlas no cambie nada publicado. Idempotente: lo que ya
+     * está tirado no se vuelve a tirar.
+     */
+    private function seedTrash(): void
+    {
+        $direccion = CoreUserModel::query()
+            ->whereHas('roles', fn ($q) => $q->where('name', 'director'))
+            ->first() ?? CoreUserModel::query()->whereHas('roles', fn ($q) => $q->whereIn('name', SnkKilkanaRoleCatalogService::PANEL_ROLES))->first();
+        if ($direccion === null) {
+            return;
+        }
+        $registro = app(SnkKilkanaActivityService::class);
+        $tirar = function (SnkKilkanaPostModel|SnkKilkanaMediaModel $cosa, int $hace, string $titulo, string $href) use ($direccion, $registro) {
+            if ($cosa->trashed()) {
+                return;
+            }
+            $cuando = now()->subDays($hace)->setTime(10 + $hace % 8, 5 + $hace * 7 % 50);
+            $cosa->delete();
+            $cosa->newQueryWithoutScopes()->whereKey($cosa->getKey())->update(['deleted_at' => $cuando, 'deleted_by' => $direccion->getKey()]);
+            if (SnkKilkanaActivityModel::query()->where(['kind' => 'delete', 'what' => $titulo, 'created_at' => $cuando])->exists()) {
+                return;
+            }
+            Carbon::setTestNow($cuando);
+            try {
+                $registro->log('delete', 'deleted', $titulo, $href, ['user' => $direccion, 'force' => true]);
+            } finally {
+                Carbon::setTestNow();
+            }
+        };
+
+        // Con la papelera dentro: las mismas candidatas en cada siembra, o cada `core:seed`
+        // tiraría dos piezas más.
+        $candidatas = SnkKilkanaPostModel::withTrashed()->published()
+            ->whereBetween('publish_at', [now()->subDays(60), now()->subDays(10)])
+            ->orderBy('slug')->get(['id', 'slug', 'title']);
+        if ($candidatas->count() >= 2) {
+            $tirar($candidatas[crc32('trash:1') % $candidatas->count()], 24, $candidatas[crc32('trash:1') % $candidatas->count()]->title, '/trash');
+            $otra = $candidatas[crc32('trash:2') % $candidatas->count()];
+            if (! $otra->trashed() && $otra->getKey() !== $candidatas[crc32('trash:1') % $candidatas->count()]->getKey()) {
+                $tirar($otra, 2, $otra->title, '/trash');
+            }
+        }
+
+        // Y dos fotos que nadie usa: las del snapshot van todas en alguna pieza, y tirar una que
+        // otra pieza publicada lleva dejaría la calle con una imagen rota. Son ficheros de
+        // fuera —sin `disk` ni `path`—, así que purgarlas no borra nada del disco de nadie.
+        $sueltas = [
+            ['url' => 'https://images.example/feria-2025-cartel.jpg', 'original_name' => 'feria-2025-cartel.jpg', 'title' => 'Cartel de la feria de 2025', 'width' => 2400, 'height' => 1600, 'size_bytes' => 1887436, 'mime' => 'image/jpeg', 'hace' => 27],
+            ['url' => 'https://images.example/pleno-julio-borrosa.jpg', 'original_name' => 'pleno-julio-borrosa.jpg', 'title' => 'Pleno de julio, toma movida', 'width' => 1800, 'height' => 1200, 'size_bytes' => 942113, 'mime' => 'image/jpeg', 'hace' => 5],
+        ];
+        foreach ($sueltas as $ficha) {
+            $hace = $ficha['hace'];
+            unset($ficha['hace']);
+            $foto = SnkKilkanaMediaModel::withTrashed()->firstOrCreate(['url_hash' => sha1($ficha['url'])], $ficha);
+            $tirar($foto, $hace, $foto->title, '/trash');
+        }
     }
 
     /**
@@ -1461,7 +1524,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 ->first();
             $anterior = $retirada === null
                 ? null
-                : SnkKilkanaPostModel::query()->whereKey($retirada->post_id)->first();
+                : SnkKilkanaPostModel::withTrashed()->whereKey($retirada->post_id)->first();
 
             // **Lo editorial no se reescribe sobre una pieza que ya existe.** El snapshot es la
             // versión con la que nació el archivo; lo que alguien —o el propio seeder, al sembrar
@@ -1504,7 +1567,10 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 'noindex' => $post['noindex'] ?? false,
             ];
 
-            $row = SnkKilkanaPostModel::firstOrCreate([
+            // Con la papelera dentro: una pieza tirada sigue existiendo y reserva su URL, así
+            // que resembrar no la recrea encima —reventaría contra la reserva— ni la saca de
+            // la papelera. Tirada se queda.
+            $row = SnkKilkanaPostModel::withTrashed()->firstOrCreate([
                 'url_date' => $anterior?->getRawOriginal('url_date') ?? $urlDate,
                 'slug' => $anterior?->slug ?? $post['slug'],
             ], $editorial + $estructura);

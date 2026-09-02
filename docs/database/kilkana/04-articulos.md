@@ -198,6 +198,34 @@ columna exista de verdad. Los dos casos apuntan al mismo sitio.
 
 ---
 
+## La papelera: `deleted_at` y `deleted_by`
+
+Borrar una pieza desde el panel es **tirarla**: la fila se queda con `deleted_at` y con quién la
+tiró, y desaparece del panel y de la calle —el borrado lógico es un scope global, así que ninguna
+consulta la ve sin pedirlo—. Se queda treinta días, y en ese tiempo:
+
+- **Su URL sigue reservada.** `pathTaken()` mira `withTrashed()`, así que ninguna pieza nueva nace
+  encima de la tirada: restaurarla nunca rompe un enlace entrante. La calle contesta 404 mientras
+  tanto, no redirige.
+- **Sus comentarios, revisiones, vistas, lecturas medidas y URLs viejas se quedan** con ella:
+  cuelgan de la fila, y la fila sigue. Purgarla —`forceDelete`, a mano o a los treinta días— se
+  los lleva en cascada, **y eso tiene una consecuencia que no se ve desde la papelera**: el
+  historial de comentarios de cada cuenta lectora baja solo, sin que nadie modere nada, y las
+  lecturas del archivo también. Es una decisión de producto —una pieza purgada no deja hilo
+  huérfano— y se deja escrita aquí porque nadie la va a relacionar el día que pase.
+- **Restaurarla la devuelve como borrador**, con `url_date` y `slug` intactos: al republicarla sale
+  por la misma URL. No vuelve publicada sin que nadie la mire.
+- **A los treinta días se purga sola**: `kilkana:purge-trash`, cada noche, en cada inquilino.
+
+`deleted_by` lo escribe el evento `deleting` del modelo, aparte y antes, porque el borrado lógico
+solo escribe `deleted_at`. Un borrado en lote va pieza a pieza por eso mismo: una sentencia no
+pasa por los eventos, y entonces ni se apunta quién ni se deja rastro en el registro.
+
+Quién tira, restaura y purga, y con qué permiso, está en la papelera
+([`08-actividad.md`](08-actividad.md) para el rastro; `SnkKilkanaTrashService` para la regla):
+`GET trash`, `POST trash/post/{id}/restore`, `DELETE trash/post/{id}` y `DELETE trash` —vaciar—,
+cada clase con el permiso de borrarla (`delete posts`, `delete media`).
+
 ## `kilkana_post_slugs` — las URLs viejas
 
 | Columna | Tipo | Nulo | Qué es |

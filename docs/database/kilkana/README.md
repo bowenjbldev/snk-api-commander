@@ -22,7 +22,7 @@ distinción es justo lo que necesita saber quien vaya a tocar algo.
 | 5 | [Biblioteca de medios](05-medios.md) | `kilkana_media` · `kilkana_media_tags` · `kilkana_media_collections` · sus dos pivotes |
 | 6 | [Comentarios y suscriptores](06-comentarios-y-suscriptores.md) | `kilkana_comments` · `kilkana_subscribers` · `kilkana_reader_reads` |
 | 7 | [Composición y ajustes](07-composicion-y-ajustes.md) | `kilkana_layouts` · `kilkana_layout_revisions` · `kilkana_themes` · `kilkana_settings` |
-| 8 | [Actividad](08-actividad.md) | `kilkana_activity` |
+| 8 | [Actividad](08-actividad.md) | `kilkana_activity` · la papelera vive en el 4 y el 5 |
 
 ## Una base de datos por periódico
 

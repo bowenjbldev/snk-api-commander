@@ -10,6 +10,7 @@ use Illuminate\Support\ServiceProvider;
 use Packages\Core\Support\CoreActiveInstanceSupport;
 use Packages\Kilkana\Console\Commands\SnkKilkanaEnrichMediaCommand;
 use Packages\Kilkana\Console\Commands\SnkKilkanaPublishScheduledCommand;
+use Packages\Kilkana\Console\Commands\SnkKilkanaPurgeTrashCommand;
 use Packages\Kilkana\Console\Commands\SnkKilkanaSyncPermissionsCommand;
 use Packages\Kilkana\Console\Commands\SnkKilkanaSyncThemesCommand;
 use Packages\Kilkana\Services\SnkKilkanaActivityService;
@@ -44,6 +45,7 @@ class KilkanaServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 SnkKilkanaPublishScheduledCommand::class,
+                SnkKilkanaPurgeTrashCommand::class,
                 SnkKilkanaEnrichMediaCommand::class,
                 SnkKilkanaSyncPermissionsCommand::class,
                 SnkKilkanaSyncThemesCommand::class,
@@ -54,6 +56,11 @@ class KilkanaServiceProvider extends ServiceProvider
                 $this->app->make(Schedule::class)
                     ->command('kilkana:publish-scheduled')
                     ->everyMinute()
+                    ->withoutOverlapping();
+                // La cuenta atrás de la papelera: de madrugada, cuando nadie restaura.
+                $this->app->make(Schedule::class)
+                    ->command('kilkana:purge-trash')
+                    ->dailyAt('04:10')
                     ->withoutOverlapping();
             });
         }

@@ -44,6 +44,14 @@ class SnkKilkanaMediaModel extends Model
 
     protected static function booted(): void
     {
+        // Quién lo tiró va con la fila: el borrado lógico solo escribe `deleted_at`.
+        static::deleting(function (self $media) {
+            if (! $media->isForceDeleting() && auth()->id() !== null) {
+                $media->newQueryWithoutScopes()->whereKey($media->getKey())->update(['deleted_by' => auth()->id()]);
+                $media->setAttribute('deleted_by', auth()->id());
+            }
+        });
+
         static::saving(function (self $media) {
             if ($media->isDirty('url') || $media->url_hash === null) {
                 $media->url_hash = sha1($media->url);

@@ -73,6 +73,9 @@ Los ocho lectores con nombre tienen altas repartidas en dos años y medio.
   día uno del mes y después de que la pieza exista: alguien que no ha gastado ninguna, alguien a
   mitad y alguien que ya se ha topado con el muro. Es lo que enseña el medidor de la ficha de un
   lector en el panel.
+- **La papelera con algo dentro.** Dos piezas y dos fotos sin uso tiradas por dirección: una de
+  cada con prisa, a la semana de purgarse, y otra recién caída. Piezas de hace entre diez y sesenta
+  días, para no tocar ni la portada ni el ancla del reloj; resembrar no las saca de la papelera.
 - **El registro de actividad.** Deducido de lo que la base ya cuenta: cada pieza publicada en los
   últimos noventa días es un «published» firmado por su firma —o por el programador, las de
   madrugada—, cada revisión un «edited», cada día con comentarios aprobados un lote de la

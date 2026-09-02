@@ -301,6 +301,7 @@ docker compose exec -T app php artisan kilkana:publish-scheduled
 | Frecuencia | Comando |
 |---|---|
 | cada minuto | `kilkana:publish-scheduled` |
+| cada noche, 04:10 | `kilkana:purge-trash` — lo que lleva más de treinta días en la papelera, fichero y fila |
 | cada 10 min | `commander:refresh` |
 | cada hora | `commander:usage:rollup --prune` |
 | cada hora | `commander:git:sync` |
