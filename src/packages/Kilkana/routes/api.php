@@ -7,6 +7,7 @@ use Packages\Kilkana\Http\Controllers\SnkKilkanaAuthController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaAuthorsController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaCategoriesController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaCommentsController;
+use Packages\Kilkana\Http\Controllers\SnkKilkanaGateController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaLayoutsController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaMediaController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaMediaTaxonomiesController;
@@ -151,6 +152,11 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     // dentro; un colaborador externo ve lo suyo y ya—, y los movimientos de cuentas solo quien
     // las administra. Solo lectura: lo escribe el propio panel al escribir.
     Route::get('activity', [SnkKilkanaActivityController::class, 'index'])->middleware('can:view others posts');
+
+    // El output gate: el veredicto de la última pasada, y la pasada nueva que lo sustituye.
+    // Quien audita es la salida pública; aquí se guarda y se lee.
+    Route::get('gate', [SnkKilkanaGateController::class, 'index']);
+    Route::put('gate', [SnkKilkanaGateController::class, 'store']);
 
     // La papelera: cada clase con el permiso de borrarla, y vaciar purga lo que quien pulsa
     // puede purgar. `kind` se acota a las dos clases en el controlador.
