@@ -268,3 +268,47 @@ etiquetado como tecleado a mano: una prueba falsa es peor que una ausente.
 
 Separar el origen es lo que permite acreditar y purgar por separado: **la lista importada es la
 que trae el riesgo**, y sin la columna todas las filas parecen iguales.
+
+## `kilkana_newsletter_issues` y `kilkana_newsletter_events` — los números
+
+Un número tiene dos estados y ninguno intermedio: borrador y enviado. Enviar es irreversible, y
+de ahí sale todo lo que guarda la fila: `post_ids` son las piezas que llevó —las cuatro últimas
+publicadas, fijadas al enviar—, `recipients_count` es a cuántos salió ese día y no cuántos hay
+hoy, y `sent_at` es la fecha. Un enviado no se reescribe: `PUT newsletter/{id}` contesta 409.
+
+### El envío va por tandas a la cola de la instalación
+
+`POST newsletter/{id}/send` fija el número, lo marca enviado y encola una tanda
+(`SnkKilkanaNewsletterSendJob`) por cada cincuenta confirmados. La cola es la base de la
+**instalación** —`DB_QUEUE_CONNECTION=commander`— y no la del periódico: una petición de un
+periódico tiene el tenant como conexión por defecto, y sin esa variable encolaría en la base del
+periódico, donde no hay worker. Cada tanda lleva la base y el subdominio, y se conecta al
+inquilino (`SnkKilkanaTenantRunnerService::on()`) antes de mandar nada. Un correo que falla se
+apunta y no arrastra la tanda; una baja entre el «Send» y la tanda no recibe nada. **Y cada
+suscriptor recibe una vez**: la tanda apunta `sent` por suscriptor antes de mandar y se salta a
+quien ya lo tiene, porque el worker se reinicia por diseño (`--max-time`) y una tanda en vuelo se
+vuelve a ejecutar entera. Un correo perdido por un fallo entre la marca y el envío es el lado
+bueno por el que equivocarse: un boletín duplicado cuesta bajas.
+
+El correo (`SnkKilkanaNewsletterMail`) lleva las piezas con enlaces **firmados por número y
+suscriptor** (`public/newsletter/{issue}/click/{subscriber}/{post}`), un píxel de apertura
+(`public/newsletter/{issue}/open/{subscriber}`) y la baja firmada con el número dentro
+(`?issue=`). Una prueba (`POST newsletter/{id}/test`) es una copia a una dirección, sin píxel ni
+baja de nadie, y deja constancia de a dónde fue.
+
+### Lo que la lista hace con un número cuenta una vez
+
+`kilkana_newsletter_events` es una fila por suscriptor y hecho —`sent`, `open`, `click` con la
+pieza, `unsub`—, única (`kilkana_nl_events_once`, con `post_id` a cero sin pieza porque dos nulos
+no chocan en un índice único): abrir veinte veces es una apertura, porque lo que se mide es cuánta
+gente, no cuántas veces. `sent` no es una cifra del panel. Las cifras de un número son `count(distinct subscriber)`
+por clase, y la salud de la lista suma aperturas entre destinatarios de los envíos de noventa
+días. El píxel contesta un gif de un píxel sin caché; el clic redirige a la pieza en el periódico,
+o a la portada si la pieza ya no está.
+
+### Quién
+
+Leer y escribir es de quien gobierna suscriptores (`index/create/update subscribers`): el boletín
+es la lista, y quien puede tocar la lista puede escribirle. `counts=1` devuelve solo cuántos
+borradores esperan, para el raíl.
+

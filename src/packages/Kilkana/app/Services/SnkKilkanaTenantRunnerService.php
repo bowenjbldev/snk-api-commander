@@ -84,4 +84,43 @@ class SnkKilkanaTenantRunnerService
 
         return ['tenants' => $instances->count(), 'results' => $results, 'errors' => $errors];
     }
+
+    /**
+     * Un solo inquilino, por su base: lo que necesita un trabajo de cola, que nace en una
+     * petición de un periódico y corre después en un proceso que no sabe de ninguno. Deja la
+     * conexión como estaba al salir, pase lo que pase.
+     */
+    public function on(string $database, callable $work): mixed
+    {
+        $instance = CommanderInstanceModel::query()
+            ->where('database', $database)
+            ->whereNotNull('database')
+            ->first(['database', 'database_username', 'database_password']);
+        if ($instance === null) {
+            throw new \RuntimeException("Tenant [{$database}] is not provisioned.");
+        }
+
+        $default = DB::getDefaultConnection();
+        $tenant = config('database.connections.tenant');
+        try {
+            $name = CorePackageSelectorSupport::validatedDatabaseIdentifier($instance->database);
+            $username = CorePackageSelectorSupport::validatedDatabaseIdentifier($instance->database_username);
+            if (empty($instance->database_password)) {
+                throw new \RuntimeException('Tenant database password is unavailable.');
+            }
+            config([
+                'database.connections.tenant.database' => $name,
+                'database.connections.tenant.username' => $username,
+                'database.connections.tenant.password' => $instance->database_password,
+            ]);
+            DB::purge('tenant');
+            DB::setDefaultConnection('tenant');
+
+            return $work($name);
+        } finally {
+            DB::purge('tenant');
+            config(['database.connections.tenant' => $tenant]);
+            DB::setDefaultConnection($default);
+        }
+    }
 }

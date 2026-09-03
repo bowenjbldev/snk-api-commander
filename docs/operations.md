@@ -302,6 +302,11 @@ docker compose exec -T app php artisan kilkana:publish-scheduled
 |---|---|
 | cada minuto | `kilkana:publish-scheduled` |
 | cada noche, 04:10 | `kilkana:purge-trash` — lo que lleva más de treinta días en la papelera, fichero y fila |
+
+Y un proceso que no es del scheduler: el contenedor `queue` corre `queue:work database` sobre la
+base de la instalación (`DB_QUEUE_CONNECTION=commander`) y procesa lo que un periódico encola desde
+una petición, hoy las tandas del boletín. Sin él, un número se marca enviado y no sale ningún
+correo hasta que arranque; los trabajos esperan en `commander.jobs`.
 | cada 10 min | `commander:refresh` |
 | cada hora | `commander:usage:rollup --prune` |
 | cada hora | `commander:git:sync` |

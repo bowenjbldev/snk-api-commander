@@ -24,7 +24,7 @@ class SnkKilkanaActivityModel extends Model
 
     /** Las tres pestañas del panel, por clase de movimiento. */
     public const TABS = [
-        'content' => ['edit', 'review', 'publish', 'schedule', 'front', 'media', 'category', 'tag', 'delete', 'restore'],
+        'content' => ['edit', 'review', 'publish', 'schedule', 'front', 'media', 'category', 'tag', 'delete', 'restore', 'newsletter'],
         'people' => ['comment', 'seat'],
         'system' => ['theme', 'settings', 'gate'],
     ];

@@ -22,6 +22,8 @@ use Packages\Kilkana\Models\SnkKilkanaCategorySlugModel;
 use Packages\Kilkana\Models\SnkKilkanaCommentModel;
 use Packages\Kilkana\Models\SnkKilkanaMediaCollectionModel;
 use Packages\Kilkana\Models\SnkKilkanaMediaModel;
+use Packages\Kilkana\Models\SnkKilkanaNewsletterEventModel;
+use Packages\Kilkana\Models\SnkKilkanaNewsletterIssueModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Models\SnkKilkanaPostRevisionModel;
 use Packages\Kilkana\Models\SnkKilkanaPostSlugModel;
@@ -145,8 +147,69 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         $this->seedEditHistory();
         $this->seedComments();
         $this->seedSubscribers();
+        $this->seedNewsletter();
         $this->seedTrash();
         $this->seedActivity();
+    }
+
+    /**
+     * El boletín: tres números enviados en los últimos noventa días y un borrador abierto, con
+     * lo que la lista hizo con cada uno —abrió, pulsó, se fue— repartido por suscriptor y sin
+     * azar. Las cifras salen de ahí y no de un literal: una de cada dos aperturas, uno de cada
+     * ocho clics, y unas pocas bajas que coinciden con los que de verdad están dados de baja.
+     */
+    private function seedNewsletter(): void
+    {
+        $piezas = SnkKilkanaPostModel::query()->published()->orderByDesc('publish_at')->limit(40)->get(['id', 'publish_at']);
+        if ($piezas->count() < 8) {
+            return;
+        }
+        $confirmados = SnkKilkanaSubscriberModel::query()->where('status', SnkKilkanaSubscriberStatusEnum::Confirmed)->orderBy('id')->pluck('id');
+        $bajas = SnkKilkanaSubscriberModel::query()->where('status', SnkKilkanaSubscriberStatusEnum::Unsubscribed)->orderBy('id')->pluck('id');
+        $numeros = [
+            ['subject' => 'Domingo | El mosaico que apareció bajo la calle Mayor', 'hace' => 5, 'desde' => 0],
+            ['subject' => 'El club vuelve a Segunda B', 'hace' => 12, 'desde' => 4],
+            ['subject' => 'Doce fuentes para la ola de calor', 'hace' => 19, 'desde' => 8],
+            ['subject' => 'Lo que deja el pleno de julio', 'hace' => 33, 'desde' => 12],
+        ];
+        foreach ($numeros as $n => $numero) {
+            $cuando = now()->subDays($numero['hace'])->setTime(7, 0);
+            $issue = SnkKilkanaNewsletterIssueModel::firstOrCreate(['subject' => $numero['subject']], [
+                'preheader' => 'Lo que pasa en la comarca, en cinco minutos.',
+                'status' => SnkKilkanaNewsletterIssueModel::SENT,
+                'post_ids' => $piezas->slice($numero['desde'], SnkKilkanaNewsletterIssueModel::PIECES)->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+                'sent_at' => $cuando,
+                'recipients_count' => $confirmados->count() + intdiv($bajas->count() * (3 - $n), 4),
+                'created_at' => $cuando,
+                'updated_at' => $cuando,
+            ]);
+            if (! $issue->wasRecentlyCreated) {
+                continue;
+            }
+            $filas = [];
+            foreach ($confirmados as $id) {
+                $h = crc32("nl:{$n}:{$id}");
+                if ($h % 100 < 55) {
+                    $filas[] = ['issue_id' => $issue->id, 'subscriber_id' => $id, 'kind' => SnkKilkanaNewsletterEventModel::OPEN, 'post_id' => 0, 'created_at' => $cuando->copy()->addMinutes(20 + $h % 900)];
+                    if (intdiv($h, 100) % 100 < 22) {
+                        $pieza = (int) $issue->post_ids[intdiv($h, 10000) % count($issue->post_ids)];
+                        $filas[] = ['issue_id' => $issue->id, 'subscriber_id' => $id, 'kind' => SnkKilkanaNewsletterEventModel::CLICK, 'post_id' => $pieza, 'created_at' => $cuando->copy()->addMinutes(25 + $h % 900)];
+                    }
+                }
+            }
+            foreach ($bajas as $i => $id) {
+                if ($i % 4 === $n) {
+                    $filas[] = ['issue_id' => $issue->id, 'subscriber_id' => $id, 'kind' => SnkKilkanaNewsletterEventModel::UNSUB, 'post_id' => 0, 'created_at' => $cuando->copy()->addHours(2 + $i % 30)];
+                }
+            }
+            foreach (array_chunk($filas, 500) as $tanda) {
+                SnkKilkanaNewsletterEventModel::insert($tanda);
+            }
+        }
+        SnkKilkanaNewsletterIssueModel::firstOrCreate(['subject' => 'El plan de movilidad, calle por calle'], [
+            'preheader' => 'Lo que pasa en la comarca, en cinco minutos.',
+            'status' => SnkKilkanaNewsletterIssueModel::DRAFT,
+        ]);
     }
 
     /**

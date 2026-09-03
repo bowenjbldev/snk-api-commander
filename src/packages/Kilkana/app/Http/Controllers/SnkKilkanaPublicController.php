@@ -8,7 +8,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Packages\Kilkana\Models\SnkKilkanaNewsletterEventModel;
+use Packages\Kilkana\Models\SnkKilkanaNewsletterIssueModel;
+use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Models\SnkKilkanaSubscriberModel;
+use Packages\Kilkana\Services\SnkKilkanaNewsletterService;
 use Packages\Kilkana\Services\SnkKilkanaPublicService;
 
 /**
@@ -146,11 +150,41 @@ class SnkKilkanaPublicController extends Controller
     }
 
     /** Baja desde el enlace del correo. Idempotente: pulsar dos veces aterriza igual. */
-    public function unsubscribe(SnkKilkanaSubscriberModel $subscriber): Response|RedirectResponse
+    public function unsubscribe(SnkKilkanaSubscriberModel $subscriber, Request $request): Response|RedirectResponse
     {
         $this->public->unsubscribe($subscriber);
+        // Si el enlace venía dentro de un número, ese número se apunta la baja: es la cifra
+        // que decide si el siguiente sale con el mismo tono.
+        if ($request->query('issue') !== null && SnkKilkanaNewsletterIssueModel::query()->whereKey((int) $request->query('issue'))->exists()) {
+            SnkKilkanaNewsletterEventModel::record((int) $request->query('issue'), (int) $subscriber->getKey(), SnkKilkanaNewsletterEventModel::UNSUB);
+        }
 
         return $this->subscriptionLanding('unsubscribed', 'You have been unsubscribed. You will not receive the newsletter again.');
+    }
+
+    /** El píxel: un gif de un píxel, y la apertura apuntada una vez por suscriptor. */
+    public function newsletterOpen(int $issue, int $subscriber): Response
+    {
+        if (SnkKilkanaNewsletterIssueModel::query()->whereKey($issue)->exists()) {
+            SnkKilkanaNewsletterEventModel::record($issue, $subscriber, SnkKilkanaNewsletterEventModel::OPEN);
+        }
+
+        return response(base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'), 200, [
+            'Content-Type' => 'image/gif',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+        ]);
+    }
+
+    /** Un enlace del boletín: apunta el clic y lleva a la pieza. Una pieza que ya no está lleva a la portada. */
+    public function newsletterClick(int $issue, int $subscriber, int $post): RedirectResponse
+    {
+        if (SnkKilkanaNewsletterIssueModel::query()->whereKey($issue)->exists()) {
+            SnkKilkanaNewsletterEventModel::record($issue, $subscriber, SnkKilkanaNewsletterEventModel::CLICK, $post);
+        }
+        $pieza = SnkKilkanaPostModel::query()->published()->find($post);
+        $newsletter = app(SnkKilkanaNewsletterService::class);
+
+        return redirect()->away($pieza ? $newsletter->articleUrl($pieza) : $newsletter->siteUrl().'/');
     }
 
     /**

@@ -11,6 +11,7 @@ use Packages\Kilkana\Http\Controllers\SnkKilkanaGateController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaLayoutsController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaMediaController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaMediaTaxonomiesController;
+use Packages\Kilkana\Http\Controllers\SnkKilkanaNewsletterController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaPlanController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaPostsController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaPublicController;
@@ -80,6 +81,16 @@ Route::middleware(['api'])->group(function () {
         ->name('subscribe.unsubscribe')
         ->whereNumber('subscriber')
         ->middleware(['signed', 'throttle:kilkana-signed']);
+    // Lo que un suscriptor hace con un número: abrir —el píxel— y pulsar una pieza. Firmadas
+    // por número y suscriptor: sin firma, recorrer ids inventaría aperturas.
+    Route::get('public/newsletter/{issue}/open/{subscriber}', [SnkKilkanaPublicController::class, 'newsletterOpen'])
+        ->name('newsletter.open')
+        ->whereNumber(['issue', 'subscriber'])
+        ->middleware(['signed', 'throttle:kilkana-signed']);
+    Route::get('public/newsletter/{issue}/click/{subscriber}/{post}', [SnkKilkanaPublicController::class, 'newsletterClick'])
+        ->name('newsletter.click')
+        ->whereNumber(['issue', 'subscriber', 'post'])
+        ->middleware(['signed', 'throttle:kilkana-signed']);
 });
 
 Route::middleware(['api', 'auth:sanctum'])->group(function () {
@@ -121,6 +132,13 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::apiResource('comments', SnkKilkanaCommentsController::class)->whereNumber('comment');
 
     Route::apiResource('subscribers', SnkKilkanaSubscribersController::class)->only(['index', 'show', 'store', 'update', 'destroy']);
+    // Los números del boletín: se listan, se crean en borrador, se corrigen mientras lo son, se
+    // prueban y se mandan. No se borran: un número enviado es lo que hay en las bandejas.
+    Route::get('newsletter', [SnkKilkanaNewsletterController::class, 'index']);
+    Route::post('newsletter', [SnkKilkanaNewsletterController::class, 'store']);
+    Route::put('newsletter/{id}', [SnkKilkanaNewsletterController::class, 'update'])->whereNumber('id');
+    Route::post('newsletter/{id}/send', [SnkKilkanaNewsletterController::class, 'send'])->whereNumber('id');
+    Route::post('newsletter/{id}/test', [SnkKilkanaNewsletterController::class, 'test'])->whereNumber('id');
     // Las cuentas lectoras: se listan y se bloquean, y nada más. No hay `show` ni `destroy`
     // a propósito: borrar una cuenta se lleva sus comentarios, y para eso está bloquear.
     Route::get('readers', [SnkKilkanaReadersController::class, 'index']);

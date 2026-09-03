@@ -27,6 +27,7 @@ services:
     environment:
       DB_USERNAME: ${COMMANDER_DB_USERNAME:-commander_app}
       DB_PASSWORD: ${COMMANDER_DB_PASSWORD:-commander-local-secret}
+      DB_QUEUE_CONNECTION: commander
     depends_on:
       db:
         condition: service_healthy
@@ -54,6 +55,31 @@ services:
     environment:
       DB_USERNAME: ${COMMANDER_DB_USERNAME:-commander_app}
       DB_PASSWORD: ${COMMANDER_DB_PASSWORD:-commander-local-secret}
+      DB_QUEUE_CONNECTION: commander
+    depends_on:
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  # Worker de la cola `database`: lo que un periódico encola desde una petición —las tandas
+  # del boletín— corre aquí, en la base de la instalación y no en la del periódico, y cada
+  # trabajo se conecta a su inquilino antes de tocar nada. Misma imagen que app, sin entrypoint.
+  queue:
+    image: snk-api-commander-app
+    restart: unless-stopped
+    working_dir: /var/www/src
+    entrypoint: ["php", "artisan", "queue:work", "database", "--sleep=3", "--tries=3", "--max-time=3600"]
+    volumes:
+      - ./src:/var/www/src
+      - ./.git:/var/www/.git:ro
+      - /var/www/src/bootstrap/cache
+    environment:
+      DB_USERNAME: ${COMMANDER_DB_USERNAME:-commander_app}
+      DB_PASSWORD: ${COMMANDER_DB_PASSWORD:-commander-local-secret}
+      DB_QUEUE_CONNECTION: commander
     depends_on:
       app:
         condition: service_started

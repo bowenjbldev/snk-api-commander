@@ -1,0 +1,231 @@
+<?php
+
+namespace Packages\Kilkana\Services;
+
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
+use Packages\Kilkana\Enums\SnkKilkanaConsentSourceEnum;
+use Packages\Kilkana\Enums\SnkKilkanaSubscriberStatusEnum;
+use Packages\Kilkana\Jobs\SnkKilkanaNewsletterSendJob;
+use Packages\Kilkana\Mail\SnkKilkanaNewsletterMail;
+use Packages\Kilkana\Models\SnkKilkanaNewsletterEventModel;
+use Packages\Kilkana\Models\SnkKilkanaNewsletterIssueModel;
+use Packages\Kilkana\Models\SnkKilkanaPostModel;
+use Packages\Kilkana\Models\SnkKilkanaSettingModel;
+use Packages\Kilkana\Models\SnkKilkanaSubscriberModel;
+
+/**
+ * El boletín: componer un número, mandarlo y contar qué pasó con él.
+ *
+ * Enviar es irreversible, y de ahí sale todo: un número se fija al enviarlo —las piezas que
+ * lleva, a cuántos salió— y a partir de ahí solo se lee. El envío va por tandas a la cola, y
+ * cada tanda se conecta a su periódico antes de mandar nada.
+ */
+class SnkKilkanaNewsletterService
+{
+    /** Cuántos suscriptores por tanda: cada tanda es un trabajo de cola y un fallo suyo no arrastra al resto. */
+    public const BATCH = 50;
+
+    /** La ventana de las cifras de salud de la lista. */
+    public const WINDOW_DAYS = 90;
+
+    public function __construct(private readonly SnkKilkanaActivityService $registro) {}
+
+    /** Un borrador nuevo, arriba. */
+    public function create(?int $userId): SnkKilkanaNewsletterIssueModel
+    {
+        return SnkKilkanaNewsletterIssueModel::create([
+            'subject' => 'Untitled issue',
+            'preheader' => null,
+            'status' => SnkKilkanaNewsletterIssueModel::DRAFT,
+            'created_by' => $userId,
+        ]);
+    }
+
+    /**
+     * Lo que va dentro: las últimas piezas publicadas al enviarlo, o las que quedaron fijadas.
+     *
+     * @return Collection<int, SnkKilkanaPostModel>
+     */
+    public function pieces(SnkKilkanaNewsletterIssueModel $issue): Collection
+    {
+        if ($issue->sent() && is_array($issue->post_ids)) {
+            $porId = SnkKilkanaPostModel::withTrashed()->whereKey($issue->post_ids)->get()->keyBy('id');
+
+            return collect($issue->post_ids)->map(fn ($id) => $porId->get($id))->filter()->values();
+        }
+
+        return SnkKilkanaPostModel::query()->published()->orderByDesc('publish_at')->limit(SnkKilkanaNewsletterIssueModel::PIECES)->get();
+    }
+
+    /**
+     * Manda el número a todos los confirmados: lo fija, lo marca enviado y encola las tandas.
+     * Devuelve a cuántos sale. La cola es la de la instalación, no la del periódico: por eso
+     * cada tanda lleva la base y el subdominio con los que volver.
+     */
+    public function send(SnkKilkanaNewsletterIssueModel $issue, string $database, string $client): int
+    {
+        $ids = SnkKilkanaSubscriberModel::query()
+            ->where('status', SnkKilkanaSubscriberStatusEnum::Confirmed)
+            ->orderBy('id')
+            ->pluck('id')->map(fn ($id) => (int) $id);
+
+        DB::transaction(function () use ($issue, $ids) {
+            $issue->forceFill([
+                'status' => SnkKilkanaNewsletterIssueModel::SENT,
+                'post_ids' => $this->pieces($issue)->pluck('id')->map(fn ($id) => (int) $id)->all(),
+                'sent_at' => now(),
+                'recipients_count' => $ids->count(),
+            ])->save();
+        });
+
+        foreach ($ids->chunk(self::BATCH) as $tanda) {
+            SnkKilkanaNewsletterSendJob::dispatch($database, $client, (int) $issue->getKey(), $tanda->values()->all());
+        }
+
+        $this->registro->log('newsletter', 'sent the newsletter issue', $issue->subject, '/newsletter');
+
+        return $ids->count();
+    }
+
+    /** Una tanda, ya dentro del periódico: un correo por suscriptor, y el que falla se apunta. */
+    public function deliver(int $issueId, string $client, array $subscriberIds): int
+    {
+        $issue = SnkKilkanaNewsletterIssueModel::query()->find($issueId);
+        if ($issue === null || ! $issue->sent()) {
+            return 0;
+        }
+        $periodico = $this->newspaper();
+        $piezas = $this->pieces($issue);
+        $enviados = 0;
+        foreach (SnkKilkanaSubscriberModel::query()->whereKey($subscriberIds)->get() as $suscriptor) {
+            // Solo a quien sigue confirmado: una baja entre el «Send» y la tanda no recibe nada.
+            if ($suscriptor->status !== SnkKilkanaSubscriberStatusEnum::Confirmed) {
+                continue;
+            }
+            // Y solo una vez: el worker se reinicia por diseño y una tanda en vuelo se vuelve a
+            // ejecutar entera. La marca va ANTES del correo, por suscriptor: un boletín
+            // duplicado cuesta bajas, y un correo perdido por un fallo entre la marca y el
+            // envío es el lado bueno por el que equivocarse.
+            if (! SnkKilkanaNewsletterEventModel::record((int) $issue->getKey(), (int) $suscriptor->getKey(), SnkKilkanaNewsletterEventModel::SENT)) {
+                continue;
+            }
+            try {
+                Mail::to($suscriptor->email)->send($this->mail($issue, $piezas, $periodico, $client, $suscriptor));
+                $enviados++;
+            } catch (\Throwable $e) {
+                Log::error('kilkana: no se pudo enviar el boletín', ['issue' => $issueId, 'subscriber' => $suscriptor->id, 'error' => $e->getMessage()]);
+            }
+        }
+
+        return $enviados;
+    }
+
+    /** Una copia a una dirección, sin píxel ni baja de nadie: es una prueba. */
+    public function sendTest(SnkKilkanaNewsletterIssueModel $issue, string $to, string $client): void
+    {
+        $piezas = $this->pieces($issue);
+        $mail = new SnkKilkanaNewsletterMail(
+            $this->newspaper(),
+            $issue->subject,
+            $issue->preheader,
+            $piezas->map(fn (SnkKilkanaPostModel $p) => ['title' => $p->title, 'excerpt' => (string) $p->excerpt, 'url' => $this->articleUrl($p)])->all(),
+            null,
+            $this->siteUrl().'/',
+        );
+        Mail::to($to)->send($mail);
+        $issue->forceFill(['test_sent_to' => $to, 'test_sent_at' => now()])->save();
+    }
+
+    /**
+     * Las cifras de un número tal como el panel las lee: cuánta gente abrió, pulsó y se fue.
+     *
+     * @return array{opens: int, clicks: int, unsubs: int}
+     */
+    public function counts(SnkKilkanaNewsletterIssueModel $issue): array
+    {
+        $porClase = SnkKilkanaNewsletterEventModel::query()
+            ->where('issue_id', $issue->getKey())
+            ->whereIn('kind', [SnkKilkanaNewsletterEventModel::OPEN, SnkKilkanaNewsletterEventModel::CLICK, SnkKilkanaNewsletterEventModel::UNSUB])
+            ->selectRaw('kind, count(distinct subscriber_id) as total')
+            ->groupBy('kind')
+            ->pluck('total', 'kind');
+
+        return [
+            'opens' => (int) $porClase->get(SnkKilkanaNewsletterEventModel::OPEN, 0),
+            'clicks' => (int) $porClase->get(SnkKilkanaNewsletterEventModel::CLICK, 0),
+            'unsubs' => (int) $porClase->get(SnkKilkanaNewsletterEventModel::UNSUB, 0),
+        ];
+    }
+
+    /**
+     * La salud de la lista y de dónde salieron las altas: la pestaña de suscriptores.
+     *
+     * @return array<string, mixed>
+     */
+    public function listStats(): array
+    {
+        $porEstado = SnkKilkanaSubscriberModel::query()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
+        $porOrigen = SnkKilkanaSubscriberModel::query()->selectRaw('consent_source, count(*) as total')->groupBy('consent_source')->pluck('total', 'consent_source');
+        $desde = now()->subDays(self::WINDOW_DAYS);
+        $enviados = SnkKilkanaNewsletterIssueModel::query()->where('status', SnkKilkanaNewsletterIssueModel::SENT)->where('sent_at', '>=', $desde)->get(['id', 'recipients_count']);
+        $aperturas = $enviados->isEmpty() ? 0 : SnkKilkanaNewsletterEventModel::query()
+            ->whereIn('issue_id', $enviados->modelKeys())->where('kind', SnkKilkanaNewsletterEventModel::OPEN)
+            ->count();
+        $destinatarios = (int) $enviados->sum('recipients_count');
+        $bajas = SnkKilkanaSubscriberModel::query()->where('status', SnkKilkanaSubscriberStatusEnum::Unsubscribed)->where('updated_at', '>=', $desde)->count();
+        $semana = SnkKilkanaSubscriberModel::query()->where('status', SnkKilkanaSubscriberStatusEnum::Confirmed)->where('consent_at', '>=', now()->subDays(7))->count();
+
+        return [
+            'confirmed' => (int) $porEstado->get(SnkKilkanaSubscriberStatusEnum::Confirmed->value, 0),
+            'pending' => (int) $porEstado->get(SnkKilkanaSubscriberStatusEnum::Pending->value, 0),
+            'unsubscribed' => (int) $porEstado->get(SnkKilkanaSubscriberStatusEnum::Unsubscribed->value, 0),
+            'confirmed_this_week' => $semana,
+            'open_rate' => $destinatarios > 0 ? round($aperturas / $destinatarios, 3) : null,
+            'unsubscribed_in_window' => $bajas,
+            'window_days' => self::WINDOW_DAYS,
+            'sources' => [
+                'public_form' => (int) $porOrigen->get(SnkKilkanaConsentSourceEnum::PublicForm->value, 0),
+                'import' => (int) $porOrigen->get(SnkKilkanaConsentSourceEnum::Import->value, 0),
+                'admin' => (int) $porOrigen->get(SnkKilkanaConsentSourceEnum::Admin->value, 0),
+            ],
+        ];
+    }
+
+    private function mail(SnkKilkanaNewsletterIssueModel $issue, Collection $piezas, string $periodico, string $client, SnkKilkanaSubscriberModel $suscriptor): SnkKilkanaNewsletterMail
+    {
+        $firmado = fn (string $ruta, array $params) => URL::signedRoute($ruta, ['client' => $client, ...$params]);
+
+        return new SnkKilkanaNewsletterMail(
+            $periodico,
+            $issue->subject,
+            $issue->preheader,
+            $piezas->map(fn (SnkKilkanaPostModel $p) => [
+                'title' => $p->title,
+                'excerpt' => (string) $p->excerpt,
+                'url' => $firmado('kilkana.newsletter.click', ['issue' => $issue->getKey(), 'subscriber' => $suscriptor->getKey(), 'post' => $p->getKey()]),
+            ])->all(),
+            $firmado('kilkana.newsletter.open', ['issue' => $issue->getKey(), 'subscriber' => $suscriptor->getKey()]),
+            $firmado('kilkana.subscribe.unsubscribe', ['subscriber' => $suscriptor->getKey(), 'issue' => $issue->getKey()]),
+        );
+    }
+
+    private function newspaper(): string
+    {
+        return SnkKilkanaSettingModel::query()->find(1)?->tenant_name ?: config('app.name');
+    }
+
+    /** La dirección pública del periódico, sin barra final. */
+    public function siteUrl(): string
+    {
+        return rtrim((string) (SnkKilkanaSettingModel::query()->find(1)?->tenant_url ?: config('app.url')), '/');
+    }
+
+    public function articleUrl(SnkKilkanaPostModel $post): string
+    {
+        return $this->siteUrl().'/'.ltrim((string) $post->url_path, '/');
+    }
+}

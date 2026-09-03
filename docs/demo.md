@@ -73,6 +73,10 @@ Los ocho lectores con nombre tienen altas repartidas en dos años y medio.
   día uno del mes y después de que la pieza exista: alguien que no ha gastado ninguna, alguien a
   mitad y alguien que ya se ha topado con el muro. Es lo que enseña el medidor de la ficha de un
   lector en el panel.
+- **El boletín con historia.** Cuatro números enviados en los últimos noventa días y un borrador
+  abierto, con lo que la lista hizo con cada uno repartido por suscriptor y sin azar: una de cada
+  dos aperturas, uno de cada ocho clics, y unas pocas bajas que coinciden con quienes de verdad
+  están dados de baja. La apertura media de la pestaña de suscriptores sale de ahí.
 - **La papelera con algo dentro.** Dos piezas y dos fotos sin uso tiradas por dirección: una de
   cada con prisa, a la semana de purgarse, y otra recién caída. Piezas de hace entre diez y sesenta
   días, para no tocar ni la portada ni el ancla del reloj; resembrar no las saca de la papelera.
