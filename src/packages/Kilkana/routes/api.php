@@ -13,6 +13,7 @@ use Packages\Kilkana\Http\Controllers\SnkKilkanaMediaController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaMediaTaxonomiesController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaNewsletterController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaPlanController;
+use Packages\Kilkana\Http\Controllers\SnkKilkanaPostNotesController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaPostsController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaPublicController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaReadersController;
@@ -106,6 +107,10 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::apiResource('posts', SnkKilkanaPostsController::class);
     Route::get('posts/{post}/revisions', [SnkKilkanaPostsController::class, 'revisions']);
     Route::post('posts/{post}/revisions/{revision}/restore', [SnkKilkanaPostsController::class, 'restore']);
+    // Las notas de mesa de una pieza: se leen con la pieza y se escriben con editarla.
+    Route::get('posts/{post}/notes', [SnkKilkanaPostNotesController::class, 'list'])->whereNumber('post');
+    Route::post('posts/{post}/notes', [SnkKilkanaPostNotesController::class, 'add'])->whereNumber('post');
+    Route::patch('posts/{post}/notes/{note}', [SnkKilkanaPostNotesController::class, 'resolve'])->whereNumber(['post', 'note']);
     Route::apiResource('categories', SnkKilkanaCategoriesController::class);
     Route::apiResource('authors', SnkKilkanaAuthorsController::class);
     Route::post('media/upload', [SnkKilkanaMediaController::class, 'upload']);

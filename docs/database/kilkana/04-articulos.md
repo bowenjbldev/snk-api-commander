@@ -198,6 +198,14 @@ columna exista de verdad. Los dos casos apuntan al mismo sitio.
 
 ---
 
+## Las notas de mesa
+
+`kilkana_post_notes` es lo que la redacción se dice sobre una pieza mientras se escribe: quién,
+sobre qué bloque (`block`, el id del bloque de cuerpo; nulo = la pieza entera), qué (`body`) y si
+ya está resuelta (`done`). `GET/POST posts/{id}/notes` y `PATCH posts/{id}/notes/{note}` con
+`done`; se leen con `show posts` y se escriben con `update posts`. No se borran: se resuelven, y
+se van con la pieza cuando se purga. Nunca llegan a un lector.
+
 ## Lo que la calle lee
 
 `public/posts/{y}/{m}/{d}/{slug}` sirve la pieza con el cuerpo ya recortado por el muro y, aparte

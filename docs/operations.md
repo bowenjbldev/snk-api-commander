@@ -500,6 +500,14 @@ Después, desde el provisioner:
 php artisan core:migrate --all-tenants --force
 ```
 
+**Hoy este paso no puede funcionar** (medido el 2026-09-04): el comando conecta a cada inquilino
+con su usuario de ejecución, y ese usuario solo tiene `SELECT, INSERT, UPDATE, DELETE` sobre su
+base, a propósito —una inyección o un proceso comprometido no puede tirar las tablas de un
+periódico—. Ni `CREATE`, ni `ALTER`, ni `INDEX`. Cada cambio de esquema de Kilkana desde el
+2026-09-02 se ha aplicado a mano con root en local. Lo que falta, y está por decidir, es una
+credencial de migración con DDL que use solo `core:migrate` y que el aprovisionador ya conoce
+porque es quien crea las bases; el usuario de ejecución se queda como está.
+
 Requisitos adicionales:
 
 - DNS y certificado wildcard;
