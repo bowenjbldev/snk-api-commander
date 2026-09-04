@@ -29,6 +29,9 @@ Route::middleware(['api'])->group(function () {
     // Canjea el enlace del correo —invitación o recuperación— por una contraseña. Público, y
     // con freno propio: el de `login` solo cuenta los 401, y aquí un canje fallido es un 422.
     Route::post('auth/password', [SnkKilkanaAuthController::class, 'resetPassword'])->middleware('throttle:6,1');
+    // Público y con freno: manda el enlace de recuperación a quien lo pide, y contesta igual
+    // exista la cuenta o no.
+    Route::post('auth/password-link', [SnkKilkanaAuthController::class, 'sendPasswordLink'])->middleware('throttle:6,1');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('auth/me', [SnkKilkanaAuthController::class, 'me']);
@@ -49,6 +52,7 @@ Route::middleware(['api'])->group(function () {
 // Lectura pública (sin auth): solo published, resuelta por slug (URLs SEO).
 Route::middleware(['api'])->group(function () {
     Route::get('public/posts', [SnkKilkanaPublicController::class, 'posts']);
+    Route::get('public/sitemap', [SnkKilkanaPublicController::class, 'sitemap']);
     Route::get('public/categories', [SnkKilkanaPublicController::class, 'categories']);
     // Una sección por slug: lo necesita quien resuelve `/{seccion}`, y es por donde entra la
     // redirección cuando esa URL es una que la sección dejó atrás.

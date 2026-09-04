@@ -24,8 +24,15 @@ class SnkKilkanaAccountLinkService
 
     public const RESET = 'reset';
 
-    /** Manda el enlace. Un fallo del correo sube: decir «enviado» sin haberlo hecho es peor. */
-    public function send(CoreUserModel $user, string $kind, Request $request): void
+    /**
+     * Manda el enlace. Un fallo del correo sube: decir «enviado» sin haberlo hecho es peor.
+     *
+     * `$queued` lo pide solo el camino público de «he olvidado mi contraseña»: ahí la respuesta
+     * es la misma exista la cuenta o no, y un envío síncrono tarda lo que tarda el SMTP solo
+     * cuando existe, que es un reloj que dice quién trabaja aquí. Los otros emisores siguen
+     * síncronos porque dependen de que esto lance —invitar borra la cuenta si el correo no sale—.
+     */
+    public function send(CoreUserModel $user, string $kind, Request $request, bool $queued = false): void
     {
         $token = Password::broker()->createToken($user);
         $url = $this->panelUrl($request).'/admin/password?'.http_build_query([
@@ -34,29 +41,36 @@ class SnkKilkanaAccountLinkService
         ]);
         $periodico = SnkKilkanaSettingModel::query()->find(1)?->tenant_name ?: config('app.name');
 
-        Mail::to($user->email)->send(new SnkKilkanaAccountLinkMail(
+        $correo = new SnkKilkanaAccountLinkMail(
             $kind,
             $periodico,
             $url,
             (int) config('auth.passwords.users.expire', 60),
-        ));
+        );
+        $queued ? Mail::to($user->email)->queue($correo) : Mail::to($user->email)->send($correo);
     }
 
     /**
-     * `https://{cliente}.{dominio base}`: la misma receta que el seeder para la URL del periódico.
-     *
-     * La caída al host de la petición solo salta sin dominio base configurado —los tests—, y hoy
-     * no es un agujero porque los tres emisores exigen administrar cuentas. El día que exista un
-     * «he olvidado mi contraseña» público, esa caída es una inyección de cabecera Host de manual
-     * y hay que quitarla antes de abrir la ruta.
+     * La URL del panel sale de datos, nunca de la cabecera `Host` de la petición: la del
+     * periódico en sus ajustes, o `https://{cliente}.{dominio base}`, la misma receta que el
+     * seeder. La petición solo aporta el subdominio del cliente. Sin ninguna de las dos no hay
+     * enlace que mandar: con un «he olvidado mi contraseña» público, caer al host de la
+     * petición sería una inyección de cabecera de manual, el enlace del correo apuntando a
+     * donde diga quien llama.
      */
     private function panelUrl(Request $request): string
     {
+        $ajustes = (string) (SnkKilkanaSettingModel::query()->find(1)?->tenant_url ?? '');
+        if ($ajustes !== '') {
+            return rtrim($ajustes, '/');
+        }
+
         $base = (string) config('core.tenant_base_domain', '');
         $cliente = CorePackageSelectorSupport::subdomainFromHost($request->getHost());
+        if ($base !== '' && $cliente !== null) {
+            return "https://{$cliente}.{$base}";
+        }
 
-        return $base !== '' && $cliente !== null
-            ? "https://{$cliente}.{$base}"
-            : $request->getSchemeAndHttpHost();
+        throw new \RuntimeException('No panel URL: set tenant_url or core.tenant_base_domain.');
     }
 }

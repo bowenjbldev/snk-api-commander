@@ -15,6 +15,11 @@ use Packages\Kilkana\Services\SnkKilkanaAccountLinkService;
  * Un solo correo con dos textos y no dos correos: el enlace es el mismo, lo que cambia es si
  * quien lo recibe sabe que tiene cuenta. Y dice cuánto dura, porque la primera reacción a un
  * enlace caducado es pensar que el panel está roto.
+ *
+ * Nada de modelos en el constructor: el camino público lo encola, y un worker de colas no está
+ * dentro del inquilino. `SerializesModels` recargaría un modelo contra la conexión del worker,
+ * que es la de la instalación: o revienta, o carga otra fila con el mismo id de otra base.
+ * Todo lo que depende del periódico se resuelve antes de encolar y viaja como escalares.
  */
 class SnkKilkanaAccountLinkMail extends Mailable
 {

@@ -148,6 +148,11 @@ pueden asignar desde él (`not_in` en la validación del rol). Cada fila viaja c
   pagado al que nadie llega.
 - **`POST users/{id}/invitation`** reenvía el enlace; 409 si la cuenta ya entró.
   **`POST users/{id}/password-link`** manda el de recuperación; 409 si sigue invitada.
+  **`POST auth/password-link`** `{email}` es el mismo enlace pedido por quien lo olvidó, sin
+  sesión y con freno: contesta 202 exista la cuenta o no, y solo lo manda a una cuenta con
+  asiento que ya entró y no está suspendida, y lo encola en vez de mandarlo: un envío síncrono
+  tardaría solo cuando la cuenta existe. El enlace se construye con `tenant_url` de los ajustes
+  (o `https://{cliente}.{dominio base}`), nunca con la cabecera `Host`.
 - **`POST` / `DELETE users/{id}/suspension`** suspende y restaura. Suspender tira sus tokens, y
   `auth/login` contesta 403 «Account suspended» **después** de comprobar la contraseña, para no
   confirmar a quien no la sabe que la cuenta existe.

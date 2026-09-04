@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 use Packages\Core\Http\Controllers\CoreAuthController;
 use Packages\Core\Models\CoreUserModel;
+use Packages\Kilkana\Services\SnkKilkanaAccountLinkService;
+use Packages\Kilkana\Services\SnkKilkanaRoleCatalogService;
 
 #[Group('Auth')]
 class SnkKilkanaAuthController extends CoreAuthController
@@ -47,6 +49,37 @@ class SnkKilkanaAuthController extends CoreAuthController
      * modelo de la aplicación y el hash lo pone el mutador de `CoreUserModel`. Poner contraseña
      * cierra la invitación y tira las sesiones que hubiera: es el gesto de recuperar la cuenta.
      */
+    /**
+     * «He olvidado mi contraseña», iniciado por quien la olvidó.
+     *
+     * Contesta 202 exista la cuenta o no —un formulario público no puede ser un oráculo de
+     * quién trabaja en la redacción—, y solo manda el enlace a una cuenta que ya entró y ocupa
+     * asiento: a una invitada le sirve su invitación, y a una suspendida no le sirve nada.
+     * Si el correo falla se anota y se contesta igual: decirlo aquí sería decir que existe. Y va
+     * a la cola, no al SMTP: el tiempo de respuesta tampoco puede decirlo.
+     */
+    public function sendPasswordLink(Request $request): JsonResponse
+    {
+        $data = $request->validate(['email' => 'required|email|max:255']);
+
+        $user = CoreUserModel::query()
+            ->where('email', $data['email'])
+            ->whereNull('invited_at')
+            ->whereNull('suspended_at')
+            ->whereHas('roles', fn ($query) => $query->whereNotIn('name', SnkKilkanaRoleCatalogService::WITHOUT_SEAT))
+            ->first();
+
+        if ($user !== null) {
+            try {
+                app(SnkKilkanaAccountLinkService::class)->send($user, SnkKilkanaAccountLinkService::RESET, $request, queued: true);
+            } catch (\Throwable $fallo) {
+                report($fallo);
+            }
+        }
+
+        return response()->json(['ok' => true], 202);
+    }
+
     public function resetPassword(Request $request): JsonResponse
     {
         $data = $request->validate([

@@ -16,6 +16,7 @@ use Packages\Kilkana\Mail\SnkKilkanaAccountLinkMail;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
+use Packages\Kilkana\Models\SnkKilkanaSettingModel;
 use Packages\Kilkana\Services\SnkKilkanaRoleCatalogService;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -43,6 +44,9 @@ class KilkanaAccountsTest extends TestCase
         }
 
         app(SnkKilkanaRoleCatalogService::class)->sync();
+        // El enlace del correo se construye con la URL del periódico, no con el host de la
+        // petición: sin ajustes no hay enlace.
+        SnkKilkanaSettingModel::create(['id' => 1, 'tenant_name' => 'El Diario', 'tenant_url' => 'https://demo.kilkana.test']);
 
         // Los cinco permisos de cuentas los da el seeder de Core, no el catalogo del periodico:
         // aqui se ponen a mano, como los pone ese seeder, para que admin sea admin.
@@ -238,5 +242,26 @@ class KilkanaAccountsTest extends TestCase
             'status' => 'published',
             'publish_at' => '2026-07-01 08:00:00',
         ]);
+    }
+
+    public function test_quien_olvida_la_contrasena_pide_el_enlace_y_la_respuesta_no_delata_a_nadie(): void
+    {
+        Mail::fake();
+        $ivan = $this->cuenta('ivan@eldiario.example', 'redactor');
+        $pau = $this->cuenta('pau@eldiario.example', 'colaborador');
+        $pau->forceFill(['invited_at' => now()])->save();
+        $pedir = fn (string $email) => (new SnkKilkanaAuthController)->sendPasswordLink(Request::create('/', 'POST', ['email' => $email]));
+
+        $this->assertSame(202, $pedir('ivan@eldiario.example')->getStatusCode());
+        $this->assertSame(202, $pedir('pau@eldiario.example')->getStatusCode(), 'Invitada: igual por fuera.');
+        $this->assertSame(202, $pedir('nadie@eldiario.example')->getStatusCode(), 'Inexistente: igual por fuera.');
+
+        // A la cola y no al SMTP: la respuesta no puede tardar distinto según exista la cuenta.
+        Mail::assertNothingSent();
+        Mail::assertQueued(SnkKilkanaAccountLinkMail::class, 1);
+        Mail::assertQueued(SnkKilkanaAccountLinkMail::class, fn ($correo) => $correo->kind === 'reset'
+            && $correo->hasTo('ivan@eldiario.example')
+            && str_starts_with($correo->url, 'https://demo.kilkana.test/admin/password?'));
+        $this->assertTrue($ivan->fresh() !== null);
     }
 }

@@ -32,9 +32,16 @@ class SnkKilkanaPublicController extends Controller
             'author' => 'nullable|string|max:255',
             'q' => 'nullable|string|min:2|max:128',
             'count' => 'nullable|integer|min:1|max:100',
+            'page' => 'nullable|integer|min:1|max:1000',
         ]);
 
         return response()->json($this->public->posts($data));
+    }
+
+    /** Todas las direcciones indexables del periódico, para el sitemap de la calle. */
+    public function sitemap(): JsonResponse
+    {
+        return response()->json($this->public->sitemap());
     }
 
     public function categories(): JsonResponse

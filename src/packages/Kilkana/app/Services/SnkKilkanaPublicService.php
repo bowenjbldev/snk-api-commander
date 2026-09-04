@@ -56,8 +56,9 @@ class SnkKilkanaPublicService
         }
 
         // Los listados son tarjetas: además de ahorrar peso, no pueden filtrar el cuerpo
-        // completo de una pieza cerrada antes de que el detalle aplique el muro.
-        return $query->limit($filters['count'] ?? 50)->get()
+        // completo de una pieza cerrada antes de que el detalle aplique el muro. `page` es
+        // la hemeroteca: la misma lista, más atrás.
+        return $query->forPage((int) ($filters['page'] ?? 1), (int) ($filters['count'] ?? 50))->get()
             ->each(fn (SnkKilkanaPostModel $post) => $this->publicCount($post))
             ->each->makeHidden('body_blocks');
     }
@@ -158,6 +159,25 @@ class SnkKilkanaPublicService
      * estado en la calle es contarle a cualquiera **qué secciones retiró el periódico del menú
      * a propósito**, que es justo lo que se estaba tapando.
      */
+    /**
+     * Lo que un rastreador puede pedir: la ruta sellada y cuándo se tocó por última vez, de
+     * cada pieza publicada que no pida quedarse fuera. Sin relaciones ni contadores, porque
+     * un sitemap de un periódico con años de archivo es una lista larga y nada más.
+     */
+    public function sitemap(): array
+    {
+        return SnkKilkanaPostModel::query()
+            ->published()
+            ->where('noindex', false)
+            ->orderByDesc('publish_at')
+            ->get(['url_path', 'updated_at'])
+            ->map(fn (SnkKilkanaPostModel $post) => [
+                'path' => '/'.ltrim((string) $post->url_path, '/'),
+                'updated_at' => $post->updated_at?->toIso8601String(),
+            ])
+            ->all();
+    }
+
     public function categories()
     {
         return SnkKilkanaCategoryModel::query()

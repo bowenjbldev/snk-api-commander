@@ -91,4 +91,24 @@ class KilkanaStreetTest extends TestCase
         $this->assertSame(2, (int) $hoy->engaged);
         $this->assertSame(1, (int) $hoy->readers, 'Dos lecturas del mismo visitante en el día son un lector.');
     }
+
+    /** La hemeroteca es la misma lista más atrás, y el sitemap solo lleva lo publicado e indexable. */
+    public function test_la_lista_publica_pagina_y_el_sitemap_lleva_lo_indexable(): void
+    {
+        $seccion = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
+        $firma = SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);
+        foreach ([['a', '2026-07-03', []], ['b', '2026-07-02', []], ['c', '2026-07-01', ['noindex' => true]], ['d', '2026-06-30', ['status' => 'draft']]] as [$slug, $dia, $extra]) {
+            SnkKilkanaPostModel::create($extra + [
+                'title' => $slug, 'slug' => $slug, 'url_date' => $dia, 'category_id' => $seccion->id, 'author_id' => $firma->id,
+                'status' => 'published', 'publish_at' => "{$dia} 08:00:00", 'excerpt' => 'E.', 'body_blocks' => [],
+            ]);
+        }
+        $servicio = app(SnkKilkanaPublicService::class);
+
+        $this->assertSame(['a', 'b'], $servicio->posts(['count' => 2])->pluck('slug')->all());
+        $this->assertSame(['c'], $servicio->posts(['count' => 2, 'page' => 2])->pluck('slug')->all());
+        $this->assertSame([], $servicio->posts(['count' => 2, 'page' => 3])->pluck('slug')->all());
+
+        $this->assertSame(['/2026/07/03/a', '/2026/07/02/b'], array_column($servicio->sitemap(), 'path'));
+    }
 }
