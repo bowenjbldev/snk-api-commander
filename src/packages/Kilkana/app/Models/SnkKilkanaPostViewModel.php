@@ -36,12 +36,12 @@ class SnkKilkanaPostViewModel extends Model
      * petición se había adelantado— para acabar en el mismo sitio. Aquí no hay carrera que
      * manejar porque no hay hueco entre comprobar y escribir.
      *
-     * Va en SQL directo a propósito: `ON DUPLICATE KEY UPDATE` no tiene equivalente en el
-     * constructor de consultas que sepa sumar sobre el valor existente. Ata a MySQL/MariaDB,
-     * donde este paquete ya está atado por los ENUM y el indice FULLTEXT.
+     * Va por `upsert` con expresiones crudas: el constructor no sabe sumar sobre el valor
+     * existente por si solo, y la expresion es lo que lo hace compilar tanto en MariaDB como
+     * en el sqlite de la suite.
      *
-     * Los nombres de columna se interpolan, así que se filtran contra `COUNTERS` antes: lo
-     * que no esté en la lista no llega a la consulta. `date` va entre comillas, es reservada.
+     * Los nombres de columna se interpolan en esas expresiones, así que se filtran contra
+     * `COUNTERS` antes: lo que no esté en la lista no llega a la consulta.
      */
     public static function record(int $postId, string ...$contadores): void
     {
@@ -54,15 +54,15 @@ class SnkKilkanaPostViewModel extends Model
             return;
         }
 
-        $tabla = (new self)->getTable();
-        $columnas = implode(', ', $contadores);
-        $unos = implode(', ', array_fill(0, count($contadores), '1'));
-        $sumas = implode(', ', array_map(fn (string $c) => "{$c} = {$c} + 1", $contadores));
+        // `upsert` compila la suma sobre el valor existente en MariaDB y en sqlite, que es
+        // donde corre la suite; las columnas vienen filtradas contra `COUNTERS`, asi que la
+        // expresion cruda solo lleva nombres de la lista.
+        $sumas = array_combine($contadores, array_map(fn (string $c) => DB::raw("{$c} + 1"), $contadores));
 
-        DB::statement(
-            "INSERT INTO {$tabla} (post_id, `date`, {$columnas}) VALUES (?, ?, {$unos})
-             ON DUPLICATE KEY UPDATE {$sumas}",
-            [$postId, now()->toDateString()],
+        self::query()->upsert(
+            [['post_id' => $postId, 'date' => now()->toDateString()] + array_fill_keys($contadores, 1)],
+            ['post_id', 'date'],
+            $sumas,
         );
     }
 }

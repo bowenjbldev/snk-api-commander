@@ -50,6 +50,11 @@ server {
         fastcgi_index index.php;
         include fastcgi_params;
         fastcgi_param HTTP_HOST $host;
+        # La IP del cliente la escribe nginx, y pisa la cabecera que traiga la petición: con
+        # TRUSTED_PROXIES en PHP, lo que llegue aquí es lo que Request::ip() devuelve, y una
+        # cabecera del cliente que pasara intacta dejaría elegir la IP a quien llama —los
+        # frenos por IP y el conteo de lectores distintos cuelgan de ella—.
+        fastcgi_param HTTP_X_FORWARDED_FOR $remote_addr;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         fastcgi_param PATH_INFO $fastcgi_path_info;
     }

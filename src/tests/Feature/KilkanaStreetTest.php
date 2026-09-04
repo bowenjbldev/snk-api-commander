@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaMediaModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
+use Packages\Kilkana\Models\SnkKilkanaPostViewModel;
 use Packages\Kilkana\Models\SnkKilkanaSettingModel;
 use Packages\Kilkana\Services\SnkKilkanaPublicService;
 use Packages\Kilkana\Services\SnkKilkanaRoleCatalogService;
@@ -65,5 +67,28 @@ class KilkanaStreetTest extends TestCase
             'id' => (string) $foto->id, 'url' => '/storage/a.jpg', 'alt' => 'La plaza', 'caption' => 'Ayer', 'credit' => 'E. D.', 'width' => 1600, 'height' => 900,
         ]], $pieza['media'], 'Solo las que existen, y con lo que la calle pinta.');
         $this->assertSame('image', $pieza['body_blocks'][1]['type']);
+    }
+
+    /** «Lo más leído» se ordena por lecturas, y una lectura es un `read`: si eso revienta, la cifra es cero para siempre. */
+    public function test_una_lectura_cuenta_y_el_mismo_visitante_es_un_solo_lector(): void
+    {
+        $seccion = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
+        $firma = SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);
+        $pieza = SnkKilkanaPostModel::create([
+            'title' => 'Plan', 'slug' => 'plan', 'url_date' => '2026-07-01', 'category_id' => $seccion->id, 'author_id' => $firma->id,
+            'status' => 'published', 'publish_at' => '2026-07-01 08:00:00', 'excerpt' => 'Entradilla.', 'body_blocks' => [],
+        ]);
+        $visitante = Request::create('/', 'POST', server: ['REMOTE_ADDR' => '10.0.0.7', 'HTTP_USER_AGENT' => 'lector']);
+        $servicio = app(SnkKilkanaPublicService::class);
+
+        $this->assertTrue($servicio->recordView('2026', '07', '01', 'plan', 'open', $visitante));
+        $this->assertTrue($servicio->recordView('2026', '07', '01', 'plan', 'read', $visitante));
+        $this->assertTrue($servicio->recordView('2026', '07', '01', 'plan', 'read', $visitante));
+        $this->assertFalse($servicio->recordView('2026', '07', '01', 'nadie', 'read', $visitante));
+
+        $hoy = SnkKilkanaPostViewModel::query()->where('post_id', $pieza->id)->where('date', now()->toDateString())->first();
+        $this->assertSame(1, (int) $hoy->opens);
+        $this->assertSame(2, (int) $hoy->engaged);
+        $this->assertSame(1, (int) $hoy->readers, 'Dos lecturas del mismo visitante en el día son un lector.');
     }
 }

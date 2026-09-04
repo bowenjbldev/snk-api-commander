@@ -137,7 +137,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         'title' => 'required|string|max:500',
         'category' => 'required|string|exists:kilkana_categories,slug',
         'author_id' => 'required|integer|exists:kilkana_authors,id',
-        'image' => 'nullable|string|max:2048',
+        'cover_media_id' => 'nullable|integer|exists:kilkana_media,id',
         'body_blocks' => 'nullable|array',
         'body_blocks.*.id' => 'required|string|max:128',
         'body_blocks.*.config' => 'nullable|array',
@@ -162,7 +162,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         'title' => 'sometimes|required|string|max:500',
         'category' => 'sometimes|required|string|exists:kilkana_categories,slug',
         'author_id' => 'sometimes|required|integer|exists:kilkana_authors,id',
-        'image' => 'nullable|string|max:2048',
+        'cover_media_id' => 'nullable|integer|exists:kilkana_media,id',
         'body_blocks' => 'nullable|array',
         'body_blocks.*.id' => 'required|string|max:128',
         'body_blocks.*.config' => 'nullable|array',
@@ -367,12 +367,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             return $this->forbidPublish();
         }
 
-        return response()->json($this->posts->update(
-            $post,
-            $data,
-            (int) auth()->id(),
-            $request->exists('image'),
-        ));
+        return response()->json($this->posts->update($post, $data, (int) auth()->id()));
     }
 
     /**

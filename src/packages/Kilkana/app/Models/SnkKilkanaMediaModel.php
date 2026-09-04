@@ -59,12 +59,6 @@ class SnkKilkanaMediaModel extends Model
         });
     }
 
-    /** Dedup por hash de la url (la url misma no cabe en un índice UNIQUE). */
-    public static function firstOrCreateByUrl(string $url): self
-    {
-        return self::firstOrCreate(['url_hash' => sha1($url)], ['url' => $url]);
-    }
-
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(SnkKilkanaMediaTagModel::class, 'kilkana_media_media_tag', 'media_id', 'media_tag_id');

@@ -281,4 +281,17 @@ class KilkanaCategoriesTest extends TestCase
             'updated_by' => 1,
         ]);
     }
+
+    public function test_una_seccion_no_puede_llamarse_como_una_ruta_fija_de_la_calle(): void
+    {
+        foreach ([['name' => 'Subscribe'], ['name' => 'Cuentas', 'slug' => 'admin']] as $datos) {
+            try {
+                SnkKilkanaCategoryModel::create($datos + ['status' => 'live', 'position' => 0]);
+                $this->fail('Se guardó una sección cuya página pública no existirá nunca.');
+            } catch (ValidationException $e) {
+                $this->assertArrayHasKey('slug', $e->errors());
+            }
+        }
+        $this->assertSame(0, SnkKilkanaCategoryModel::query()->count());
+    }
 }

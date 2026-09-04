@@ -505,6 +505,18 @@ Requisitos adicionales:
 - DNS y certificado wildcard;
 - PHP-FPM sin concurrencia interna tipo Octane;
 - scheduler permanente o cron `schedule:run`;
+- `TRUSTED_PROXIES` **y** un nginx que escriba él mismo `X-Forwarded-For`
+  (`fastcgi_param HTTP_X_FORWARDED_FOR $remote_addr` en el bloque PHP, como en
+  `docker/nginx/conf.d/app.conf.template`). Son dos piezas y no una: sin la variable,
+  `Request::ip()` es la IP del proxy para todo el mundo y el contador de lectores distintos de
+  una pieza (`readers`) colapsa a uno por navegador y día, con `opens` y `engaged` sumando bien,
+  así que nadie lo nota, y los frenos públicos por IP (`kilkana-subscribe`, `kilkana-view`) pasan a
+  ser un solo cubo por inquilino: una pieza con tráfico corta el alta y la lectura a todos. Con la
+  variable y sin la línea de nginx, la cabecera la pone el cliente y la IP la elige quien llama,
+  que es peor: de ella cuelgan `throttle:login`, `throttle:api` y
+  los enlaces firmados del boletín. Estrechar la variable a la red de docker no lo arregla:
+  Symfony devuelve la primera entrada no confiable de la cadena, y con una sola entrada puesta
+  por el cliente esa es la que gana;
 - worker exclusivo de provisioning con DDL;
 - `retry_after` mayor que el timeout del job;
 - backup de Commander, bases tenant y storage antes de cambios relevantes.

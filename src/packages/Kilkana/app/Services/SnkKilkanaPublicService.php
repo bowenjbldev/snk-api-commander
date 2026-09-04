@@ -116,7 +116,9 @@ class SnkKilkanaPublicService
         }
 
         $visitante = sha1($request->ip().$request->userAgent().config('app.key').now()->toDateString());
-        $tenant = $this->active->id() ?? sha1(DB::connection()->getDatabaseName());
+        // La cache es de la instalacion y cada periodico tiene su base: el nombre de la base
+        // es lo que separa a un lector de `demo` del mismo lector en otro inquilino.
+        $tenant = sha1(DB::connection()->getDatabaseName());
         $primera = Cache::add("kilkana:reader:{$tenant}:{$postId}:{$visitante}", true, now()->endOfDay());
 
         SnkKilkanaPostViewModel::record($postId, 'engaged', ...($primera ? ['readers'] : []));

@@ -28,6 +28,11 @@ services:
       DB_USERNAME: ${COMMANDER_DB_USERNAME:-commander_app}
       DB_PASSWORD: ${COMMANDER_DB_PASSWORD:-commander-local-secret}
       DB_QUEUE_CONNECTION: commander
+      # Solo nginx llega a este php-fpm, y sin fiarse de su X-Forwarded-For toda la calle
+      # tiene la IP del proxy: el contador de lectores distintos colapsa por navegador y día.
+      # Va de la mano de `fastcgi_param HTTP_X_FORWARDED_FOR $remote_addr` en el nginx: sin
+      # esa línea la cabecera la pondría el cliente y esta variable se la creería.
+      TRUSTED_PROXIES: '*'
     depends_on:
       db:
         condition: service_healthy

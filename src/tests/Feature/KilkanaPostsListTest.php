@@ -333,7 +333,7 @@ class KilkanaPostsListTest extends TestCase
     {
         $local = $this->category('Local', 'local');
         $firma = $this->author('Marta Beneyto');
-        $foto = SnkKilkanaMediaModel::firstOrCreateByUrl('https://ejemplo.test/foto.jpg');
+        $foto = SnkKilkanaMediaModel::create(['url' => 'https://ejemplo.test/foto.jpg', 'url_hash' => sha1('https://ejemplo.test/foto.jpg')]);
 
         $serializar = function () {
             $page = $this->posts->filter($this->posts->query(1, true), [])->paginate(25);
@@ -402,7 +402,7 @@ class KilkanaPostsListTest extends TestCase
     {
         $local = $this->category('Local', 'local');
         $firma = $this->author('Marta Beneyto', alias: 'Redacción');
-        $foto = SnkKilkanaMediaModel::firstOrCreateByUrl('https://ejemplo.test/foto.jpg');
+        $foto = SnkKilkanaMediaModel::create(['url' => 'https://ejemplo.test/foto.jpg', 'url_hash' => sha1('https://ejemplo.test/foto.jpg')]);
         $pieza = $this->makePost('Una pieza', $local, $firma, 'published', '2026-06-01 10:00:00');
         $pieza->update(['cover_media_id' => $foto->id]);
         $pieza->tags()->sync([SnkKilkanaTagModel::firstOrCreateByName('pleno')->id]);

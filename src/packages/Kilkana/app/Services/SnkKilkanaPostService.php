@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Packages\Kilkana\Enums\SnkKilkanaPostStatusEnum;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
-use Packages\Kilkana\Models\SnkKilkanaMediaModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Models\SnkKilkanaPostRevisionModel;
 use Packages\Kilkana\Models\SnkKilkanaPostSlugModel;
@@ -187,7 +186,7 @@ class SnkKilkanaPostService
     {
         return DB::transaction(function () use ($data, $userId) {
             $post = SnkKilkanaPostModel::create([
-                ...$this->columnsFrom($data, array_key_exists('image', $data)),
+                ...$this->columnsFrom($data),
                 'created_by' => $userId,
                 'updated_by' => $userId,
             ]);
@@ -204,9 +203,9 @@ class SnkKilkanaPostService
      * revision registrada mientras la respuesta era un 500 — o sea, el historial anotaba una
      * edicion que se anuncio como fallida, y la URL vieja podia quedar sin su redireccion.
      */
-    public function update(SnkKilkanaPostModel $post, array $data, int $userId, bool $imageSent): SnkKilkanaPostModel
+    public function update(SnkKilkanaPostModel $post, array $data, int $userId): SnkKilkanaPostModel
     {
-        return DB::transaction(function () use ($post, $data, $userId, $imageSent) {
+        return DB::transaction(function () use ($post, $data, $userId) {
             SnkKilkanaPostRevisionModel::create([
                 'post_id' => $post->id,
                 'user_id' => $userId,
@@ -214,7 +213,7 @@ class SnkKilkanaPostService
             ]);
 
             $previousPath = $post->url_path;
-            $post->fill($this->columnsFrom($data, $imageSent));
+            $post->fill($this->columnsFrom($data));
             $post->updated_by = $userId;
             $post->save();
             $this->syncRelations($post, $data);
@@ -508,20 +507,18 @@ class SnkKilkanaPostService
         return $canEditOthers ? $query : $query->where('created_by', $userId);
     }
 
-    private function columnsFrom(array $data, bool $imageSent): array
+    /**
+     * La portada llega como `cover_media_id` ya validado contra la mediateca y pasa tal cual:
+     * el editor elige entre lo que hay, y un id que no existe se rechaza antes de llegar aqui.
+     */
+    private function columnsFrom(array $data): array
     {
-        $columns = collect($data)->except(['category', 'image', 'tags'])->all();
+        $columns = collect($data)->except(['category', 'tags'])->all();
 
         if (array_key_exists('category', $data)) {
             $columns['category_id'] = SnkKilkanaCategoryModel::query()
                 ->where('slug', $data['category'])
                 ->value('id');
-        }
-        if ($imageSent) {
-            $url = $data['image'] ?? null;
-            $columns['cover_media_id'] = $url
-                ? SnkKilkanaMediaModel::firstOrCreateByUrl($url)->id
-                : null;
         }
         if (array_key_exists('body_blocks', $columns)) {
             $columns['body_blocks'] = SnkKilkanaRichText::cleanBlocks($columns['body_blocks']);

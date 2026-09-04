@@ -175,11 +175,32 @@ class SnkKilkanaCategoryModel extends Model
             }
         });
 
+        // Al crear, el slug se deriva mas arriba en este mismo evento: `saving` dispara antes y
+        // aun lo veria vacio.
+        static::creating(fn (self $category) => self::guardReservedSlug($category));
+        static::updating(fn (self $category) => self::guardReservedSlug($category));
+
         static::saving(function (self $category) {
             self::guardTree($category);
             self::guardStatus($category);
             self::guardVisibility($category);
         });
+    }
+
+    /**
+     * Los primeros segmentos que la calle tiene fijos: una seccion con ese slug se guarda y su
+     * pagina publica no existe nunca, sin que nada avise. La calle esta en `kilkana.app`
+     * (`src/routes`), asi que esta lista se mueve con la suya.
+     */
+    public const RESERVED_SLUGS = ['admin', 'subscribe', 'csp-report'];
+
+    private static function guardReservedSlug(self $category): void
+    {
+        if (in_array($category->slug, self::RESERVED_SLUGS, true)) {
+            throw ValidationException::withMessages([
+                'slug' => 'That URL belongs to the site itself; choose another.',
+            ]);
+        }
     }
 
     /**
