@@ -131,6 +131,35 @@ class KilkanaMediaVariantsTest extends TestCase
         $this->assertSame([320, 240], [$subida->master_width, $subida->master_height]);
         $this->assertNotNull($subida->variants);
         $this->assertNotNull($this->images->variant(SnkKilkanaMediaModel::find($subida->id), 'card', 320, 'jpeg'));
+        $this->assertSame(1, $subida->poster_at, 'La portada por defecto es el segundo uno.');
+
+        // Elegir otro segundo: miniatura para verlo, y la portada nueva cambia máster y huella.
+        $video = SnkKilkanaMediaModel::find($subida->id);
+        $this->assertNotNull($this->images->frame($video, 2));
+        $this->assertNull($this->images->frame($video, 9), 'Más allá de la duración no hay fotograma.');
+        $antes = [$video->master_path, $video->variants_key];
+        $this->assertNotNull($this->media->poster($video, 2));
+        $video->refresh();
+        $this->assertSame(2, $video->poster_at);
+        $this->assertNotSame($antes[0], $video->master_path);
+        $this->assertNotSame($antes[1], $video->variants_key);
+        $this->assertFalse(Storage::disk('public')->exists($antes[0]), 'El máster viejo se va.');
+
+        // Una foto de la biblioteca como portada: el máster del vídeo pasa a ser una copia del suyo.
+        $foto = SnkKilkanaMediaModel::find($this->media->upload(['file' => UploadedFile::fake()->image('plaza.jpg', 1600, 1000)], 1)['media']->id);
+        $this->assertNotNull($this->media->posterFrom($video->fresh(), $foto));
+        $video->refresh();
+        $this->assertSame($foto->id, $video->poster_media_id);
+        $this->assertNull($video->poster_at);
+        $this->assertSame([$foto->master_width, $foto->master_height], [$video->master_width, $video->master_height]);
+        $this->assertNotSame($foto->master_path, $video->master_path, 'Copia, no referencia.');
+        $this->assertTrue(Storage::disk('public')->exists($video->master_path));
+
+        // La purga barre los fotogramas de elegir que no son el vigente, y todos los de un vídeo que ya no está.
+        $this->assertNotNull($this->images->frame($video, 0));
+        $this->assertNotNull($this->images->frame($video, 2));
+        $this->assertGreaterThanOrEqual(2, $this->images->purgeOrphans(), 'Sin poster_at, ningún fotograma es el vigente.');
+        $this->assertSame([], Storage::disk('public')->files(sprintf('media/%s/f/%d', ':memory:', $video->id)));
         @unlink($tmp);
     }
 }

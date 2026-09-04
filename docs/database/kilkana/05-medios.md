@@ -76,6 +76,7 @@ Sin él, un recorte cuadrado de un retrato apaisado decapita al retratado.
 |---|---|---|---|
 | `master_path` · `master_width` · `master_height` | string · int · int | sí | El fichero del que salen todas las derivadas: orientado, sin metadatos, lado mayor acotado (`kilkana.kilkana.media.master`, 2560). Nulo en vídeo, audio y lo que GD no abre. |
 | `variants_key` | char(8) | sí | La huella de las derivadas: sha1 del `content_hash` y del encuadre, recalculada al cambiar cualquiera de los dos y solo entonces. |
+| `poster_at` | int | sí | En un vídeo, el segundo cuyo fotograma es el máster: el uno por defecto, o el elegido con `POST media/{id}/poster {at}`. `GET media/{id}/frame/{at}` da la miniatura de cualquier segundo para elegirlo. Entra en la huella. |
 
 `SnkKilkanaImageService` es la fábrica. Al subir y al reemplazar, `inspect()` lee la cabecera y
 rechaza por encima del tope de megapíxeles (422, antes de decodificar: es memoria, no afinado) y

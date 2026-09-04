@@ -35,7 +35,7 @@ class SnkKilkanaMediaService
     public const FILA_DE_LA_BIBLIOTECA = [
         'id', 'url', 'original_name', 'title', 'mime', 'size_bytes', 'width', 'height',
         'duration', 'alt', 'credit', 'license', 'rights_status', 'content_hash',
-        'focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h', 'variants',
+        'focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h', 'variants', 'poster_at', 'poster_media_id',
         'created_at', 'deleted_at', 'usage_count', 'tags', 'collections',
     ];
 
@@ -183,6 +183,7 @@ class SnkKilkanaMediaService
             ? $this->images->master($file->getRealPath(), $dir, pathinfo($path, PATHINFO_FILENAME))
             : null;
         $duration = $data['duration'] ?? null;
+        $posterAt = null;
         // Vídeo y audio: lo que dice el fichero manda sobre lo que declaró quien subió, y un
         // vídeo gana un fotograma de portada que es su máster, con derivadas como una foto.
         if (! $cabecera && $this->images->isMedia($file->getMimeType())) {
@@ -191,7 +192,8 @@ class SnkKilkanaMediaService
             $width = $sonda['width'] ?? $width;
             $height = $sonda['height'] ?? $height;
             if (str_starts_with((string) $file->getMimeType(), 'video/')) {
-                $master = $this->images->poster($file->getRealPath(), $dir, pathinfo($path, PATHINFO_FILENAME), $duration);
+                $posterAt = SnkKilkanaImageService::defaultPosterAt($duration);
+                $master = $this->images->poster($file->getRealPath(), $dir, pathinfo($path, PATHINFO_FILENAME), $posterAt);
             }
         }
 
@@ -211,6 +213,7 @@ class SnkKilkanaMediaService
                 'master_path' => $master['path'] ?? null,
                 'master_width' => $master['width'] ?? null,
                 'master_height' => $master['height'] ?? null,
+                'poster_at' => $master ? ($posterAt ?? null) : null,
                 'uploaded_by' => $userId,
             ]);
             $this->warm($media);
@@ -276,13 +279,15 @@ class SnkKilkanaMediaService
             ? $this->images->master($file->getRealPath(), $dir, pathinfo($path, PATHINFO_FILENAME))
             : null;
         $duration = $data['duration'] ?? null;
+        $posterAt = null;
         if (! $cabecera && $this->images->isMedia($file->getMimeType())) {
             $sonda = $this->images->probe($file->getRealPath());
             $duration = $sonda['duration'] ?? $duration;
             $width = $sonda['width'] ?? $width;
             $height = $sonda['height'] ?? $height;
             if (str_starts_with((string) $file->getMimeType(), 'video/')) {
-                $master = $this->images->poster($file->getRealPath(), $dir, pathinfo($path, PATHINFO_FILENAME), $duration);
+                $posterAt = SnkKilkanaImageService::defaultPosterAt($duration);
+                $master = $this->images->poster($file->getRealPath(), $dir, pathinfo($path, PATHINFO_FILENAME), $posterAt);
             }
         }
 
@@ -299,6 +304,7 @@ class SnkKilkanaMediaService
             'master_path' => $master['path'] ?? null,
             'master_width' => $master['width'] ?? null,
             'master_height' => $master['height'] ?? null,
+            'poster_at' => $master ? ($posterAt ?? null) : null,
         ]);
         $this->warm($media);
         if ($anteriorMaster && $anteriorMaster !== ($master['path'] ?? null)) {
@@ -312,6 +318,61 @@ class SnkKilkanaMediaService
         }
 
         return ['media' => $this->serialize($media), 'duplicate' => false];
+    }
+
+    /**
+     * Otra portada para un vídeo: el fotograma del segundo elegido pasa a ser el máster, la
+     * huella cambia y las derivadas nacen de él. `null` si no es un vídeo o ffmpeg no lo saca.
+     */
+    public function poster(SnkKilkanaMediaModel $media, int $at): ?SnkKilkanaMediaModel
+    {
+        if (! str_starts_with((string) $media->mime, 'video/') || ! $media->path) {
+            return null;
+        }
+        $anterior = $media->master_path;
+        $disk = Storage::disk($media->disk ?: 'public');
+        $master = $this->images->poster($disk->path($media->path), dirname($media->path), pathinfo($media->path, PATHINFO_FILENAME), $at);
+        if ($master === null) {
+            return null;
+        }
+        $media->forceFill(['master_path' => $master['path'], 'master_width' => $master['width'], 'master_height' => $master['height'], 'poster_at' => $at, 'poster_media_id' => null])->save();
+        if ($anterior && $anterior !== $master['path']) {
+            Storage::disk('public')->delete($anterior);
+        }
+        $this->warm($media);
+
+        return $this->serialize($media);
+    }
+
+    /**
+     * Una foto de la biblioteca como portada del vídeo: su máster se copia como máster del
+     * vídeo —copia y no referencia, para que borrar la foto no deje al vídeo sin portada— y
+     * la huella cambia con el id de la foto. `null` si no es un vídeo o la foto no tiene máster.
+     */
+    public function posterFrom(SnkKilkanaMediaModel $media, SnkKilkanaMediaModel $photo): ?SnkKilkanaMediaModel
+    {
+        if (! str_starts_with((string) $media->mime, 'video/') || ! $media->path || ! $photo->master_path) {
+            return null;
+        }
+        $disk = Storage::disk('public');
+        $anterior = $media->master_path;
+        $path = dirname($media->path).'/m/'.pathinfo($media->path, PATHINFO_FILENAME).'-m'.$photo->getKey().'.jpg';
+        if (! $disk->exists($photo->master_path) || ! $disk->copy($photo->master_path, $path)) {
+            return null;
+        }
+        $media->forceFill([
+            'master_path' => $path,
+            'master_width' => $photo->master_width,
+            'master_height' => $photo->master_height,
+            'poster_at' => null,
+            'poster_media_id' => $photo->getKey(),
+        ])->save();
+        if ($anterior && $anterior !== $path) {
+            $disk->delete($anterior);
+        }
+        $this->warm($media);
+
+        return $this->serialize($media);
     }
 
     /** Lo que seguro se pide nada más publicar, por la cola; sin worker no pasa nada: nace bajo demanda. */

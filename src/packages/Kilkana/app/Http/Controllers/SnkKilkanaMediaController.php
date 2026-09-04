@@ -5,10 +5,13 @@ namespace Packages\Kilkana\Http\Controllers;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Kilkana\Enums\SnkKilkanaMediaRightsEnum;
 use Packages\Kilkana\Models\SnkKilkanaMediaModel;
+use Packages\Kilkana\Services\SnkKilkanaImageService;
 use Packages\Kilkana\Services\SnkKilkanaMediaService;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
  * Biblioteca de medios estilo WordPress: subida al disco del tenant con dedup por
@@ -19,7 +22,7 @@ use Packages\Kilkana\Services\SnkKilkanaMediaService;
 #[Group('Media')]
 class SnkKilkanaMediaController extends CoreBaseApiController
 {
-    public function __construct(private readonly SnkKilkanaMediaService $media) {}
+    public function __construct(private readonly SnkKilkanaMediaService $media, private readonly SnkKilkanaImageService $images) {}
 
     protected string $modelClass = SnkKilkanaMediaModel::class;
 
@@ -223,6 +226,54 @@ class SnkKilkanaMediaController extends CoreBaseApiController
     }
 
     /** Reemplaza el binario conservando los metadatos editoriales y el id. */
+    /** La miniatura de un segundo del vídeo, para elegir la portada. */
+    public function frame($id, int $at): BinaryFileResponse|JsonResponse
+    {
+        if ($response = $this->requirePermission($this->showPermission)) {
+            return $response;
+        }
+        $media = $this->media->findWithTrashed($id);
+        if (! $media) {
+            return response()->json(['error' => 'Record not found'], 404);
+        }
+        $path = $this->images->frame($media, $at);
+        if ($path === null) {
+            return response()->json(['error' => 'No frame there'], 404);
+        }
+
+        return response()->file(Storage::disk('public')->path($path), [
+            'Content-Type' => 'image/jpeg',
+            'Cache-Control' => 'private, max-age=86400',
+        ]);
+    }
+
+    /** Elegir la portada de un vídeo: el segundo pasa a ser el máster. */
+    public function poster(Request $request, $id): JsonResponse
+    {
+        if ($response = $this->requirePermission($this->updatePermission)) {
+            return $response;
+        }
+        $media = $this->media->find($id);
+        if (! $media) {
+            return response()->json(['error' => 'Record not found'], 404);
+        }
+        // O un segundo del vídeo, o una foto de la biblioteca: exactamente uno de los dos.
+        $data = $request->validate([
+            'at' => 'required_without:media_id|prohibits:media_id|integer|min:0|max:'.max(0, (int) $media->duration),
+            'media_id' => 'required_without:at|integer|exists:kilkana_media,id',
+        ]);
+        if (isset($data['media_id'])) {
+            $photo = $this->media->find($data['media_id']);
+            $row = $photo && $this->images->isImage($photo->mime) ? $this->media->posterFrom($media, $photo) : null;
+        } else {
+            $row = $this->media->poster($media, (int) $data['at']);
+        }
+
+        return $row === null
+            ? response()->json(['error' => 'That file cannot be the poster'], 422)
+            : response()->json($row);
+    }
+
     public function replace(Request $request, $id): JsonResponse
     {
         if ($response = $this->requirePermission($this->updatePermission)) {

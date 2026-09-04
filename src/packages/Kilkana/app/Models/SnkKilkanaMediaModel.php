@@ -60,7 +60,7 @@ class SnkKilkanaMediaModel extends Model
             // La huella de las derivadas: del contenido y del encuadre, recalculada cuando
             // cambia cualquiera de los dos y solo entonces, para que un reencuadre sea una URL
             // nueva y un cambio de alt no lo sea.
-            if ($media->master_path && ($media->variants_key === null || $media->isDirty(['content_hash', 'focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h', 'master_path']))) {
+            if ($media->master_path && ($media->variants_key === null || $media->isDirty(['content_hash', 'focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h', 'master_path', 'poster_at', 'poster_media_id']))) {
                 $media->variants_key = SnkKilkanaImageService::fingerprint($media);
             }
         });

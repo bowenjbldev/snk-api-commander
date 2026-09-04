@@ -107,23 +107,87 @@ class SnkKilkanaImageService
         ];
     }
 
-    /**
-     * El fotograma de portada de un vídeo, al segundo uno (o al cero si dura menos), como
-     * máster: con él un vídeo tiene derivadas igual que una foto. `null` si `ffmpeg` no lo saca.
-     */
-    public function poster(string $realPath, string $dir, string $stem, ?int $duration): ?array
+    /** El segundo por defecto para la portada de un vídeo: el uno, o el cero si dura menos. */
+    public static function defaultPosterAt(?int $duration): int
     {
-        // `tempnam` crea el fichero que devuelve: se usa esa ruta y no otra con sufijo, o queda
-        // un cero bytes por vídeo en `/tmp` para siempre. ffmpeg deduce el formato por `-f`.
+        return ($duration ?? 0) > 1 ? 1 : 0;
+    }
+
+    /**
+     * El fotograma de portada de un vídeo, al segundo pedido, como máster: con él un vídeo
+     * tiene derivadas igual que una foto. `null` si `ffmpeg` no lo saca. El máster lleva el
+     * segundo en el nombre, así que elegir otro es otro fichero y otra huella.
+     */
+    public function poster(string $realPath, string $dir, string $stem, int $at): ?array
+    {
+        $frame = $this->grab($realPath, $at, null);
+        if ($frame === null) {
+            return null;
+        }
+        try {
+            return $this->master($frame, $dir, "{$stem}-p{$at}");
+        } finally {
+            @unlink($frame);
+        }
+    }
+
+    /**
+     * Una miniatura de un segundo concreto, para elegir la portada: pequeña, cacheada por
+     * medio y segundo en el disco público, y generada la primera vez. Devuelve la ruta.
+     */
+    public function frame(SnkKilkanaMediaModel $media, int $at): ?string
+    {
+        $disk = Storage::disk('public');
+        if (! $media->path || $at < 0 || $at > max(0, (int) $media->duration)) {
+            return null;
+        }
+        $path = sprintf('media/%s/f/%d/%d.jpg', DB::connection()->getDatabaseName(), $media->getKey(), $at);
+        if ($disk->exists($path)) {
+            return $path;
+        }
+        $lock = Cache::lock('kilkana:frame:'.$path, 30);
+        try {
+            $lock->block(20);
+        } catch (LockTimeoutException) {
+            // Se sigue sin candado.
+        }
+        try {
+            if ($disk->exists($path)) {
+                return $path;
+            }
+            $frame = $this->grab($disk->path($media->path), $at, 320);
+            if ($frame === null) {
+                return null;
+            }
+            try {
+                self::putAtomic($path, (string) file_get_contents($frame));
+            } finally {
+                @unlink($frame);
+            }
+
+            return $path;
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * Un fotograma con ffmpeg a un fichero temporal, o `null`. `tempnam` crea el fichero que
+     * devuelve: se usa esa ruta y no otra con sufijo, o queda un cero bytes en `/tmp` por
+     * vídeo para siempre; el formato se le dice con `-f image2`. Con lista blanca de
+     * protocolos (cierra la red) y `timeout` (un hijo no obedece a `max_execution_time`).
+     */
+    private function grab(string $realPath, int $at, ?int $width): ?string
+    {
         $frame = tempnam(sys_get_temp_dir(), 'kk-poster-');
         if ($frame === false) {
             return null;
         }
-        $at = ($duration ?? 0) > 1 ? 1 : 0;
         $cmd = sprintf(
-            'timeout 20 ffmpeg -v error -y -protocol_whitelist file -ss %d -i %s -frames:v 1 -q:v 2 -f image2 %s 2>/dev/null',
+            'timeout 20 ffmpeg -v error -y -protocol_whitelist file -ss %d -i %s -frames:v 1 -q:v 3 %s -f image2 %s 2>/dev/null',
             $at,
             escapeshellarg($realPath),
+            $width ? '-vf '.escapeshellarg("scale={$width}:-2") : '',
             escapeshellarg($frame),
         );
         @shell_exec($cmd);
@@ -132,11 +196,8 @@ class SnkKilkanaImageService
 
             return null;
         }
-        try {
-            return $this->master($frame, $dir, $stem);
-        } finally {
-            @unlink($frame);
-        }
+
+        return $frame;
     }
 
     /**
@@ -194,6 +255,8 @@ class SnkKilkanaImageService
             number_format((float) $media->crop_y, 4, '.', ''),
             number_format((float) $media->crop_w, 4, '.', ''),
             number_format((float) $media->crop_h, 4, '.', ''),
+            (string) ($media->poster_at ?? ''),
+            (string) ($media->poster_media_id ?? ''),
         ])), 0, 8);
     }
 
@@ -342,18 +405,40 @@ class SnkKilkanaImageService
         return $path;
     }
 
-    /** Las carpetas de derivadas que ya no son la vigente de su medio, barridas. */
+    /**
+     * Barre lo que ya no apunta nadie: las carpetas de derivadas cuya huella no es la vigente
+     * de su medio, y los fotogramas de elegir portada —todos los de un vídeo que ya no existe,
+     * y los que no son el segundo elegido de uno que sí, porque se rehacen al tocar el
+     * deslizador y sin barrerlos un pleno de noventa minutos son cinco mil ficheros—.
+     */
     public function purgeOrphans(): int
     {
         $disk = Storage::disk('public');
-        $root = 'media/'.DB::connection()->getDatabaseName().'/v';
+        $base = 'media/'.DB::connection()->getDatabaseName();
         $barridas = 0;
-        foreach ($disk->directories($root) as $carpeta) {
+        foreach ($disk->directories($base.'/v') as $carpeta) {
             $id = (int) basename($carpeta);
             $vigente = SnkKilkanaMediaModel::withTrashed()->whereKey($id)->value('variants_key');
             foreach ($disk->directories($carpeta) as $huella) {
                 if ($vigente === null || basename($huella) !== $vigente) {
                     $disk->deleteDirectory($huella);
+                    $barridas++;
+                }
+            }
+        }
+        foreach ($disk->directories($base.'/f') as $carpeta) {
+            $id = (int) basename($carpeta);
+            $video = SnkKilkanaMediaModel::withTrashed()->whereKey($id)->first(['id', 'poster_at']);
+            if ($video === null) {
+                $disk->deleteDirectory($carpeta);
+                $barridas++;
+
+                continue;
+            }
+            foreach ($disk->files($carpeta) as $fotograma) {
+                // Sin segundo elegido —la portada es una foto— no hay fotograma vigente que guardar.
+                if ($video->poster_at === null || (int) pathinfo($fotograma, PATHINFO_FILENAME) !== (int) $video->poster_at) {
+                    $disk->delete($fotograma);
                     $barridas++;
                 }
             }

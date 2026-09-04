@@ -118,6 +118,8 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::post('media/{id}/restore', [SnkKilkanaMediaController::class, 'restore']);
     Route::delete('media/{id}/force', [SnkKilkanaMediaController::class, 'forceDestroy']);
     Route::post('media/{id}/replace', [SnkKilkanaMediaController::class, 'replace']);
+    Route::get('media/{id}/frame/{at}', [SnkKilkanaMediaController::class, 'frame'])->whereNumber(['id', 'at']);
+    Route::post('media/{id}/poster', [SnkKilkanaMediaController::class, 'poster'])->whereNumber('id');
     // Sin `store`: un medio ENTRA por `upload` o por `replace`, que calculan hash, ruta y
     // dimensiones. El alta genérica no validaba nada —el controlador no declara reglas, así
     // que el base metía `$request->all()` en el modelo— y dejaba escribir `disk` y `path`,
