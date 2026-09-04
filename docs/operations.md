@@ -500,13 +500,13 @@ Después, desde el provisioner:
 php artisan core:migrate --all-tenants --force
 ```
 
-**Hoy este paso no puede funcionar** (medido el 2026-09-04): el comando conecta a cada inquilino
-con su usuario de ejecución, y ese usuario solo tiene `SELECT, INSERT, UPDATE, DELETE` sobre su
-base, a propósito —una inyección o un proceso comprometido no puede tirar las tablas de un
-periódico—. Ni `CREATE`, ni `ALTER`, ni `INDEX`. Cada cambio de esquema de Kilkana desde el
-2026-09-02 se ha aplicado a mano con root en local. Lo que falta, y está por decidir, es una
-credencial de migración con DDL que use solo `core:migrate` y que el aprovisionador ya conoce
-porque es quien crea las bases; el usuario de ejecución se queda como está.
+**Desde el provisioner, y no desde `app`, a propósito.** El comando migra cada inquilino con la
+conexión `provisioner` (`PROVISIONER_DB_*`), que es la credencial con DDL que solo tiene ese
+servicio; el usuario de ejecución de cada periódico se queda con `SELECT, INSERT, UPDATE, DELETE`
+sobre su base, y así una inyección o un proceso comprometido no puede tirar las tablas de un
+diario. Lanzado desde `app`, que no lleva esa credencial, falla con `Access denied for user ''`:
+no es un fallo del comando, es la separación funcionando. Un inquilino con el registro de
+provisioning roto para el despliegue entero antes del primer DDL, que es lo que se quiere.
 
 Requisitos adicionales:
 
