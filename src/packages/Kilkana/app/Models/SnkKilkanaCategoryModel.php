@@ -192,7 +192,10 @@ class SnkKilkanaCategoryModel extends Model
      * pagina publica no existe nunca, sin que nada avise. La calle esta en `kilkana.app`
      * (`src/routes`), asi que esta lista se mueve con la suya.
      */
-    public const RESERVED_SLUGS = ['admin', 'subscribe', 'csp-report'];
+    public const RESERVED_SLUGS = ['admin', 'account', 'author', 'tag', 'subscribe', 'csp-report'];
+
+    /** La forma de un slug: minúsculas, dígitos y guiones. Sin punto, y por eso `robots.txt`, `rss.xml` y `sitemap.xml` no necesitan reservarse. */
+    public const SLUG_SHAPE = '/^[a-z0-9]+(?:-[a-z0-9]+)*$/';
 
     private static function guardReservedSlug(self $category): void
     {

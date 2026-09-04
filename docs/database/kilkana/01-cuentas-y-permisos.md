@@ -148,6 +148,12 @@ pueden asignar desde él (`not_in` en la validación del rol). Cada fila viaja c
   pagado al que nadie llega.
 - **`POST users/{id}/invitation`** reenvía el enlace; 409 si la cuenta ya entró.
   **`POST users/{id}/password-link`** manda el de recuperación; 409 si sigue invitada.
+  **`POST auth/register`** `{name, email, password}` es el alta de un lector desde la calle, público
+  y con freno: nace con el papel `reader` —`create comments` y nada más— y contesta como el acceso,
+  con su token. Un correo que ya existe es un 422, como en cualquier registro, **y eso dice que
+  existe**: es lo que `auth/password-link` calla con su 202. Decisión del usuario, 2026-09-04: se
+  acepta, y el 202 de la recuperación queda como coherencia interna y no como defensa; cerrarlo
+  sería mandar el «ya tienes cuenta» al correo en vez de al navegador.
   **`POST auth/password-link`** `{email}` es el mismo enlace pedido por quien lo olvidó, sin
   sesión y con freno: contesta 202 exista la cuenta o no, y solo lo manda a una cuenta con
   asiento que ya entró y no está suspendida, y lo encola en vez de mandarlo: un envío síncrono

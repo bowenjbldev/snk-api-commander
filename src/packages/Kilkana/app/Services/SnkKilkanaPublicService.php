@@ -25,6 +25,7 @@ use Packages\Kilkana\Models\SnkKilkanaPostViewModel;
 use Packages\Kilkana\Models\SnkKilkanaReaderReadModel;
 use Packages\Kilkana\Models\SnkKilkanaSettingModel;
 use Packages\Kilkana\Models\SnkKilkanaSubscriberModel;
+use Packages\Kilkana\Models\SnkKilkanaTagModel;
 
 class SnkKilkanaPublicService
 {
@@ -50,6 +51,9 @@ class SnkKilkanaPublicService
         }
         if (! empty($filters['author'])) {
             $query->whereHas('author', fn ($q) => $q->where('slug', $filters['author']));
+        }
+        if (! empty($filters['tag'])) {
+            $query->whereHas('tags', fn ($q) => $q->where('slug', $filters['tag']));
         }
         if (! empty($filters['q'])) {
             $query->whereFullText(['title', 'excerpt'], $filters['q']);
@@ -176,6 +180,14 @@ class SnkKilkanaPublicService
                 'updated_at' => $post->updated_at?->toIso8601String(),
             ])
             ->all();
+    }
+
+    /** Una etiqueta, con lo que la calle rotula; `null` si no existe. */
+    public function tag(string $slug): ?array
+    {
+        $tag = SnkKilkanaTagModel::query()->where('slug', $slug)->first(['name', 'slug']);
+
+        return $tag === null ? null : ['name' => $tag->name, 'slug' => $tag->slug];
     }
 
     public function categories()

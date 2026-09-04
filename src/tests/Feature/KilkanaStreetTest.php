@@ -10,6 +10,7 @@ use Packages\Kilkana\Models\SnkKilkanaMediaModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Models\SnkKilkanaPostViewModel;
 use Packages\Kilkana\Models\SnkKilkanaSettingModel;
+use Packages\Kilkana\Models\SnkKilkanaTagModel;
 use Packages\Kilkana\Services\SnkKilkanaPublicService;
 use Packages\Kilkana\Services\SnkKilkanaRoleCatalogService;
 use Tests\TestCase;
@@ -110,5 +111,27 @@ class KilkanaStreetTest extends TestCase
         $this->assertSame([], $servicio->posts(['count' => 2, 'page' => 3])->pluck('slug')->all());
 
         $this->assertSame(['/2026/07/03/a', '/2026/07/02/b'], array_column($servicio->sitemap(), 'path'));
+    }
+
+    /** Una etiqueta en la calle: su rótulo y sus piezas, y nada si no existe. */
+    public function test_la_lista_publica_filtra_por_etiqueta_y_la_etiqueta_se_rotula(): void
+    {
+        $seccion = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
+        $firma = SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);
+        $sequia = SnkKilkanaTagModel::create(['name' => 'Sequía', 'slug' => 'sequia']);
+        foreach (['a', 'b'] as $slug) {
+            $pieza = SnkKilkanaPostModel::create([
+                'title' => $slug, 'slug' => $slug, 'url_date' => '2026-07-01', 'category_id' => $seccion->id, 'author_id' => $firma->id,
+                'status' => 'published', 'publish_at' => '2026-07-01 08:00:00', 'excerpt' => 'E.', 'body_blocks' => [],
+            ]);
+            if ($slug === 'a') {
+                $pieza->tags()->attach($sequia->id);
+            }
+        }
+        $servicio = app(SnkKilkanaPublicService::class);
+
+        $this->assertSame(['a'], $servicio->posts(['tag' => 'sequia'])->pluck('slug')->all());
+        $this->assertSame(['name' => 'Sequía', 'slug' => 'sequia'], $servicio->tag('sequia'));
+        $this->assertNull($servicio->tag('nada'));
     }
 }

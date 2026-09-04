@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Packages\Core\Models\CoreUserModel;
@@ -11,6 +12,7 @@ use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Services\SnkKilkanaPublicService;
+use Packages\Kilkana\Services\SnkKilkanaRoleCatalogService;
 use Tests\TestCase;
 
 /**
@@ -293,5 +295,20 @@ class KilkanaCategoriesTest extends TestCase
             }
         }
         $this->assertSame(0, SnkKilkanaCategoryModel::query()->count());
+    }
+
+    /** Un slug dado a mano tiene que tener forma de slug: con punto, barra o mayúscula no casa con ninguna ruta. */
+    public function test_un_slug_escrito_a_mano_sin_forma_de_slug_no_entra(): void
+    {
+        app(SnkKilkanaRoleCatalogService::class)->sync();
+        $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
+        $marta->assignRole('director');
+        $this->actingAs($marta, 'sanctum');
+        $crear = fn (string $slug) => app(SnkKilkanaCategoriesController::class)->store(Request::create('/', 'POST', ['name' => 'Prueba', 'slug' => $slug]));
+
+        foreach (['robots.txt', 'con/barra', 'Mayus', 'con espacio', '-borde-'] as $slug) {
+            $this->assertSame(422, $crear($slug)->getStatusCode(), $slug);
+        }
+        $this->assertSame(201, $crear('con-guion-2')->getStatusCode());
     }
 }

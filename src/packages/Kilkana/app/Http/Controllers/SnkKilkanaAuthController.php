@@ -50,6 +50,44 @@ class SnkKilkanaAuthController extends CoreAuthController
      * cierra la invitación y tira las sesiones que hubiera: es el gesto de recuperar la cuenta.
      */
     /**
+     * Un lector se da de alta solo, desde la calle.
+     *
+     * Nace con el papel `reader` —comentar y nada más— y con sesión abierta: la respuesta es la
+     * misma que la del acceso, para que el consumidor no tenga dos formas de recibir un token. Un
+     * correo que ya existe se rechaza como cualquier formulario de registro, con freno delante.
+     */
+    public function register(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => 'required|string|min:2|max:120',
+            'email' => 'required|email|max:255|unique:users,email',
+            'password' => 'required|string|min:10|max:255|confirmed',
+        ]);
+
+        $user = CoreUserModel::create([
+            'name' => $data['name'],
+            'full_name' => $data['name'],
+            'email' => $data['email'],
+            'password' => $data['password'],
+        ]);
+        $user->assignRole('reader');
+
+        $token = $user->createToken(
+            'login',
+            ['api'],
+            now()->addMinutes((int) config('core.auth.token_expiration_minutes', 1440)),
+        );
+
+        return response()->json([
+            'token' => $token->plainTextToken,
+            'token_type' => 'Bearer',
+            'expires_at' => $token->accessToken->expires_at?->toIso8601String(),
+            'user' => $user,
+            'token_id' => $token->accessToken->id,
+        ], 201);
+    }
+
+    /**
      * «He olvidado mi contraseña», iniciado por quien la olvidó.
      *
      * Contesta 202 exista la cuenta o no —un formulario público no puede ser un oráculo de

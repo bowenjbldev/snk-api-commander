@@ -30,12 +30,23 @@ class SnkKilkanaPublicController extends Controller
         $data = $request->validate([
             'cat' => 'nullable|string|max:32',
             'author' => 'nullable|string|max:255',
+            'tag' => 'nullable|string|max:64',
             'q' => 'nullable|string|min:2|max:128',
             'count' => 'nullable|integer|min:1|max:100',
             'page' => 'nullable|integer|min:1|max:1000',
         ]);
 
         return response()->json($this->public->posts($data));
+    }
+
+    /** Una etiqueta por su slug: lo que `/tag/{slug}` necesita para rotularse. */
+    public function tag(string $slug): JsonResponse
+    {
+        $tag = $this->public->tag($slug);
+
+        return $tag === null
+            ? response()->json(['error' => 'Not found'], 404)
+            : response()->json($tag);
     }
 
     /** Todas las direcciones indexables del periódico, para el sitemap de la calle. */

@@ -2,9 +2,13 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Enums\SnkKilkanaContentTierEnum;
+use Packages\Kilkana\Http\Controllers\SnkKilkanaAuthController;
+use Packages\Kilkana\Http\Controllers\SnkKilkanaCommentsController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaReadersController;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
@@ -203,5 +207,37 @@ class KilkanaReadersTest extends TestCase
             'publish_at' => '2026-07-01 08:00:00',
             'content_tier' => $tier,
         ]);
+    }
+
+    /** Un lector nace solo desde la calle, y lo único que puede hacer con su sesión es comentar. */
+    public function test_un_lector_se_registra_solo_y_su_comentario_nace_pendiente(): void
+    {
+        $auth = new SnkKilkanaAuthController;
+        $alta = fn (array $extra = []) => $auth->register(Request::create('/', 'POST', $extra + [
+            'name' => 'Vecina Nueva', 'email' => 'vecina@lectores.example', 'password' => 'correcthorse1', 'password_confirmation' => 'correcthorse1',
+        ]));
+
+        $respuesta = $alta();
+        $this->assertSame(201, $respuesta->getStatusCode());
+        $this->assertNotEmpty($respuesta->getData(true)['token']);
+        $vecina = CoreUserModel::query()->where('email', 'vecina@lectores.example')->first();
+        $this->assertTrue($vecina->hasRole('reader'));
+        $this->assertSame(['create comments'], $vecina->getAllPermissions()->pluck('name')->all(), 'Comentar y nada más.');
+
+        try {
+            $alta();
+            $this->fail('El mismo correo no se registra dos veces.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('email', $e->errors());
+        }
+
+        $pieza = $this->pieza('Plan');
+        $this->actingAs($vecina, 'sanctum');
+        $comentario = app(SnkKilkanaCommentsController::class)->store(Request::create('/', 'POST', ['post_id' => $pieza->id, 'body' => 'Hola']));
+        $this->assertSame(201, $comentario->getStatusCode());
+        $this->assertSame('pending', SnkKilkanaCommentModel::query()->where('user_id', $vecina->id)->first()->status->value);
+
+        $this->comoModerador();
+        $this->assertContains('vecina@lectores.example', array_column($this->lectores()->index()->getData(true)['data'], 'email'), 'Y aparece en Lectores.');
     }
 }
