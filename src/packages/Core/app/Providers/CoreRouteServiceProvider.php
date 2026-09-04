@@ -161,6 +161,23 @@ class CoreRouteServiceProvider extends ServiceProvider
                     ->group($routeFile);
                 $this->removeEmptyGroupNames($namePrefix);
             }
+
+            // Rutas web de los packages compartidos: bajo el host del inquilino, sin prefijo, con
+            // el inquilino resuelto y sin el grupo `api` —ni sesión ni freno: lo que sirven es un
+            // fichero que nginx cachea; aquí llega lo que aún no existe, y de serializar a los que
+            // lo piden a la vez se encarga quien lo genera—.
+            foreach ($discovery->discoverWebRouteFiles() as $webFile) {
+                $module = $discovery->moduleNameFromRouteFile($webFile);
+                if (str_contains($module, '\\') || in_array(strtolower($module), ['core', 'commander'], true)) {
+                    continue;
+                }
+                $packageSlug = CorePackageSelectorSupport::packageToSubdomain($module);
+                Route::domain('{client}.'.$tenantBase)
+                    ->name($packageSlug.'.web.')
+                    ->middleware([CoreResolveInstanceFromHostMiddleware::class.':'.$packageSlug])
+                    ->group($webFile);
+                $this->removeEmptyGroupNames($packageSlug.'.web.');
+            }
         });
     }
 

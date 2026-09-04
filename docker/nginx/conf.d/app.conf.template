@@ -59,6 +59,22 @@ server {
         fastcgi_param PATH_INFO $fastcgi_path_info;
     }
 
+    # Las derivadas de imagen llevan la huella del contenido y del encuadre en la ruta: lo que
+    # existe no cambia nunca, y lo que no existe lo genera Laravel una vez (`try_files` cae en
+    # `index.php`) y la siguiente petición ya la sirve esto.
+    location ~ ^/storage/media/[^/]+/v/ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        add_header X-Content-Type-Options nosniff always;
+        try_files $uri /index.php?$query_string;
+    }
+
+    # Los originales y los másteres: un día de caché, que es lo que tarda un reemplazo en verse.
+    location /storage/ {
+        add_header Cache-Control "public, max-age=86400";
+        add_header X-Content-Type-Options nosniff always;
+        try_files $uri =404;
+    }
+
     location / {
         try_files $uri $uri/ /index.php?$query_string;
         gzip_static on;

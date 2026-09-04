@@ -43,6 +43,9 @@ class SnkKilkanaNewsletterController extends CoreBaseApiController
         return response()->json([
             'data' => $issues->map(fn (SnkKilkanaNewsletterIssueModel $i) => $this->row($i))->values(),
             'list' => $this->newsletter->listStats(),
+            // Lo que se puede elegir para un número: las veinte publicadas más recientes.
+            'candidates' => SnkKilkanaPostModel::query()->published()->orderByDesc('publish_at')->limit(20)->get(['id', 'title'])
+                ->map(fn (SnkKilkanaPostModel $p) => ['id' => (string) $p->getKey(), 'title' => $p->title])->values()->all(),
             'pieces' => $this->newsletter->pieces(new SnkKilkanaNewsletterIssueModel(['status' => SnkKilkanaNewsletterIssueModel::DRAFT]))
                 ->map(fn (SnkKilkanaPostModel $p) => ['id' => (string) $p->getKey(), 'title' => $p->title])->values(),
             'sender' => config('mail.from.address'),
@@ -74,6 +77,11 @@ class SnkKilkanaNewsletterController extends CoreBaseApiController
         $data = $request->validate([
             'subject' => 'sometimes|required|string|max:200',
             'preheader' => 'sometimes|nullable|string|max:300',
+            // Lo que va dentro, elegido: vacío vuelve a «las últimas publicadas».
+            'post_ids' => 'sometimes|nullable|array|max:12',
+            'post_ids.*' => 'integer|exists:kilkana_posts,id',
+            // La hora de salida; nula es «cuando alguien pulse». Siempre por delante del reloj.
+            'scheduled_at' => 'sometimes|nullable|date|after:now',
         ]);
         $issue->fill($data)->save();
 
@@ -129,6 +137,8 @@ class SnkKilkanaNewsletterController extends CoreBaseApiController
             'preheader' => $issue->preheader,
             'status' => $issue->status,
             'sent_at' => $issue->sent_at?->toIso8601String(),
+            'scheduled_at' => $issue->scheduled_at?->toIso8601String(),
+            'post_ids' => array_map(fn ($id) => (string) $id, is_array($issue->post_ids) ? $issue->post_ids : []),
             'recipients' => (int) $issue->recipients_count,
             'test_sent_to' => $issue->test_sent_to,
             'test_sent_at' => $issue->test_sent_at?->toIso8601String(),

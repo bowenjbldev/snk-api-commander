@@ -6,6 +6,7 @@ use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Kilkana\Enums\SnkKilkanaBlockTypeEnum;
@@ -328,6 +329,29 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         // está editando, que es exactamente como se pisa lo que otro acaba de escribir.
         //
         // Solo rellena lo que falta: mandar la entradilla vacía a propósito sigue siendo un 422.
+        // Bloqueo optimista: quien manda `expected_updated_at` dice desde qué versión escribe, y
+        // si la pieza cambió por debajo se le devuelve quién y cuándo en vez de pisarlo.
+        // Se comparan instantes, no cadenas: la versión llega en la variante ISO que el cliente
+        // recibió, y un cambio de serializador no puede convertir todos los guardados en un 409.
+        $esperado = $request->input('expected_updated_at');
+        $desfasada = false;
+        if (is_string($esperado) && $esperado !== '') {
+            try {
+                $desfasada = $post->updated_at === null || ! Carbon::parse($esperado)->equalTo($post->updated_at);
+            } catch (\Throwable) {
+                $desfasada = true;
+            }
+        }
+        if ($desfasada) {
+            $post->loadMissing('updater:id,name');
+
+            return response()->json([
+                'error' => 'stale',
+                'updated_at' => $post->updated_at?->toIso8601String(),
+                'updated_by' => $post->updater?->name,
+            ], 409);
+        }
+
         $entrada = $request->all();
         if (in_array($entrada['status'] ?? null, SnkKilkanaPostStatusEnum::publishing(), true)) {
             $entrada += array_filter([

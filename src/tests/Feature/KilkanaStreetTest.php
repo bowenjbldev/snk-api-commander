@@ -65,7 +65,7 @@ class KilkanaStreetTest extends TestCase
         $pieza = app(SnkKilkanaPublicService::class)->post('2026', '07', '01', 'plan')->toArray();
 
         $this->assertSame([[
-            'id' => (string) $foto->id, 'url' => '/storage/a.jpg', 'alt' => 'La plaza', 'caption' => 'Ayer', 'credit' => 'E. D.', 'width' => 1600, 'height' => 900,
+            'id' => (string) $foto->id, 'url' => '/storage/a.jpg', 'alt' => 'La plaza', 'caption' => 'Ayer', 'credit' => 'E. D.', 'width' => 1600, 'height' => 900, 'variants' => null,
         ]], $pieza['media'], 'Solo las que existen, y con lo que la calle pinta.');
         $this->assertSame('image', $pieza['body_blocks'][1]['type']);
     }

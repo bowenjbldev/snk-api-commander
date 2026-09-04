@@ -8,9 +8,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Packages\Core\Support\CoreActiveInstanceSupport;
+use Packages\Kilkana\Console\Commands\SnkKilkanaBuildMastersCommand;
 use Packages\Kilkana\Console\Commands\SnkKilkanaEnrichMediaCommand;
+use Packages\Kilkana\Console\Commands\SnkKilkanaNewsletterSendDueCommand;
 use Packages\Kilkana\Console\Commands\SnkKilkanaPublishScheduledCommand;
 use Packages\Kilkana\Console\Commands\SnkKilkanaPurgeTrashCommand;
+use Packages\Kilkana\Console\Commands\SnkKilkanaPurgeVariantsCommand;
 use Packages\Kilkana\Console\Commands\SnkKilkanaSyncPermissionsCommand;
 use Packages\Kilkana\Console\Commands\SnkKilkanaSyncThemesCommand;
 use Packages\Kilkana\Services\SnkKilkanaActivityService;
@@ -45,7 +48,10 @@ class KilkanaServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 SnkKilkanaPublishScheduledCommand::class,
+                SnkKilkanaNewsletterSendDueCommand::class,
                 SnkKilkanaPurgeTrashCommand::class,
+                SnkKilkanaPurgeVariantsCommand::class,
+                SnkKilkanaBuildMastersCommand::class,
                 SnkKilkanaEnrichMediaCommand::class,
                 SnkKilkanaSyncPermissionsCommand::class,
                 SnkKilkanaSyncThemesCommand::class,
@@ -56,6 +62,16 @@ class KilkanaServiceProvider extends ServiceProvider
                 $this->app->make(Schedule::class)
                     ->command('kilkana:publish-scheduled')
                     ->everyMinute()
+                    ->withoutOverlapping();
+                // Los números del boletín con hora: al minuto, como las piezas programadas.
+                $this->app->make(Schedule::class)
+                    ->command('kilkana:newsletter-send-due')
+                    ->everyMinute()
+                    ->withoutOverlapping();
+                // Las derivadas huérfanas: de madrugada, después de la papelera.
+                $this->app->make(Schedule::class)
+                    ->command('kilkana:purge-variants')
+                    ->dailyAt('04:40')
                     ->withoutOverlapping();
                 // La cuenta atrás de la papelera: de madrugada, cuando nadie restaura.
                 $this->app->make(Schedule::class)

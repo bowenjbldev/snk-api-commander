@@ -128,8 +128,10 @@ confirmados de la lista entera, quién comentó este mes y bloqueados. Cada fila
 
 `POST readers/{id}/block` y `DELETE readers/{id}/block` (`update readers`) cierran y reabren la
 cuenta. Bloquear tira las sesiones y rechaza lo pendiente; desbloquear no deshace ninguna decisión,
-porque rechazar ya fue una. No hay `show` ni `destroy`: borrar una cuenta se llevaría sus
-comentarios, y para eso está bloquear.
+porque rechazar ya fue una. No hay `show`, y `DELETE readers/{id}` (`delete readers`) no borra:
+**retira** —bloquea, y sustituye nombre, correo y contraseña por nada reconocible (`Reader`,
+`retired-{id}@anonymised.invalid`)—, borra su fila del boletín y deja los comentarios, que son
+parte de la conversación de cada pieza. Es lo que el RGPD pide cuando alguien se va, y no vuelve.
 
 ## `kilkana_reader_reads` — las lecturas medidas
 
@@ -272,9 +274,15 @@ que trae el riesgo**, y sin la columna todas las filas parecen iguales.
 ## `kilkana_newsletter_issues` y `kilkana_newsletter_events` — los números
 
 Un número tiene dos estados y ninguno intermedio: borrador y enviado. Enviar es irreversible, y
-de ahí sale todo lo que guarda la fila: `post_ids` son las piezas que llevó —las cuatro últimas
-publicadas, fijadas al enviar—, `recipients_count` es a cuántos salió ese día y no cuántos hay
-hoy, y `sent_at` es la fecha. Un enviado no se reescribe: `PUT newsletter/{id}` contesta 409.
+de ahí sale todo lo que guarda la fila: `post_ids` son las piezas que lleva —las elegidas a mano en
+su orden, hasta doce, o las cuatro últimas publicadas si no se eligió ninguna; se fijan al enviar—,
+`scheduled_at` es la hora a la que sale solo (`PUT` la exige por delante del reloj; nula es «cuando
+alguien pulse»), `recipients_count` es a cuántos salió ese día y no cuántos hay hoy, y `sent_at` es
+la fecha. `GET newsletter` trae además `candidates`, las veinte publicadas más recientes entre las
+que se elige. Un enviado no se reescribe: `PUT newsletter/{id}` contesta 409.
+`kilkana:newsletter-send-due` corre al minuto por cada inquilino y manda los borradores con hora
+cumplida, uno a uno y con la fila bloqueada, para que dos ticks no manden el mismo dos veces. El
+correo sale con la dirección de la instalación y el nombre del periódico como remitente.
 
 ### El envío va por tandas a la cola de la instalación
 

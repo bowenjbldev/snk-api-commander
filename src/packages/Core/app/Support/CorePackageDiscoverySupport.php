@@ -124,6 +124,18 @@ final class CorePackageDiscoverySupport
     }
 
     /**
+     * Rutas fuera de la API que un package sirve bajo el host del inquilino, sin prefijo: lo que
+     * un navegador pide directamente a un periódico y no es un endpoint (derivadas de imagen,
+     * por ejemplo). Genérico: cualquier package con `routes/web.php` entra.
+     *
+     * @return string[]
+     */
+    public function discoverWebRouteFiles(): array
+    {
+        return $this->filterByLoadableModule($this->globModules('/routes/web.php'), true);
+    }
+
+    /**
      * @return string[]
      */
     public function discoverMigrationPaths(): array

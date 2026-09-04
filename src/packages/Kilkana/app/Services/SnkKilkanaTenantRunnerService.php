@@ -44,7 +44,8 @@ class SnkKilkanaTenantRunnerService
                                 ->orWhere('grace_until', '>', now()));
                     });
             })
-            ->get(['database', 'database_username', 'database_password']);
+            ->with('client:id,slug')
+            ->get(['database', 'database_username', 'database_password', 'client_id']);
 
         $default = DB::getDefaultConnection();
         $tenant = config('database.connections.tenant');
@@ -69,7 +70,9 @@ class SnkKilkanaTenantRunnerService
                     DB::purge('tenant');
                     DB::setDefaultConnection('tenant');
 
-                    $results[$database] = $work($database);
+                    // El trabajo recibe la base y el subdominio del cliente: lo segundo lo necesita
+                    // quien construye URLs o encola para volver a este periódico.
+                    $results[$database] = $work($database, (string) ($instance->client?->slug ?? ''));
                 } catch (\Throwable $e) {
                     // Un tenant roto no puede parar a los demas: se anota y se sigue.
                     report($e);

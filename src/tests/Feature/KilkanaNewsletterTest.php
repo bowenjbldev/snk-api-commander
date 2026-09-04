@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Validation\ValidationException;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaNewsletterController;
 use Packages\Kilkana\Jobs\SnkKilkanaNewsletterSendJob;
@@ -148,5 +149,35 @@ class KilkanaNewsletterTest extends TestCase
                 'status' => 'published', 'publish_at' => now()->subHours($i), 'excerpt' => 'Entradilla.',
             ]);
         }
+    }
+
+    /** Un número con piezas elegidas y hora sale solo cuando llega, con esas piezas y en ese orden. */
+    public function test_un_numero_con_hora_y_piezas_elegidas_sale_solo_cuando_llega(): void
+    {
+        Queue::fake();
+        $this->comoModeradora();
+        $this->piezas(6);
+        $ids = SnkKilkanaPostModel::query()->published()->orderBy('id')->pluck('id')->map(fn ($id) => (int) $id);
+        $issue = app(SnkKilkanaNewsletterService::class)->create(null);
+        $ctrl = $this->controlador();
+
+        try {
+            $ctrl->update(Request::create('/', 'PUT', ['post_ids' => [$ids[4], $ids[1]], 'scheduled_at' => now()->subMinute()->toIso8601String()]), $issue->id);
+            $this->fail('Una hora pasada no es programar.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('scheduled_at', $e->errors());
+        }
+
+        $ok = $ctrl->update(Request::create('/', 'PUT', ['post_ids' => [$ids[4], $ids[1]], 'scheduled_at' => now()->addHour()->toIso8601String()]), $issue->id)->getData(true);
+        $this->assertSame([(string) $ids[4], (string) $ids[1]], array_column($ok['pieces'], 'id'), 'Las elegidas, en su orden.');
+        $this->assertNotNull($ok['scheduled_at']);
+
+        $servicio = app(SnkKilkanaNewsletterService::class);
+        $this->assertSame(0, $servicio->sendDue('demo_kilkana', 'demo'), 'Todavía no es la hora.');
+        $this->travel(2)->hours();
+        $this->assertSame(1, $servicio->sendDue('demo_kilkana', 'demo'));
+        $this->assertSame(0, $servicio->sendDue('demo_kilkana', 'demo'), 'Y no sale dos veces.');
+        $this->assertTrue($issue->fresh()->sent());
+        $this->assertSame([$ids[4], $ids[1]], $issue->fresh()->post_ids);
     }
 }

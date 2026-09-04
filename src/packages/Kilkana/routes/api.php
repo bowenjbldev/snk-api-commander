@@ -156,6 +156,7 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::get('readers', [SnkKilkanaReadersController::class, 'index']);
     Route::post('readers/{id}/block', [SnkKilkanaReadersController::class, 'block'])->whereNumber('id');
     Route::delete('readers/{id}/block', [SnkKilkanaReadersController::class, 'unblock'])->whereNumber('id');
+    Route::delete('readers/{id}', [SnkKilkanaReadersController::class, 'anonymize'])->whereNumber('id');
 
     Route::get('layouts/{layout}/revisions', [SnkKilkanaLayoutsController::class, 'revisions'])->whereIn('layout', SnkKilkanaLayoutEnum::values())->middleware('can:show layouts');
     Route::post('layouts/{layout}/revisions/{revision}/restore', [SnkKilkanaLayoutsController::class, 'restore'])->whereIn('layout', SnkKilkanaLayoutEnum::values())->middleware('can:update layouts');

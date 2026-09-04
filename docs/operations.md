@@ -512,7 +512,11 @@ Requisitos adicionales:
 
 - DNS y certificado wildcard;
 - PHP-FPM sin concurrencia interna tipo Octane;
-- scheduler permanente o cron `schedule:run`;
+- la imagen de PHP con GD compilado con JPEG, WebP y AVIF, y con `ffmpeg` (el `Dockerfile` la
+  trae): sin ellos la mediateca no abre un JPEG ni mide un vídeo;
+- scheduler permanente o cron `schedule:run`; tras desplegar la fábrica de imágenes, una vez
+  `kilkana:build-masters` desde el provisioner, y reiniciar el worker de colas cada vez que cambie
+  `config/kilkana.php` (guarda la configuración en memoria);
 - `TRUSTED_PROXIES` **y** un nginx que escriba él mismo `X-Forwarded-For`
   (`fastcgi_param HTTP_X_FORWARDED_FOR $remote_addr` en el bloque PHP, como en
   `docker/nginx/conf.d/app.conf.template`). Son dos piezas y no una: sin la variable,

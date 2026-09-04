@@ -70,6 +70,46 @@ llevar el estado delante lo dejaba inservible.
 El punto focal decide qué se conserva al recortar la misma foto a proporciones distintas.
 Sin él, un recorte cuadrado de un retrato apaisado decapita al retratado.
 
+### El máster y las derivadas
+
+| Columna | Tipo | Nulo | Qué es |
+|---|---|---|---|
+| `master_path` · `master_width` · `master_height` | string · int · int | sí | El fichero del que salen todas las derivadas: orientado, sin metadatos, lado mayor acotado (`kilkana.kilkana.media.master`, 2560). Nulo en vídeo, audio y lo que GD no abre. |
+| `variants_key` | char(8) | sí | La huella de las derivadas: sha1 del `content_hash` y del encuadre, recalculada al cambiar cualquiera de los dos y solo entonces. |
+
+`SnkKilkanaImageService` es la fábrica. Al subir y al reemplazar, `inspect()` lee la cabecera y
+rechaza por encima del tope de megapíxeles (422, antes de decodificar: es memoria, no afinado) y
+`master()` escribe el máster junto al original. Una derivada es una proporción (`hero`, `card`,
+`thumb`, `portrait`, `square`, `og`, `original`), un ancho (320 · 640 · 960 · 1280 · 1920, nunca por
+encima del máster) y un formato (`avif` si GD trae `libavif`, `webp`, `jpeg`); vive en
+`/storage/media/{base}/v/{id}/{huella}/{ratio}-{ancho}.{fmt}` y **nace la primera vez que se
+pide**: nginx la sirve si existe y, si no, cae en `routes/web.php` del paquete —la única ruta
+fuera de la API, bajo el host del inquilino— y `SnkKilkanaMediaVariantController` la genera. De
+la ruta no se fía nada: proporción, ancho y formato contra lista, `base` comparada con la base del
+inquilino del `Host`, y huella igual a la vigente o 404. `window()` es la geometría: primero el
+rectángulo guardado, y dentro la caja de la proporción centrada en el foco y empujada hasta caber.
+Generar va bajo un `Cache::lock` por derivada: veinte peticiones simultáneas de la misma son una
+decodificación y diecinueve esperas, no un rebaño. Y se escribe a un temporal y se renombra: nginx
+mira el fichero antes que a Laravel, y uno a medio escribir servido con `immutable` se queda roto
+un año en quien lo vio. Vídeo y audio pasan por `ffprobe` —duración y medidas del fichero, no de
+quien sube— y un vídeo gana un fotograma al segundo uno (`ffmpeg`) que es su máster. Los dos
+corren con `-protocol_whitelist file`, que **cierra la red**: el contenido es de quien sube, y un
+contenedor que referencie `http://` o `tcp://` desde dentro saldría a buscarlo. Lo local lo corta
+el propio ffmpeg de esta compilación (`allowed_segment_extensions`), y esa defensa es de la
+versión; la lista blanca es nuestra y no se mueve con un salto de imagen base. Y bajo `timeout`,
+porque un proceso hijo no obedece a `max_execution_time`.
+
+El atributo `variants` (añadido) es lo que un consumidor necesita para pedir cualquiera sin
+calcular: `base`, `widths`, `formats` y, por proporción, las medidas de la ventana. Viaja en la
+fila de la biblioteca y en la portada y las fotos del cuerpo de `public/*`; la portada pública sale
+solo con lo que se pinta (`MEDIA_PUBLIC`), sin `path`, `disk` ni huellas.
+
+`SnkKilkanaMediaWarmJob` calienta por la cola `og` y `card` a 640 y 960 al subir, reemplazar o
+reencuadrar; `kilkana:purge-variants` barre cada madrugada las carpetas cuya huella ya no es la
+vigente; `kilkana:build-masters` da máster a lo que entró antes de la fábrica, una vez por
+instalación. Un worker de colas guarda la configuración en memoria: tras cambiar
+`config/kilkana.php` hay que reiniciarlo.
+
 `deleted_at` es borrado **lógico**: la fila sobrevive y se puede restaurar. Un medio se usa
 desde muchos sitios, así que su desaparición no puede ser inmediata e irreversible. Toda
 consulta de la biblioteca debe filtrar `deleted_at IS NULL` salvo que quiera ver la papelera.

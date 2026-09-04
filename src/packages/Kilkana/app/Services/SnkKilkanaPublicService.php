@@ -76,10 +76,22 @@ class SnkKilkanaPublicService
      * y enseña dos. Con un alias propio y no con el mismo nombre: dos subconsultas con la
      * misma etiqueta dejan al orden de las columnas decidir cuál sobrevive.
      */
+    /** Lo que la calle ve de una foto: lo que pinta, y dónde vive no. */
+    private const MEDIA_PUBLIC = [
+        'id', 'url', 'title', 'alt', 'caption', 'credit', 'width', 'height', 'mime', 'size_bytes',
+        'focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h', 'variants',
+    ];
+
     private function publicCount(SnkKilkanaPostModel $post): SnkKilkanaPostModel
     {
         $post->setAttribute('comments_count', (int) $post->getAttribute('approved_comments_count'));
         $post->offsetUnset('approved_comments_count');
+        // La portada sale con lo que se pinta y sin `path`, `disk` ni huellas: la calle no
+        // necesita saber dónde vive el fichero, y decirlo es una superficie más.
+        $post->cover?->setVisible(self::MEDIA_PUBLIC);
+        if ($post->relationLoaded('ogImage')) {
+            $post->ogImage?->setVisible(self::MEDIA_PUBLIC);
+        }
 
         return $post;
     }
@@ -286,7 +298,7 @@ class SnkKilkanaPublicService
                 ->filter()->unique()->values();
             $post->setAttribute('media', $ids->isEmpty() ? [] : SnkKilkanaMediaModel::query()
                 ->whereKey($ids)
-                ->get(['id', 'url', 'alt', 'caption', 'credit', 'width', 'height', 'mime'])
+                ->get(['id', 'url', 'alt', 'caption', 'credit', 'width', 'height', 'mime', 'master_path', 'master_width', 'master_height', 'variants_key', 'focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h'])
                 ->map(fn (SnkKilkanaMediaModel $m) => [
                     'id' => (string) $m->getKey(),
                     'url' => $m->url,
@@ -295,6 +307,7 @@ class SnkKilkanaPublicService
                     'credit' => (string) $m->credit,
                     'width' => (int) $m->width,
                     'height' => (int) $m->height,
+                    'variants' => $m->variants,
                 ])->values()->all());
 
             return $this->publicCount($post);

@@ -9,12 +9,15 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Packages\Kilkana\Enums\SnkKilkanaMediaRightsEnum;
+use Packages\Kilkana\Jobs\SnkKilkanaMediaWarmJob;
 use Packages\Kilkana\Models\SnkKilkanaMediaModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use RuntimeException;
 
 class SnkKilkanaMediaService
 {
+    public function __construct(private readonly SnkKilkanaImageService $images) {}
+
     /**
      * Lo que una ficha publica al panel, y **nada mas**.
      *
@@ -32,7 +35,7 @@ class SnkKilkanaMediaService
     public const FILA_DE_LA_BIBLIOTECA = [
         'id', 'url', 'original_name', 'title', 'mime', 'size_bytes', 'width', 'height',
         'duration', 'alt', 'credit', 'license', 'rights_status', 'content_hash',
-        'focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h',
+        'focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h', 'variants',
         'created_at', 'deleted_at', 'usage_count', 'tags', 'collections',
     ];
 
@@ -86,6 +89,9 @@ class SnkKilkanaMediaService
             $columns = collect($data)->except(['tag_ids', 'collection_ids'])->all();
             if ($columns) {
                 $media->update($columns);
+                if ($media->wasChanged('variants_key')) {
+                    $this->warm($media);
+                }
             }
             if (array_key_exists('tag_ids', $data)) {
                 $media->tags()->sync($data['tag_ids']);
@@ -167,25 +173,47 @@ class SnkKilkanaMediaService
             return ['media' => $this->serialize($existing), 'duplicate' => true];
         }
 
+        // La cabecera antes que nada: lo que no cabe en memoria se rechaza aquí, con mensaje,
+        // y no dentro de GD con un error fatal.
+        $cabecera = $this->images->inspect($file->getRealPath());
         $dir = 'media/'.DB::connection()->getDatabaseName();
         $path = $file->store($dir, 'public');
-        [$width, $height] = $this->dimensions($file->getRealPath(), $data);
+        [$width, $height] = $cabecera ? [$cabecera['width'], $cabecera['height']] : $this->dimensions($file->getRealPath(), $data);
+        $master = $cabecera && $this->images->isImage($cabecera['mime'])
+            ? $this->images->master($file->getRealPath(), $dir, pathinfo($path, PATHINFO_FILENAME))
+            : null;
+        $duration = $data['duration'] ?? null;
+        // Vídeo y audio: lo que dice el fichero manda sobre lo que declaró quien subió, y un
+        // vídeo gana un fotograma de portada que es su máster, con derivadas como una foto.
+        if (! $cabecera && $this->images->isMedia($file->getMimeType())) {
+            $sonda = $this->images->probe($file->getRealPath());
+            $duration = $sonda['duration'] ?? $duration;
+            $width = $sonda['width'] ?? $width;
+            $height = $sonda['height'] ?? $height;
+            if (str_starts_with((string) $file->getMimeType(), 'video/')) {
+                $master = $this->images->poster($file->getRealPath(), $dir, pathinfo($path, PATHINFO_FILENAME), $duration);
+            }
+        }
 
         try {
             $media = SnkKilkanaMediaModel::create([
                 'url' => '/storage/'.$path,
                 'original_name' => $file->getClientOriginalName(),
                 'title' => pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
-                'mime' => $file->getMimeType(),
+                'mime' => $cabecera['mime'] ?? $file->getMimeType(),
                 'width' => $width,
                 'height' => $height,
-                'duration' => $data['duration'] ?? null,
+                'duration' => $duration,
                 'size_bytes' => $file->getSize(),
                 'content_hash' => $hash,
                 'disk' => 'public',
                 'path' => $path,
+                'master_path' => $master['path'] ?? null,
+                'master_width' => $master['width'] ?? null,
+                'master_height' => $master['height'] ?? null,
                 'uploaded_by' => $userId,
             ]);
+            $this->warm($media);
         } catch (UniqueConstraintViolationException) {
             // El indice unico gana la carrera que el `first()` de arriba no puede cerrar.
             //
@@ -196,6 +224,9 @@ class SnkKilkanaMediaService
             // La respuesta correcta es la misma que si hubiera llegado un segundo despues:
             // duplicada, con la fila que gano.
             Storage::disk('public')->delete($path);
+            if ($master) {
+                Storage::disk('public')->delete($master['path']);
+            }
             $ganadora = SnkKilkanaMediaModel::withTrashed()->where('content_hash', $hash)->first();
 
             // Sin fila que devolver el choque era de otra columna, y eso no es un duplicado:
@@ -235,22 +266,44 @@ class SnkKilkanaMediaService
         // disco, que es basura y no una perdida.
         $anteriorDisk = $media->disk;
         $anteriorPath = $media->path;
+        $anteriorMaster = $media->master_path;
 
+        $cabecera = $this->images->inspect($file->getRealPath());
         $dir = 'media/'.DB::connection()->getDatabaseName();
         $path = $file->store($dir, 'public');
-        [$width, $height] = $this->dimensions($file->getRealPath(), $data);
+        [$width, $height] = $cabecera ? [$cabecera['width'], $cabecera['height']] : $this->dimensions($file->getRealPath(), $data);
+        $master = $cabecera && $this->images->isImage($cabecera['mime'])
+            ? $this->images->master($file->getRealPath(), $dir, pathinfo($path, PATHINFO_FILENAME))
+            : null;
+        $duration = $data['duration'] ?? null;
+        if (! $cabecera && $this->images->isMedia($file->getMimeType())) {
+            $sonda = $this->images->probe($file->getRealPath());
+            $duration = $sonda['duration'] ?? $duration;
+            $width = $sonda['width'] ?? $width;
+            $height = $sonda['height'] ?? $height;
+            if (str_starts_with((string) $file->getMimeType(), 'video/')) {
+                $master = $this->images->poster($file->getRealPath(), $dir, pathinfo($path, PATHINFO_FILENAME), $duration);
+            }
+        }
 
         $media->update([
             'url' => '/storage/'.$path,
-            'mime' => $file->getMimeType(),
+            'mime' => $cabecera['mime'] ?? $file->getMimeType(),
             'width' => $width,
             'height' => $height,
-            'duration' => $data['duration'] ?? null,
+            'duration' => $duration,
             'size_bytes' => $file->getSize(),
             'content_hash' => $hash,
             'disk' => 'public',
             'path' => $path,
+            'master_path' => $master['path'] ?? null,
+            'master_width' => $master['width'] ?? null,
+            'master_height' => $master['height'] ?? null,
         ]);
+        $this->warm($media);
+        if ($anteriorMaster && $anteriorMaster !== ($master['path'] ?? null)) {
+            Storage::disk('public')->delete($anteriorMaster);
+        }
 
         // Ya no lo referencia nadie. La comparacion cubre el caso de que el nombre generado
         // coincidiera con el anterior: borrarlo seria borrar el que se acaba de escribir.
@@ -259,6 +312,14 @@ class SnkKilkanaMediaService
         }
 
         return ['media' => $this->serialize($media), 'duplicate' => false];
+    }
+
+    /** Lo que seguro se pide nada más publicar, por la cola; sin worker no pasa nada: nace bajo demanda. */
+    private function warm(SnkKilkanaMediaModel $media): void
+    {
+        if ($media->master_path && $media->variants_key) {
+            SnkKilkanaMediaWarmJob::dispatch(DB::connection()->getDatabaseName(), (int) $media->getKey());
+        }
     }
 
     private function dimensions(string $realPath, array $data): array

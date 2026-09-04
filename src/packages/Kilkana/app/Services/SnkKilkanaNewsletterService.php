@@ -52,13 +52,48 @@ class SnkKilkanaNewsletterService
      */
     public function pieces(SnkKilkanaNewsletterIssueModel $issue): Collection
     {
-        if ($issue->sent() && is_array($issue->post_ids)) {
-            $porId = SnkKilkanaPostModel::withTrashed()->whereKey($issue->post_ids)->get()->keyBy('id');
+        $elegidas = is_array($issue->post_ids) ? array_values(array_filter($issue->post_ids)) : [];
 
-            return collect($issue->post_ids)->map(fn ($id) => $porId->get($id))->filter()->values();
+        // Un número enviado enseña lo que llevó, aunque una pieza se haya tirado después; un
+        // borrador con piezas elegidas enseña las que sigan publicadas, en el orden elegido.
+        if ($elegidas !== []) {
+            $consulta = $issue->sent() ? SnkKilkanaPostModel::withTrashed() : SnkKilkanaPostModel::query()->published();
+            $porId = $consulta->whereKey($elegidas)->get()->keyBy('id');
+
+            return collect($elegidas)->map(fn ($id) => $porId->get($id))->filter()->values();
         }
 
         return SnkKilkanaPostModel::query()->published()->orderByDesc('publish_at')->limit(SnkKilkanaNewsletterIssueModel::PIECES)->get();
+    }
+
+    /**
+     * Manda los números con hora cumplida. Uno por uno y dentro de una transacción con la
+     * fila bloqueada: dos ticks del scheduler solapados no pueden mandar el mismo dos veces.
+     */
+    public function sendDue(string $database, string $client): int
+    {
+        $enviados = 0;
+        $ids = SnkKilkanaNewsletterIssueModel::query()
+            ->where('status', SnkKilkanaNewsletterIssueModel::DRAFT)
+            ->whereNotNull('scheduled_at')
+            ->where('scheduled_at', '<=', now())
+            ->orderBy('scheduled_at')
+            ->pluck('id');
+
+        foreach ($ids as $id) {
+            $enviado = DB::transaction(function () use ($id, $database, $client) {
+                $issue = SnkKilkanaNewsletterIssueModel::query()->whereKey($id)->lockForUpdate()->first();
+                if ($issue === null || $issue->sent()) {
+                    return false;
+                }
+                $this->send($issue, $database, $client);
+
+                return true;
+            });
+            $enviados += $enviado ? 1 : 0;
+        }
+
+        return $enviados;
     }
 
     /**

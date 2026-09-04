@@ -240,4 +240,29 @@ class KilkanaReadersTest extends TestCase
         $this->comoModerador();
         $this->assertContains('vecina@lectores.example', array_column($this->lectores()->index()->getData(true)['data'], 'email'), 'Y aparece en Lectores.');
     }
+
+    /** Retirar a un lector: lo que identifica se va, la conversación se queda sin nombre, y el boletín lo olvida. */
+    public function test_retirar_a_un_lector_borra_lo_que_identifica_y_deja_sus_comentarios_sin_nombre(): void
+    {
+        $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
+        $marta->assignRole('director');
+        $this->actingAs($marta, 'sanctum');
+        $vecina = $this->lector('vecina@lectores.example', 'Vecina Curiosa');
+        $pieza = $this->pieza('Plan');
+        $this->comentario($vecina, $pieza, 'Hola', 'approved');
+        $this->comentario($vecina, $pieza, 'Pendiente', 'pending');
+        SnkKilkanaSubscriberModel::create(['email' => 'vecina@lectores.example', 'status' => 'confirmed', 'consent_source' => 'public_form']);
+
+        $this->assertSame(200, $this->lectores()->anonymize($vecina->id)->getStatusCode());
+
+        $retirada = $vecina->fresh();
+        $this->assertSame('Reader', $retirada->name);
+        $this->assertNull($retirada->full_name);
+        $this->assertStringStartsWith('retired-', $retirada->email);
+        $this->assertNotNull($retirada->suspended_at);
+        $this->assertSame(2, SnkKilkanaCommentModel::query()->where('user_id', $vecina->id)->count(), 'Los comentarios se quedan.');
+        $this->assertSame('rejected', SnkKilkanaCommentModel::query()->where('body', 'Pendiente')->first()->status->value);
+        $this->assertSame(0, SnkKilkanaSubscriberModel::query()->where('email', 'vecina@lectores.example')->count());
+        $this->assertSame(404, $this->lectores()->anonymize(999)->getStatusCode());
+    }
 }

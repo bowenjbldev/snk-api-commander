@@ -14,6 +14,7 @@ class SnkKilkanaNewsletterIssueModel extends Model
 
     protected $casts = [
         'post_ids' => 'array',
+        'scheduled_at' => 'datetime',
         'sent_at' => 'datetime',
         'test_sent_at' => 'datetime',
     ];

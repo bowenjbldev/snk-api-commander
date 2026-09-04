@@ -45,6 +45,8 @@ class SnkKilkanaReadersController extends CoreBaseApiController
 
     protected string $updatePermission = 'update readers';
 
+    protected string $destroyPermission = 'delete readers';
+
     /**
      * La lista filtrada y paginada, con las cifras de las pestañas y de la banda.
      *
@@ -118,6 +120,22 @@ class SnkKilkanaReadersController extends CoreBaseApiController
         $rechazados = $this->readers->block($user);
 
         return response()->json(['blocked' => (string) $user->getKey(), 'rejected' => $rechazados]);
+    }
+
+    /** Retirar a un lector: lo que identifica desaparece; sus comentarios se quedan sin nombre. */
+    public function anonymize($id = null): JsonResponse
+    {
+        if ($response = $this->requirePermission($this->destroyPermission)) {
+            return $response;
+        }
+        $user = $this->reader($id);
+        if ($user === null) {
+            return response()->json(['error' => 'Record not found'], 404);
+        }
+
+        $this->readers->anonymize($user);
+
+        return response()->json(['anonymized' => (string) $user->getKey()]);
     }
 
     public function unblock($id = null): JsonResponse

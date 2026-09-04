@@ -2,9 +2,11 @@
 
 namespace Packages\Kilkana\Services;
 
+use Illuminate\Support\Str;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Enums\SnkKilkanaCommentStatusEnum;
 use Packages\Kilkana\Models\SnkKilkanaCommentModel;
+use Packages\Kilkana\Models\SnkKilkanaSubscriberModel;
 
 /**
  * Lo que se le hace a una cuenta lectora, y desde dónde se le hace da igual.
@@ -44,6 +46,28 @@ class SnkKilkanaReaderService
             ->where('user_id', $user->getKey())
             ->where('status', SnkKilkanaCommentStatusEnum::Pending)
             ->update(['status' => SnkKilkanaCommentStatusEnum::Rejected]);
+    }
+
+    /**
+     * Retira a la persona y deja el rastro sin nombre: lo que el RGPD pide cuando alguien se va.
+     *
+     * Bloquea primero —sesiones fuera, pendientes rechazados— y después borra lo que identifica:
+     * nombre, correo y contraseña. Los comentarios se quedan, que son parte de la conversación
+     * de cada pieza, firmados por «Reader» y sin nadie detrás; y si ese correo estaba en el
+     * boletín, se va de la lista. Cuenta como bloqueada para siempre, y no vuelve.
+     */
+    public function anonymize(CoreUserModel $user): void
+    {
+        $email = (string) $user->email;
+        $this->block($user);
+        $user->forceFill([
+            'name' => 'Reader',
+            'full_name' => null,
+            'email' => 'retired-'.$user->getKey().'@anonymised.invalid',
+            'password' => Str::random(40),
+        ])->save();
+        SnkKilkanaSubscriberModel::query()->where('email', $email)->delete();
+        $this->registro->log('comment', 'removed the reader account', 'a reader', '/readers');
     }
 
     /** Vuelve a abrirla. Lo rechazado se queda rechazado: eso ya fue una decisión. */

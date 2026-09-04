@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use Packages\Kilkana\Enums\SnkKilkanaMediaRightsEnum;
+use Packages\Kilkana\Services\SnkKilkanaImageService;
 
 class SnkKilkanaMediaModel extends Model
 {
@@ -22,7 +23,7 @@ class SnkKilkanaMediaModel extends Model
     protected $hidden = ['url_hash'];
 
     // usage_count viaja siempre en el JSON; el controlador hace withCount para no pagar N+1.
-    protected $appends = ['usage_count'];
+    protected $appends = ['usage_count', 'variants'];
 
     protected $casts = [
         'width' => 'integer',
@@ -55,6 +56,12 @@ class SnkKilkanaMediaModel extends Model
         static::saving(function (self $media) {
             if ($media->isDirty('url') || $media->url_hash === null) {
                 $media->url_hash = sha1($media->url);
+            }
+            // La huella de las derivadas: del contenido y del encuadre, recalculada cuando
+            // cambia cualquiera de los dos y solo entonces, para que un reencuadre sea una URL
+            // nueva y un cambio de alt no lo sea.
+            if ($media->master_path && ($media->variants_key === null || $media->isDirty(['content_hash', 'focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h', 'master_path']))) {
+                $media->variants_key = SnkKilkanaImageService::fingerprint($media);
             }
         });
     }
@@ -112,6 +119,12 @@ class SnkKilkanaMediaModel extends Model
     }
 
     /** Los `*_count` si el controlador los cargo (withCount); si no, se cuentan al vuelo. */
+    /** Lo que hace falta para pedir cualquier derivada; `null` mientras no haya máster. */
+    public function getVariantsAttribute(): ?array
+    {
+        return SnkKilkanaImageService::payload($this);
+    }
+
     public function getUsageCountAttribute(): int
     {
         $total = 0;

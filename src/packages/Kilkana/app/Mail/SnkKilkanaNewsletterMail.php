@@ -4,6 +4,7 @@ namespace Packages\Kilkana\Mail;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -31,7 +32,12 @@ class SnkKilkanaNewsletterMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: $this->issueSubject);
+        // La dirección es la de la instalación —un remitente propio pide un dominio verificado—,
+        // pero el nombre es el del periódico: es lo que el lector ve en su bandeja.
+        return new Envelope(
+            from: new Address((string) config('mail.from.address'), $this->newspaper),
+            subject: $this->issueSubject,
+        );
     }
 
     public function content(): Content

@@ -19,7 +19,7 @@ class SnkKilkanaMediaRowTest extends TestCase
         $this->assertSame([
             'id', 'url', 'original_name', 'title', 'mime', 'size_bytes', 'width', 'height',
             'duration', 'alt', 'credit', 'license', 'rights_status', 'content_hash',
-            'focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h',
+            'focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h', 'variants',
             'created_at', 'deleted_at', 'usage_count', 'tags', 'collections',
         ], SnkKilkanaMediaService::FILA_DE_LA_BIBLIOTECA);
     }

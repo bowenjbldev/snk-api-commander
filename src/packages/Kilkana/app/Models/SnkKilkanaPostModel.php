@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Enums\SnkKilkanaContentTierEnum;
 use Packages\Kilkana\Enums\SnkKilkanaPostStatusEnum;
 
@@ -109,6 +110,12 @@ class SnkKilkanaPostModel extends Model
     public function ogImage(): BelongsTo
     {
         return $this->belongsTo(SnkKilkanaMediaModel::class, 'og_image_id');
+    }
+
+    /** Quién guardó por última vez, para decirlo cuando otro escribe encima. */
+    public function updater(): BelongsTo
+    {
+        return $this->belongsTo(CoreUserModel::class, 'updated_by');
     }
 
     public function tags(): BelongsToMany

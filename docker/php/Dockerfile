@@ -6,6 +6,10 @@ RUN apk add --no-cache \
     git \
     curl \
     libpng-dev \
+    libjpeg-turbo-dev \
+    libwebp-dev \
+    libavif-dev \
+    ffmpeg \
     libzip-dev \
     zlib-dev \
     icu-dev \
@@ -14,6 +18,7 @@ RUN apk add --no-cache \
     libxml2-dev \
     shadow && \
     docker-php-ext-configure intl && \
+    docker-php-ext-configure gd --with-jpeg --with-webp --with-avif && \
     docker-php-ext-install \
     pdo_mysql \
     pdo_sqlite \
