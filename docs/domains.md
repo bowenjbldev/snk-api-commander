@@ -7,7 +7,7 @@ plataforma y desde uno o varios dominios propios. **No está implementado**: no 
 tabla, el resolutor multi-host ni la emisión automática de certificados.
 
 El caso de referencia es una cabecera Kilkana que empieza en
-`diario-norte.kilkana.com` y después adopta `diarionorte.com`, manteniendo la misma instancia,
+`diario-norte.commander.example` y después adopta `diarionorte.com`, manteniendo la misma instancia,
 base, usuarios, plan, cuotas y contenido.
 
 ## Decisiones cerradas
@@ -16,7 +16,7 @@ base, usuarios, plan, cuotas y contenido.
 account Grupo Prensa
 └── client diario-norte
     └── instance diario-norte + Kilkana
-        ├── plataforma  diario-norte.kilkana.com   permanente y derivado
+        ├── plataforma  diario-norte.commander.example   permanente y derivado
         ├── principal diarionorte.com             dominio propio
         └── alias     www.diarionorte.com         redirige al principal
 ```
@@ -24,7 +24,9 @@ account Grupo Prensa
 - El dominio propio pertenece a `commander_instances`, no a la cuenta ni al cliente. Una cuenta
   de grupo tiene una instancia por cabecera y cada una administra sus hostnames.
 - El subdominio de plataforma es la identidad técnica y el fallback permanente. No cambia la
-  frontera tenant ni necesita copiarse a una tabla.
+  frontera tenant ni necesita copiarse a una tabla. Identifica al cliente; el producto se
+  selecciona con `/api/v1/{aplicación}`. En local es `{cliente}.commander.test` para todos
+  los packages, incluido Kilkana. `commander.example` es solo un ejemplo de despliegue futuro.
 - Una instancia puede tener varios dominios propios, pero solo un origen público principal.
 - Un hostname solo puede pertenecer a una instancia en todo Commander.
 - El dominio no modifica provisioning, plan, facturación, cuotas, usuarios ni base de datos.
@@ -53,7 +55,7 @@ El routing vigente identifica al cliente exclusivamente desde
 - `kilkana_settings.tenant_url` se usa como URL de retorno y podría discrepar de Commander.
 
 Aunque el vhost por defecto haga llegar un `Host` desconocido a Laravel, el handshake TLS ocurre
-antes de la petición: el wildcard de Kilkana no puede autenticar `diarionorte.com`.
+antes de la petición: el wildcard de plataforma no puede autenticar `diarionorte.com`.
 
 Kilkana expone hoy solo API. El dominio completo no puede considerarse operativo hasta que el
 futuro cliente público sirva `/` y `/admin` para hostnames arbitrarios.
@@ -85,7 +87,7 @@ Un dominio está listo cuando cumple simultáneamente:
 verification_status = verified
 tls_status          = active
 disabled_at         = null
-DNS                 = destino de entrada de Kilkana
+DNS                 = destino de entrada de la plataforma
 health check        = instancia esperada
 ```
 
@@ -134,7 +136,7 @@ concentrar ambos caminos.
 2. Commander o el proveedor entrega una prueba TXT/HTTP de propiedad.
 3. El cliente completa la verificación sin mover todavía el tráfico cuando se necesite una
    migración sin corte.
-4. El cliente apunta DNS a un destino estable de Kilkana.
+4. El cliente apunta DNS a un destino estable de la plataforma.
 5. La entrada obtiene y despliega el certificado.
 6. Commander espera verificación, TLS, DNS y un health check que devuelva la instancia esperada.
 7. Una transacción promociona el dominio a principal y degrada el principal anterior a alias.
@@ -145,7 +147,7 @@ pendiente o fallido nunca enruta contenido tenant.
 
 ### DNS del cliente
 
-- Un subdominio como `www.diarionorte.com` normalmente puede usar CNAME al destino Kilkana.
+- Un subdominio como `www.diarionorte.com` normalmente puede usar CNAME al destino de plataforma.
 - El apex `diarionorte.com` requiere A/AAAA, ALIAS/ANAME o un proveedor con CNAME flattening.
 - Se deben diagnosticar CAA, propagación, DNSSEC y conflictos con otro CDN antes de culpar al
   certificado.
@@ -179,10 +181,10 @@ elección de entrada debe quedar fijada antes de diseñar los campos dependiente
 ### Antes del dominio propio
 
 - Un entorno de preview corto usa `noindex`.
-- Un periódico que publica de verdad en `diario-norte.kilkana.com` puede indexarse; un subdominio
+- Un periódico que publica de verdad en `diario-norte.commander.example` puede indexarse; un subdominio
   no es por sí mismo una penalización de crawling o ranking.
 - Kilkana debe poder crear una propiedad URL-prefix de Search Console por cabecera. No se comparte
-  con el cliente la propiedad de dominio completa de `kilkana.com`, porque incluiría todas las
+  con el cliente la propiedad de dominio completa de `commander.example`, porque incluiría todas las
   cabeceras.
 
 ### Al activar el dominio propio
@@ -229,7 +231,7 @@ permitiría reutilizar una firma contra el mismo ID de otra base tenant.
 El login actual entrega tokens Bearer almacenados en la base tenant. El cambio de origen no mueve
 el almacenamiento del navegador: al estrenar dominio, el administrador inicia sesión de nuevo.
 No se construirá un puente de sesión entre dominios. Si en el futuro se usan cookies, serán
-host-only; nunca se compartirá una cookie `.kilkana.com` entre cabeceras.
+host-only; nunca se compartirá una cookie `.commander.example` entre clientes.
 
 Enviar newsletter desde `newsletter@diarionorte.com` es otra capacidad. Requiere verificación de
 dominio de correo, SPF, DKIM y DMARC y no se deduce del dominio web. El lanzamiento puede conservar
@@ -275,7 +277,8 @@ de ACME respetan backoff y límites; no se reintenta en bucle por cada request.
 - El subdominio de plataforma sigue resolviendo la misma instancia y base.
 - Un dominio verificado y con TLS resuelve exactamente esa instancia.
 - Un hostname pendiente, desactivado o desconocido no obtiene contenido ni certificado.
-- Un dominio Kilkana no puede acceder a otra aplicación cambiando el segmento `/api/v1`.
+- Un dominio propio de una instancia Kilkana no puede acceder a otra aplicación cambiando
+  el segmento `/api/v1`. El host de plataforma sí admite los demás productos del cliente.
 - El overlay se elige por `instance.client.slug`, también bajo dominio propio.
 - Tres cabeceras de un grupo conservan dominios, bases, tokens y logs independientes.
 - Apex y `www` sirven el mismo contenido, pero solo el principal responde `200` público.
@@ -295,7 +298,9 @@ de ACME respetan backoff y límites; no se reintenta en bucle por cada request.
 - facturación o feature gating de dominios antes de conocer el coste del proveedor;
 - varios proveedores de entrada intercambiables;
 - remitentes de correo personalizados;
-- mapa aplicación→dominio de plataforma hasta desplegar un segundo SaaS público.
+
+Todos los productos comparten el dominio de plataforma; añadir un segundo SaaS no requiere
+un mapa aplicación→dominio. Este diseño de dominios propios es una capacidad adicional por instancia.
 
 ## Secuencia de implementación futura
 

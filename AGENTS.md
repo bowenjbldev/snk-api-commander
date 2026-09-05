@@ -19,9 +19,10 @@ Antes de cambiar código, lee [`docs/README.md`](docs/README.md),
 ## Invariantes
 
 - Una app sirve todos los clientes. Cliente = subdominio; producto = segmento tras `/api/v1`.
-- SnakePC es el ámbito local/portfolio y `commander.snakepc.test` su control plane. Kilkana usa
-  `{cliente}.kilkana.test`, sin `commander.kilkana.test`; `BASE_DOMAIN` y `TENANT_BASE_DOMAIN`
-  gobiernan ambos ámbitos.
+- El control plane local usa `commander.snakepc.test` (`BASE_DOMAIN=snakepc.test`). La API de
+  todos los productos usa `{cliente}.commander.test/api/v1/{producto}`
+  (`TENANT_BASE_DOMAIN=commander.test`). Kilkana es un package: se selecciona con `/kilkana`,
+  no con el dominio. El dominio público de un periódico es independiente del dominio de la API.
 - Cada par `(cliente, producto)` provisionado tiene una BD propia `{cliente}_{producto}`.
 - Cuenta = pagador/contrato; cliente = tenant/subdominio; aplicación = producto; instancia = par
   cliente-aplicación. Todo cliente pertenece a una cuenta: el alta normal crea una 1:1 y un grupo

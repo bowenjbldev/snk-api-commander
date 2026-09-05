@@ -3,7 +3,7 @@
 ## Request tenant
 
 ```text
-GET https://diario-norte.kilkana.test/api/v1/kilkana/public/posts
+GET https://diario-norte.commander.test/api/v1/kilkana/public/posts
   → host: client diario-norte
   → path: application kilkana
   → instance única (diario-norte, Kilkana), status ready

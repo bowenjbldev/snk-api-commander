@@ -70,7 +70,8 @@ gestoría.
 - Puede tener varias aplicaciones, pero solo una instancia de cada aplicación.
 - No contiene datos de billing, cuotas ni usuarios tenant.
 
-Ejemplo: `diario-norte` produce `diario-norte.kilkana.test`.
+Ejemplo: `diario-norte` produce el host de API `diario-norte.commander.test`. Kilkana se
+selecciona con `/api/v1/kilkana`; otra aplicación usa el mismo host y su propio segmento.
 
 ### Aplicación
 

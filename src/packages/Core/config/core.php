@@ -7,8 +7,9 @@ return [
     | Base Domain
     |--------------------------------------------------------------------------
     |
-    | Dominio del control plane y dominio de los tenants. Mantenerlos separados
-    | permite servir Commander bajo SnakePC y los periodicos bajo Kilkana.
+    | Dominio del control plane y dominio de plataforma para las APIs tenant.
+    | El host identifica al cliente; /api/v1/{producto} selecciona el package.
+    | En local: commander.snakepc.test y {cliente}.commander.test/api/v1/kilkana.
     | TENANT_BASE_DOMAIN conserva BASE_DOMAIN como fallback para despliegues
     | existentes que todavia usan un unico dominio.
     |

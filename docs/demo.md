@@ -5,6 +5,10 @@ produce «datos de prueba»: produce un diario comarcal que tiene que aguantar l
 a comprarlo. Lo siembra `SnkKilkanaDatabaseSeeder` sobre el perfil `data/profiles/eldiario.json`
 (cliente `demo`, `demo: true`); `diario-norte` es el segundo inquilino y va vacío a propósito.
 
+Ese host es el frontend del producto. La API de la misma instancia usa
+`https://demo.commander.test/api/v1/kilkana`: cliente `demo`, dominio de plataforma
+`commander.test` y package `kilkana` en la ruta.
+
 ## Qué simula cada bloque
 
 | Bloque | Fuente | Lo que tiene que parecer |

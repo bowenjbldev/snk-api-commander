@@ -42,7 +42,6 @@ class KilkanaNewsletterTest extends TestCase
         }
 
         app(SnkKilkanaRoleCatalogService::class)->sync();
-        config(['core.tenant_base_domain' => 'kilkana.test']);
         SnkKilkanaSettingModel::create(['id' => 1, 'tenant_name' => 'El Diario', 'tenant_url' => 'https://demo.kilkana.test']);
     }
 
@@ -57,7 +56,7 @@ class KilkanaNewsletterTest extends TestCase
         $issue = app(SnkKilkanaNewsletterService::class)->create(null);
         $this->controlador()->update(Request::create('/', 'PUT', ['subject' => 'Domingo', 'preheader' => 'Cinco minutos']), $issue->id);
 
-        $envio = $this->controlador()->send(Request::create('https://demo.kilkana.test/api/v1/kilkana/newsletter/1/send', 'POST'), $issue->id)->getData(true);
+        $envio = $this->controlador()->send(Request::create('https://demo.commander.test/api/v1/kilkana/newsletter/1/send', 'POST'), $issue->id)->getData(true);
 
         $this->assertSame(100, $envio['recipients'], 'Solo los confirmados.');
         $issue->refresh();
@@ -67,7 +66,7 @@ class KilkanaNewsletterTest extends TestCase
         Queue::assertPushed(SnkKilkanaNewsletterSendJob::class, fn (SnkKilkanaNewsletterSendJob $job) => $job->client === 'demo' && count($job->subscriberIds) === 50 && $job->issueId === $issue->id);
 
         $this->assertSame(409, $this->controlador()->update(Request::create('/', 'PUT', ['subject' => 'Otro']), $issue->id)->getStatusCode(), 'Enviado no se reescribe.');
-        $this->assertSame(409, $this->controlador()->send(Request::create('https://demo.kilkana.test/', 'POST'), $issue->id)->getStatusCode(), 'Y no se manda dos veces.');
+        $this->assertSame(409, $this->controlador()->send(Request::create('https://demo.commander.test/', 'POST'), $issue->id)->getStatusCode(), 'Y no se manda dos veces.');
     }
 
     public function test_una_tanda_manda_a_quien_sigue_confirmado_con_enlaces_firmados(): void
@@ -114,7 +113,7 @@ class KilkanaNewsletterTest extends TestCase
         SnkKilkanaNewsletterEventModel::record($issue->id, $ana->id, 'click', $pieza);
         $this->assertSame(['opens' => 1, 'clicks' => 1, 'unsubs' => 0], $servicio->counts($issue));
 
-        $prueba = $this->controlador()->test(Request::create('https://demo.kilkana.test/', 'POST', ['to' => 'marta@eldiario.example']), $issue->id)->getData(true);
+        $prueba = $this->controlador()->test(Request::create('https://demo.commander.test/', 'POST', ['to' => 'marta@eldiario.example']), $issue->id)->getData(true);
         $this->assertSame('marta@eldiario.example', $prueba['test_sent_to']);
         Mail::assertSent(SnkKilkanaNewsletterMail::class, fn (SnkKilkanaNewsletterMail $c) => $c->hasTo('marta@eldiario.example') && $c->openUrl === null);
 

@@ -11,30 +11,30 @@ cuenta, es la identidad del periodista y el nombre publicado sale de ella; esta 
 
 ## Columnas
 
-| Columna | Tipo | Nulo | Qué es |
-|---|---|---|---|
-| `id` | bigint unsigned | no | Clave primaria. Es lo que referencia `kilkana_posts.author_id`. |
-| `avatar_media_id` | bigint unsigned | sí | Foto de la firma. Apunta a `kilkana_media`: es una foto que se publica, así que necesita texto alternativo, crédito, licencia y encuadre. Nula = sin foto. |
-| `user_id` | bigint unsigned | sí · **único** | La cuenta, **cuando la hay**. Nula en una agencia o un colectivo, que publican sin entrar al panel. Sigue siendo 1:1: varios nulos no chocan en el índice único. |
-| `kind` | enum | no · def. `contributor` | Qué clase de firma es: `staff` · `collective` · `contributor` · `agency`. Es lo que contesta «qué se publica aquí sin firma de persona». |
-| `alias` | varchar(255) | sí | Seudónimo. **Nulo = firma con el nombre de su cuenta.** |
-| `job_title` | varchar(255) | sí | Cargo que se publica: «Redactora de Economía», «Corresponsal en Bruselas». |
-| `slug` | varchar(255) | no · **único** | Segmento de la URL pública de su ficha. |
-| `seo_title` | varchar(500) | sí | Titular para buscadores. **Nulo = se usa el nombre publicado.** |
-| `seo_description` | text | sí | Descripción para buscadores, unos 155 caracteres. **Nulo = se usa `bio`.** |
-| `bio` | text | sí | Biografía breve, visible en la ficha. |
-| `noindex` | boolean | no · def. `false` | Pide a los buscadores que no indexen su ficha. |
-| `website` | varchar(2048) | sí | Web personal. |
-| `public_email` | varchar(255) | sí | El correo de la **página de autor**, con el que se contacta a quien firma. **No es `users.email`**, que es con el que se entra: publicar aquel como si fuera este saca a la calle la credencial de acceso. |
-| `socials` | longtext (JSON) | sí | Objeto `{red: url}`, con claves libres: `{"x": "https://…", "linkedin": "https://…"}`. |
-| `created_at` · `updated_at` | timestamp | sí | Alta y última modificación. |
+| Columna                     | Tipo            | Nulo                    | Qué es                                                                                                                                                                                                     |
+| --------------------------- | --------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                        | bigint unsigned | no                      | Clave primaria. Es lo que referencia `kilkana_posts.author_id`.                                                                                                                                            |
+| `avatar_media_id`           | bigint unsigned | sí                      | Foto de la firma. Apunta a `kilkana_media`: es una foto que se publica, así que necesita texto alternativo, crédito, licencia y encuadre. Nula = sin foto.                                                 |
+| `user_id`                   | bigint unsigned | sí · **único**          | La cuenta, **cuando la hay**. Nula en una agencia o un colectivo, que publican sin entrar al panel. Sigue siendo 1:1: varios nulos no chocan en el índice único.                                           |
+| `kind`                      | enum            | no · def. `contributor` | Qué clase de firma es: `staff` · `collective` · `contributor` · `agency`. Es lo que contesta «qué se publica aquí sin firma de persona».                                                                   |
+| `alias`                     | varchar(255)    | sí                      | Seudónimo. **Nulo = firma con el nombre de su cuenta.**                                                                                                                                                    |
+| `job_title`                 | varchar(255)    | sí                      | Cargo que se publica: «Redactora de Economía», «Corresponsal en Bruselas».                                                                                                                                 |
+| `slug`                      | varchar(255)    | no · **único**          | Segmento de la URL pública de su ficha.                                                                                                                                                                    |
+| `seo_title`                 | varchar(500)    | sí                      | Titular para buscadores. **Nulo = se usa el nombre publicado.**                                                                                                                                            |
+| `seo_description`           | text            | sí                      | Descripción para buscadores, unos 155 caracteres. **Nulo = se usa `bio`.**                                                                                                                                 |
+| `bio`                       | text            | sí                      | Biografía breve, visible en la ficha.                                                                                                                                                                      |
+| `noindex`                   | boolean         | no · def. `false`       | Pide a los buscadores que no indexen su ficha.                                                                                                                                                             |
+| `website`                   | varchar(2048)   | sí                      | Web personal.                                                                                                                                                                                              |
+| `public_email`              | varchar(255)    | sí                      | El correo de la **página de autor**, con el que se contacta a quien firma. **No es `users.email`**, que es con el que se entra: publicar aquel como si fuera este saca a la calle la credencial de acceso. |
+| `socials`                   | longtext (JSON) | sí                      | Objeto `{red: url}`, con claves libres: `{"x": "https://…", "linkedin": "https://…"}`.                                                                                                                     |
+| `created_at` · `updated_at` | timestamp       | sí                      | Alta y última modificación.                                                                                                                                                                                |
 
 ## Relaciones
 
-| | Apunta a | Al borrar el destino |
-|---|---|---|
-| `user_id` | `users.id` | **RESTRICT** |
-| `avatar_media_id` | `kilkana_media.id` | **SET NULL** |
+|                   | Apunta a           | Al borrar el destino |
+| ----------------- | ------------------ | -------------------- |
+| `user_id`         | `users.id`         | **RESTRICT**         |
+| `avatar_media_id` | `kilkana_media.id` | **SET NULL**         |
 
 `RESTRICT` en `user_id` porque borrar la cuenta dejaría su hemeroteca sin autor. Retirar
 una firma es una decisión editorial y se toma antes, a mano.
@@ -56,10 +56,9 @@ nombre publicado = alias, si lo hay
                    si no, users.name de su cuenta
 ```
 
-Aquí hubo una columna `name` copiada de la cuenta —idéntica en 10 de 10 firmas—, y una
-copia solo sabe hacer una cosa: quedarse vieja. Renombrar a la persona dejaba el periódico
-entero firmando con el nombre antiguo. Derivándolo, renombrar la cuenta renombra su firma
-en todas partes a la vez.
+Una columna copiada de la cuenta solo sabe hacer una cosa: quedarse vieja, y renombrar a la
+persona dejaría el periódico entero firmando con el nombre antiguo. Derivándolo, renombrar la
+cuenta renombra su firma en todas partes a la vez.
 
 `alias` **no es único** a propósito: dos firmas pueden usar el mismo texto. Lo que no puede
 repetirse —la URL— ya lo protege `slug`.
@@ -91,12 +90,12 @@ que alguien le asigne una URL después. Guardar un usuario no puede fallar por s
 
 ### `kilkana_author_slugs` — las URLs que dejó atrás
 
-| Columna | Tipo | Nulo | Qué es |
-|---|---|---|---|
-| `id` | bigint unsigned | no | Clave primaria. |
-| `author_id` | bigint unsigned | no | Firma a la que apunta. **CASCADE.** |
-| `path` | varchar(255) | no · **único** | El slug antiguo: `pedro-aranda`. |
-| `created_at` · `updated_at` | timestamp | sí | Alta y última modificación. |
+| Columna                     | Tipo            | Nulo           | Qué es                              |
+| --------------------------- | --------------- | -------------- | ----------------------------------- |
+| `id`                        | bigint unsigned | no             | Clave primaria.                     |
+| `author_id`                 | bigint unsigned | no             | Firma a la que apunta. **CASCADE.** |
+| `path`                      | varchar(255)    | no · **único** | El slug antiguo: `pedro-aranda`.    |
+| `created_at` · `updated_at` | timestamp       | sí             | Alta y última modificación.         |
 
 Cambiar el seudónimo de alguien mueve su ficha de dirección, y los enlaces que ya existen
 fuera —de otro medio, de una red social, del currículum de esa persona— apuntan a la vieja.
@@ -113,25 +112,22 @@ acabarían en la ficha de otra persona.
 
 ## Una firma colectiva no tiene cuenta, y eso es lo que es
 
-«Redacción» o «Agencia EFE» no son personas. Mientras `user_id` fue obligatorio, el hueco se
-cubría con una **cuenta de servicio** sin rol —nadie entra con ella— y el `alias` encima; era lo
-que el esquema permitía y dejaba una cuenta fantasma por cada agencia en el listado de usuarios.
+«Redacción» o «Agencia EFE» no son personas: `user_id` admite nulo y esas firmas se siembran sin
+cuenta. Cubrir el hueco con una cuenta de servicio sin rol dejaría una cuenta fantasma por cada
+agencia en el listado de usuarios. Los breves que firma la casa apuntan a la firma, y
+`kilkana_posts.created_by` es la persona que los tecleó — o nadie, si los volcó un proceso.
 
-Ahora `user_id` admite nulo y esas firmas se siembran sin cuenta, que es exactamente lo que son.
-Los breves que firma la casa siguen apuntando a la firma, y `kilkana_posts.created_by` sigue
-siendo la persona que los tecleó — o nadie, si los volcó un proceso.
-
-**Y de ahí sale la única regla nueva del modelo: sin cuenta hace falta alias.** El nombre
-publicado es derivado —el alias, o el de la cuenta— así que una firma sin ninguno de los dos se
-publicaría como una cadena vacía: una fila sin nombre en el panel y una página de autor sin
-título. Se comprueba al guardar, y también al desvincular una firma que sí tenía cuenta.
+**Y de ahí sale una regla del modelo: sin cuenta hace falta alias.** El nombre publicado es
+derivado —el alias, o el de la cuenta— así que una firma sin ninguno de los dos se publicaría
+como una cadena vacía: una fila sin nombre en el panel y una página de autor sin título. Se
+comprueba al guardar, y también al desvincular una firma que sí tenía cuenta.
 
 ## El cargo se publica; la organización no
 
 `job_title` es editorial y sale al público: es la señal que busca quien comprueba a un
 autor. `users.company` es la organización de la cuenta y se queda dentro. Son datos
-distintos aunque suenen parecido — la mesa de redacción llegó a guardarse en `company`, y
-eso dejaba un dato editorial en la columna administrativa.
+distintos aunque suenen parecido: la mesa de redacción es un dato editorial y no va en la
+columna administrativa.
 
 ## `website` y `socials` son enlaces que se publican
 
@@ -147,8 +143,7 @@ una URL de verdad» en la columna—, así que vive en la validación de la API.
 
 `users.email` es con el que se **entra** al panel; `public_email` es con el que se **contacta** a
 quien firma, y es uno de los cuatro requisitos que decide si la página de autor vale algo en un
-buscador. Publicar el primero como si fuera el segundo saca a la calle la credencial de acceso,
-que es lo que pasaba mientras el único correo de una firma era el de su cuenta.
+buscador. Publicar el primero como si fuera el segundo saca a la calle la credencial de acceso.
 
 En la demo coinciden para la plantilla —en un diario local se le escribe a la periodista a su
 correo del periódico— y son columnas distintas de todas formas: una agencia sin cuenta tiene
@@ -158,8 +153,8 @@ Quien sirva una ficha al público recorta a lo editorial: nombre calculado, slug
 redes, foto y `public_email`. `users.email` no sale nunca.
 
 **Y `user_id` tampoco sale, aunque no sea una dirección.** La portada pública anida la firma de
-cada pieza, así que publicarlo separaba las firmas con cuenta de las que no —la misma distinción
-que el panel reserva a quien administra cuentas— y de paso decía cuántas cuentas hay y en qué orden
+cada pieza, así que publicarlo separaría las firmas con cuenta de las que no —la misma distinción
+que el panel reserva a quien administra cuentas— y de paso diría cuántas cuentas hay y en qué orden
 entraron. Se esconde en la serialización y no en el `select`: sin la clave no hay relación que
 cargar, y sin relación no hay nombre publicado.
 
@@ -168,18 +163,18 @@ cargar, y sin relación no hay nombre publicado.
 `GET /authors` no devuelve la tabla pelada: el panel enseña «Marta Beneyto · 41 · 28 Jun» y
 necesita tres cosas que no son columnas.
 
-| Campo | De dónde sale | Por qué no lo calcula el cliente |
-|---|---|---|
-| `posts_count` | `withCount('posts')` | Contarlo fuera exige cruzar el archivo entero del periódico para pintar un número por fila. |
-| `last_published_at` | `withMax` sobre las **publicadas** | Un borrador de hoy no es actividad de la firma. |
-| `seat` | Subconsulta sobre `users.email`, o `null` | Es con lo que el panel cruza a la pantalla de asientos; el nombre no vale, dos cuentas pueden llamarse igual. |
+| Campo               | De dónde sale                             | Por qué no lo calcula el cliente                                                                              |
+| ------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `posts_count`       | `withCount('posts')`                      | Contarlo fuera exige cruzar el archivo entero del periódico para pintar un número por fila.                   |
+| `last_published_at` | `withMax` sobre las **publicadas**        | Un borrador de hoy no es actividad de la firma.                                                               |
+| `seat`              | Subconsulta sobre `users.email`, o `null` | Es con lo que el panel cruza a la pantalla de asientos; el nombre no vale, dos cuentas pueden llamarse igual. |
 
 Y el retrato solo llega resuelto con `?with=avatarMedia`: sin él es un id opaco, y quien pinta no
 puede distinguir «tiene foto» de «no la tiene».
 
 **`seat` es una subconsulta del listado y no un accesor del modelo, y esa diferencia es lo que lo
-mantiene dentro del panel.** Anexado al modelo viajaba en cada firma que serializara cualquiera, y
+mantiene dentro del panel.** Anexado al modelo viajaría en cada firma que serializara cualquiera, y
 la portada pública y la página de cada artículo **anidan la firma entera**: el correo con el que se
-entra al CMS salía a la calle sin sesión, anulando la columna `public_email` que existe justamente
+entra al CMS saldría a la calle sin sesión, anulando la columna `public_email` que existe justamente
 para no publicarlo. Un `$appends` es global; una subconsulta solo existe donde se pide, y así
 ningún serializador futuro tiene que acordarse de esconderlo.

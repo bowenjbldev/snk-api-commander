@@ -17,7 +17,7 @@ semántica de cuenta, cliente, aplicación, instancia y contrato.
 ## Identidad y routing
 
 ```text
-Host:  diario-norte.kilkana.test        → client.slug = diario-norte
+Host:  diario-norte.commander.test      → client.slug = diario-norte
 Path:  /api/v1/kilkana/public/posts     → application.slug = kilkana
 Fila:  commander_instances.id           → identidad operativa estable
 BD:    diario_norte_kilkana             → frontera de datos
@@ -32,18 +32,27 @@ caracteres. Base y usuario se validan siempre contra `[a-z0-9_]{1,64}` antes de 
 
 ### Dominios
 
-El control plane privado usa `commander.<BASE_DOMAIN>`. Los tenants usan
-`{cliente}.<TENANT_BASE_DOMAIN>`; si el segundo no existe, cae a `BASE_DOMAIN`.
+El control plane privado usa `commander.<BASE_DOMAIN>`. La API de todos los productos usa
+`{cliente}.<TENANT_BASE_DOMAIN>/api/v1/{aplicación}`; si `TENANT_BASE_DOMAIN` no existe, cae a
+`BASE_DOMAIN`. El dominio pertenece a la plataforma y el segmento de la ruta elige el package.
 
 En local:
 
 ```text
-commander.snakepc.test       control plane
-diario-norte.kilkana.test    tenant Kilkana
+commander.snakepc.test                            control plane (BASE_DOMAIN=snakepc.test)
+diario-norte.commander.test/api/v1/kilkana         producto Kilkana del cliente diario-norte
+diario-norte.commander.test/api/v1/otro-producto   otro producto del mismo cliente, otra BD
 ```
 
-No existe `commander.kilkana.test`. Actualmente hay un único dominio tenant por despliegue; un
-futuro segundo SaaS con dominio propio requerirá un mapa aplicación→dominio.
+`TENANT_BASE_DOMAIN=commander.test` es común a todas las aplicaciones. Añadir un producto no
+requiere otro dominio ni un mapa aplicación→dominio. Kilkana es una implementación en
+`src/packages/Kilkana`, no el dominio base de Commander.
+
+La web pública de un periódico puede usar otro dominio, como `demo.kilkana.test` o uno propio.
+Esa URL de producto (`kilkana_settings.tenant_url`) no cambia el host con el que Core resuelve
+la API. `APP_URL` tampoco sustituye los dominios explícitos del router. Un frontend en otro
+origen debe llamar o hacer proxy a la URL de API de plataforma; si llama desde el navegador,
+su origen debe estar autorizado en CORS.
 
 Los dominios propios de clientes aún no están implementados. Su modelo, flujo de alta, TLS,
 seguridad y migración SEO están cerrados como diseño futuro en [Dominios propios](domains.md).
@@ -234,9 +243,9 @@ La carga HTTP real midió 79,23 MiB con una verificación concurrente, 136,90 Mi
 156,90 MiB con ocho. El último valor es el 7,7 % del límite del contenedor. Con ocho workers se
 procesaron 1.000 logins correctos a 58,63 RPS, p95 142 ms y sin errores. Frente a 64 MiB/2/1,
 mejoró el throughput un 86 %, el p95 un 47 % y la RAM un 65 %.
-La referencia bcrypt anterior daba 56,37 RPS porque el usuario efímero se creó por error con el
-default PHP de coste 10, no con el coste 12 de Laravel; `login-load` genera ahora el hash mediante
-el driver configurado por la aplicación. Una repetición controlada con bcrypt-12 dio 24,32 RPS,
+Una cifra de bcrypt medida con un usuario efímero de coste 10 —el default de PHP— no es
+comparable con estas: Laravel cifra a coste 12, y `login-load` genera el hash con el driver
+configurado por la aplicación. Una repetición controlada con bcrypt-12 dio 24,32 RPS,
 p95 377 ms y 62,65 MiB: Argon2id 19 MiB/2/1 mejora el throughput un 141 % y el p95 un 62 % frente
 al coste real de Laravel, usando 2,5 veces más RAM con ocho verificaciones simultáneas.
 

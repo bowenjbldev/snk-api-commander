@@ -26,7 +26,8 @@ del operador vive en `commander-web/` y hoy corre contra un mock, sin tocar la A
 - Cada instancia `ready` tiene una base `{cliente}_{package}` con usuarios, tokens y datos de
   negocio aislados.
 - El host identifica al cliente y el primer segmento tras `/api/v1` a la aplicación:
-  `{cliente}.dom/api/v1/{aplicación}`.
+  `{cliente}.commander.test/api/v1/{aplicación}` en local. El dominio pertenece a la plataforma;
+  Kilkana es un package seleccionado por `/kilkana`, independiente de la URL pública del periódico.
 - La aplicación se descubre desde `src/packages/<Paquete>`; un overlay opcional en
   `src/packages/<Cliente>/<Paquete>` contiene solo diferencias.
 - Un plan pertenece a una aplicación. Un contrato pertenece a cuenta+aplicación y sus ítems

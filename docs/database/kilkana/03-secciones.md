@@ -9,30 +9,30 @@ Un árbol de **exactamente dos niveles**: secciones madre (Deportes, Economía) 
 
 ## Columnas
 
-| Columna | Tipo | Nulo | Qué es |
-|---|---|---|---|
-| `id` | bigint unsigned | no | Clave primaria. Es lo que referencia `kilkana_posts.category_id`. |
-| `parent_id` | bigint unsigned | sí | Sección madre. **Nulo = es una sección raíz.** |
-| `name` | varchar(255) | no | Nombre visible. |
-| `slug` | varchar(64) | no · **único** | Segmento de la URL pública de la sección. Único en todo el periódico, también entre niveles. |
-| `seo_title` | varchar(500) | sí | Titular para buscadores. **Nulo = se usa `name`.** |
-| `seo_description` | text | sí | Descripción para buscadores, unos 155 caracteres. **Nulo = se usa `description`.** |
-| `status` | enum | no · def. `draft` | Si existe para el lector: `draft` (en preparación) · `live` (lanzada) · `hidden` (retirada del menú, alcanzable por su URL). |
-| `description` | text | sí | Descripción visible en la página de la sección. |
-| `position` | smallint unsigned | no | Orden dentro de su nivel. Las hermanas se ordenan entre ellas, no contra el resto del árbol. |
-| `noindex` | boolean | no · def. `false` | Pide a los buscadores que no la indexen. La sección sigue existiendo y navegable. |
-| `created_at` · `updated_at` | timestamp | sí | Alta y última modificación. |
+| Columna                     | Tipo              | Nulo              | Qué es                                                                                                                       |
+| --------------------------- | ----------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `id`                        | bigint unsigned   | no                | Clave primaria. Es lo que referencia `kilkana_posts.category_id`.                                                            |
+| `parent_id`                 | bigint unsigned   | sí                | Sección madre. **Nulo = es una sección raíz.**                                                                               |
+| `name`                      | varchar(255)      | no                | Nombre visible.                                                                                                              |
+| `slug`                      | varchar(64)       | no · **único**    | Segmento de la URL pública de la sección. Único en todo el periódico, también entre niveles.                                 |
+| `seo_title`                 | varchar(500)      | sí                | Titular para buscadores. **Nulo = se usa `name`.**                                                                           |
+| `seo_description`           | text              | sí                | Descripción para buscadores, unos 155 caracteres. **Nulo = se usa `description`.**                                           |
+| `status`                    | enum              | no · def. `draft` | Si existe para el lector: `draft` (en preparación) · `live` (lanzada) · `hidden` (retirada del menú, alcanzable por su URL). |
+| `description`               | text              | sí                | Descripción visible en la página de la sección.                                                                              |
+| `position`                  | smallint unsigned | no                | Orden dentro de su nivel. Las hermanas se ordenan entre ellas, no contra el resto del árbol.                                 |
+| `noindex`                   | boolean           | no · def. `false` | Pide a los buscadores que no la indexen. La sección sigue existiendo y navegable.                                            |
+| `created_at` · `updated_at` | timestamp         | sí                | Alta y última modificación.                                                                                                  |
 
 ## Relaciones
 
-| | Apunta a | Al borrar el destino |
-|---|---|---|
-| `parent_id` | `kilkana_categories.id` | **RESTRICT** |
+|             | Apunta a                | Al borrar el destino |
+| ----------- | ----------------------- | -------------------- |
+| `parent_id` | `kilkana_categories.id` | **RESTRICT**         |
 
 Una sección con subsecciones **no se puede borrar**, igual que no se puede borrar una que
-tenga artículos. Aquí fue `SET NULL`, que ascendía las hijas a raíz: borrar «Deportes»
-colocaba Fútbol, Baloncesto, Ciclismo y Motor en la portada sin avisar a nadie. Vaciar el
-árbol es ahora una decisión explícita y en el orden que uno elija.
+tenga artículos. `RESTRICT` y no `SET NULL`: ascender las hijas a raíz al borrar «Deportes»
+colocaría Fútbol, Baloncesto, Ciclismo y Motor en la portada sin avisar a nadie. Vaciar el
+árbol es una decisión explícita y en el orden que uno elija.
 
 ---
 
@@ -45,7 +45,7 @@ impone al guardar, en dos comprobaciones:
 > puedes colgar de nadie.**
 
 Con la primera los ciclos tampoco caben: cerrar uno exigiría que las dos secciones tuvieran
-madre. La segunda tapa la puerta de atrás — mover una sección con hijas bajo otra creaba el
+madre. La segunda tapa la puerta de atrás — mover una sección con hijas bajo otra crearía el
 tercer nivel sin que la primera lo viera.
 
 **No es una restricción de la base porque no puede serlo**: MariaDB no admite subconsultas
@@ -53,9 +53,9 @@ en un `CHECK`, así que «tu madre no puede tener madre» no se puede escribir e
 el modelo, que es el punto por el que pasan también el seeder y la consola.
 
 De esa regla depende cómo se consulta: «los artículos de Deportes» se resuelve mirando la
-sección del artículo y la madre de esa sección, dos saltos y se acabó. Cuando el tercer
-nivel era posible, esa consulta no fallaba — **devolvía de menos**, y los artículos de la
-nieta desaparecían del listado de la abuela sin un solo error.
+sección del artículo y la madre de esa sección, dos saltos y se acabó. Con un tercer nivel
+esa consulta no falla — **devuelve de menos**, y los artículos de la nieta desaparecen del
+listado de la abuela sin un solo error.
 
 ## Una sección incluye a sus subsecciones
 
@@ -95,11 +95,9 @@ propias, con la misma forma que las de un artículo:
 - `seo_title` y `seo_description` cuando el nombre y el texto visible no sirven tal cual.
 - `noindex` para una mesa que existe y se navega pero no quiere salir en el buscador.
 
-Los dos primeros resuelven de paso una confusión que arrastraba `description`: hacía de texto
-visible **y** de descripción para buscadores, y son dos escrituras distintas —una tiene que
-leerse bien debajo del título, la otra caber en unos 155 caracteres y contener lo que alguien
-teclea—. Ahora `description` es lo visible y `seo_description` lo otro; nulo significa
-«usa el visible», así que quien no toque nada sigue teniendo lo de antes.
+`description` es lo visible y `seo_description` lo de buscadores porque son dos escrituras
+distintas —una tiene que leerse bien debajo del título, la otra caber en unos 155 caracteres
+y contener lo que alguien teclea—; nulo significa «usa el visible».
 
 Lo que **no** tiene es imagen social ni canónica propia. Una sección compartida en redes sale
 sin foto. Se deja fuera a propósito hasta que alguien la pida: son dos columnas más y una
@@ -108,8 +106,7 @@ decisión de producto, no un descuido.
 ## Una mesa se prepara antes de abrirla
 
 `status` es lo que permite representar el trabajo real de una redacción: se crea la sección,
-se le van asignando piezas, y se lanza cuando hay con qué abrirla. Antes no cabía —o existía
-y salía ya en la navegación, o no existía—.
+se le van asignando piezas, y se lanza cuando hay con qué abrirla.
 
 Una sección **nace en `draft`** y de ahí no sale sola. Mientras lo esté:
 
@@ -119,10 +116,10 @@ Una sección **nace en `draft`** y de ahí no sale sola. Mientras lo esté:
 
 Y la vuelta también está cerrada: **no se devuelve a preparación una sección con publicados**
 —**suyos o de sus subsecciones**, porque el árbol tiene dos niveles y la madre de una sección viva
-no puede estar en preparación—,
-porque se llegaría al mismo sitio por la puerta de atrás —lanzarla, publicar, retirarla— y
-esas piezas quedarían colgando de una mesa que el lector no puede abrir, con su rótulo
-enlazando a una página que ya no existe. El error dice cuántas hay que mover o despublicar.
+no puede estar en preparación—, porque se llegaría al mismo sitio por la puerta de atrás
+—lanzarla, publicar, retirarla— y esas piezas quedarían colgando de una mesa que el lector no
+puede abrir, con su rótulo enlazando a una página que no existe. El error dice cuántas hay que
+mover o despublicar.
 
 ## Retirarla del menú es otra cosa, y sí se puede con el archivo lleno
 
@@ -135,33 +132,33 @@ y publicar en una oculta también.
 De ahí que el modelo tenga **dos scopes y no uno**, y confundirlos publica en el menú lo que se
 retiró de él:
 
-| Scope | Quién lo pregunta |
-|---|---|
-| `inMenu()` | El catálogo público: la navegación del periódico. Solo `live`. |
+| Scope         | Quién lo pregunta                                                                                                             |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `inMenu()`    | El catálogo público: la navegación del periódico. Solo `live`.                                                                |
 | `reachable()` | La página de la sección, su redirección de slug antiguo y el muro que exige sección lanzada para publicar. `live` y `hidden`. |
 
 Los dos **le preguntan al enum** (`inMenu()` · `isPublic()`) en vez de enumerar los valores: con la
-lista escrita en el modelo, un estado nuevo entra en el enum y los scopes siguen contestando lo de
-ayer sin que nada falle.
+lista escrita en el modelo, un estado nuevo entraría en el enum y los scopes seguirían contestando
+lo de ayer sin que nada fallase.
 
 **Y el estado no sale a la calle.** `GET public/categories` y `GET public/categories/{slug}`
 esconden `status` y `position`: que la respuesta exista ya dice que la sección es alcanzable, y
 decir con cuál de los dos estados lo es le cuenta a cualquiera qué retiró la redacción del menú a
-propósito. Con dos estados eso no decía nada, porque todo lo público era `live`.
+propósito.
 
-**Revertir la migración se niega si queda alguna oculta.** Las dos salidas automáticas mienten —a
-`live` publica en el menú lo que alguien retiró a mano; a `draft` retira de la calle URLs que
-respondían, y además choca con el muro de arriba—, así que el `down()` aborta diciendo cuántas hay.
-El motivo mecánico refuerza al semántico: el DDL de MariaDB no es transaccional, así que un `UPDATE`
-masivo seguido de un `ALTER` que falle deja lo peor de las dos.
+**Revertir la migración de `hidden` se niega si queda alguna oculta.** Las dos salidas
+automáticas mienten —a `live` publica en el menú lo que alguien retiró a mano; a `draft` retira
+de la calle URLs que respondían, y además choca con el muro de arriba—, así que el `down()`
+aborta diciendo cuántas hay. El motivo mecánico refuerza al semántico: el DDL de MariaDB no es
+transaccional, así que un `UPDATE` masivo seguido de un `ALTER` que falle deja lo peor de las dos.
 
 Cuatro cosas parecidas que conviene no confundir:
 
-| | Significa |
-|---|---|
-| `status = draft` | Todavía **no se ve**. |
-| `status = hidden` | **Se ve por su URL**, y no está en el menú. |
-| `noindex` | **Se ve y se enlaza**, pero no se anuncia a los buscadores. |
+|                        | Significa                                                                 |
+| ---------------------- | ------------------------------------------------------------------------- |
+| `status = draft`       | Todavía **no se ve**.                                                     |
+| `status = hidden`      | **Se ve por su URL**, y no está en el menú.                               |
+| `noindex`              | **Se ve y se enlaza**, pero no se anuncia a los buscadores.               |
 | Sección `live` y vacía | Abierta y sin piezas aún — `motor` en el juego de datos. Estado legítimo. |
 
 ## Una sección no se ve más que su madre
@@ -175,31 +172,31 @@ además cuelga de una página que responde 404.
 Se comprueba en las **dos direcciones**, porque las dos escrituras llegan al mismo estado
 imposible:
 
-| Se escribe | Se rechaza si |
-|---|---|
-| `parent_id` | la madre nueva se ve menos que la sección que se mueve |
-| `status` | queda alguna subsección más visible que el estado nuevo |
+| Se escribe  | Se rechaza si                                           |
+| ----------- | ------------------------------------------------------- |
+| `parent_id` | la madre nueva se ve menos que la sección que se mueve  |
+| `status`    | queda alguna subsección más visible que el estado nuevo |
 
 Y **falla cerrado**: si el estado de la madre no se puede resolver —un `parent_id` que apunta a
 una fila que no existe— se rechaza en vez de dejar pasar. Ese caso llega hasta aquí porque la regla
 `exists:` es del controlador y ni el seeder ni la consola pasan por él, y `guardTree` no lo caza:
 su consulta devuelve `null` igual que la de una raíz.
 
-Sin la primera, el muro del estado se rodea por la puerta de la jerarquía: `guardStatus` impide
-devolver a preparación una sección con archivo, pero mover una sección viva **bajo** una en
-preparación pasaba limpio y dejaba exactamente lo mismo. `guardTree` comprueba la forma —dos
-niveles, sin ciclos— y no mira el estado de nadie; esto es lo que faltaba.
+Sin la primera dirección, el muro del estado se rodearía por la puerta de la jerarquía:
+`guardStatus` impide devolver a preparación una sección con archivo, pero mover una sección
+viva **bajo** una en preparación dejaría exactamente lo mismo. `guardTree` comprueba la forma
+—dos niveles, sin ciclos— y no mira el estado de nadie.
 
 ## Lo que el listado calcula por fila
 
 `GET /categories` no devuelve la tabla pelada: el panel de secciones enseña «Local · 40 · 26 Aug»
 y necesita tres cosas que no son columnas.
 
-| Campo | De dónde sale | Por qué no lo calcula el cliente |
-|---|---|---|
-| `posts_count` | `withCount('posts')` | Contarlo fuera exige traerse el archivo entero: son decenas de miles de filas para pintar un número. |
-| `last_published_at` | `withMax` sobre las **publicadas** | Un borrador de hoy no es actividad de la sección, y ordenar por él en el cliente exige lo mismo que arriba. |
-| `retired_slugs` | La relación, de la última a la primera | La ficha enseña el 301 vigente; sin esto, el historial se guardaba y no había dónde consultarlo. |
+| Campo               | De dónde sale                          | Por qué no lo calcula el cliente                                                                            |
+| ------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `posts_count`       | `withCount('posts')`                   | Contarlo fuera exige traerse el archivo entero: son decenas de miles de filas para pintar un número.        |
+| `last_published_at` | `withMax` sobre las **publicadas**     | Un borrador de hoy no es actividad de la sección, y ordenar por él en el cliente exige lo mismo que arriba. |
+| `retired_slugs`     | La relación, de la última a la primera | La ficha enseña el 301 vigente.                                                                             |
 
 Y el listado va **ordenado por `position` y desempatado por `id`**, que es el orden del menú.
 `position` se numera **por nivel** —las hermanas de distinta madre comparten número—, así que
@@ -211,12 +208,12 @@ lista**: pedir una sección para editarla no necesita contar sus piezas.
 
 ## `kilkana_category_slugs` — las URLs que dejó atrás
 
-| Columna | Tipo | Nulo | Qué es |
-|---|---|---|---|
-| `id` | bigint unsigned | no | Clave primaria. |
-| `category_id` | bigint unsigned | no | Sección a la que apunta. **CASCADE.** |
-| `path` | varchar(64) | no · **único** | El slug antiguo: `technology`. |
-| `created_at` · `updated_at` | timestamp | sí | Alta y última modificación. |
+| Columna                     | Tipo            | Nulo           | Qué es                                |
+| --------------------------- | --------------- | -------------- | ------------------------------------- |
+| `id`                        | bigint unsigned | no             | Clave primaria.                       |
+| `category_id`               | bigint unsigned | no             | Sección a la que apunta. **CASCADE.** |
+| `path`                      | varchar(64)     | no · **único** | El slug antiguo: `technology`.        |
+| `created_at` · `updated_at` | timestamp       | sí             | Alta y última modificación.           |
 
 De las tres tablas de este tipo, esta es la que más protege: **la página de una sección es la
 que más enlaces externos acumula** en un periódico, porque compite por el nombre del tema y no

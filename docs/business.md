@@ -8,6 +8,10 @@ autores, comentarios, suscriptores y audiencia sin exigir al periódico un equip
 Commander es su único control plane. No habrá otro catálogo, billing o provisioning específico de
 Kilkana. La semántica completa está en [Modelo de Commander](commander-model.md).
 
+Kilkana es un producto/package de la plataforma. Su API local usa
+`https://{cliente}.commander.test/api/v1/kilkana`; el dominio es común a todos los productos y
+no depende de la marca Kilkana. La URL pública de cada periódico es una decisión del frontend.
+
 ## Producto compartido, operación aislada
 
 ```text

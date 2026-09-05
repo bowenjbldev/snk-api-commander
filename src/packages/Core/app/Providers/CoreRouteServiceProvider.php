@@ -98,7 +98,7 @@ class CoreRouteServiceProvider extends ServiceProvider
                 $packageFiles[$module] = $routeFile;
             }
 
-            // Commander conserva su dominio privado; los tenants pueden usar otro dominio de marca.
+            // El operador tiene su dominio privado; todas las APIs tenant comparten el dominio de plataforma.
             $base = (string) config('core.base_domain');
             $tenantBase = (string) config('core.tenant_base_domain', $base);
 

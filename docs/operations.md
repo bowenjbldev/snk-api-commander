@@ -22,16 +22,16 @@ No migra automáticamente las bases tenant existentes.
 
 ## Servicios Docker
 
-| Servicio | Función |
-|---|---|
-| `app` | PHP-FPM y comandos sin DDL tenant |
-| `scheduler` | `php artisan schedule:work` |
-| `provisioner` | asegura usuarios runtime y consume la cola `provisioning` con DDL |
-| `nginx` | TLS, wildcard tenant y proxy |
-| `db` | MariaDB: `commander` más una base por instancia |
-| `db-init` | usuario no privilegiado de Commander |
-| `mailpit` | SMTP local de pruebas |
-| `commander-web` | perfil opt-in vacío para un futuro cliente web |
+| Servicio        | Función                                                           |
+| --------------- | ----------------------------------------------------------------- |
+| `app`           | PHP-FPM y comandos sin DDL tenant                                 |
+| `scheduler`     | `php artisan schedule:work`                                       |
+| `provisioner`   | asegura usuarios runtime y consume la cola `provisioning` con DDL |
+| `nginx`         | TLS, wildcard tenant y proxy                                      |
+| `db`            | MariaDB: `commander` más una base por instancia                   |
+| `db-init`       | usuario no privilegiado de Commander                              |
+| `mailpit`       | SMTP local de pruebas                                             |
+| `commander-web` | perfil opt-in vacío para un futuro cliente web                    |
 
 MariaDB local permite root sin contraseña para el provisioner. No copies esa configuración a
 producción.
@@ -64,14 +64,32 @@ Resuelve `*.<BASE_DOMAIN>` y `*.<TENANT_BASE_DOMAIN>` a `127.0.0.1`. El fichero 
 wildcards; en ese caso añade `api`, `commander` y cada cliente.
 
 | Recurso | URL local |
-|---|---|
+| --- | --- |
 | API Commander | `https://commander.snakepc.test/api/v1` |
-| tenant Kilkana | `https://{cliente}.kilkana.test/api/v1/kilkana` |
+| API tenant, producto Kilkana | `https://{cliente}.commander.test/api/v1/kilkana` |
 | health | `https://api.snakepc.test/api/v1/` |
 | OpenAPI | `https://api.snakepc.test/api/v1/docs.json` |
 | Mailpit | `http://localhost:8025` |
 
-Prueba sin DNS:
+Configura `BASE_DOMAIN=snakepc.test` y `TENANT_BASE_DOMAIN=commander.test` tanto en `.env`
+como en `src/.env`. El segundo es el dominio de plataforma para todos los packages; Kilkana se
+selecciona mediante `/api/v1/kilkana`. Las URLs públicas de los periódicos son independientes.
+
+Al cambiar el dominio en un entorno existente, regenera el certificado con `setup-ssl.sh`,
+recrea Nginx y recachea config/rutas de Laravel. Reinicia los workers que conservan configuración
+en memoria. Actualiza los destinos API de los frontends que consumen este backend. Los enlaces
+firmados anteriores incluyen el host antiguo: no se convierten cambiando solo el dominio.
+
+Compose publica también HTTPS en `127.0.0.2:443` para las URLs limpias de esta plataforma;
+resuelve `*.commander.test` a esa IP si `127.0.0.1:443` lo ocupa el frontend de un producto.
+Sin DNS puede comprobarse con:
+
+```bash
+curl --resolve demo.commander.test:443:127.0.0.2 \
+  https://demo.commander.test/api/v1/kilkana/public/posts
+```
+
+Health sin DNS en el puerto alternativo:
 
 ```bash
 curl -k --resolve api.snakepc.test:8443:127.0.0.1 \
@@ -159,11 +177,10 @@ se quedaron sin él, los roles que editan lo ajeno seguían viendo el sumario
 —no les hace falta el permiso, la consulta ya se lo da— y el redactor lo perdía en silencio.
 
 **Y en local vale lo mismo.** Los inquilinos aprovisionados no reciben una migración por
-existir: dos rondas seguidas —cuentas el 2026-09-01, comentarios el 2026-09-02— añadieron columnas
-y el panel local se abrió con «Unknown column» hasta correr `core:migrate --all-tenants`; la
-tercera, lectores el mismo día, trajo una tabla y un recurso de permisos, o sea los dos comandos. Una
-migración nueva en `packages/Kilkana` pide ese comando el mismo día, y un cambio del catálogo de
-roles, el de permisos.
+existir: una columna nueva sin `core:migrate --all-tenants` abre el panel local con «Unknown
+column», y una tabla nueva con su recurso de permisos pide además el catálogo. Una migración nueva
+en `packages/Kilkana` pide ese comando el mismo día, y un cambio del catálogo de roles, el de
+permisos.
 
 Los dos son idempotentes y reaplicarlos repara lo tocado a mano, así que ante la duda se corren.
 Y los dos sueltan la caché persistente del reparto, igual que hace `core:seed` al sembrar los
@@ -202,21 +219,20 @@ saberlo se queda mirando un login que no abre nadie. La cuenta se pone a mano, c
 
 La segunda es **qué reescribe y qué no**, porque no es todo igual:
 
-| Se **sincroniza** en cada siembra | Se **rellena solo si está vacío** |
-| --- | --- |
+| Se **sincroniza** en cada siembra                                                                                                 | Se **rellena solo si está vacío**                                   |
+| --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
 | La estructura que declara el catálogo: el estado, la madre y la posición de una sección; la clase de una firma y si tiene cuenta. | Lo editorial: nombre, cargo, biografía, web, redes, correo público. |
-| De cada pieza del snapshot: su sección, su firma, su estado, su fecha y si va destacada. | El titular y la entradilla de una pieza que ya existe. |
+| De cada pieza del snapshot: su sección, su firma, su estado, su fecha y si va destacada.                                          | El titular y la entradilla de una pieza que ya existe.              |
 
 El reparto no es capricho. La estructura es lo que hace que la demo enseñe lo que dice enseñar
 —una sección retirada del menú, una agencia que firma sin asiento— y un juego de datos que solo
-estrena un periódico nuevo es una foto del pasado: cuando `agenda` pasó a `hidden` y cuando las
-firmas de agencia dejaron de tener cuenta, las bases ya sembradas se quedaron atrás y hubo que
-cambiarlas a mano. Lo editorial, en cambio, es justo lo que alguien toca al probar la demo, y
-pisarlo en cada siembra sería perder su trabajo.
+estrena un periódico nuevo es una foto del pasado: una sección que cambia de estado o una firma
+de agencia que deja de tener cuenta tienen que llegar a las bases ya sembradas sin tocarlas a
+mano. Lo editorial, en cambio, es justo lo que alguien toca al probar la demo, y pisarlo en cada
+siembra sería perder su trabajo.
 
-**Y retira lo que él mismo dejó de crear.** Mientras una firma exigió cuenta, el seeder creaba una
-de servicio por agencia solo para satisfacer la clave foránea; ahora las borra —y solo si siguen
-siendo lo que eran: sin rol, sin firma y con el correo que él les puso—. Ojo con lo que arrastran:
+**Y retira las cuentas de servicio que una firma de agencia no necesita**, y solo si siguen
+siendo lo que eran: sin rol, sin firma y con el correo que él les puso. Ojo con lo que arrastran:
 `kilkana_posts.created_by` es `ON DELETE SET NULL`, así que las piezas que apunten a esas cuentas
 **se quedan sin creador**, que es lo correcto para un teletipo que no tecleó nadie en el CMS pero
 no se deshace.
@@ -230,19 +246,20 @@ No es «datos de relleno»: es lo que hace que las quince pantallas del panel se
 Una pantalla cuya tabla está vacía no se puede mirar, y una funcionalidad construida que el juego
 de datos no ejercita se rompe sin que nadie lo note.
 
-| Lo que trae | Para qué existe |
-| --- | --- |
+| Lo que trae                                                                                               | Para qué existe                                                                                                                                                                                                                                                                                                                            |
+| --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Las **seis cuentas del panel**: admin, dirección, mesa, cuatro redactoras, dos colaboraciones y comunidad | Son los seis roles que abren el panel. Sin dirección y sin mesa no hay forma de probar lo que los separa: publicar lo ajeno, componer la portada, tocar la identidad. Y el cargo de cada firma cuadra con su rol —la editora jefe es `director`— porque una ficha que dice una cosa y unos permisos que dicen otra es una demo que engaña. |
-| Nueve cuentas de **lector**, sin acceso al panel | El otro lado de la puerta: reciben token y no entran. |
-| Dos **firmas sin cuenta** —colectivo y agencia— y ocho con ella | Una firma es una página pública; un asiento es acceso. Sin las dos clases, la pantalla de firmas no enseña la diferencia que existe para enseñar. |
-| **Ocho retratos** servidos desde el disco del inquilino | El retrato es uno de los cuatro requisitos de una página de autor. Con ninguno puesto, la pantalla solo enseña su lista de trabajo; con todos, no enseña la lista. Son caras reales de un banco de fotos y van con el juego de datos: sirven para probar el panel, no para ilustrar material comercial. |
-| **Dos revisiones** de una pieza y **tres rutas retiradas** (pieza, sección y firma) | El historial del editor y los tres bloques de «Route history». Las revisiones se crean **editando de verdad** con el servicio: es la misma transacción que corre en producción. |
-| **Dos fotos en la papelera** | `kilkana_media` es la única tabla con `deleted_at`: es lo único que una papelera puede tener dentro. |
-| Una sección **oculta**, una **en preparación** y una **viva y vacía** | Los tres estados que decide la pantalla de secciones, y el caso legítimo que se confunde con un defecto. |
-| Fotos **sin usar** y **sin alt** | Las dos vistas de la mediateca que existen para encontrar trabajo pendiente. Con todo completo salen a cero y no se pueden ni mirar. |
+| Nueve cuentas de **lector**, sin acceso al panel                                                          | El otro lado de la puerta: reciben token y no entran.                                                                                                                                                                                                                                                                                      |
+| Dos **firmas sin cuenta** —colectivo y agencia— y ocho con ella                                           | Una firma es una página pública; un asiento es acceso. Sin las dos clases, la pantalla de firmas no enseña la diferencia que existe para enseñar.                                                                                                                                                                                          |
+| **Ocho retratos** servidos desde el disco del inquilino                                                   | El retrato es uno de los cuatro requisitos de una página de autor. Con ninguno puesto, la pantalla solo enseña su lista de trabajo; con todos, no enseña la lista. Son caras reales de un banco de fotos y van con el juego de datos: sirven para probar el panel, no para ilustrar material comercial.                                    |
+| **Dos revisiones** de una pieza y **tres rutas retiradas** (pieza, sección y firma)                       | El historial del editor y los tres bloques de «Route history». Las revisiones se crean **editando de verdad** con el servicio: es la misma transacción que corre en producción.                                                                                                                                                            |
+| **Dos fotos en la papelera**                                                                              | `kilkana_media` es la única tabla con `deleted_at`: es lo único que una papelera puede tener dentro.                                                                                                                                                                                                                                       |
+| Una sección **oculta**, una **en preparación** y una **viva y vacía**                                     | Los tres estados que decide la pantalla de secciones, y el caso legítimo que se confunde con un defecto.                                                                                                                                                                                                                                   |
+| Fotos **sin usar** y **sin alt**                                                                          | Las dos vistas de la mediateca que existen para encontrar trabajo pendiente. Con todo completo salen a cero y no se pueden ni mirar.                                                                                                                                                                                                       |
 
-Lo que **no** trae, y por qué: portadas compuestas (`kilkana_layouts`), etiquetas de mediateca y
-revisiones de portada. Son de pantallas que todavía leen de fixtures en el CMS; entrarán con ellas.
+Lo que **no** trae, y por qué: portadas compuestas (`kilkana_layouts`) ni revisiones de portada,
+porque una demo que enseña el gesto de publicar la portada tiene que empezar sin nada publicado; ni
+etiquetas de mediateca, que nacen con el uso.
 
 ### Fresh local
 
@@ -298,9 +315,9 @@ docker compose exec -T app php artisan commander:git:sync
 docker compose exec -T app php artisan kilkana:publish-scheduled
 ```
 
-| Frecuencia | Comando |
-|---|---|
-| cada minuto | `kilkana:publish-scheduled` |
+| Frecuencia        | Comando                                                                                 |
+| ----------------- | --------------------------------------------------------------------------------------- |
+| cada minuto       | `kilkana:publish-scheduled`                                                             |
 | cada noche, 04:10 | `kilkana:purge-trash` — lo que lleva más de treinta días en la papelera, fichero y fila |
 
 Y un proceso que no es del scheduler: el contenedor `queue` corre `queue:work database` sobre la
@@ -362,12 +379,12 @@ dinámicos sin reciclaje a 6 CPU/2 GiB y 8 workers estáticos. MariaDB 11.5 mant
 `max_connections=151` y buffer pool de 128 MiB. Se enviaron 300 operaciones por escalón, con
 metering activo y rate limit separado.
 
-| Perfil/escenario | Concurrencia | Antes | Ajustado | Cambio | p95 antes → ajustado |
-|---|---:|---:|---:|---:|---:|
-| lectura cross-package | 10 | 54,89 RPS | 91,24 RPS | +66 % | 191 → 121 ms |
-| escritura cross-package | 10 | 30,12 RPS | 52,03 RPS | +73 % | 327 → 176 ms |
-| mixto aceptado por criterio | 5 | 45,19 RPS | 74,49 RPS | +65 % | 125 → 76 ms |
-| mixto máximo bruto | 25 | 49,35 RPS | 94,45 RPS | +91 % | 550 → 293 ms |
+| Perfil/escenario            | Concurrencia |     Antes |  Ajustado | Cambio | p95 antes → ajustado |
+| --------------------------- | -----------: | --------: | --------: | -----: | -------------------: |
+| lectura cross-package       |           10 | 54,89 RPS | 91,24 RPS |  +66 % |         191 → 121 ms |
+| escritura cross-package     |           10 | 30,12 RPS | 52,03 RPS |  +73 % |         327 → 176 ms |
+| mixto aceptado por criterio |            5 | 45,19 RPS | 74,49 RPS |  +65 % |          125 → 76 ms |
+| mixto máximo bruto          |           25 | 49,35 RPS | 94,45 RPS |  +91 % |         550 → 293 ms |
 
 No hubo `5xx`, timeouts ni `429`. El ajuste alcanzó 358 % CPU y 77 MiB en `app`, 38 % CPU y
 293 MiB en MariaDB, con 17 conexiones activas como máximo. Diez y doce workers rindieron menos
@@ -390,11 +407,11 @@ continúa sin penalización material.
 
 El login se midió aparte con Argon2id de 19 MiB, tiempo 2 y un hilo:
 
-| Concurrencia | Logins | RPS | p95 | CPU PHP pico | RAM `app` pico | Errores |
-|---:|---:|---:|---:|---:|---:|---:|
-| 1 | 200 | 14,16 | 66 ms | 69 % | 79,23 MiB | 0 |
-| 4 | 500 | 45,25 | 85 ms | 280 % | 136,90 MiB | 0 |
-| 8 | 1.000 | 58,63 | 142 ms | 435 % | 156,90 MiB | 0 |
+| Concurrencia | Logins |   RPS |    p95 | CPU PHP pico | RAM `app` pico | Errores |
+| -----------: | -----: | ----: | -----: | -----------: | -------------: | ------: |
+|            1 |    200 | 14,16 |  66 ms |         69 % |      79,23 MiB |       0 |
+|            4 |    500 | 45,25 |  85 ms |        280 % |     136,90 MiB |       0 |
+|            8 |  1.000 | 58,63 | 142 ms |        435 % |     156,90 MiB |       0 |
 
 Los picos son muestras de `docker stats`; la reserva teórica de ocho verificaciones simultáneas es
 152 MiB, más el proceso Laravel. El pico observado usa el 7,7 % del límite de 2 GiB de `app`.
@@ -406,11 +423,11 @@ realidad a bcrypt coste 10: el simulador histórico usaba el default de `passwor
 documentación indicaba coste 12. La comparación controlada posterior, con 1.000 logins y
 concurrencia 8 en ambos casos, dio:
 
-| Driver | RPS | p95 | CPU PHP pico | RAM `app` pico | Errores |
-|---|---:|---:|---:|---:|---:|
-| bcrypt coste 12 | 24,32 | 377 ms | ~600 % | 62,65 MiB | 0 |
-| Argon2id anterior 64 MiB/2/1 | 31,58 | 267 ms | ~600 % | 446,70 MiB | 0 |
-| Argon2id actual 19 MiB/2/1 | 58,63 | 142 ms | 435 % | 156,90 MiB | 0 |
+| Driver                       |   RPS |    p95 | CPU PHP pico | RAM `app` pico | Errores |
+| ---------------------------- | ----: | -----: | -----------: | -------------: | ------: |
+| bcrypt coste 12              | 24,32 | 377 ms |       ~600 % |      62,65 MiB |       0 |
+| Argon2id anterior 64 MiB/2/1 | 31,58 | 267 ms |       ~600 % |     446,70 MiB |       0 |
+| Argon2id actual 19 MiB/2/1   | 58,63 | 142 ms |        435 % |     156,90 MiB |       0 |
 
 Frente al perfil Argon2id anterior, 19 MiB/2/1 aporta un 86 % más throughput, reduce el p95 un 47 %
 y la RAM un 65 %. Frente a bcrypt-12 aporta un 141 % más throughput y reduce el p95 un 62 %, usando

@@ -5,16 +5,16 @@ escribe el propio panel al escribir, y la leen `/admin/activity` y la campana de
 
 ## Qué guarda cada fila
 
-- **Quién, dos veces.** `user_id` para filtrar, y `actor_name` con `actor_role` tal como eran ese
-  día: una cuenta que se retira o cambia de papel no puede reescribir lo que firmó. Sin `user_id`
-  es la máquina —`Scheduler`—, que es quien publica a su hora.
+- **Quién, dos veces.** `user_id` (SET NULL) para filtrar, y `actor_name` con `actor_role` tal
+  como eran ese día: una cuenta que se retira o cambia de papel no puede reescribir lo que firmó.
+  Sin `user_id` es la máquina —`Scheduler`—, que es quien publica a su hora.
 - **`kind` y `verb`.** La clase es lo que el panel colorea y reparte en pestañas
   (`SnkKilkanaActivityModel::TABS`); el verbo es la frase, en el inglés del panel: «published»,
   «renamed the category», «approved 6 comments on».
 - **`what`, `before`, `after`, `href`.** Sobre qué, el valor que había y el que hay cuando el
   movimiento fue sustituir uno por otro, y a qué pantalla lleva.
-- **Solo `created_at`**, con índice: es una línea de tiempo y se lee por fecha. Se sirven noventa
-  días (`DAYS`); lo anterior se queda y no se enseña. No hay poda todavía.
+- **Solo `created_at`**, con índice (y `(kind, created_at)`): es una línea de tiempo y se lee por
+  fecha. Se sirven noventa días (`DAYS`); lo anterior se queda y no se enseña. No hay poda.
 
 ## Quién escribe, y cómo
 
@@ -42,8 +42,8 @@ estado, y con una instancia por llamada el que calla no sería el que escucha.
 colaborador externo) devuelve `data` —del más reciente al más antiguo, por páginas de cincuenta
 (`page`, `per_page` hasta cien) con `meta` como en `readers`—, `people` —quién aparece en el
 registro visible, para el desplegable— y `stats`: movimientos de hoy, personas activas en siete
-días (la máquina no cuenta), lo que salió —publicado o programado— y las decisiones de la puerta,
-que hoy son cero porque la puerta no existe. Acepta `tab` (`content`, `people`, `system`), `who`
+días (la máquina no cuenta), lo que salió —publicado o programado— y las decisiones de la puerta
+de salida, que escribe una fila por pasada. Acepta `tab` (`content`, `people`, `system`), `who`
 (el nombre tal cual), `count` —solo filas y hasta quinientas, que es lo que pide la campana, y así
 el armazón paga una consulta y no seis— y `all`, que se lleva lo filtrado entero hasta cinco mil
 para un export. Todas las cuentas van acotadas a los noventa días; `actor_name` lleva índice
@@ -54,8 +54,8 @@ redacción no ve quién entró ni quién salió; es la única fila del registro 
 
 ## Lo que no hay
 
-Ni búsqueda por texto, ni poda, ni marca de «leído» por cuenta, ni menciones. La puerta de salida
-no escribe porque no existe.
+Ni búsqueda por texto, ni poda, ni menciones: no hay comentarios de redacción sobre una pieza
+(las notas de mesa van con la pieza, [04](04-articulos.md)).
 
 ## Hasta cuándo se miró
 

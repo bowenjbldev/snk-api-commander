@@ -1,46 +1,48 @@
 # Artículos
 
-El núcleo. Seis tablas: la pieza, su historial de URLs, su historial de versiones, su
-audiencia y sus etiquetas.
+El núcleo. Siete tablas: la pieza, su historial de URLs, su historial de versiones, su
+audiencia, sus notas de mesa y sus etiquetas.
 
 ---
 
 ## `kilkana_posts` — la pieza
 
-| Columna | Tipo | Nulo | Qué es |
-|---|---|---|---|
-| `id` | bigint unsigned | no | Clave primaria. **No aparece nunca en una URL pública.** |
-| `author_id` | bigint unsigned | no | Firma. Quién aparece firmando. |
-| `category_id` | bigint unsigned | no | Sección. Una y solo una. |
-| `cover_media_id` | bigint unsigned | sí | Foto de portada. |
-| `og_image_id` | bigint unsigned | sí | Imagen para redes, cuando la portada no vale. |
-| `title` | varchar(500) | no | Titular. |
-| `excerpt` | text | sí | Entradilla. **Nula = todavía no escrita**: un borrador nace con el titular y poco más. La API la exige al pasar a `scheduled` o `published`. |
-| `slug` | varchar(200) | no | Parte legible de la URL. Se deriva del titular si no llega, recortando a 200. |
-| `seo_title` | varchar(500) | sí | Titular para buscadores. Nulo = se usa `title`. |
-| `seo_description` | text | sí | Descripción para buscadores. Nula = se usa `excerpt`. |
-| `og_title` | varchar(500) | sí | Titular para redes. Nulo = cae a `seo_title` y luego a `title`. |
-| `og_description` | text | sí | Descripción para redes. Nula = cae a `seo_description` y luego a `excerpt`. |
-| `status` | enum | no · def. `draft` | `draft` → `review` → `scheduled` → `published`. La base rechaza cualquier otro valor. |
-| `content_tier` | enum | no · def. `free` | `free` · `metered` · `locked`. Cuánto lee quien no paga. |
-| `body_blocks` | longtext (JSON) | sí | **El cuerpo.** Lista ordenada de bloques. |
-| `canonical_url` | varchar(2048) | sí | Original **de otro sitio** para una pieza sindicada. Absoluta siempre. |
-| `featured` | boolean | no · def. falso | Marca de destacado. |
-| `noindex` | boolean | no · def. falso | Fuera de buscadores. **Sigue visible en el periódico.** |
-| `created_by` | bigint unsigned | sí | Cuenta que **tecleó** la pieza. |
-| `updated_by` | bigint unsigned | sí | Cuenta que la tocó por última vez. |
-| `url_date` | date | sí | Fecha de la URL. **Nula = no publicado.** Se sella al publicar. |
-| `publish_at` | timestamp | sí | El instante de publicación: previsto si está programada, efectivo si ya salió. |
-| `created_at` · `updated_at` | timestamp | sí | Alta y última modificación. |
+| Columna                     | Tipo                        | Nulo              | Qué es                                                                                                                                       |
+| --------------------------- | --------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                        | bigint unsigned             | no                | Clave primaria. **No aparece nunca en una URL pública.**                                                                                     |
+| `author_id`                 | bigint unsigned             | no                | Firma. Quién aparece firmando.                                                                                                               |
+| `category_id`               | bigint unsigned             | no                | Sección. Una y solo una.                                                                                                                     |
+| `cover_media_id`            | bigint unsigned             | sí                | Foto de portada.                                                                                                                             |
+| `og_image_id`               | bigint unsigned             | sí                | Imagen para redes, cuando la portada no vale.                                                                                                |
+| `title`                     | varchar(500)                | no                | Titular.                                                                                                                                     |
+| `excerpt`                   | text                        | sí                | Entradilla. **Nula = todavía no escrita**: un borrador nace con el titular y poco más. La API la exige al pasar a `scheduled` o `published`. |
+| `slug`                      | varchar(200)                | no                | Parte legible de la URL. Se deriva del titular si no llega, recortando a 200.                                                                |
+| `seo_title`                 | varchar(500)                | sí                | Titular para buscadores. Nulo = se usa `title`.                                                                                              |
+| `seo_description`           | text                        | sí                | Descripción para buscadores. Nula = se usa `excerpt`.                                                                                        |
+| `og_title`                  | varchar(500)                | sí                | Titular para redes. Nulo = cae a `seo_title` y luego a `title`.                                                                              |
+| `og_description`            | text                        | sí                | Descripción para redes. Nula = cae a `seo_description` y luego a `excerpt`.                                                                  |
+| `status`                    | enum                        | no · def. `draft` | `draft` → `review` → `scheduled` → `published`. La base rechaza cualquier otro valor.                                                        |
+| `content_tier`              | enum                        | no · def. `free`  | `free` · `metered` · `locked`. Cuánto lee quien no paga.                                                                                     |
+| `body_blocks`               | longtext (JSON)             | sí                | **El cuerpo.** Lista ordenada de bloques.                                                                                                    |
+| `canonical_url`             | varchar(2048)               | sí                | Original **de otro sitio** para una pieza sindicada. Absoluta siempre.                                                                       |
+| `featured`                  | boolean                     | no · def. falso   | Marca de destacado.                                                                                                                          |
+| `noindex`                   | boolean                     | no · def. falso   | Fuera de buscadores. **Sigue visible en el periódico.**                                                                                      |
+| `created_by`                | bigint unsigned             | sí                | Cuenta que **tecleó** la pieza.                                                                                                              |
+| `updated_by`                | bigint unsigned             | sí                | Cuenta que la tocó por última vez.                                                                                                           |
+| `url_date`                  | date                        | sí                | Fecha de la URL. **Nula = no publicado.** Se sella al publicar.                                                                              |
+| `publish_at`                | timestamp                   | sí                | El instante de publicación: previsto si está programada, efectivo si ya salió.                                                               |
+| `unpublish_at`              | timestamp                   | sí                | Retirada programada. Nula = no se retira.                                                                                                    |
+| `deleted_at` · `deleted_by` | timestamp · bigint unsigned | sí                | La papelera: cuándo se tiró y quién.                                                                                                         |
+| `created_at` · `updated_at` | timestamp                   | sí                | Alta y última modificación.                                                                                                                  |
 
 ### Relaciones
 
-| | Apunta a | Al borrar el destino |
-|---|---|---|
-| `category_id` | `kilkana_categories.id` | **RESTRICT** |
-| `author_id` | `kilkana_authors.id` | **RESTRICT** |
-| `cover_media_id` · `og_image_id` | `kilkana_media.id` | SET NULL |
-| `created_by` · `updated_by` | `users.id` | SET NULL |
+|                                            | Apunta a                | Al borrar el destino |
+| ------------------------------------------ | ----------------------- | -------------------- |
+| `category_id`                              | `kilkana_categories.id` | **RESTRICT**         |
+| `author_id`                                | `kilkana_authors.id`    | **RESTRICT**         |
+| `cover_media_id` · `og_image_id`           | `kilkana_media.id`      | SET NULL             |
+| `created_by` · `updated_by` · `deleted_by` | `users.id`              | SET NULL             |
 
 `RESTRICT` donde borrar rompería la hemeroteca: una pieza publicada no puede quedarse sin
 sección ni sin firma. `SET NULL` en la autoría: dar de baja a alguien no borra lo que
@@ -48,11 +50,14 @@ escribió, solo deja de saberse quién lo tecleó.
 
 ### Índices
 
-| Índice | Para qué |
-|---|---|
-| **único `(url_date, slug)`** | La URL pública. Ver abajo. |
-| `(status, publish_at)` | Las dos consultas calientes con un solo índice: listar lo publicado por fecha y encontrar lo programado que ya vence. |
-| texto completo `(title, excerpt)` | Buscador del sitio, sin motor externo. |
+| Índice                            | Para qué                                                                                                              |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **único `(url_date, slug)`**      | La URL pública. Ver abajo.                                                                                            |
+| `(status, publish_at)`            | Las dos consultas calientes con un solo índice: listar lo publicado por fecha y encontrar lo programado que ya vence. |
+| `(status, unpublish_at)`          | Lo publicado que ya toca retirar.                                                                                     |
+| `(status, created_by)`            | El listado acotado a lo propio, por estado.                                                                           |
+| `deleted_at`                      | La papelera y el scope global que la esconde.                                                                         |
+| texto completo `(title, excerpt)` | Buscador del sitio, sin motor externo.                                                                                |
 
 ---
 
@@ -88,11 +93,11 @@ tener varios borradores con el mismo slug —dos piezas sin titular, por ejemplo
 
 ### `slug` es obligatorio
 
-Se deriva del titular al guardar si no llega. Fue nulo en su día, y un publicado sin slug
-era una pieza que aparecía en la portada, en el sitemap y en el feed enlazada por su
-identificador numérico — una URL que **responde 404**, porque la resolución es por fecha y
-slug y nunca por `id`. Cualquier código que construya la URL de un artículo debe hacerlo
-desde `url_date` + `slug`, y no tener nada que enlazar cuando falta `url_date`.
+Se deriva del titular al guardar si no llega. Un publicado sin slug sería una pieza que
+aparece en la portada, en el sitemap y en el feed enlazada por su identificador numérico —
+una URL que **responde 404**, porque la resolución es por fecha y slug y nunca por `id`.
+Cualquier código que construya la URL de un artículo debe hacerlo desde `url_date` + `slug`, y
+no tener nada que enlazar cuando falta `url_date`.
 
 ### Los segmentos de fecha mandan
 
@@ -127,19 +132,12 @@ la portada.
 
 ### Las palabras clave no son una columna: son los tags
 
-Aquí hubo un `news_keywords`, la vieja meta de Google News. Se retiró por dos motivos, y el
-segundo es el que importa:
-
-1. Google dejó de usarla y la quitó de su documentación para editores.
-2. **Duplicaba `kilkana_tags`.** Los temas de una pieza ya están ahí, estructurados, únicos
-   por pareja y normalizados; la columna era la misma información en texto libre, sin
-   unicidad y mantenida a mano en paralelo.
-
-La deriva no era teórica: la única pieza sembrada con las dos cosas tenía
-`cumbre del clima, emisiones, renovables` en la columna y `climate, energy, summit` en sus
-tags. Dos listas de temas para un mismo artículo, escritas el mismo día, ya distintas.
-
-Cuando haga falta declarar las palabras clave a un buscador, salen de los tags.
+No hay `news_keywords`: Google no usa esa meta y la quitó de su documentación para editores,
+y **duplicaría `kilkana_tags`**. Los temas de una pieza ya están ahí, estructurados, únicos
+por pareja y normalizados; una columna sería la misma información en texto libre, sin
+unicidad y mantenida a mano en paralelo, y dos listas de temas para un mismo artículo
+divergen desde el primer día. Cuando haga falta declarar las palabras clave a un buscador,
+salen de los tags.
 
 ### `noindex` no es despublicar
 
@@ -167,11 +165,11 @@ Un buscador puede indexar el texto completo de un artículo cerrado sin que eso 
 encubrimiento **solo si se declara**. Servirle el texto entero a un rastreador y un muro al
 lector, sin decirlo, es exactamente lo que se penaliza.
 
-| | Qué lee quien no paga |
-|---|---|
-| `free` | todo |
-| `metered` | todo, hasta agotar su cuota |
-| `locked` | hasta donde corta el bloque `paywall` del cuerpo |
+|           | Qué lee quien no paga                            |
+| --------- | ------------------------------------------------ |
+| `free`    | todo                                             |
+| `metered` | todo, hasta agotar su cuota                      |
+| `locked`  | hasta donde corta el bloque `paywall` del cuerpo |
 
 Esta columna dice **si** la pieza está cerrada; el bloque `paywall` dice **por dónde** corta.
 No son lo mismo: una medida no necesita bloque —se mide entera— y una cerrada sin bloque no
@@ -186,11 +184,11 @@ payload seguiría filtrándolo.
 
 ### Por qué columnas y no una tabla de pares clave-valor
 
-Aquí hubo esa tabla y se retiró. Con un conjunto que se lee siempre completo, guardar cada
-etiqueta en su fila significa reconstruir un objeto a base de `JOIN`s, y a cambio no se gana
-nada: la lista de claves válidas sigue teniendo que vivir en el código, y se pierde lo que sí
-da una columna —que `seo_title` no pueda pasar de 500 caracteres, que `noindex` sea booleano,
-que `og_image_id` sea una clave foránea con su regla de borrado—.
+Con un conjunto que se lee siempre completo, guardar cada etiqueta en su fila significa
+reconstruir un objeto a base de `JOIN`s, y a cambio no se gana nada: la lista de claves
+válidas sigue teniendo que vivir en el código, y se pierde lo que sí da una columna —que
+`seo_title` no pueda pasar de 500 caracteres, que `noindex` sea booleano, que `og_image_id`
+sea una clave foránea con su regla de borrado—.
 
 La regla que lo decide no es cuántos campos hay, sino **cómo se leen**: un conjunto que
 siempre se pide entero va en columnas; uno por el que se filtra necesita además que la
@@ -198,21 +196,20 @@ columna exista de verdad. Los dos casos apuntan al mismo sitio.
 
 ---
 
-## Las notas de mesa
+## `kilkana_post_notes` — las notas de mesa
 
-`kilkana_post_notes` es lo que la redacción se dice sobre una pieza mientras se escribe: quién,
-sobre qué bloque (`block`, el id del bloque de cuerpo; nulo = la pieza entera), qué (`body`) y si
-ya está resuelta (`done`). `GET/POST posts/{id}/notes` y `PATCH posts/{id}/notes/{note}` con
-`done`; se leen con `show posts` y se escriben con `update posts`. No se borran: se resuelven, y
-se van con la pieza cuando se purga. Nunca llegan a un lector.
+Lo que la redacción se dice sobre una pieza mientras se escribe: `user_id` (SET NULL), `block`
+—el id del bloque de cuerpo; nulo = la pieza entera—, `body` y `done`, con índice
+`(post_id, done)`. `GET/POST posts/{id}/notes` y `PATCH posts/{id}/notes/{note}` con `done`; se
+leen con `show posts` y se escriben con `update posts`. No se borran: se resuelven, y se van con
+la pieza cuando se purga (CASCADE). Nunca llegan a un lector.
 
 ## La retirada programada
 
 `unpublish_at` es la otra mitad de `publish_at`: una pieza publicada con esa hora cumplida vuelve
 a borrador en el mismo tick de `kilkana:publish-scheduled` que saca lo programado, con su URL
 reservada como cualquier pieza que sale de la calle, y la hora se borra para que volver a
-publicarla no la retire otra vez. `PUT posts/{id}` la exige por delante del reloj; nula es «no se
-retira».
+publicarla no la retire otra vez. `PUT posts/{id}` la exige por delante del reloj.
 
 ## La previa por enlace
 
@@ -233,25 +230,27 @@ siga siendo el que el editor escribe, y porque la calle no tiene con qué pedirl
 mediateca es del panel. `public/site` da la cabecera del periódico y el tema resuelto
 (`themePayload()`), o `null` mientras no se haya vestido ninguno.
 
-`public/posts` es la lista de tarjetas —sin cuerpo— ordenada por fecha, con `cat`, `author`, `tag`, `q`,
-`count` (hasta 100) y `page`: la hemeroteca de la calle es esa misma lista más atrás, y no hay
-`total` porque la calle pide una tarjeta de más para saber si hay página siguiente.
+`public/posts` es la lista de tarjetas —sin cuerpo— ordenada por fecha, con `cat`, `author`,
+`tag`, `q`, `count` (hasta 100) y `page`: la hemeroteca de la calle es esa misma lista más atrás,
+y no hay `total` porque la calle pide una tarjeta de más para saber si hay página siguiente.
 `public/tags/{slug}` rotula una etiqueta (`name`, `slug`) para `/tag/{slug}`, cuyas piezas son
-`public/posts?tag=`. `public/sitemap` da la ruta sellada y el `updated_at` de cada pieza publicada que no sea
-`noindex`, sin relaciones: es lo único que un rastreador necesita y la lista es larga.
+`public/posts?tag=`. `public/sitemap` da la ruta sellada y el `updated_at` de cada pieza
+publicada que no sea `noindex`, sin relaciones: es lo único que un rastreador necesita y la lista
+es larga.
 
 ## La papelera: `deleted_at` y `deleted_by`
 
 Borrar una pieza desde el panel es **tirarla**: la fila se queda con `deleted_at` y con quién la
 tiró, y desaparece del panel y de la calle —el borrado lógico es un scope global, así que ninguna
-consulta la ve sin pedirlo—. Se queda treinta días, y en ese tiempo:
+consulta la ve sin pedirlo—. Se queda treinta días (`SnkKilkanaTrashService::RETENTION_DAYS`), y
+en ese tiempo:
 
 - **Su URL sigue reservada.** `pathTaken()` mira `withTrashed()`, así que ninguna pieza nueva nace
   encima de la tirada: restaurarla nunca rompe un enlace entrante. La calle contesta 404 mientras
   tanto, no redirige.
-- **Sus comentarios, revisiones, vistas, lecturas medidas y URLs viejas se quedan** con ella:
-  cuelgan de la fila, y la fila sigue. Purgarla —`forceDelete`, a mano o a los treinta días— se
-  los lleva en cascada, **y eso tiene una consecuencia que no se ve desde la papelera**: el
+- **Sus comentarios, revisiones, vistas, lecturas medidas, notas y URLs viejas se quedan** con
+  ella: cuelgan de la fila, y la fila sigue. Purgarla —`forceDelete`, a mano o a los treinta días—
+  se los lleva en cascada, **y eso tiene una consecuencia que no se ve desde la papelera**: el
   historial de comentarios de cada cuenta lectora baja solo, sin que nadie modere nada, y las
   lecturas del archivo también. Es una decisión de producto —una pieza purgada no deja hilo
   huérfano— y se deja escrita aquí porque nadie la va a relacionar el día que pase.
@@ -270,19 +269,19 @@ cada clase con el permiso de borrarla (`delete posts`, `delete media`).
 
 ## `kilkana_post_slugs` — las URLs viejas
 
-| Columna | Tipo | Nulo | Qué es |
-|---|---|---|---|
-| `id` | bigint unsigned | no | Clave primaria. |
-| `post_id` | bigint unsigned | no | Artículo al que apunta. **CASCADE.** |
-| `path` | varchar(255) | no · **único** | La ruta antigua **entera**: `2026/05/11/titular-viejo`. |
-| `created_at` · `updated_at` | timestamp | sí | Alta y última modificación. |
+| Columna                     | Tipo            | Nulo           | Qué es                                                  |
+| --------------------------- | --------------- | -------------- | ------------------------------------------------------- |
+| `id`                        | bigint unsigned | no             | Clave primaria.                                         |
+| `post_id`                   | bigint unsigned | no             | Artículo al que apunta. **CASCADE.**                    |
+| `path`                      | varchar(255)    | no · **único** | La ruta antigua **entera**: `2026/05/11/titular-viejo`. |
+| `created_at` · `updated_at` | timestamp       | sí             | Alta y última modificación.                             |
 
 Renombrar no puede romper lo que ya está enlazado. Un titular se retoca a los diez minutos
 de publicar y para entonces ya hay enlaces fuera apuntando a la URL vieja.
 
-**Guarda la ruta completa, no el slug suelto**: desde que la fecha forma parte de la URL, un
-slug por sí solo no identifica un artículo. Con la ruta entera, un solo mecanismo cubre
-renombrar el titular y mover la fecha.
+**Guarda la ruta completa, no el slug suelto**: como la fecha forma parte de la URL, un slug
+por sí solo no identifica un artículo. Con la ruta entera, un solo mecanismo cubre renombrar
+el titular y mover la fecha.
 
 **Resuelve en un salto**: como guarda `post_id` y no la ruta destino, una URL vieja siempre
 apunta a la actual, aunque haya habido tres renombrados. No se forman cadenas.
@@ -292,7 +291,7 @@ apunta a la actual, aunque haya habido tres renombrados. No se forman cadenas.
 **Cuándo nace una fila.** Solo al cambiar la URL de un artículo **ya publicado** —el titular
 o la fecha—. Un borrador no tiene URL pública que conservar, y publicar por primera vez no
 deja nada atrás. Por eso la tabla nace vacía y sigue vacía hasta que alguien edita de verdad:
-en un juego de datos recién sembrado hay cero filas, y eso es correcto.
+en un juego de datos recién sembrado hay pocas filas, y eso es correcto.
 
 Al renombrar pasan dos cosas, en este orden:
 
@@ -324,15 +323,9 @@ artículo viviría en infinitas URLs y cada una competiría con las demás.
 
 **El ancho de `path` depende del de `slug`**, y por eso el slug tiene tope. La ruta son los
 11 caracteres de la fecha más el slug: con el tope en 200, el máximo es 211 y estos 255
-sobran. Sin tope no salía la cuenta —el slug llegaba a 255 y la ruta a 266—, así que
-renombrar un artículo de titular largo fallaba **aquí**, al ir a grabar la redirección, con
-el artículo ya guardado. Si algún día se sube el tope del slug, esta columna sube con él.
-
-Dos reglas al renombrar:
-
-1. La ruta anterior entra en el historial.
-2. Si la ruta nueva **estaba** en el historial, se saca. Sin esto, renombrar `a → b` y
-   arrepentirse dejaría `a` siendo a la vez la URL actual y una redirección hacia sí misma.
+sobran. Sin tope no saldría la cuenta —un slug de 255 da una ruta de 266—, y renombrar un
+artículo de titular largo fallaría **aquí**, al ir a grabar la redirección, con el artículo ya
+guardado. Si algún día se sube el tope del slug, esta columna sube con él.
 
 El `único` sobre `path` significa que una URL vieja apunta a **un** artículo: si dos piezas
 pudieran reclamar la misma ruta retirada, la redirección no sería decidible.
@@ -351,56 +344,53 @@ Cuenta en los dos momentos en que se decide una URL:
   otro, se responde **422**. El propio artículo queda excluido: revertir un renombrado tiene
   que seguir siendo posible, y su URL vieja no puede bloquearle.
 
-Sin esta regla pasaban dos cosas, las dos silenciosas. Renombrar hacia un slug ya ocupado el
-mismo día reventaba contra el índice único con un error de base de datos en la respuesta. Y
-renombrar hacia una ruta que otro artículo tenía retirada **borraba su redirección**: quien
-siguiera un enlace antiguo del primero aterrizaba en el segundo, con un 200 y sin ninguna
+Sin esta regla pasarían dos cosas, las dos silenciosas. Renombrar hacia un slug ya ocupado el
+mismo día reventaría contra el índice único con un error de base de datos en la respuesta. Y
+renombrar hacia una ruta que otro artículo tenía retirada **borraría su redirección**: quien
+siguiera un enlace antiguo del primero aterrizaría en el segundo, con un 200 y sin ninguna
 señal de que había cambiado de artículo.
 
 Por eso el borrado del historial va acotado **por artículo**: al adoptar una ruta solo se
-retira la propia. Es cinturón sobre tirantes —el modelo ya no deja adoptar la de otro—, pero
-protege a los datos que se crearan antes de la regla.
+retira la propia. Es cinturón sobre tirantes —el modelo no deja adoptar la de otro—.
 
 ---
 
 ## `kilkana_post_revisions` — el historial
 
-| Columna | Tipo | Nulo | Qué es |
-|---|---|---|---|
-| `id` | bigint unsigned | no | Clave primaria. |
-| `post_id` | bigint unsigned | no | Artículo. **CASCADE.** |
-| `user_id` | bigint unsigned | sí | Quién guardó esa versión. SET NULL. |
-| `payload` | longtext (JSON) | no | El artículo **entero** tal como estaba antes del cambio. |
-| `created_at` | timestamp | **no** | Cuándo se guardó. |
+| Columna      | Tipo            | Nulo   | Qué es                                                   |
+| ------------ | --------------- | ------ | -------------------------------------------------------- |
+| `id`         | bigint unsigned | no     | Clave primaria.                                          |
+| `post_id`    | bigint unsigned | no     | Artículo. **CASCADE.**                                   |
+| `user_id`    | bigint unsigned | sí     | Quién guardó esa versión. SET NULL.                      |
+| `payload`    | longtext (JSON) | no     | El artículo **entero** tal como estaba antes del cambio. |
+| `created_at` | timestamp       | **no** | Cuándo se guardó.                                        |
 
 Se escribe una fila **antes** de cada modificación, así que `payload` es siempre el estado
 anterior. Copia completa, no diferencia: recuperar una versión no exige reconstruir nada.
 
-Es la única tabla con `created_at` obligatorio y sin `updated_at`: una revisión no se
-modifica, solo se crea.
+`created_at` obligatorio y sin `updated_at`: una revisión no se modifica, solo se crea.
 
 ---
 
 ## `kilkana_post_views` — la audiencia real
 
-| Columna | Tipo | Nulo | Qué es |
-|---|---|---|---|
-| `id` | bigint unsigned | no | Clave primaria. |
-| `post_id` | bigint unsigned | no | Artículo. **CASCADE.** |
-| `date` | date | no | Día contado. |
-| `opens` | int unsigned | no | Veces que se abrió. |
-| `engaged` | int unsigned | no | Veces que se **leyó**: alguien pasó el umbral de lectura. |
-| `readers` | int unsigned | no | Personas distintas que leyeron ese día. |
-| `ref_search` · `ref_social` · `ref_direct` · `ref_internal` · `ref_other` | int unsigned | no | De dónde llegaron las aperturas. |
+| Columna                                                                   | Tipo            | Nulo | Qué es                                                    |
+| ------------------------------------------------------------------------- | --------------- | ---- | --------------------------------------------------------- |
+| `id`                                                                      | bigint unsigned | no   | Clave primaria.                                           |
+| `post_id`                                                                 | bigint unsigned | no   | Artículo. **CASCADE.**                                    |
+| `date`                                                                    | date            | no   | Día contado.                                              |
+| `opens`                                                                   | int unsigned    | no   | Veces que se abrió.                                       |
+| `engaged`                                                                 | int unsigned    | no   | Veces que se **leyó**: alguien pasó el umbral de lectura. |
+| `readers`                                                                 | int unsigned    | no   | Personas distintas que leyeron ese día.                   |
+| `ref_search` · `ref_social` · `ref_direct` · `ref_internal` · `ref_other` | int unsigned    | no   | De dónde llegaron las aperturas.                          |
 
 `date` está en medio de la tabla y no al final con las marcas de tiempo, saltándose la
 convención a propósito: aquí **no marca cuándo se escribió la fila, es parte de su
 identidad** —la mitad del único `(post_id, date)`—. Es una dimensión, no una marca.
 
-Y esta tabla no lleva `created_at` ni `updated_at`, que es la tercera excepción de la base a
-«siempre marcas de tiempo». El motivo es de coste: el incremento de un contador es la
-escritura más frecuente del sistema, y con marcas cada lectura del periódico escribiría
-además `updated_at`.
+Y esta tabla no lleva `created_at` ni `updated_at`. El motivo es de coste: el incremento de un
+contador es la escritura más frecuente del sistema, y con marcas cada lectura del periódico
+escribiría además `updated_at`.
 
 Dos índices, y cada uno responde una pregunta distinta:
 
@@ -427,11 +417,12 @@ Los agregados que consume el periódico suman **`engaged`**, no `opens`.
 
 ### Quién cuenta, y por qué no el servidor
 
-Lo cuenta el **navegador del lector**, con un aviso al abrir y otro al pasar el umbral. No lo
-cuenta el render, y eso no es un detalle de implementación: la salida pública está cacheada,
-así que contar en el render cuenta renders. Una pieza que arrasa se renderiza una vez por
-minuto pase lo que pase, de modo que **el error crecía con el éxito**. Contando desde el
-cliente, además, los robots dejan de aparecer solos: no ejecutan JavaScript.
+Lo cuenta el **navegador del lector**, con un aviso al abrir y otro al pasar el umbral
+(`POST public/posts/…/view`, freno `kilkana-view`). No lo cuenta el render, y eso no es un
+detalle de implementación: la salida pública está cacheada, así que contar en el render cuenta
+renders. Una pieza que arrasa se renderiza una vez por minuto pase lo que pase, de modo que
+**el error crecería con el éxito**. Contando desde el cliente, además, los robots no aparecen:
+no ejecutan JavaScript.
 
 `readers` sale de deduplicar por visitante, y el visitante es un hash con sal que lleva la
 **fecha dentro**: el de hoy y el de mañana no se pueden emparejar ni queriendo. No se
@@ -452,27 +443,21 @@ borraría justo el dato que dice quién te cita.
 
 ### Tres ventanas, y ninguna se deriva de las otras
 
-De esta tabla salen tres agregados, que son tres preguntas distintas:
-
-| | Suma |
-|---|---|
-| lecturas de hoy | las filas de la fecha de hoy |
+|                       | Suma                          |
+| --------------------- | ----------------------------- |
+| lecturas de hoy       | las filas de la fecha de hoy  |
 | lecturas de la semana | las de los últimos siete días |
-| lecturas totales | todas las filas de la pieza |
+| lecturas totales      | todas las filas de la pieza   |
 
 «Lo más leído hoy» lo dominan las piezas recientes; el total, las que más se leyeron en su
 momento aunque hoy no las abra nadie. Un periódico necesita las dos cosas y ordenan distinto.
 
-### Aquí hubo una columna `posts.reads`
+### No hay contador en la pieza
 
-Un entero en la propia pieza con un número grande dentro, que **nada incrementaba**. Convivía
-con esta tabla, y al ser lo más fácil de leer, era lo que acababa pintándose como audiencia.
-El número no era falso por casualidad: era falso por construcción, porque nadie lo escribía.
-
-Contar lecturas en una columna de la pieza tiene además un problema de fondo: obliga a un
-`UPDATE` sobre la fila del artículo en **cada visita**, justo la fila más leída y más
-bloqueada del sistema. Agregar por día en una tabla aparte cuesta una fila por artículo y
-día, y la tabla crece con el catálogo y no con el tráfico.
+Un entero en `kilkana_posts` obligaría a un `UPDATE` sobre la fila del artículo en **cada
+visita**, justo la fila más leída y más bloqueada del sistema, y un contador que nadie
+incrementa es falso por construcción, no por casualidad. Agregar por día en una tabla aparte
+cuesta una fila por artículo y día.
 
 ---
 
@@ -480,12 +465,12 @@ día, y la tabla crece con el catálogo y no con el tráfico.
 
 **`kilkana_tags`**
 
-| Columna | Tipo | Nulo | Qué es |
-|---|---|---|---|
-| `id` | bigint unsigned | no | Clave primaria. |
-| `name` | varchar(64) | no · **único** | Nombre visible, tal y como se escribió la primera vez. |
-| `slug` | varchar(64) | no · **único** | Forma para URL, y **lo que identifica a la etiqueta**. |
-| `created_at` · `updated_at` | timestamp | sí | Alta y última modificación. |
+| Columna                     | Tipo            | Nulo           | Qué es                                                 |
+| --------------------------- | --------------- | -------------- | ------------------------------------------------------ |
+| `id`                        | bigint unsigned | no             | Clave primaria.                                        |
+| `name`                      | varchar(64)     | no · **único** | Nombre visible, tal y como se escribió la primera vez. |
+| `slug`                      | varchar(64)     | no · **único** | Forma para URL, y **lo que identifica a la etiqueta**. |
+| `created_at` · `updated_at` | timestamp       | sí             | Alta y última modificación.                            |
 
 Los dos anchos salen de `SnkKilkanaTagModel::NAME_MAX` y `SLUG_MAX`, que son los mismos que
 validan las cuatro reglas de la API: una columna que prometa más de lo que nadie puede escribir
@@ -502,10 +487,10 @@ crean sobre la marcha al escribir una que no existe.
 De un vocabulario no se mira la lista de palabras: se mira su **forma**. Por eso `GET tags` sale
 con dos cifras por fila —`posts_count` y `last_used_at`— y no con las columnas de la tabla:
 
-| Lo que devuelve | Qué cuenta |
-|---|---|
-| `posts_count` | Todo lo que la lleva, **borradores incluidos**: es lo que hay que mover al fundir. |
-| `last_used_at` | La fecha de la última **publicada** que la lleva. Un borrador de hoy es una intención, no un tema vivo. |
+| Lo que devuelve | Qué cuenta                                                                                              |
+| --------------- | ------------------------------------------------------------------------------------------------------- |
+| `posts_count`   | Todo lo que la lleva, **borradores incluidos**: es lo que hay que mover al fundir.                      |
+| `last_used_at`  | La fecha de la última **publicada** que la lleva. Un borrador de hoy es una intención, no un tema vivo. |
 
 Y dos rutas que un `apiResource` no da:
 
@@ -517,59 +502,48 @@ Y dos rutas que un `apiResource` no da:
   por CASCADE sin preguntar, así que sin esa cifra «he borrado una etiqueta que no usaba nadie» y
   «acabo de desetiquetar trescientos artículos» se ven igual desde fuera.
 
-### El slug no es una URL: nadie sirve `/tag/…`, y es una decisión
+Las dos van con `whereNumber`: sin él, `tags/1abc` llega al controlador y MySQL castea el id al
+comparar, así que `DELETE tags/1abc` borraría la etiqueta 1.
 
-Conviene decirlo antes de que alguien lea «slug» y dé por hecho que hay página detrás. **No
-la hay, y el estado por defecto debería ser que no la haya.** Medido sobre el juego de datos:
+### Una etiqueta tiene página, y no todas deberían
 
-```
-151 etiquetas para 59 artículos publicados
-
-  1 artículo  →  129 etiquetas   (85 %)
-  2 artículos →   16
-  3 artículos →    5
-  4 artículos →    1
-```
-
-Una página por etiqueta serían **129 páginas con un solo artículo dentro**. Cada una compite
-con el artículo que contiene y las 129 juntas se comen presupuesto de rastreo sin aportar
-nada — contenido delgado de manual, que es por lo que los archivos de etiqueta de WordPress
-salen con `noindex` de fábrica.
+`/tag/{slug}` existe en la calle (`public/tags/{slug}` la rotula y `public/posts?tag=` la
+llena). Conviene saber lo que eso publica: **en un archivo real la mayoría de etiquetas cuelgan
+de una sola pieza**, y cada página de etiqueta con un solo artículo compite con el artículo que
+contiene y se come presupuesto de rastreo sin aportar nada — contenido delgado de manual, que es
+por lo que los archivos de etiqueta de WordPress salen con `noindex` de fábrica.
 
 Y hay algo peor que la delgadez: **estas etiquetas nacen tecleando**. No son un vocabulario
-decidido, son lo que escribió quien redactó la pieza, así que publicar una URL por cada una
-publica también los sinónimos y las erratas de la redacción. Las secciones —19, con jerarquía
-y descripción— ya cubren el eje de «páginas de tema», y lo cubren bien.
+decidido, son lo que escribió quien redactó la pieza, así que una URL por cada una publica
+también los sinónimos y las erratas de la redacción. Las secciones —con jerarquía y
+descripción— ya cubren el eje de «páginas de tema».
 
 Lo que las secciones **no** cubren es el hilo de un asunto que las atraviesa y tiene recorrido:
 «cumbre del clima», «elecciones 2026». Ahí una página que lo recoge todo sí vale. Pero eso son
-cinco o seis al año y **las elige alguien**, así que la forma correcta no es «las etiquetas
-tienen URL» sino «una etiqueta se puede promover a tema» — la misma figura que `status` en una
-sección: se recibe URL pública cuando alguien lo decide, no por existir.
-
-El coste de esa promoción, para cuando se pida:
+cinco o seis al año y **las elige alguien**, así que la forma correcta es «una etiqueta se puede
+promover a tema» — la misma figura que `status` en una sección: se recibe URL indexable cuando
+alguien lo decide, no por existir. El coste de esa promoción, para cuando se pida:
 
 ```
 kilkana_tags        + status (draft · live), seo_title, seo_description, noindex
 kilkana_tag_slugs   porque quien tiene URL pública tiene historial
 ```
 
-Lo último no es opcional: es la regla de esta base, y es el coste que no se ve al decir
-«pongamos páginas de etiqueta».
+Lo último no es opcional: es la regla de esta base.
 
 ### Lo que identifica a una etiqueta es su slug
 
 Las dos columnas son únicas, pero **no protegen lo mismo**, y la que manda es `slug`.
 
 `name` es único por cotejamiento: las comparaciones ignoran mayúsculas y acentos, así que
-`'Sequía'` y `'sequia'` ya eran la misma etiqueta. Lo que no cubría era la **puntuación**:
+`'Sequía'` y `'sequia'` son la misma etiqueta. Lo que eso no cubre es la **puntuación**:
 
 ```
 «Covid-19»  y  «Covid 19»     →  dos nombres distintos, un solo slug: covid-19
 ```
 
 Eso son dos filas para la base y una sola cosa para un lector, y como `slug` es único la
-segunda no cabía. Por eso quien escribe una etiqueta al vuelo —el caso normal: alguien
+segunda no cabe. Por eso quien escribe una etiqueta al vuelo —el caso normal: alguien
 teclea el tema de su artículo— **busca por slug**: si ya hay una con ese slug, se usa esa.
 Las variantes de escritura se colapsan solas.
 
@@ -601,37 +575,31 @@ Cada bloque tiene tres campos:
 El HTML de dentro de un bloque **se sanea al escribir**, no al leer. Es la frontera de
 confianza: lo que está guardado ya es seguro de emitir, y quien lo sirva no tiene que
 volver a limpiarlo ni acordarse de hacerlo. Y se sanea **por traer `config.html`, no por ser
-de un tipo**: atarlo a un tipo dejaba fuera el HTML del día que el editor compone una cita o
+de un tipo**: atarlo a un tipo dejaría fuera el HTML del día que el editor compone una cita o
 un recuadro de datos con marcado.
 
 **La lista de tipos la manda el editor**, y son diez. Vive en `SnkKilkanaBlockTypeEnum` y
 duplicada a la fuerza en `src/lib/data/article.ts` del frontend —PHP no lee un tipo de
-TypeScript—, con una prueba a cada lado que se pone roja si divergen. Aquí hubo siete, con
-`text` donde el editor dice `paragraph`: el síntoma fue que guardar una pieza con un
-intertítulo devolvía un 422.
+TypeScript—, con una prueba a cada lado (`SnkKilkanaBlockVocabularyTest`) que se pone roja si
+divergen; el síntoma de una divergencia es un 422 al guardar una pieza con un bloque que el
+editor sí conoce.
 
-### Hubo una segunda columna `body`, y sobraba
-
-Guardaba el cuerpo como HTML plano. Se retiró porque:
-
-- Estaba a **NULL en las 60 filas** y nada la escribía.
-- **La salida pública renderiza bloques.** Un texto que aterrizara solo en `body` no se
-  vería en ninguna parte. No era una rampa para importar contenido antiguo: era un sitio
-  donde perderlo en silencio.
-
-Quien importe de otro sistema **convierte a bloques en la frontera de entrada**. Guardar dos
-representaciones del mismo cuerpo obliga para siempre a decidir cuál manda.
+No hay una segunda columna con el cuerpo en HTML plano: la salida pública renderiza bloques,
+así que un texto que aterrizara solo ahí no se vería en ninguna parte — no sería una rampa para
+importar contenido antiguo, sería un sitio donde perderlo en silencio. Quien importe de otro
+sistema **convierte a bloques en la frontera de entrada**. Guardar dos representaciones del
+mismo cuerpo obliga para siempre a decidir cuál manda.
 
 ---
 
 ## Los cuatro estados
 
-| Estado | Significa |
-|---|---|
-| `draft` | Se está escribiendo. Sin URL pública. |
-| `review` | Terminado y entregado, esperando decisión. |
+| Estado      | Significa                                                          |
+| ----------- | ------------------------------------------------------------------ |
+| `draft`     | Se está escribiendo. Sin URL pública.                              |
+| `review`    | Terminado y entregado, esperando decisión.                         |
 | `scheduled` | Aprobado, saldrá en su `publish_at`, que aquí es una fecha futura. |
-| `published` | Publicado. Es el único con `url_date`. |
+| `published` | Publicado. Es el único con `url_date`.                             |
 
 Es una columna `ENUM`, así que la lista la impone la base y no solo el código: un valor
 inventado no entra ni por la API ni por un `UPDATE` a mano. El orden de arriba es el de
@@ -641,7 +609,7 @@ recorre la vida de la pieza en vez de ordenar alfabéticamente.
 Los dos últimos exigen el permiso de publicación. Programar cuenta como publicar: solo
 cambia el reloj, y quien firma sigue sin decidir cuándo sale.
 
-`review` existe porque sin él «borrador» significaba dos cosas incompatibles: «lo estoy
+`review` existe porque sin él «borrador» significaría dos cosas incompatibles: «lo estoy
 escribiendo» y «tomad, ya está». Sin esa distinción, quien no puede publicar no tiene forma
 de decir que ha terminado.
 
@@ -655,14 +623,11 @@ status = scheduled   →   publish_at en el futuro   = plan
 status = published   →   publish_at ya pasó        = hecho
 ```
 
-Aquí había **dos** columnas, una para lo previsto y otra para lo efectivo, y al llegar la
-hora había que copiar la primera en la segunda y vaciar la primera. Ese traspaso llegó a
-publicar piezas con la fecha en que se redactaron, descolocándolas en la portada, el sitemap
-y el feed. Con una sola columna no hay nada que copiar: publicar un programado es **cambiar
-de estado y nada más**, y la fecha ya es la correcta.
-
-Tampoco se perdió información al fundirlas: las dos nunca convivían con sentido, porque el
-traspaso borraba la prevista en el momento de usarla.
+Una sola columna y no dos —prevista y efectiva—: con dos, al llegar la hora habría que copiar
+la primera en la segunda y vaciar la primera, y ese traspaso es el que acaba publicando piezas
+con la fecha en que se redactaron, descolocándolas en la portada, el sitemap y el feed. Con una
+sola no hay nada que copiar: publicar un programado es **cambiar de estado y nada más**, y la
+fecha ya es la correcta. Tampoco se pierde información: las dos nunca convivirían con sentido.
 
 **Publicar a mano algo programado a futuro sella la hora actual.** Dejarle la fecha prevista
 lo ordenaría mañana en una portada donde ya está hoy.

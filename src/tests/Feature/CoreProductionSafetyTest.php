@@ -19,6 +19,7 @@ use Packages\Core\Database\Seeders\CoreDatabaseSeeder;
 use Packages\Core\Http\Middleware\CoreEnsureActiveMiddleware;
 use Packages\Core\Services\CoreInstanceStateService;
 use Packages\Core\Support\CoreActiveInstanceSupport;
+use Packages\Core\Support\CorePackageSelectorSupport;
 use Tests\TestCase;
 
 class CoreProductionSafetyTest extends TestCase
@@ -37,16 +38,19 @@ class CoreProductionSafetyTest extends TestCase
 
         $routes = collect(Route::getRoutes()->getRoutes())->keyBy(fn ($route) => $route->getName());
         $this->assertSame('commander.snakepc.test', $routes['commander.users.index']->getDomain());
-        $this->assertSame('{client}.kilkana.test', $routes['kilkana.users.index']->getDomain());
+        $this->assertSame('{client}.commander.test', $routes['kilkana.users.index']->getDomain());
+        $this->assertSame('api/v1/kilkana/users', $routes['kilkana.users.index']->uri());
+        $this->assertSame('diario-norte', CorePackageSelectorSupport::subdomainFromHost('diario-norte.commander.test'));
+        $this->assertNull(CorePackageSelectorSupport::subdomainFromHost('diario-norte.kilkana.test'));
     }
 
     public function test_shared_signed_routes_are_generated_for_the_requested_client_host(): void
     {
-        app('url')->setRequest(Request::create('https://elmundo.kilkana.test/api/v1/kilkana'));
+        app('url')->setRequest(Request::create('https://elmundo.commander.test/api/v1/kilkana'));
 
         $url = URL::signedRoute('kilkana.subscribe.confirm', ['client' => 'elmundo', 'subscriber' => 42]);
 
-        $this->assertStringStartsWith('https://elmundo.kilkana.test/api/v1/kilkana/public/subscribe/confirm/42?', $url);
+        $this->assertStringStartsWith('https://elmundo.commander.test/api/v1/kilkana/public/subscribe/confirm/42?', $url);
         $this->assertTrue(URL::hasValidSignature(Request::create($url)));
     }
 

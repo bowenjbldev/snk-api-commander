@@ -11,8 +11,13 @@ https://{cliente}.{TENANT_BASE_DOMAIN}/api/v1/{paquete}/...
         └ cliente                         └ producto
 ```
 
-Por ejemplo, `https://elmundo.kilkana.test/api/v1/kilkana/public/posts` usa la instancia de
+Por ejemplo, `https://elmundo.commander.test/api/v1/kilkana/public/posts` usa la instancia de
 Kilkana de El Mundo y la base `elmundo_kilkana`.
+
+`TENANT_BASE_DOMAIN` es el dominio de la plataforma (`commander.test` en local), común a todos
+los productos. Kilkana es un package y se selecciona en la ruta. El mismo cliente puede usar
+`elmundo.commander.test/api/v1/otro-producto` con otra base independiente. La URL pública del
+periódico y `APP_URL` no determinan el dominio de routing de la API.
 
 El código común de un producto vive en `src/packages/<Paquete>`; una personalización opcional
 vive en `src/packages/<Cliente>/<Paquete>`. Si el cliente no tiene personalización se usa el

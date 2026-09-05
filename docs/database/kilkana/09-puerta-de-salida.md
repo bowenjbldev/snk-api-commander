@@ -1,9 +1,10 @@
 # Puerta de salida — el veredicto sobre cada URL pública
 
 `kilkana_gate_results` guarda lo que la salida pública dijo de cada ruta en su última pasada: qué
-invariantes pasa y cuándo se miró. **Aquí no se audita nada.** Quien sirve el HTML es la salida
-pública —la aplicación SvelteKit—, y es quien lo lee: descubre las rutas por la API, se las pide
-a sí misma y escribe el veredicto con `PUT gate`. El backend lo guarda y lo sirve, y deja rastro.
+invariantes pasa y cuándo se miró. **Aquí no se comprueba nada.** Quien sirve el HTML es la
+salida pública —la aplicación SvelteKit—, y es quien lo lee: descubre las rutas por la API, se
+las pide a sí misma y escribe el veredicto con `PUT gate`. El backend lo guarda y lo sirve, y
+deja rastro.
 
 ## Qué guarda cada fila
 
@@ -12,6 +13,8 @@ a sí misma y escribe el veredicto con `PUT gate`. El backend lo guarda y lo sir
 - **`passing`**: nueve booleanos en el orden de las columnas del panel, o nulo.
 - **`checked_at`**: cuándo se miró. Nulo con `passing` nulo es una ruta descubierta que la salida
   no sirve —contesta 404—, que no es lo mismo que fallar y no cuenta como bloqueo.
+
+Sin marcas de tiempo propias: la fila entera se reemplaza en cada pasada.
 
 ## Una pasada sustituye la anterior entera
 
@@ -26,6 +29,4 @@ Cada pasada deja rastro en el registro de actividad ([`08-actividad.md`](08-acti
 
 ## Lo que no hay
 
-Ni despliegues —la puerta decide, pero nadie despliega todavía— ni historial de pasadas: se guarda
-la última. Y la salida pública sirve hoy su corpus de ejemplo, no el periódico, así que las piezas
-descubiertas por la API contestan 404 hasta que la calle lea de `public/*`.
+Ni despliegues —la puerta decide y nada despliega— ni historial de pasadas: se guarda la última.

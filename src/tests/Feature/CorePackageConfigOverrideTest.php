@@ -76,7 +76,7 @@ class CorePackageConfigOverrideTest extends TestCase
             'acme.shop.session' => ['lifetime' => 999],
         ]);
 
-        $seen = $this->captureFor('acme.kilkana.test', 'shop');
+        $seen = $this->captureFor('acme.commander.test', 'shop');
 
         $this->assertSame('SharedShop', $seen['app_name']);
         $this->assertSame(999, $seen['session_lifetime']);
@@ -102,7 +102,7 @@ class CorePackageConfigOverrideTest extends TestCase
             ],
         ]);
 
-        $seen = $this->captureFor('el-mundo.kilkana.test', 'news-room');
+        $seen = $this->captureFor('el-mundo.commander.test', 'news-room');
 
         $this->assertSame('El Mundo newsroom', $seen['app_name']);
         $this->assertSame('brand', $seen['package_config']['theme']);
@@ -115,7 +115,7 @@ class CorePackageConfigOverrideTest extends TestCase
     public function test_client_domain_parameter_is_not_forwarded_to_the_controller(): void
     {
         $this->readyInstance('demo', 'kilkana');
-        $request = Request::create('https://demo.kilkana.test/api/v1/kilkana/public/layouts/front', 'GET');
+        $request = Request::create('https://demo.commander.test/api/v1/kilkana/public/layouts/front', 'GET');
         $route = app('router')->getRoutes()->match($request);
         $request->setRouteResolver(fn () => $route);
 
@@ -141,6 +141,6 @@ class CorePackageConfigOverrideTest extends TestCase
 
         $this->expectException(NotFoundHttpException::class);
 
-        $this->captureFor('ghost.kilkana.test', 'shop');
+        $this->captureFor('ghost.commander.test', 'shop');
     }
 }
