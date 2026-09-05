@@ -48,6 +48,33 @@ services:
         aliases:
           - api-app
 
+  # Perfil `dev`: los workers de Octane guardan la aplicación en memoria, y esto los recarga solo
+  # al cambiar código, config o `.env`, que es lo que en local hace de `octane:reload`. Comparte la
+  # red de `app` porque el puerto de administración de Caddy (2019) solo escucha en loopback, y le
+  # pide reiniciar los workers, que vuelven a arrancar Laravel leyendo el disco. Producción no va por
+  # Docker ni necesita esto.
+  watch:
+    profiles: ["dev"]
+    image: node:24-alpine
+    restart: unless-stopped
+    network_mode: "service:app"
+    working_dir: /src
+    environment:
+      # chokidar-cli ejecuta `-c` con $SHELL y la imagen no lo define.
+      SHELL: /bin/sh
+    volumes:
+      - ./src:/src:ro
+      - watch_npm:/root/.npm
+    command: >-
+      npx -y chokidar-cli
+      "/src/app/**/*.php" "/src/packages/**/*.php" "/src/config/**/*.php"
+      "/src/bootstrap/**/*.php" "/src/routes/**/*.php" "/src/.env" "/src/composer.lock"
+      --ignore "**/vendor/**" --ignore "**/node_modules/**" --debounce 500
+      -c "wget -qO- --post-data= http://127.0.0.1:2019/frankenphp/workers/restart && echo workers reloaded"
+    depends_on:
+      app:
+        condition: service_started
+
   # Los otros dos runtimes de la misma API, para medirlos contra `app` con `scripts/octane-ab.sh`:
   # php-fpm (perfil `fpm`, nginx :8444) y Octane sobre Swoole (perfil `swoole`, nginx :8445).
   # Mismo código, mismos límites y mismos ocho workers reciclados cada 500 que `app`. Saltan el
@@ -322,3 +349,5 @@ networks:
 
 volumes:
   db_data:
+  # Caché de npm del watcher: sin ella `npx` descarga chokidar-cli en cada arranque.
+  watch_npm:

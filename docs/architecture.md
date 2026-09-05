@@ -153,6 +153,10 @@ Un identificador inexistente ejecuta una comprobación contra un hash dummy del 
 de modo que respuesta y coste no revelen si la cuenta existe.
 `CoreMeteringMiddleware` captura la misma identidad antes de que el resolutor restaure el contexto
 y escribe el log al terminar la respuesta. Un fallo de metering nunca modifica la respuesta.
+`memory_kb` es el pico del heap de la petición, reiniciado al entrar: distingue una ruta ligera de
+una pesada dentro de un runtime, pero **no se compara entre runtimes** —el mismo endpoint da unos
+2 MB bajo php-fpm y 7-9 bajo un worker que arrastra su heap, y crece un 25 % entre el worker recién
+reciclado y el que lleva 500 peticiones—; lo comparable es la diferencia entre rutas.
 
 ## Procesos
 
@@ -221,7 +225,10 @@ worker persistente también es correcto en FPM y en la CLI que recorre inquilino
   constante de arranque sería el uptime del worker;
 - el store de caché `database` se ancla a `commander` con `DB_CACHE_CONNECTION`: sin eso toma la
   conexión por defecto, que durante una petición es la del inquilino, y el gestor de caché la
-  memoriza más allá de la petición.
+  memoriza más allá de la petición. **Esa ruta no la ejecuta nadie todavía**: local corre con
+  `CACHE_STORE=file` y la suite con `array`, así que las claves de permisos por inquilino y los
+  cubos del freno sobre `database` se estrenarán en el primer despliegue que lo active, y ahí hay
+  que medirlo antes de fiarse.
 
 Lo que Octane ya cubre sin código propio: sandbox de configuración por petición, reinicio de los
 guards de autenticación, caché `array` y una aplicación nueva para el gestor de base de datos. El
