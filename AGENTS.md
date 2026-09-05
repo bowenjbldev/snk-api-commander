@@ -119,9 +119,9 @@ cambios contra MariaDB. Reporta test, build y lint por separado: uno verde no im
 
 - **`app` corre sobre Octane (FrankenPHP) y sus workers guardan la aplicación en memoria**: un
   cambio de código PHP, config o `.env` no se ve por HTTP hasta `php artisan octane:reload` dentro
-  de `app`, o con el perfil `dev` levantado, cuyo `watch` lo hace solo. Los tests y los comandos
-  de consola sí leen el disco en cada arranque, así que una suite verde con la API contestando lo
-  viejo es esa pista.
+  de `app`; el servicio `watch`, que arranca con el resto, lo hace solo al detectar el cambio. Los
+  tests y los comandos de consola sí leen el disco en cada arranque, así que una suite verde con
+  la API contestando lo viejo es esa pista: mira si `watch` está arriba.
 
 - Enqueue sin outbox puede dejar pending/failed; de-provisioning puede dejar recursos si falla el
   worker. No ocultes esos estados creando otra instancia.

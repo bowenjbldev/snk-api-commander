@@ -27,6 +27,7 @@ No migra automáticamente las bases tenant existentes.
 | `app`           | Octane sobre FrankenPHP (worker mode) y comandos sin DDL tenant   |
 | `fpm`           | perfil opt-in: la misma API sobre php-fpm, nginx `:8444`          |
 | `octane-swoole` | perfil opt-in: la misma API sobre Octane/Swoole, nginx `:8445`    |
+| `watch`         | recarga los workers de Octane al cambiar código, config o `.env`  |
 | `scheduler`     | `php artisan schedule:work`                                       |
 | `provisioner`   | asegura usuarios runtime y consume la cola `provisioning` con DDL |
 | `nginx`         | TLS, wildcard tenant y proxy                                      |
@@ -54,17 +55,12 @@ El perfil local está calibrado para el i7-7700K de 4 núcleos/8 hilos con Maria
 
 **Los workers guardan la aplicación en memoria**: un cambio en un fichero PHP no se ve hasta
 `docker compose exec app php artisan octane:reload` (o reiniciar `app`). Config, rutas y
-`.env` igual. Es la única diferencia de trabajo diario con php-fpm, y el perfil `dev` la quita:
-
-```bash
-docker compose --profile dev up -d
-```
-
-levanta `watch`, un sidecar con `chokidar` que comparte la red de `app`, vigila `app/`,
+`.env` igual. Es la única diferencia de trabajo diario con php-fpm, y `watch` la quita: arranca
+con el resto, es un sidecar con `chokidar` que comparte la red de `app`, vigila `app/`,
 `packages/`, `config/`, `bootstrap/`, `routes/`, `.env` y `composer.lock`, y al cambiar algo pide
-al puerto de administración de Caddy que reinicie los workers: dos segundos y la API contesta con
-el código nuevo. Sin el perfil, `octane:reload` a mano. Producción no pasa por Docker y no lleva
-nada de esto.
+al puerto de administración de Caddy —que solo escucha en el loopback del contenedor— que reinicie
+los workers: dos segundos y la API contesta con el código nuevo. Si `watch` no está arriba,
+`octane:reload` a mano. Producción no pasa por Docker y no lleva nada de esto.
 
 Los perfiles `fpm` y `swoole` levantan la misma API sobre php-fpm (`docker/php/fpm.Dockerfile`,
 8 workers estáticos de `fpm.conf`) y sobre Octane/Swoole, con el mismo código montado, la misma

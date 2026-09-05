@@ -48,13 +48,12 @@ services:
         aliases:
           - api-app
 
-  # Perfil `dev`: los workers de Octane guardan la aplicación en memoria, y esto los recarga solo
-  # al cambiar código, config o `.env`, que es lo que en local hace de `octane:reload`. Comparte la
-  # red de `app` porque el puerto de administración de Caddy (2019) solo escucha en loopback, y le
-  # pide reiniciar los workers, que vuelven a arrancar Laravel leyendo el disco. Producción no va por
-  # Docker ni necesita esto.
+  # Los workers de Octane guardan la aplicación en memoria, y esto los recarga solo al cambiar
+  # código, config o `.env`: es lo que en local hace de `octane:reload`, y por eso arranca siempre
+  # con el resto. Comparte la red de `app` porque el puerto de administración de Caddy (2019) solo
+  # escucha en loopback, y le pide reiniciar los workers, que vuelven a arrancar Laravel leyendo el
+  # disco. Producción no va por Docker ni necesita esto.
   watch:
-    profiles: ["dev"]
     image: node:24-alpine
     restart: unless-stopped
     network_mode: "service:app"
@@ -66,7 +65,7 @@ services:
       - ./src:/src:ro
       - watch_npm:/root/.npm
     command: >-
-      npx -y chokidar-cli
+      npx -y chokidar-cli@3.0.0
       "/src/app/**/*.php" "/src/packages/**/*.php" "/src/config/**/*.php"
       "/src/bootstrap/**/*.php" "/src/routes/**/*.php" "/src/.env" "/src/composer.lock"
       --ignore "**/vendor/**" --ignore "**/node_modules/**" --debounce 500
@@ -172,6 +171,9 @@ services:
   scheduler:
     image: snk-api-commander-app
     restart: unless-stopped
+    # La imagen trae el healthcheck de Caddy, que aquí no corre: sin esto marca `unhealthy`.
+    healthcheck:
+      disable: true
     working_dir: /var/www/src
     entrypoint: ["php", "artisan", "schedule:work"]
     volumes:
@@ -197,6 +199,9 @@ services:
   queue:
     image: snk-api-commander-app
     restart: unless-stopped
+    # La imagen trae el healthcheck de Caddy, que aquí no corre: sin esto marca `unhealthy`.
+    healthcheck:
+      disable: true
     working_dir: /var/www/src
     entrypoint: ["php", "artisan", "queue:work", "database", "--sleep=3", "--tries=3", "--max-time=3600"]
     volumes:
@@ -220,6 +225,9 @@ services:
   provisioner:
     image: snk-api-commander-app
     restart: unless-stopped
+    # La imagen trae el healthcheck de Caddy, que aquí no corre: sin esto marca `unhealthy`.
+    healthcheck:
+      disable: true
     working_dir: /var/www/src
     entrypoint: ["sh", "-c"]
     command: ["php artisan commander:secure-tenants && exec php artisan queue:work --queue=provisioning --tries=3 --timeout=600"]
