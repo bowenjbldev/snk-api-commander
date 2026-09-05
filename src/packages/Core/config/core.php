@@ -69,6 +69,10 @@ return [
         'enabled' => (bool) env('CORE_METERING_ENABLED', true),
         'sample_rate' => (float) env('CORE_METERING_SAMPLE_RATE', 1.0),
         'retention_days' => (int) env('CORE_METERING_RETENTION_DAYS', 30),
+        // Filas que un worker acumula antes de escribirlas, y segundos maximos de espera. Con 1 se
+        // escribe al momento (FPM, consola, pruebas); en Octane el compose pone 20.
+        'batch' => (int) env('CORE_METERING_BATCH', 1),
+        'batch_seconds' => (float) env('CORE_METERING_BATCH_SECONDS', 5),
         'skip_paths' => [],
     ],
 

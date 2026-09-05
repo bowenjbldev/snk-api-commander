@@ -152,7 +152,8 @@ configuran bajo `core.rate_limits` y la cache compartida los mantiene coherentes
 Un identificador inexistente ejecuta una comprobación contra un hash dummy del mismo algoritmo,
 de modo que respuesta y coste no revelen si la cuenta existe.
 `CoreMeteringMiddleware` captura la misma identidad antes de que el resolutor restaure el contexto
-y escribe el log al terminar la respuesta. Un fallo de metering nunca modifica la respuesta.
+y encola la fila al terminar la respuesta; `CoreMeteringBufferSupport` la escribe al momento o en
+lote según `core.metering.batch`. Un fallo de metering nunca modifica la respuesta.
 `memory_kb` es el pico del heap de la petición, reiniciado al entrar: distingue una ruta ligera de
 una pesada dentro de un runtime, pero **no se compara entre runtimes** —el mismo endpoint da unos
 2 MB bajo php-fpm y 7-9 bajo un worker que arrastra su heap, y crece un 25 % entre el worker recién
@@ -232,6 +233,9 @@ worker persistente también es correcto en FPM y en la CLI que recorre inquilino
 
 Lo que Octane ya cubre sin código propio: sandbox de configuración por petición, reinicio de los
 guards de autenticación, caché `array` y una aplicación nueva para el gestor de base de datos. El
+sandbox corta en los dos sentidos: un singleton que deba sobrevivir a la petición —la cola de
+metering— se resuelve al arrancar el worker (`octane.warm`), porque resuelto dentro de una
+petición nace y muere en su sandbox. El
 `finally` del resolutor sigue siendo la fuente de verdad en FPM y purga la conexión tenant en
 ambos. `route()->forgetParameter('client')` no es un riesgo: `Route::bind()` reasigna los
 parámetros en cada petición antes de que corra ningún middleware.
@@ -254,7 +258,8 @@ dos fuera de transacción, y ahí se reconecta antes de que ningún controlador 
 cuya primera consulta a `commander` fuera transaccional fallaría una vez por worker tras el
 timeout; si apareciera, `DisconnectFromDatabases` en `OperationTerminated` cierra la conexión por
 petición al precio de un handshake—; `terminate()` corre antes de cerrar la respuesta, así que el
-insert de metering entra en la latencia medida, a diferencia de FPM; y el límite es la CPU, no la
+metering escribe en lote por worker (`CoreMeteringBufferSupport`, 20 filas o 5 s, volcado al parar
+el worker) en vez de un `INSERT` por petición; y el límite es la CPU, no la
 memoria: dieciséis workers ganan un 10-14 % en lectura sobre ocho y nada en mixto, mientras el pico
 de FrankenPHP con dieciséis fue de 327 MiB frente a los 2 GiB del contenedor. Octane no elimina
 SQL, metering ni hashing: el 2× es de la lectura, no de todos los endpoints, y una segunda réplica

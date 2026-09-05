@@ -5,6 +5,12 @@
 # tiene prioridad sobre el wildcard). default_server: hosts no provisionados caen aqui
 # y Laravel responde 404. Detras hay Octane (FrankenPHP) en `app`; php-fpm y Swoole viven en
 # runtimes.conf como perfiles opt-in para medirlos contra este.
+# Conexiones persistentes hacia Octane: sin esto cada peticion abre un TCP nuevo contra Caddy.
+upstream api_app {
+    server api-app:8000;
+    keepalive 32;
+}
+
 server {
     listen 80 default_server;
     server_name ${APP_DOMAIN} *.${BASE_DOMAIN} *.${TENANT_BASE_DOMAIN} localhost;
@@ -59,8 +65,9 @@ server {
     }
 
     location @octane {
-        proxy_pass http://api-app:8000;
+        proxy_pass http://api_app;
         proxy_http_version 1.1;
+        proxy_set_header Connection "";
         proxy_set_header Host $host;
         # Las tres cabeceras de confianza las escribe nginx y pisan lo que traiga el cliente: con
         # TRUSTED_PROXIES en PHP, lo que llegue aquí es lo que Request::ip() y el esquema devuelven,

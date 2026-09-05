@@ -1,8 +1,9 @@
 # Los mismos hosts, certificado y limites que app.conf, con otro runtime detras: 8444 php-fpm
 # (perfil `fpm`) y 8445 Octane sobre Swoole (perfil `swoole`). Puertos distintos para que
-# convivan con `app` y `scripts/octane-ab.sh` los mida por el mismo TLS y el mismo nginx. El
-# upstream de Swoole se resuelve por variable, como commander.conf hace con commander-web, para
-# que nginx arranque aunque el perfil este apagado; el de fpm es FastCGI y no lo necesita.
+# convivan con `app` y `scripts/octane-ab.sh` los mida por el mismo TLS y el mismo nginx. Los dos
+# upstreams se resuelven por variable, como commander.conf hace con commander-web, para que nginx
+# arranque aunque los perfiles esten apagados: un nombre literal se resuelve al arrancar y tumba
+# nginx si el contenedor no existe.
 server {
     listen 8444 ssl;
     server_name ${APP_DOMAIN} *.${BASE_DOMAIN} *.${TENANT_BASE_DOMAIN} localhost;
@@ -27,10 +28,13 @@ server {
     gzip_comp_level 4;
     gzip_types application/json application/problem+json application/xml application/javascript image/svg+xml text/plain text/css;
 
+    resolver 127.0.0.11 valid=10s;
+    set $fpm api-fpm:9000;
+
     location ~ \.php$ {
         try_files $uri =404;
         fastcgi_split_path_info ^(.+\.php)(/.+)$;
-        fastcgi_pass api-fpm:9000;
+        fastcgi_pass $fpm;
         fastcgi_connect_timeout 5s;
         fastcgi_send_timeout 60s;
         fastcgi_read_timeout 65s;

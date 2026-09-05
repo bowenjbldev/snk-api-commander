@@ -44,10 +44,16 @@ producción.
 El perfil local está calibrado para el i7-7700K de 4 núcleos/8 hilos con MariaDB en el mismo host:
 
 - `app`: cuota de 6 CPU, 2 GiB y 128 procesos, sin capabilities y con `no-new-privileges`;
-- Octane sobre FrankenPHP en worker mode: 8 workers reciclados cada 500 peticiones y corte a 60 s
-  (`max_execution_time` de `config/octane.php`); `OCTANE_WORKERS` los recalibra sin tocar Compose,
-  y 12-16 rinden más en lectura sobre este hardware
+- Octane sobre FrankenPHP en worker mode: 12 workers reciclados cada 500 peticiones y corte a
+  60 s (`max_execution_time` de `config/octane.php`); `OCTANE_WORKERS` los recalibra sin tocar
+  Compose. Doce y no ocho porque el barrido dio +10-14 % en lectura sobre este hardware
   ([A/B de runtimes](#ab-php-fpm-frente-a-octane-del-05-09-2026));
+- metering en lote: cada worker acumula 20 filas o 5 segundos (`CORE_METERING_BATCH`,
+  `CORE_METERING_BATCH_SECONDS`) antes de escribirlas, porque en un worker el `INSERT` corre antes
+  de cerrar la respuesta y sin lote costaba un 8-20 % de throughput; al parar el worker se vuelca lo
+  pendiente. Con lote 1 —consola, pruebas, php-fpm— se escribe al momento;
+- nginx mantiene 32 conexiones vivas hacia Octane (`upstream api_app`, `keepalive`): un TCP nuevo
+  por petición sobraba;
 - PHP: 512 MiB por request, OPcache 192 MiB/16 MiB de strings también en CLI, JIT desactivado y
   subida máxima de 64 MiB para respetar el contrato Kilkana de 50 MiB;
 - Nginx: proxy HTTP/1.1 a `api-app:8000`, compresión de JSON, sesiones TLS y

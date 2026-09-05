@@ -115,6 +115,7 @@ return [
         ],
 
         WorkerStopping::class => [
+            \Packages\Core\Listeners\CoreFlushMeteringListener::class,
             CloseMonologHandlers::class,
         ],
     ],
@@ -132,6 +133,9 @@ return [
 
     'warm' => [
         ...Octane::defaultServicesToWarm(),
+        // La cola de metering tiene que vivir en el contenedor base del worker: resuelta dentro de
+        // una peticion caeria en su sandbox y se perderia con ella.
+        \Packages\Core\Support\CoreMeteringBufferSupport::class,
     ],
 
     'flush' => [

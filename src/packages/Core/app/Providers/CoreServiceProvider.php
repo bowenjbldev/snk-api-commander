@@ -8,6 +8,7 @@ use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Support\Arr;
 use Illuminate\Support\ServiceProvider;
 use Packages\Core\Support\CoreActiveInstanceSupport;
+use Packages\Core\Support\CoreMeteringBufferSupport;
 use Packages\Core\Support\CorePackageDiscoverySupport;
 
 class CoreServiceProvider extends ServiceProvider
@@ -22,6 +23,8 @@ class CoreServiceProvider extends ServiceProvider
         // Per-request active instance (set by CoreResolveInstanceFromHostMiddleware), shared by
         // the state service, metering and quota measurer. Singleton = one value per request.
         $this->app->singleton(CoreActiveInstanceSupport::class);
+        // Cola de metering por proceso: en Octane vive lo que vive el worker y escribe en lote.
+        $this->app->singleton(CoreMeteringBufferSupport::class);
 
         // Multi-tenant: la cache de permisos de Spatie es por-request ('array'), no persistente.
         // Con BD por instancia, una cache compartida (file) filtraria los permisos de un tenant a

@@ -5,15 +5,16 @@ namespace Packages\Core\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Packages\Commander\Models\CommanderRequestLogModel;
 use Packages\Core\Support\CoreActiveInstanceSupport;
+use Packages\Core\Support\CoreMeteringBufferSupport;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Registra cada request en commander_request_logs DESPUES de enviar la respuesta
- * (terminable: con FPM la respuesta ya salio, cero latencia para el cliente).
+ * Registra cada request en commander_request_logs DESPUES de atenderla (terminable). En un
+ * worker persistente el INSERT correria antes de cerrar la respuesta, asi que las filas pasan
+ * por CoreMeteringBufferSupport y se escriben en lote.
  * Va el primero del grupo 'api' para registrar tambien los 429 del throttle
  * y los 402 del kill-switch. Un fallo aqui JAMAS rompe el request.
  */
@@ -76,7 +77,7 @@ class CoreMeteringMiddleware
             // a commander, y resolver el guard ahora buscaria el token en la base de control.
             $user = auth()->hasUser() ? auth()->user() : null;
 
-            CommanderRequestLogModel::query()->insert([
+            app(CoreMeteringBufferSupport::class)->add([
                 'instance_id' => $instanceId,
                 // Insert por query builder: Eloquent no estampa, se setean a mano.
                 'created_at' => $now,
