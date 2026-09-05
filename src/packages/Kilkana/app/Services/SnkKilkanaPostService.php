@@ -428,6 +428,27 @@ class SnkKilkanaPostService
         return $listas->count();
     }
 
+    /**
+     * La otra mitad de programar: lo publicado con hora de retirada cumplida vuelve a borrador,
+     * con su URL reservada como cualquier pieza que sale de la calle, y la hora se borra para
+     * que volver a publicarla no la retire otra vez. Se anota en el registro, sin actor: lo hizo
+     * el reloj.
+     */
+    public function unpublishDue(): int
+    {
+        $due = SnkKilkanaPostModel::query()
+            ->where('status', SnkKilkanaPostStatusEnum::Published)
+            ->whereNotNull('unpublish_at')
+            ->where('unpublish_at', '<=', now())
+            ->get();
+
+        foreach ($due as $post) {
+            $post->update(['status' => SnkKilkanaPostStatusEnum::Draft, 'unpublish_at' => null]);
+        }
+
+        return $due->count();
+    }
+
     public function revisions(int $postId)
     {
         return SnkKilkanaPostRevisionModel::query()

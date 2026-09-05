@@ -131,6 +131,8 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             $this->{$reglas}['body_blocks.*.type'] = 'required|'.SnkKilkanaBlockTypeEnum::rule();
             $this->{$reglas}['excerpt'] = $alPublicar.'|nullable|string';
             $this->{$reglas}['publish_at'] = $alPublicar.'|nullable|date';
+            // La retirada programada: nula es «no se retira»; con fecha, siempre por delante.
+            $this->{$reglas}['unpublish_at'] = 'sometimes|nullable|date|after:now';
         }
     }
 

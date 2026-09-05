@@ -25,11 +25,9 @@ class SnkKilkanaSubscriberModel extends Model
         static::creating(function (self $suscriptor) {
             // Un alta que no dice de dónde salió procede del flujo administrativo:
             // es el único camino de creación que no lo declara —el formulario público pone
-            // `public_form` y el seeder `import`—. Aqui y no en el controlador porque el
-            // `store()` base crea con lo validado y no admite retoques en medio.
-            //
-            // Techo: el dia que haya un comando de importacion, tiene que declarar su origen o
-            // quedara etiquetado como tecleado a mano, que es una prueba falsa, no una ausente.
+            // `public_form`, y el seeder y la importacion `import`—. Aqui y no en el
+            // controlador porque el `store()` base crea con lo validado y no admite retoques
+            // en medio.
             $suscriptor->consent_source ??= SnkKilkanaConsentSourceEnum::Admin;
             $suscriptor->consent_at ??= now();
         });

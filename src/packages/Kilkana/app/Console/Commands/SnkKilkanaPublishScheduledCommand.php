@@ -28,18 +28,22 @@ class SnkKilkanaPublishScheduledCommand extends Command
 
     public function handle(): int
     {
-        $run = $this->tenants->each(fn () => $this->posts->publishDue());
+        // Las dos direcciones en el mismo tick: lo que toca salir y lo que toca retirar.
+        $run = $this->tenants->each(fn () => ['published' => $this->posts->publishDue(), 'unpublished' => $this->posts->unpublishDue()]);
 
-        foreach ($run['results'] as $database => $published) {
-            if ($published) {
-                $this->info("[{$database}] published {$published} post(s)");
+        foreach ($run['results'] as $database => $cuenta) {
+            if ($cuenta['published']) {
+                $this->info("[{$database}] published {$cuenta['published']} post(s)");
+            }
+            if ($cuenta['unpublished']) {
+                $this->info("[{$database}] took down {$cuenta['unpublished']} post(s)");
             }
         }
         foreach ($run['errors'] as $database => $message) {
             $this->error("[{$database}] {$message}");
         }
 
-        $total = array_sum($run['results']);
+        $total = array_sum(array_column($run['results'], 'published'));
         $failures = count($run['errors']);
         $this->info("Done: {$total} post(s) published across {$run['tenants']} tenant(s); {$failures} failed.");
 

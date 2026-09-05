@@ -206,6 +206,14 @@ ya está resuelta (`done`). `GET/POST posts/{id}/notes` y `PATCH posts/{id}/note
 `done`; se leen con `show posts` y se escriben con `update posts`. No se borran: se resuelven, y
 se van con la pieza cuando se purga. Nunca llegan a un lector.
 
+## La retirada programada
+
+`unpublish_at` es la otra mitad de `publish_at`: una pieza publicada con esa hora cumplida vuelve
+a borrador en el mismo tick de `kilkana:publish-scheduled` que saca lo programado, con su URL
+reservada como cualquier pieza que sale de la calle, y la hora se borra para que volver a
+publicarla no la retire otra vez. `PUT posts/{id}` la exige por delante del reloj; nula es «no se
+retira».
+
 ## Lo que la calle lee
 
 `public/posts/{y}/{m}/{d}/{slug}` sirve la pieza con el cuerpo ya recortado por el muro y, aparte

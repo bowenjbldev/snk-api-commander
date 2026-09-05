@@ -1797,10 +1797,12 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         // El desplazamiento va por días enteros, así que la pieza más reciente aterriza HOY a
         // su hora del snapshot, que de madrugada todavía no ha llegado: una pieza publicada
         // fechada dentro de tres horas es justo la incoherencia que la demo no puede tener. Se
-        // recorta la hora, no el día, para que siga siendo de hoy.
+        // recorta la hora, no el día, para que siga siendo de hoy: con suelo en la medianoche,
+        // porque en la primera hora del día restar minutos la mandaría a ayer y cambiaría la
+        // clave `(url_date, slug)` con la que la siguiente siembra la reconoce.
         if ($post['status'] === SnkKilkanaPostStatusEnum::Published->value
             && Carbon::parse($cuando)->isFuture()) {
-            return now()->subMinutes(5 + crc32($post['slug']) % 55)->toDateTimeString();
+            return now()->subMinutes(5 + crc32($post['slug']) % 55)->max(now()->startOfDay())->toDateTimeString();
         }
 
         if ($post['status'] !== SnkKilkanaPostStatusEnum::Scheduled->value

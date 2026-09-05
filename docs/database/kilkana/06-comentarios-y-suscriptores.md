@@ -233,7 +233,7 @@ no tiene URL puesta, responden texto plano: una redirección a la nada es peor q
 que confirma lo que acaba de pasar.
 
 La fila **se queda** al darse de baja: borrarla perdería la prueba de que esa persona pidió no
-recibir más, y la siguiente lista importada volvería a escribirle.
+recibir más, y es lo que hace que una lista importada que la traiga de nuevo se la salte.
 
 ### El envío es síncrono, y su fallo no tumba el alta
 
@@ -264,9 +264,16 @@ prueba se trata, así que no hace falta una segunda columna que lo repita — la
 
 **`consent_source` lo pone siempre el servidor**, nunca la petición: una prueba que elige quien
 la aporta no prueba nada. `public_form` desde la portada, `import` desde una lista que trajo el
-periódico, y `admin` por defecto en el modelo para todo lo demás, que hoy es solo el alta
-administrativa. El día que exista un comando de importación tiene que declarar su origen, o quedará
-etiquetado como tecleado a mano: una prueba falsa es peor que una ausente.
+periódico por `POST subscribers/import`, y `admin` por defecto en el modelo para todo lo demás,
+que es el alta administrativa. La importación declara su origen ella misma: sin eso quedaría
+etiquetada como tecleada a mano, y una prueba falsa es peor que una ausente.
+
+La importación es un CSV —`email` y, si vienen, `status` y `consent_at`, con cabecera o en ese
+orden— con `consented` aceptado en la misma petición: quien sube la lista declara que las
+direcciones consintieron, y sin la declaración no entra ninguna. Un correo que ya está se salta
+esté como esté, así una baja no vuelve a alta por venir en la lista vieja; una dirección que no lo
+es se cuenta en `invalid` y sigue. `GET subscribers/export` devuelve la lista entera con esas
+cuatro columnas más `consent_source`, que es lo que permite demostrar de dónde salió cada una.
 
 Separar el origen es lo que permite acreditar y purgar por separado: **la lista importada es la
 que trae el riesgo**, y sin la columna todas las filas parecen iguales.

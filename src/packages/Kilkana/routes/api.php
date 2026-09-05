@@ -145,6 +145,9 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::post('comments/{id}/block-author', [SnkKilkanaCommentsController::class, 'blockAuthor'])->whereNumber('id');
     Route::apiResource('comments', SnkKilkanaCommentsController::class)->whereNumber('comment');
 
+    // Antes del apiResource: sin `whereNumber`, `show` se tragaría «export» como id.
+    Route::post('subscribers/import', [SnkKilkanaSubscribersController::class, 'import']);
+    Route::get('subscribers/export', [SnkKilkanaSubscribersController::class, 'export']);
     Route::apiResource('subscribers', SnkKilkanaSubscribersController::class)->only(['index', 'show', 'store', 'update', 'destroy']);
     // Los números del boletín: se listan, se crean en borrador, se corrigen mientras lo son, se
     // prueban y se mandan. No se borran: un número enviado es lo que hay en las bandejas.

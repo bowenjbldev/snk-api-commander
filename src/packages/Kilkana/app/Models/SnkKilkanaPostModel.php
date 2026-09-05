@@ -76,6 +76,7 @@ class SnkKilkanaPostModel extends Model
             'noindex' => 'boolean',
             'content_tier' => SnkKilkanaContentTierEnum::class,
             'publish_at' => 'datetime',
+            'unpublish_at' => 'datetime',
             // Fecha pelada, no timestamp: es un trozo de URL, no un instante.
             'url_date' => 'date:Y-m-d',
             'views_day' => 'integer',
@@ -319,6 +320,14 @@ class SnkKilkanaPostModel extends Model
                         'category' => 'That section has not been launched yet; launch it or pick another.',
                     ]);
                 }
+            }
+
+            // Una retirada ya pasada en una pieza que no está en la calle no significa nada, y
+            // si se quedara devolvería 422 en cada guardado por un campo que nadie tocó. Solo
+            // esa: una hora futura sobrevive en cualquier estado —publicar el viernes y retirar
+            // el domingo se programa junto—, y la publicada la conserva hasta que el reloj la retire.
+            if ($post->unpublish_at?->isPast() && $post->status !== SnkKilkanaPostStatusEnum::Published) {
+                $post->unpublish_at = null;
             }
 
             // Se SELLA al publicar y solo la primera vez. Después, corregir `publish_at`

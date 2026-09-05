@@ -10,6 +10,7 @@ use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaMediaModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
+use Packages\Kilkana\Services\SnkKilkanaPostService;
 use Packages\Kilkana\Services\SnkKilkanaRoleCatalogService;
 use Tests\TestCase;
 
@@ -87,5 +88,49 @@ class KilkanaPostCoverTest extends TestCase
         $ahora = $pieza->fresh()->updated_at->copy()->utc()->format('Y-m-d\\TH:i:s.000\\Z');
         $this->assertSame(200, $guardar(['title' => 'Plan E', 'expected_updated_at' => $ahora])->getStatusCode());
         $this->assertSame(409, $guardar(['title' => 'Plan F', 'expected_updated_at' => 'no es una fecha'])->getStatusCode(), 'Lo que no parsea no es una versión.');
+    }
+
+    /** La retirada programada: lo publicado con hora cumplida vuelve a borrador, con la URL reservada y sin la hora. */
+    public function test_una_pieza_con_hora_de_retirada_vuelve_a_borrador_cuando_llega(): void
+    {
+        $marta = CoreUserModel::create(['name' => 'Marta Beneyto', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
+        $marta->assignRole('director');
+        $this->actingAs($marta, 'sanctum');
+        $seccion = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
+        $firma = SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);
+        $pieza = SnkKilkanaPostModel::create(['title' => 'Oferta', 'slug' => 'oferta', 'url_date' => '2026-09-05', 'category_id' => $seccion->id, 'author_id' => $firma->id, 'status' => 'published', 'publish_at' => now()->subHour(), 'excerpt' => 'E.', 'body_blocks' => [], 'created_by' => $marta->id, 'updated_by' => $marta->id]);
+        $guardar = fn (array $cuerpo) => app(SnkKilkanaPostsController::class)->update(Request::create('/', 'PUT', $cuerpo), $pieza->id);
+
+        $pasada = $guardar(['unpublish_at' => now()->subMinute()->toIso8601String()]);
+        $this->assertSame(422, $pasada->getStatusCode(), 'Una hora pasada no es programar una retirada.');
+        $this->assertArrayHasKey('unpublish_at', $pasada->getData(true));
+        $this->assertSame(200, $guardar(['unpublish_at' => now()->addHour()->toIso8601String()])->getStatusCode());
+
+        // Devuelta a borrador, la retirada futura se queda —publicar y retirar se programan
+        // juntas—; la que ya pasó se borra, porque si se quedara cada guardado devolvería 422
+        // por un campo que nadie tocó.
+        $this->assertSame(200, $guardar(['status' => 'draft'])->getStatusCode());
+        $this->assertNotNull($pieza->fresh()->unpublish_at, 'Una retirada futura sobrevive al borrador.');
+        // Y a la programada, que es el caso de verdad: publicar el viernes y retirar el domingo.
+        $programada = $guardar(['status' => 'scheduled', 'publish_at' => now()->addDay()->toIso8601String(), 'unpublish_at' => now()->addDays(3)->toIso8601String()]);
+        $this->assertSame(200, $programada->getStatusCode());
+        $this->assertSame(200, $guardar(['title' => 'Oferta del fin de semana'])->getStatusCode());
+        $this->assertNotNull($pieza->fresh()->unpublish_at, 'Programar publicación y retirada juntas sobrevive a un guardado.');
+        $this->assertSame(200, $guardar(['status' => 'draft', 'unpublish_at' => now()->addHour()->toIso8601String()])->getStatusCode());
+        $this->travel(2)->hours();
+        $this->assertSame(200, $guardar(['title' => 'Oferta corregida'])->getStatusCode(), 'Un guardado ajeno a la hora no se bloquea.');
+        $this->assertNull($pieza->fresh()->unpublish_at, 'Una retirada pasada en un borrador no significa nada.');
+        $this->travelBack();
+        $this->assertSame(200, $guardar(['status' => 'published', 'unpublish_at' => now()->addHour()->toIso8601String()])->getStatusCode());
+        $servicio = app(SnkKilkanaPostService::class);
+
+        $this->assertSame(0, $servicio->unpublishDue(), 'Todavía no es la hora.');
+        $this->travel(2)->hours();
+        $this->assertSame(1, $servicio->unpublishDue());
+        $vuelta = $pieza->fresh();
+        $this->assertSame('draft', $vuelta->status->value);
+        $this->assertNull($vuelta->unpublish_at, 'La hora se borra: volver a publicarla no la retira otra vez.');
+        $this->assertSame('2026/09/05/oferta', $vuelta->url_path, 'La URL sigue reservada.');
+        $this->assertSame(0, $servicio->unpublishDue(), 'Y no se retira dos veces.');
     }
 }
