@@ -117,6 +117,11 @@ cambios contra MariaDB. Reporta test, build y lint por separado: uno verde no im
   dentro de `app`. El contenedor `provisioner` sí la ve, y **esa discrepancia entre los dos es la
   pista** — desde fuera parece que la ruta no se registró.
 
+- **`app` corre sobre Octane (FrankenPHP) y sus workers guardan la aplicación en memoria**: un
+  cambio de código PHP, config o `.env` no se ve por HTTP hasta `php artisan octane:reload` dentro
+  de `app`. Los tests y los comandos de consola sí leen el disco en cada arranque, así que una
+  suite verde con la API contestando lo viejo es esa pista.
+
 - Enqueue sin outbox puede dejar pending/failed; de-provisioning puede dejar recursos si falla el
   worker. No ocultes esos estados creando otra instancia.
 - Las igualdades cross-relation (métrica/plan/aplicación y cuenta/contrato/cliente) se garantizan en

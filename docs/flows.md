@@ -254,7 +254,7 @@ Si falla, queda `failed` con `last_error` para inspección y retry.
 1. despliega código e instala dependencias;
 2. `core:migrate --force` migra `commander`;
 3. `commander:applications:sync` sincroniza catálogo/métricas;
-4. recachea config y rutas;
+4. recachea config y rutas y `octane:reload` recarga los workers con el código nuevo;
 5. desde el provisioner ejecuta `core:migrate --all-tenants --force`;
 6. el comando hace preflight completo antes del primer DDL.
 

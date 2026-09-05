@@ -158,7 +158,7 @@ y escribe el log al terminar la respuesta. Un fallo de metering nunca modifica l
 
 | Proceso | Credenciales y función |
 |---|---|
-| `app` | HTTP y comandos sin DDL tenant |
+| `app` | HTTP sobre Octane/FrankenPHP (worker mode) y comandos sin DDL tenant |
 | `provisioner` | cola `provisioning`, creación/borrado de bases y usuarios |
 | `scheduler` | mediciones, rollups, Git y tareas Kilkana |
 | `nginx` | TLS, wildcard tenant y proxy |
@@ -204,10 +204,9 @@ resumen: la lectura dobla el throughput con la mitad de p95, el tráfico mixto s
 escritura y login entre un 20 y un 30 % —los limitan SQL y Argon2, no el arranque—, y ni la
 alternancia estricta de inquilinos ni 100.000 peticiones con reciclaje mostraron una fuga o un
 crecimiento de memoria. FrankenPHP rinde igual o mejor que Swoole con la mitad de memoria
-residente, es MIT, es proyecto oficial de PHP y no exige compilar una extensión: es el candidato.
-PHP-FPM sigue siendo el runtime del servicio `app`; cambiar el runtime del servicio es una
-decisión de despliegue —entrypoint, imagen, `octane:reload` en el deploy y repetir la matriz en el
-hardware de producción—, no de código.
+residente, es MIT, es proyecto oficial de PHP y no exige compilar una extensión. **Es el runtime
+de `app` desde el 06-09-2026**; php-fpm y Swoole quedan como perfiles para repetir la matriz, y
+el deploy termina con `octane:reload` porque los workers guardan la aplicación en memoria.
 
 El riesgo era de aislamiento, no de memoria: el resolutor modifica la conexión por defecto, las
 credenciales tenant, la configuración de package/overlay y el singleton de instancia activa, y
@@ -241,8 +240,9 @@ vez para considerarse compatible:
 - conservar la purga de PDO tenant y no introducir un pool ilimitado por credencial.
 
 Lo que queda vigilado: la conexión `commander` persiste por worker —un handshake menos por
-petición; si tras horas ociosas aparece «server has gone away», `DisconnectFromDatabases` en
-`OperationTerminated` lo cierra—; `terminate()` corre antes de cerrar la respuesta, así que el
+petición; si MariaDB la cierra por `wait_timeout` tras horas ociosas, Laravel reconecta y repite
+la consulta fuera de transacción («server has gone away» es una conexión perdida reconocida), y si
+alguna vez no bastara, `DisconnectFromDatabases` en `OperationTerminated` la cierra por petición—; `terminate()` corre antes de cerrar la respuesta, así que el
 insert de metering entra en la latencia medida, a diferencia de FPM; y el límite es la CPU, no la
 memoria: dieciséis workers ganan un 10-14 % en lectura sobre ocho y nada en mixto, mientras el pico
 de FrankenPHP con dieciséis fue de 327 MiB frente a los 2 GiB del contenedor. Octane no elimina

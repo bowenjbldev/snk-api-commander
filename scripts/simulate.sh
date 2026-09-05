@@ -16,8 +16,8 @@ TARGET_RPS="${TARGET_RPS:-100}"
 OUTPUT_DIR="${OUTPUT_DIR:-/tmp/commander-benchmark-$RUN_ID}"
 
 TENANT_PORT="${TENANT_PORT:-}"
-# Servicio compose que sirve la API medida: `app` (php-fpm) o una variante Octane. Decide a
-# quién se le cambian los frenos en modo capacidad y a quién se le muestrea CPU/memoria.
+# Servicio compose que sirve la API medida: `app` (Octane/FrankenPHP), `fpm` u `octane-swoole`.
+# Decide a quién se le cambian los frenos en modo capacidad y a quién se le muestrea CPU/memoria.
 BENCH_SERVICE="${BENCH_SERVICE:-app}"
 TENANT_BASE_DOMAIN="${TENANT_BASE_DOMAIN:-}"
 BASE_DOMAIN="${BASE_DOMAIN:-}"
@@ -384,8 +384,8 @@ environment_report() {
         echo "host_cpus=$(nproc)"
         echo "host_memory=$(free -h | awk '/^Mem:/{print $2}')"
         docker inspect "$app_id" "$db_id" --format '{{.Name}} memory_limit={{.HostConfig.Memory}} nano_cpus={{.HostConfig.NanoCpus}}'
-        if [[ "$BENCH_SERVICE" == "app" ]]; then
-            dc exec -T app sh -lc "php-fpm -tt 2>&1 | grep -E 'pm =|pm.max_children|pm.max_requests'"
+        if [[ "$BENCH_SERVICE" == "fpm" ]]; then
+            dc exec -T fpm sh -lc "php-fpm -tt 2>&1 | grep -E 'pm =|pm.max_children|pm.max_requests'"
         else
             dc exec -T "$BENCH_SERVICE" php artisan octane:status --no-ansi 2>&1 | tail -n 1
             docker inspect "$app_id" --format 'octane_command={{join .Config.Cmd " "}}'
@@ -641,8 +641,8 @@ security_audit() {
         | tr -d '\r' | awk -F': ' 'tolower($1)=="access-control-allow-origin"{print $2}')"
     [[ -z "$cors" ]] && pass 'Untrusted CORS origin is not reflected' || fail "Untrusted CORS origin was allowed: $cors"
 
-    if [[ "$BENCH_SERVICE" == "app" ]]; then
-        dc exec -T app sh -lc "php-fpm -tt 2>&1" | grep -q 'pm.max_requests = 0' \
+    if [[ "$BENCH_SERVICE" == "fpm" ]]; then
+        dc exec -T fpm sh -lc "php-fpm -tt 2>&1" | grep -q 'pm.max_requests = 0' \
             && warn 'PHP-FPM pm.max_requests=0 never recycles workers after memory growth' \
             || pass 'PHP-FPM recycles workers'
     else
@@ -702,7 +702,7 @@ Usage:
 
 Useful overrides: REQUESTS, WARMUP_REQUESTS, CONCURRENCIES, OUTPUT_DIR,
 KILKANA_ADMIN_EMAIL/PASSWORD and DEMOAPP_ADMIN_EMAIL/PASSWORD.
-Point it at an Octane variant with TENANT_PORT=8444 BENCH_SERVICE=octane (or 8445/octane-swoole).
+Point it at another runtime with TENANT_PORT=8444 BENCH_SERVICE=fpm (or 8445/octane-swoole).
 EOF
 }
 

@@ -34,30 +34,23 @@ server {
     resolver 127.0.0.11 valid=10s ipv6=off;
     resolver_timeout 2s;
 
-    # La API Commander siempre está disponible aunque el perfil `spa` esté apagado.
+    # La API Commander siempre está disponible aunque el perfil `spa` esté apagado. Detrás está el
+    # mismo Octane que sirve a los inquilinos: es el Host quien elige el plano de control.
     location ^~ /api/ {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-
-    location ~ \.php$ {
-        try_files $uri =404;
-        fastcgi_split_path_info ^(.+\.php)(/.+)$;
-        fastcgi_pass api-app:9000;
-        fastcgi_connect_timeout 5s;
-        fastcgi_send_timeout 60s;
-        fastcgi_read_timeout 65s;
-        fastcgi_buffer_size 16k;
-        fastcgi_buffers 16 16k;
-        fastcgi_busy_buffers_size 32k;
-        fastcgi_index index.php;
-        include fastcgi_params;
-        fastcgi_param HTTP_HOST $host;
-        # La IP la escribe nginx y pisa la del cliente, como en app.conf: los frenos por IP del
-        # plano de control cuelgan de ella.
-        fastcgi_param HTTP_X_FORWARDED_FOR $remote_addr;
-        fastcgi_param HTTP_X_FORWARDED_PROTO $scheme;
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        fastcgi_param PATH_INFO $fastcgi_path_info;
+        proxy_pass http://api-app:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        # Las cabeceras de confianza las escribe nginx y pisan las del cliente, como en app.conf:
+        # los frenos por IP del plano de control cuelgan de ellas.
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Port $server_port;
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 65s;
+        proxy_buffer_size 16k;
+        proxy_buffers 16 16k;
+        proxy_busy_buffers_size 32k;
     }
 
     # El nombre se resuelve en cada petición para que nginx arranque sin `commander-web`.

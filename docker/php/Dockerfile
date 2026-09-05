@@ -1,60 +1,43 @@
-FROM php:8.3-fpm-alpine
+# La API sobre Laravel Octane con FrankenPHP en worker mode: la aplicación arranca una vez por
+# worker y sirve peticiones en memoria. Imagen oficial (Debian/glibc) con el binario `frankenphp`
+# en PATH, que es lo que Octane busca. Es también la imagen de scheduler, queue y provisioner.
+FROM dunglas/frankenphp:1-php8.3
 
-# Install system dependencies and PHP extensions in one layer
-RUN apk add --no-cache \
-    bash \
-    git \
-    curl \
-    libpng-dev \
-    libjpeg-turbo-dev \
-    libwebp-dev \
-    libavif-dev \
-    ffmpeg \
-    libzip-dev \
-    zlib-dev \
-    icu-dev \
-    sqlite-dev \
-    oniguruma-dev \
-    libxml2-dev \
-    shadow && \
-    docker-php-ext-configure intl && \
-    docker-php-ext-configure gd --with-jpeg --with-webp --with-avif && \
-    docker-php-ext-install \
-    pdo_mysql \
-    pdo_sqlite \
-    mbstring \
-    exif \
-    pcntl \
-    bcmath \
-    gd \
-    zip \
-    intl
+# Mismas extensiones que docker/php/fpm.Dockerfile; git para el historial por aplicación y ffmpeg
+# para los fotogramas de vídeo.
+RUN install-php-extensions pdo_mysql pdo_sqlite mbstring exif pcntl bcmath gd zip intl && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends git ffmpeg && \
+    rm -rf /var/lib/apt/lists/* && \
+    # La imagen trae el binario con cap_net_bind_service para escuchar en 80/443; aquí escucha en
+    # 8000 y `no-new-privileges` rechaza ejecutar un fichero con capabilities: se le quitan.
+    setcap -r /usr/local/bin/frankenphp
 
-# Get latest Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Set working directory
 WORKDIR /var/www/src
 
-# Map www-data to host UID and GID for easier permission management (Common on Linux/Docker)
+# www-data con el UID/GID del host, como en fpm.Dockerfile.
 ARG WWWUSER=1000
 ARG WWWGROUP=1000
 RUN groupmod -g ${WWWGROUP} www-data && \
     usermod -u ${WWWUSER} -g www-data www-data
 
-# Copy entrypoint script
 COPY ./docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-# Mountpoint para el volumen anonimo de bootstrap/cache (aislado por contenedor):
-# debe existir en la imagen con owner www-data o Docker lo crearia como root
+# Mountpoint del volumen anónimo de bootstrap/cache: debe existir con owner www-data.
 RUN mkdir -p /var/www/src/bootstrap/cache && \
     chown -R www-data:www-data /var/www/src
 
-# Default user for container (entrypoint, exec, php-fpm)
+# Caddy escribe su estado aquí; www-data no tiene HOME utilizable.
+ENV XDG_CONFIG_HOME=/tmp/caddy \
+    XDG_DATA_HOME=/tmp/caddy \
+    OCTANE_SERVER=frankenphp
+
 USER www-data
 
-EXPOSE 9000
+EXPOSE 8000
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["php-fpm"]
+CMD ["php", "artisan", "octane:frankenphp", "--host=0.0.0.0", "--port=8000", "--workers=8", "--max-requests=500"]

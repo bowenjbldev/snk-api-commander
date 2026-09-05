@@ -24,8 +24,8 @@ No migra automáticamente las bases tenant existentes.
 
 | Servicio        | Función                                                           |
 | --------------- | ----------------------------------------------------------------- |
-| `app`           | PHP-FPM y comandos sin DDL tenant                                 |
-| `octane`        | perfil opt-in: la misma API sobre Octane/FrankenPHP, nginx `:8444` |
+| `app`           | Octane sobre FrankenPHP (worker mode) y comandos sin DDL tenant   |
+| `fpm`           | perfil opt-in: la misma API sobre php-fpm, nginx `:8444`          |
 | `octane-swoole` | perfil opt-in: la misma API sobre Octane/Swoole, nginx `:8445`    |
 | `scheduler`     | `php artisan schedule:work`                                       |
 | `provisioner`   | asegura usuarios runtime y consume la cola `provisioning` con DDL |
@@ -43,24 +43,29 @@ producción.
 El perfil local está calibrado para el i7-7700K de 4 núcleos/8 hilos con MariaDB en el mismo host:
 
 - `app`: cuota de 6 CPU, 2 GiB y 128 procesos, sin capabilities y con `no-new-privileges`;
-- FPM: 8 workers estáticos, backlog 1024, reciclaje cada 500 requests, slowlog a 5 s y corte a
-  60 s;
-- PHP: 512 MiB por request, OPcache 192 MiB/16 MiB de strings, JIT desactivado y subida máxima
-  de 64 MiB para respetar el contrato Kilkana de 50 MiB;
-- Nginx: compresión de JSON, buffer FastCGI, sesiones TLS y `X-Content-Type-Options`.
+- Octane sobre FrankenPHP en worker mode: 8 workers reciclados cada 500 peticiones y corte a 60 s
+  (`max_execution_time` de `config/octane.php`); `OCTANE_WORKERS` los recalibra sin tocar Compose,
+  y 12-16 rinden más en lectura sobre este hardware
+  ([A/B de runtimes](#ab-php-fpm-frente-a-octane-del-05-09-2026));
+- PHP: 512 MiB por request, OPcache 192 MiB/16 MiB de strings también en CLI, JIT desactivado y
+  subida máxima de 64 MiB para respetar el contrato Kilkana de 50 MiB;
+- Nginx: proxy HTTP/1.1 a `api-app:8000`, compresión de JSON, sesiones TLS y
+  `X-Content-Type-Options`.
 
-Los perfiles `octane` y `swoole` levantan la misma API sobre Laravel Octane con el mismo código
-montado, la misma cuota de CPU/procesos y los mismos ocho workers reciclados cada 500 peticiones;
-`OCTANE_CONTAINER_MEMORY` y `OCTANE_WORKERS` los recalibran aparte. Nginx los expone en `:8444` y
-`:8445` con el mismo certificado, para medirlos contra FPM por el mismo camino
-([A/B de runtimes](#ab-php-fpm-frente-a-octane-del-05-09-2026)). Los workers no re-arrancan la
-aplicación al cambiar un fichero PHP: tras editar código, `docker compose restart octane`.
+**Los workers guardan la aplicación en memoria**: un cambio en un fichero PHP no se ve hasta
+`docker compose exec app php artisan octane:reload` (o reiniciar `app`). Config, rutas y
+`.env` igual. Es la única diferencia de trabajo diario con php-fpm.
+
+Los perfiles `fpm` y `swoole` levantan la misma API sobre php-fpm (`docker/php/fpm.Dockerfile`,
+8 workers estáticos de `fpm.conf`) y sobre Octane/Swoole, con el mismo código montado, la misma
+cuota y el mismo reciclaje; nginx los expone en `:8444` y `:8445` con el mismo certificado para
+repetir la matriz contra `app`. Con `fpm` no actives keepalive FastCGI: ocho conexiones
+persistentes inmovilizaron los ocho workers y provocaron 76 timeouts en 1.200 operaciones.
 
 `APP_CONTAINER_CPUS`, `APP_CONTAINER_MEMORY` y `APP_CONTAINER_PIDS` permiten recalibrar el
-presupuesto sin editar Compose. `opcache.validate_timestamps=1` se conserva porque local monta el
-código; en una imagen de producción inmutable puede pasar a `0`. No actives keepalive FastCGI con
-esta topología: ocho conexiones persistentes inmovilizaron los ocho workers FPM y provocaron 76
-timeouts en 1.200 operaciones de calibración.
+presupuesto sin editar Compose. `opcache.validate_timestamps=1` se conserva por los comandos de
+consola, que sí leen el bind mount en cada arranque; en una imagen de producción inmutable puede
+pasar a `0`.
 
 ## DNS, TLS y URLs
 
@@ -193,8 +198,8 @@ permisos.
 
 Los dos son idempotentes y reaplicarlos repara lo tocado a mano, así que ante la duda se corren.
 Y los dos sueltan la caché persistente del reparto, igual que hace `core:seed` al sembrar los
-permisos: la de consola es `array` y muere con el proceso, así que sin soltarla los FPM vivos
-siguen repartiendo el reparto anterior hasta que caduque.
+permisos: la de consola es `array` y muere con el proceso, así que sin soltarla los workers HTTP
+vivos siguen repartiendo el reparto anterior hasta que caduque.
 
 **El seeder de Kilkana no es de esa clase, y son DOS cosas que conviene saber antes de perseguir
 un fantasma.**
@@ -466,7 +471,9 @@ docker compose --profile octane --profile swoole up -d --build
 bash scripts/octane-ab.sh all        # isolation, bench, soak, tune → compare.md en OUTPUT_DIR
 ```
 
-Mismo i7-7700K y misma MariaDB de la baseline, metering activo. `scripts/octane-ab.sh` presta de
+Mismo i7-7700K y misma MariaDB de la baseline, metering activo. Medido cuando `app` aún era
+php-fpm; hoy `app` es FrankenPHP y php-fpm es el perfil `fpm` en `:8444`, así que
+`RUNTIMES` por defecto es `franken:8443:app fpm:8444:fpm swoole:8445:octane-swoole`. `scripts/octane-ab.sh` presta de
 `simulate.sh` los usuarios efímeros, el modo capacidad y el muestreo de recursos, y añade `oha`
 (contenedor, keepalive real) como generador de lectura; escritura, login y mixto siguen con curl
 porque necesitan cuerpos únicos, y solo se compara generador contra generador: las filas curl de
@@ -521,9 +528,10 @@ con 12-16 workers y el límite de 2 GiB que ya tiene; `OCTANE_WORKERS` lo fija s
 [arquitectura](architecture.md#octane-medido-y-frankenphp-es-el-candidato): aislamiento limpio,
 soak estable, lectura muy por encima del +40 %, mixto por encima del +25 % y sin regresión en
 escritura ni login. Swoole no lo supera en más de un 15 % en ningún escenario y usa el doble de
-memoria residente. `app` sigue en PHP-FPM; pasar el servicio a FrankenPHP exige llevar el
-entrypoint (Composer, migraciones, catálogo) a la imagen Octane, añadir `octane:reload` al deploy y
-repetir esta matriz en el hardware de producción.
+memoria residente. **`app` corre sobre FrankenPHP desde el 06-09-2026**: la imagen de
+`docker/php/Dockerfile` lleva el entrypoint (Composer, migraciones, catálogo) y sirve también a
+scheduler, queue y provisioner; php-fpm queda como perfil `fpm` para repetir esta matriz, que debe
+repetirse en el hardware de producción antes de fijar `OCTANE_WORKERS` allí.
 
 ## Comprobaciones
 
@@ -611,9 +619,12 @@ Requisitos adicionales:
   trae): sin ellos la mediateca no abre un JPEG ni mide un vídeo;
 - scheduler permanente o cron `schedule:run`, y reiniciar el worker de colas cada vez que cambie
   `config/kilkana.php` (guarda la configuración en memoria);
+- `octane:reload` al final de cada deploy: los workers guardan la aplicación en memoria y sin él
+  siguen sirviendo el código anterior;
 - `TRUSTED_PROXIES` **y** un nginx que escriba él mismo `X-Forwarded-For`
-  (`fastcgi_param HTTP_X_FORWARDED_FOR $remote_addr` en el bloque PHP, como en
-  `docker/nginx/conf.d/app.conf.template`). Son dos piezas y no una: sin la variable,
+  (`proxy_set_header X-Forwarded-For $remote_addr` hacia Octane, como en
+  `docker/nginx/conf.d/app.conf.template`, o `fastcgi_param HTTP_X_FORWARDED_FOR $remote_addr`
+  con php-fpm). Son dos piezas y no una: sin la variable,
   `Request::ip()` es la IP del proxy para todo el mundo y el contador de lectores distintos de
   una pieza (`readers`) colapsa a uno por navegador y día, con `opens` y `engaged` sumando bien,
   así que nadie lo nota, y los frenos públicos por IP (`kilkana-subscribe`, `kilkana-view`) pasan a
@@ -632,6 +643,8 @@ Requisitos adicionales:
 - `CoreUserModel.password` ya tiene cast `hashed`; no uses `Hash::make` al asignarlo.
 - El usuario es `Packages\Core\Models\CoreUserModel`, no `App\Models\User`.
 - Dominios quedan en route cache; regenera tras cambiarlos.
+- Los workers de Octane guardan la aplicación en memoria: un cambio de código, config o `.env` no
+  se ve hasta `php artisan octane:reload` dentro de `app`.
 - Un package nuevo requiere autoload/recache y sync de aplicaciones.
 - Un token tenant no autentica en Commander ni viceversa.
 - Cambiar un plan de catálogo no propaga límites a instancias hasta provisionar/cambiar plan.

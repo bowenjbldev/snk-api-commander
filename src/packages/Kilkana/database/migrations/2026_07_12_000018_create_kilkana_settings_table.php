@@ -19,7 +19,11 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE kilkana_settings ADD CONSTRAINT kilkana_settings_singleton CHECK (id = 1)');
+        // La fila única la garantiza MariaDB; el SQLite de la suite no valida DDL y, según su
+        // versión, ni siquiera admite añadir la restricción a una tabla ya creada.
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE kilkana_settings ADD CONSTRAINT kilkana_settings_singleton CHECK (id = 1)');
+        }
     }
 
     public function down(): void

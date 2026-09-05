@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# A/B de runtimes HTTP —php-fpm contra Octane (FrankenPHP, Swoole)— sobre la misma API, el
-# mismo nginx y el mismo TLS, con las cuatro preguntas que decide la adopción: cuánto rinde,
+# A/B de runtimes HTTP —Octane/FrankenPHP en `app` contra php-fpm y Swoole— sobre la misma API,
+# el mismo nginx y el mismo TLS, con las cuatro preguntas que decide un runtime: cuánto rinde,
 # si mezcla inquilinos, si la memoria aguanta cien mil peticiones y dónde está el punto dulce
 # de memoria y workers. Presta de simulate.sh todo lo que ya existe —usuarios efímeros, tokens,
 # preflight de cuotas, modo capacidad, muestreo de recursos— y añade oha como generador con
@@ -12,7 +12,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=scripts/simulate.sh
 source "$ROOT_DIR/scripts/simulate.sh"
 
-RUNTIMES="${RUNTIMES:-fpm:8443:app franken:8444:octane swoole:8445:octane-swoole}"
+RUNTIMES="${RUNTIMES:-franken:8443:app fpm:8444:fpm swoole:8445:octane-swoole}"
 ITERATIONS="${ITERATIONS:-3}"
 OHA_DURATION="${OHA_DURATION:-20s}"
 OHA_IMAGE="${OHA_IMAGE:-ghcr.io/hatoo/oha:latest}"
@@ -54,7 +54,7 @@ ensure_runtimes() {
     local name profiles=()
     for name in "${RT_NAMES[@]}"; do
         case "${RT_SERVICE[$name]}" in
-            octane) profiles+=(--profile octane) ;;
+            fpm) profiles+=(--profile fpm) ;;
             octane-swoole) profiles+=(--profile swoole) ;;
         esac
     done
@@ -62,7 +62,7 @@ ensure_runtimes() {
     for name in "${RT_NAMES[@]}"; do
         TENANT_PORT="${RT_PORT[$name]}" wait_app || { echo "Runtime $name is not answering on ${RT_PORT[$name]}." >&2; exit 1; }
     done
-    export COMPOSE_PROFILES=octane,swoole
+    export COMPOSE_PROFILES=fpm,swoole
 }
 
 # Modo capacidad (frenos de rate limit fuera) en todos los runtimes a la vez: conviven, y
@@ -345,18 +345,18 @@ soak() {
 
 # --- tune --------------------------------------------------------------------------------
 
-# Barrido de memoria del contenedor × workers para cada runtime Octane: lectura a c=25 con oha
-# y mixto con curl por celda. El punto dulce es la celda de más RPS en lectura cuyo p95 no
-# supera el doble del mejor y sin fallos; la memoria que no mejora nada sobra.
+# Barrido de memoria del contenedor × workers para cada runtime Octane (php-fpm fija los suyos
+# en fpm.conf): lectura a c=25 con oha y mixto con curl por celda. El punto dulce es la celda de
+# más RPS en lectura cuyo p95 no supera el doble del mejor y sin fallos.
 tune_runtime() {
     local name="$1" a="${KILKANA_KEYS[0]}" memory workers res iteration=0
-    [[ "${RT_SERVICE[$name]}" != app ]] || return 0
+    [[ "${RT_SERVICE[$name]}" != fpm ]] || return 0
     TENANT_PORT="${RT_PORT[$name]}"
     BENCH_SERVICE="${RT_SERVICE[$name]}"
     for memory in $TUNE_MEMORY; do
         for workers in $TUNE_WORKERS; do
             iteration=$((iteration + 1))
-            OCTANE_CONTAINER_MEMORY="$memory" OCTANE_WORKERS="$workers" enable_capacity_mode >/dev/null
+            APP_CONTAINER_MEMORY="$memory" OCTANE_WORKERS="$workers" enable_capacity_mode >/dev/null
             oha_warmup "$name"
             res="$OUTPUT_DIR/tune-$name-$memory-w$workers-resources.csv"
             OHA_OUT="$OUTPUT_DIR/tune-$name-$memory-w$workers.json"
@@ -367,7 +367,7 @@ tune_runtime() {
         done
     done
     # Vuelve a los valores del compose.
-    OCTANE_CONTAINER_MEMORY= OCTANE_WORKERS= disable_capacity_mode >/dev/null
+    APP_CONTAINER_MEMORY= OCTANE_WORKERS= disable_capacity_mode >/dev/null
     CAPACITY_ACTIVE=0
     awk -F, -v rt="$name" '$1==rt && $3 ~ /^tune-read-/ && $10==0 && $11==0 { if ($8 < bestp95 || bestp95 == 0) bestp95 = $8 }
         $1==rt && $3 ~ /^tune-read-/ && $10==0 && $11==0 && $8 <= bestp95 * 2 && $6 > best { best=$6; cell=$3; p95=$8; mem=$13 }
@@ -483,7 +483,7 @@ Usage:
   bash scripts/octane-ab.sh tune        # barrido memoria × workers de los runtimes Octane
   bash scripts/octane-ab.sh all         # isolation, bench, soak, tune
 
-Overrides: RUNTIMES="fpm:8443:app franken:8444:octane swoole:8445:octane-swoole", ITERATIONS=3,
+Overrides: RUNTIMES="franken:8443:app fpm:8444:fpm swoole:8445:octane-swoole", ITERATIONS=3,
 OHA_DURATION=20s, SOAK_REQUESTS=100000, ISOLATION_ROUNDS=100, TUNE_MEMORY="2g 3g 4g",
 TUNE_WORKERS="8 12 16", OUTPUT_DIR.
 EOF

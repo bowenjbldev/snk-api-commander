@@ -3,7 +3,8 @@
 # por host y path dentro de Laravel (CoreResolveInstanceFromHostMiddleware), no por vhost.
 # El host exacto commander.${BASE_DOMAIN} lo gana commander.conf (server_name exacto
 # tiene prioridad sobre el wildcard). default_server: hosts no provisionados caen aqui
-# y Laravel responde 404.
+# y Laravel responde 404. Detras hay Octane (FrankenPHP) en `app`; php-fpm y Swoole viven en
+# runtimes.conf como perfiles opt-in para medirlos contra este.
 server {
     listen 80 default_server;
     server_name ${APP_DOMAIN} *.${BASE_DOMAIN} *.${TENANT_BASE_DOMAIN} localhost;
@@ -13,7 +14,6 @@ server {
 server {
     listen 443 ssl default_server;
     server_name ${APP_DOMAIN} *.${BASE_DOMAIN} *.${TENANT_BASE_DOMAIN} localhost;
-    index index.php index.html;
     error_log  /var/log/nginx/error.log;
     access_log /var/log/nginx/access.log;
     root /var/www/src/public;
@@ -37,36 +37,13 @@ server {
     gzip_comp_level 4;
     gzip_types application/json application/problem+json application/xml application/javascript image/svg+xml text/plain text/css;
 
-    location ~ \.php$ {
-        try_files $uri =404;
-        fastcgi_split_path_info ^(.+\.php)(/.+)$;
-        fastcgi_pass api-app:9000;
-        fastcgi_connect_timeout 5s;
-        fastcgi_send_timeout 60s;
-        fastcgi_read_timeout 65s;
-        fastcgi_buffer_size 16k;
-        fastcgi_buffers 16 16k;
-        fastcgi_busy_buffers_size 32k;
-        fastcgi_index index.php;
-        include fastcgi_params;
-        fastcgi_param HTTP_HOST $host;
-        # La IP del cliente la escribe nginx, y pisa la cabecera que traiga la petición: con
-        # TRUSTED_PROXIES en PHP, lo que llegue aquí es lo que Request::ip() devuelve, y una
-        # cabecera del cliente que pasara intacta dejaría elegir la IP a quien llama —los
-        # frenos por IP y el conteo de lectores distintos cuelgan de ella—.
-        fastcgi_param HTTP_X_FORWARDED_FOR $remote_addr;
-        fastcgi_param HTTP_X_FORWARDED_PROTO $scheme;
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        fastcgi_param PATH_INFO $fastcgi_path_info;
-    }
-
     # Las derivadas de imagen llevan la huella del contenido y del encuadre en la ruta: lo que
     # existe no cambia nunca, y lo que no existe lo genera Laravel una vez (`try_files` cae en
-    # `index.php`) y la siguiente petición ya la sirve esto.
+    # `@octane`) y la siguiente petición ya la sirve esto.
     location ~ ^/storage/media/[^/]+/v/ {
         add_header Cache-Control "public, max-age=31536000, immutable";
         add_header X-Content-Type-Options nosniff always;
-        try_files $uri /index.php?$query_string;
+        try_files $uri @octane;
     }
 
     # Los originales y los másteres: un día de caché, que es lo que tarda un reemplazo en verse.
@@ -77,7 +54,26 @@ server {
     }
 
     location / {
-        try_files $uri $uri/ /index.php?$query_string;
+        try_files $uri @octane;
         gzip_static on;
+    }
+
+    location @octane {
+        proxy_pass http://api-app:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        # Las tres cabeceras de confianza las escribe nginx y pisan lo que traiga el cliente: con
+        # TRUSTED_PROXIES en PHP, lo que llegue aquí es lo que Request::ip() y el esquema devuelven,
+        # y una cabecera del cliente que pasara intacta dejaría elegir la IP a quien llama —los
+        # frenos por IP y el conteo de lectores distintos cuelgan de ella—.
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Port $server_port;
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 65s;
+        proxy_buffer_size 16k;
+        proxy_buffers 16 16k;
+        proxy_busy_buffers_size 32k;
     }
 }
