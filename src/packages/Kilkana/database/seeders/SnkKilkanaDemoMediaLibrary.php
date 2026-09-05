@@ -5,7 +5,9 @@ namespace Packages\Kilkana\Database\Seeders;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Packages\Kilkana\Enums\SnkKilkanaMediaRightsEnum;
+use Packages\Kilkana\Jobs\SnkKilkanaMediaWarmJob;
 use Packages\Kilkana\Models\SnkKilkanaMediaModel;
+use Packages\Kilkana\Services\SnkKilkanaImageService;
 
 /**
  * La fototeca de la demo, servida desde el disco del periódico y no desde un tercero.
@@ -186,8 +188,12 @@ final class SnkKilkanaDemoMediaLibrary
 
         $url = '/storage/'.$ruta;
         [$ancho, $alto, $mime] = $this->medidas($fichero);
+        // El mismo máster que deja una subida real: sin él la foto no tiene derivadas y la
+        // mediateca la pinta con el original entero, que en la rejilla son cuarenta y ocho
+        // ficheros de cien kilobytes para miniaturas de 157 px.
+        $master = app(SnkKilkanaImageService::class)->master($fichero, dirname($ruta), pathinfo($ruta, PATHINFO_FILENAME));
 
-        return $this->porFichero[$fichero] = SnkKilkanaMediaModel::create([
+        $media = SnkKilkanaMediaModel::create([
             'url' => $url,
             'url_hash' => sha1($url),
             'content_hash' => $hash,
@@ -202,7 +208,19 @@ final class SnkKilkanaDemoMediaLibrary
             'height' => $alto,
             'rights_status' => SnkKilkanaMediaRightsEnum::Licensed,
             'license' => self::LICENCIA,
+            'master_path' => $master['path'] ?? null,
+            'master_width' => $master['width'] ?? null,
+            'master_height' => $master['height'] ?? null,
         ]);
+        // Las miniaturas del panel y la tarjeta de portada, por la cola: la demo se enseña a
+        // compradores y la primera rejilla no puede esperar a que se generen cuarenta y ocho.
+        // Con la cola en `sync` —las pruebas— no se encola: serían ochocientas derivadas dentro
+        // de la siembra, y bajo demanda nacen igual.
+        if ($media->variants_key && config('queue.default') !== 'sync') {
+            SnkKilkanaMediaWarmJob::dispatch(DB::connection()->getDatabaseName(), (int) $media->getKey());
+        }
+
+        return $this->porFichero[$fichero] = $media;
     }
 
     /**

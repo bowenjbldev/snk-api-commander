@@ -48,7 +48,7 @@ class KilkanaMediaVariantsTest extends TestCase
         $this->assertTrue(Storage::disk('public')->exists($subida->master_path));
         $this->assertTrue(Storage::disk('public')->exists($subida->path), 'Y el original se conserva.');
         $this->assertMatchesRegularExpression('/^[0-9a-f]{8}$/', $subida->variants_key);
-        $this->assertSame([320, 640], $subida->variants['widths'], 'Solo los anchos que caben en el máster.');
+        $this->assertSame([160, 320, 640], $subida->variants['widths'], 'Solo los anchos que caben en el máster.');
         $this->assertSame(['width' => 800, 'height' => 450], $subida->variants['ratios']['hero']);
         Queue::assertPushed(SnkKilkanaMediaWarmJob::class, fn ($job) => $job->mediaId === $subida->id);
     }

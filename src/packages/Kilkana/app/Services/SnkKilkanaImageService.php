@@ -322,7 +322,7 @@ class SnkKilkanaImageService
             $ratios[$name] = ['width' => $win['w'], 'height' => $win['h']];
         }
         $widths = array_values(array_filter(
-            (array) config('kilkana.kilkana.media.widths', [320, 640, 960, 1280, 1920]),
+            (array) config('kilkana.kilkana.media.widths', [160, 320, 640, 960, 1280, 1920]),
             fn (int $w) => $w <= (int) $media->master_width,
         ));
         if ($widths === []) {
