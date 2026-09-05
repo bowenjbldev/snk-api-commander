@@ -1,0 +1,124 @@
+# Los mismos hosts, certificado y limites que app.conf, con Octane detras en vez de php-fpm:
+# 8444 proxy a FrankenPHP y 8445 a Swoole. Puertos distintos para que los tres runtimes
+# convivan y el A/B recorra el mismo TLS y el mismo nginx. El upstream se resuelve por
+# variable, como commander.conf hace con commander-web: nginx arranca aunque el perfil
+# `octane`/`swoole` este apagado y responde 502 hasta que el contenedor exista.
+server {
+    listen 8444 ssl;
+    server_name ${APP_DOMAIN} *.${BASE_DOMAIN} *.${TENANT_BASE_DOMAIN} localhost;
+    root /var/www/src/public;
+
+    ssl_certificate     /etc/nginx/certs/wildcard.${BASE_DOMAIN}.pem;
+    ssl_certificate_key /etc/nginx/certs/wildcard.${BASE_DOMAIN}-key.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_session_cache   shared:TENANT_TLS:10m;
+    ssl_session_timeout 1h;
+
+    server_tokens off;
+    reset_timedout_connection on;
+    client_max_body_size 64m;
+    add_header X-Content-Type-Options nosniff always;
+
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_comp_level 4;
+    gzip_types application/json application/problem+json application/xml application/javascript image/svg+xml text/plain text/css;
+
+    resolver 127.0.0.11 valid=10s;
+    set $octane http://api-octane:8000;
+
+    location ~ ^/storage/media/[^/]+/v/ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        add_header X-Content-Type-Options nosniff always;
+        try_files $uri @octane;
+    }
+
+    location /storage/ {
+        add_header Cache-Control "public, max-age=86400";
+        add_header X-Content-Type-Options nosniff always;
+        try_files $uri =404;
+    }
+
+    location / {
+        try_files $uri @octane;
+        gzip_static on;
+    }
+
+    location @octane {
+        proxy_pass $octane;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        # Pisa la cabecera que traiga el cliente: mismo contrato que
+        # `fastcgi_param HTTP_X_FORWARDED_FOR $remote_addr` en app.conf.
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Port $server_port;
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 65s;
+        proxy_buffer_size 16k;
+        proxy_buffers 16 16k;
+        proxy_busy_buffers_size 32k;
+    }
+}
+
+server {
+    listen 8445 ssl;
+    server_name ${APP_DOMAIN} *.${BASE_DOMAIN} *.${TENANT_BASE_DOMAIN} localhost;
+    root /var/www/src/public;
+
+    ssl_certificate     /etc/nginx/certs/wildcard.${BASE_DOMAIN}.pem;
+    ssl_certificate_key /etc/nginx/certs/wildcard.${BASE_DOMAIN}-key.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_session_cache   shared:TENANT_TLS:10m;
+    ssl_session_timeout 1h;
+
+    server_tokens off;
+    reset_timedout_connection on;
+    client_max_body_size 64m;
+    add_header X-Content-Type-Options nosniff always;
+
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_comp_level 4;
+    gzip_types application/json application/problem+json application/xml application/javascript image/svg+xml text/plain text/css;
+
+    resolver 127.0.0.11 valid=10s;
+    set $swoole http://api-swoole:8000;
+
+    location ~ ^/storage/media/[^/]+/v/ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        add_header X-Content-Type-Options nosniff always;
+        try_files $uri @swoole;
+    }
+
+    location /storage/ {
+        add_header Cache-Control "public, max-age=86400";
+        add_header X-Content-Type-Options nosniff always;
+        try_files $uri =404;
+    }
+
+    location / {
+        try_files $uri @swoole;
+        gzip_static on;
+    }
+
+    location @swoole {
+        proxy_pass $swoole;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Port $server_port;
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 65s;
+        proxy_buffer_size 16k;
+        proxy_buffers 16 16k;
+        proxy_busy_buffers_size 32k;
+    }
+}

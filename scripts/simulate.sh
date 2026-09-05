@@ -16,6 +16,9 @@ TARGET_RPS="${TARGET_RPS:-100}"
 OUTPUT_DIR="${OUTPUT_DIR:-/tmp/commander-benchmark-$RUN_ID}"
 
 TENANT_PORT="${TENANT_PORT:-}"
+# Servicio compose que sirve la API medida: `app` (php-fpm) o una variante Octane. Decide a
+# quién se le cambian los frenos en modo capacidad y a quién se le muestrea CPU/memoria.
+BENCH_SERVICE="${BENCH_SERVICE:-app}"
 TENANT_BASE_DOMAIN="${TENANT_BASE_DOMAIN:-}"
 BASE_DOMAIN="${BASE_DOMAIN:-}"
 PRIVATE_DIR="${COMMANDER_BENCH_PRIVATE_DIR:-}"
@@ -201,7 +204,6 @@ discover_targets() {
         ORDER BY i.id;")
 
     (( ${#KILKANA_KEYS[@]} >= 2 )) || { echo 'At least two active Kilkana tenants are required.' >&2; exit 1; }
-    (( ${#TARGET_KEYS[@]} >= 4 )) || { echo 'The local benchmark expects three Kilkana tenants and one DemoApp tenant.' >&2; exit 1; }
 }
 
 create_benchmark_identity() {
@@ -320,7 +322,7 @@ cleanup_benchmark_identities() {
 disable_capacity_mode() {
     (( CAPACITY_ACTIVE == 1 )) || return 0
     echo 'Restoring normal API rate limits...'
-    dc up -d --no-deps --force-recreate app >/dev/null
+    dc up -d --no-deps --force-recreate "$BENCH_SERVICE" >/dev/null
     CAPACITY_ACTIVE=0
     wait_app
 }
@@ -375,15 +377,20 @@ setup() {
 
 environment_report() {
     local app_id db_id
-    app_id="$(dc ps -q app)"
+    app_id="$(dc ps -q "$BENCH_SERVICE")"
     db_id="$(dc ps -q db)"
     {
         echo "measured_at=$(date -u +%FT%TZ)"
         echo "host_cpus=$(nproc)"
         echo "host_memory=$(free -h | awk '/^Mem:/{print $2}')"
         docker inspect "$app_id" "$db_id" --format '{{.Name}} memory_limit={{.HostConfig.Memory}} nano_cpus={{.HostConfig.NanoCpus}}'
-        dc exec -T app sh -lc "php-fpm -tt 2>&1 | grep -E 'pm =|pm.max_children|pm.max_requests'"
-        dc exec -T app php -i | grep -E '^memory_limit =>|^opcache.enable =>|^opcache.memory_consumption =>'
+        if [[ "$BENCH_SERVICE" == "app" ]]; then
+            dc exec -T app sh -lc "php-fpm -tt 2>&1 | grep -E 'pm =|pm.max_children|pm.max_requests'"
+        else
+            dc exec -T "$BENCH_SERVICE" php artisan octane:status --no-ansi 2>&1 | tail -n 1
+            docker inspect "$app_id" --format 'octane_command={{join .Config.Cmd " "}}'
+        fi
+        dc exec -T "$BENCH_SERVICE" php -i | grep -E '^memory_limit =>|^opcache.enable =>|^opcache.enable_cli =>|^opcache.memory_consumption =>'
         dbq -N -e "SELECT CONCAT('mariadb_version=',@@version),CONCAT('max_connections=',@@max_connections),CONCAT('innodb_buffer_pool=',@@innodb_buffer_pool_size),CONCAT('thread_cache_size=',@@thread_cache_size),CONCAT('wait_timeout=',@@wait_timeout);"
         dbq -N commander -e "SELECT CONCAT('ready_instances=',COUNT(*)) FROM commander_instances WHERE provisioning_status='ready';"
     } >"$OUTPUT_DIR/environment.txt"
@@ -427,7 +434,7 @@ memory_mib() {
 
 sample_resources() {
     local stop_file="$1" output="$2" app_id db_id stats app_stats db_stats app_cpu app_mem db_cpu db_mem status
-    app_id="$(dc ps -q app)"
+    app_id="$(dc ps -q "$BENCH_SERVICE")"
     db_id="$(dc ps -q db)"
     printf 'timestamp,app_cpu_percent,app_memory_mib,db_cpu_percent,db_memory_mib,threads_connected,threads_running,connections_total,max_used_connections\n' >"$output"
     while [[ ! -e "$stop_file" ]]; do
@@ -485,6 +492,9 @@ run_load() {
     results="$OUTPUT_DIR/$slug.csv"
     resources="$OUTPUT_DIR/$slug-resources.csv"
     stop="$PRIVATE_DIR/$slug.stop"
+    # El mismo slug puede correr varias veces en una sesión: sin esto el muestreador ve la parada
+    # de la tanda anterior y sale sin una sola muestra.
+    rm -f "$stop"
     printf 'target,package,operation,status,time_connect_s,time_starttransfer_s,time_total_s,response_bytes,curl_exit\n' >"$results"
 
     if (( WARMUP_REQUESTS > 0 )); then
@@ -503,10 +513,10 @@ run_load() {
 
 enable_capacity_mode() {
     CAPACITY_OVERRIDE="$PRIVATE_DIR/compose.capacity.yml"
-    printf 'services:\n  app:\n    environment:\n      CORE_API_RATE_LIMIT: "%s"\n      CORE_LOGIN_RATE_LIMIT: "%s"\n' \
-        "${CAPACITY_RATE_LIMIT:-1000000}" "${CAPACITY_LOGIN_RATE_LIMIT:-1000000}" >"$CAPACITY_OVERRIDE"
-    echo 'Recreating only the local app container with benchmark rate limits...'
-    docker compose -f "$ROOT_DIR/docker-compose.yml" -f "$CAPACITY_OVERRIDE" up -d --no-deps --force-recreate app >/dev/null
+    printf 'services:\n  %s:\n    environment:\n      CORE_API_RATE_LIMIT: "%s"\n      CORE_LOGIN_RATE_LIMIT: "%s"\n' \
+        "$BENCH_SERVICE" "${CAPACITY_RATE_LIMIT:-1000000}" "${CAPACITY_LOGIN_RATE_LIMIT:-1000000}" >"$CAPACITY_OVERRIDE"
+    echo "Recreating only the local $BENCH_SERVICE container with benchmark rate limits..."
+    docker compose -f "$ROOT_DIR/docker-compose.yml" -f "$CAPACITY_OVERRIDE" up -d --no-deps --force-recreate "$BENCH_SERVICE" >/dev/null
     CAPACITY_ACTIVE=1
     wait_app
 }
@@ -573,13 +583,25 @@ security_audit() {
 
     expect_status 401 'Kilkana token is rejected by another Kilkana tenant' "${TARGET_HOST[$centre]}" \
         '/api/v1/kilkana/auth/me' "${TARGET_AUTH_FILE[$north]}"
-    expect_status 401 'Kilkana token is rejected by DemoApp' "${TARGET_HOST[$demo]}" \
-        '/api/v1/demo-app/auth/me' "${TARGET_AUTH_FILE[$north]}"
-    expect_status 401 'DemoApp token is rejected by Kilkana' "${TARGET_HOST[$north]}" \
-        '/api/v1/kilkana/auth/me' "${TARGET_AUTH_FILE[$demo]}"
-    expect_status 401 'Authenticated route rejects missing token' "${TARGET_HOST[$demo]}" '/api/v1/demo-app/auth/me'
-    expect_status 404 'Host cannot select an unprovisioned package' "${TARGET_HOST[$demo]}" '/api/v1/kilkana/public/posts'
+    expect_status 401 'Authenticated route rejects missing token' "${TARGET_HOST[$north]}" '/api/v1/kilkana/auth/me'
+    expect_status 404 'Host cannot select an unprovisioned package' "${TARGET_HOST[$north]}" '/api/v1/demo-app/auth/me'
     expect_status 404 'Unknown tenant is hidden' "ghost.$TENANT_BASE_DOMAIN" '/api/v1/kilkana/public/posts'
+    local site_name forwarded_name
+    site_name="$(curl -ksS --resolve "${TARGET_HOST[$north]}:$TENANT_PORT:127.0.0.1" --max-time "$CURL_TIMEOUT" \
+        "$(url_for "${TARGET_HOST[$north]}" '/api/v1/kilkana/public/site')" 2>/dev/null | jq -r '.tenant.name // "none"')"
+    forwarded_name="$(curl -ksS --resolve "${TARGET_HOST[$north]}:$TENANT_PORT:127.0.0.1" --max-time "$CURL_TIMEOUT" \
+        -H "X-Forwarded-Host: ${TARGET_HOST[$centre]}" \
+        "$(url_for "${TARGET_HOST[$north]}" '/api/v1/kilkana/public/site')" 2>/dev/null | jq -r '.tenant.name // "none"')"
+    [[ "$forwarded_name" == "$site_name" ]] && pass 'X-Forwarded-Host cannot select another tenant' \
+        || fail "X-Forwarded-Host selected another tenant ($site_name became $forwarded_name)"
+    if [[ -n "$demo" ]]; then
+        expect_status 401 'Kilkana token is rejected by DemoApp' "${TARGET_HOST[$demo]}" \
+            '/api/v1/demo-app/auth/me' "${TARGET_AUTH_FILE[$north]}"
+        expect_status 401 'DemoApp token is rejected by Kilkana' "${TARGET_HOST[$north]}" \
+            '/api/v1/kilkana/auth/me' "${TARGET_AUTH_FILE[$demo]}"
+    else
+        warn 'No DemoApp tenant: cross-package token checks skipped'
+    fi
 
     violations="$(dbq -N -e "SELECT COUNT(*) FROM (
         SELECT i.id,GROUP_CONCAT(p.PRIVILEGE_TYPE ORDER BY p.PRIVILEGE_TYPE) privileges
@@ -619,9 +641,15 @@ security_audit() {
         | tr -d '\r' | awk -F': ' 'tolower($1)=="access-control-allow-origin"{print $2}')"
     [[ -z "$cors" ]] && pass 'Untrusted CORS origin is not reflected' || fail "Untrusted CORS origin was allowed: $cors"
 
-    dc exec -T app sh -lc "php-fpm -tt 2>&1" | grep -q 'pm.max_requests = 0' \
-        && warn 'PHP-FPM pm.max_requests=0 never recycles workers after memory growth' \
-        || pass 'PHP-FPM recycles workers'
+    if [[ "$BENCH_SERVICE" == "app" ]]; then
+        dc exec -T app sh -lc "php-fpm -tt 2>&1" | grep -q 'pm.max_requests = 0' \
+            && warn 'PHP-FPM pm.max_requests=0 never recycles workers after memory growth' \
+            || pass 'PHP-FPM recycles workers'
+    else
+        docker inspect "$(dc ps -q "$BENCH_SERVICE")" --format '{{join .Config.Cmd " "}}' | grep -q -- '--max-requests=[1-9]' \
+            && pass 'Octane recycles workers' \
+            || warn 'Octane --max-requests is unset: workers never recycle after memory growth'
+    fi
     grep -Rqs 'X-Content-Type-Options' "$ROOT_DIR/docker/nginx/conf.d" \
         && pass 'Nginx declares X-Content-Type-Options' \
         || warn 'Nginx does not declare X-Content-Type-Options'
@@ -674,6 +702,7 @@ Usage:
 
 Useful overrides: REQUESTS, WARMUP_REQUESTS, CONCURRENCIES, OUTPUT_DIR,
 KILKANA_ADMIN_EMAIL/PASSWORD and DEMOAPP_ADMIN_EMAIL/PASSWORD.
+Point it at an Octane variant with TENANT_PORT=8444 BENCH_SERVICE=octane (or 8445/octane-swoole).
 EOF
 }
 
@@ -694,4 +723,7 @@ main() {
     echo "Results: $OUTPUT_DIR"
 }
 
-main "$@"
+# Ejecutado directamente corre el comando; `source`ado (octane-ab.sh) solo presta las funciones.
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi

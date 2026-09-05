@@ -20,3 +20,6 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Octane lo regenera en cada arranque de FrankenPHP.
+/public/frankenphp-worker.php

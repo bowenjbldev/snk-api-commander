@@ -45,9 +45,11 @@ Antes de cambiar código, lee [`docs/README.md`](docs/README.md),
 - Un fallo conserva instancia y `last_error`; retry reutiliza el mismo ID y exige credenciales
   admin explícitas.
 - La conexión tenant, la config runtime y `CoreActiveInstanceSupport` se restauran en `finally`.
-- El worker `provisioner` es el único con DDL. El usuario runtime solo tiene CRUD sobre una BD.
 - Un token pertenece a la base que lo contiene; no añadas bypasses de aislamiento por token/id.
-- La conmutación global soporta PHP-FPM y workers secuenciales, no concurrencia Octane/Swoole.
+- El inquilino sale del `Host`; no se confía en `X-Forwarded-Host` ni `-Prefix`, y nginx pisa
+  `X-Forwarded-For` y `-Proto` en todos los vhosts.
+- La conmutación global soporta PHP-FPM y workers secuenciales (Octane sobre FrankenPHP o
+  Swoole, una petición por worker), no corrutinas concurrentes dentro del proceso.
 
 ## Convenciones de código y BD
 

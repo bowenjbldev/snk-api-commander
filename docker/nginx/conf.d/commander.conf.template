@@ -52,6 +52,10 @@ server {
         fastcgi_index index.php;
         include fastcgi_params;
         fastcgi_param HTTP_HOST $host;
+        # La IP la escribe nginx y pisa la del cliente, como en app.conf: los frenos por IP del
+        # plano de control cuelgan de ella.
+        fastcgi_param HTTP_X_FORWARDED_FOR $remote_addr;
+        fastcgi_param HTTP_X_FORWARDED_PROTO $scheme;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         fastcgi_param PATH_INFO $fastcgi_path_info;
     }
@@ -64,7 +68,7 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_intercept_errors on;
         error_page 502 503 504 = @commander_web_missing;

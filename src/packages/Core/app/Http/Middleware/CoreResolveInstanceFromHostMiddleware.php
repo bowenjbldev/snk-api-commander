@@ -104,7 +104,8 @@ class CoreResolveInstanceFromHostMiddleware
      * no necesita que nadie se acuerde de nada.
      *
      * Con `null` vuelve al estado de fabrica, para que lo que corra despues de esta peticion
-     * —en el mismo proceso de FPM— no herede la clave de un inquilino que ya no es el activo.
+     * en el mismo proceso no herede ni la clave ni los permisos de un inquilino que ya no es el
+     * activo.
      */
     private function scopePermissionCache(?string $database): void
     {
@@ -116,8 +117,12 @@ class CoreResolveInstanceFromHostMiddleware
             ]);
 
         // `initializeCache()` es lo que relee las tres claves; sin esto el registrar se queda
-        // con el almacen y la clave que resolvio al construirse.
-        app(PermissionRegistrar::class)->initializeCache();
+        // con el almacen y la clave que resolvio al construirse. La coleccion ya cargada en
+        // memoria no la toca, y un proceso que sirve dos inquilinos seguidos —worker
+        // persistente, CLI que recorre bases— le serviria al segundo los permisos del primero.
+        $registrar = app(PermissionRegistrar::class);
+        $registrar->clearPermissionsCollection();
+        $registrar->initializeCache();
     }
 
     /** @param string[] $namespaces

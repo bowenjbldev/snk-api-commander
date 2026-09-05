@@ -25,6 +25,8 @@ No migra automáticamente las bases tenant existentes.
 | Servicio        | Función                                                           |
 | --------------- | ----------------------------------------------------------------- |
 | `app`           | PHP-FPM y comandos sin DDL tenant                                 |
+| `octane`        | perfil opt-in: la misma API sobre Octane/FrankenPHP, nginx `:8444` |
+| `octane-swoole` | perfil opt-in: la misma API sobre Octane/Swoole, nginx `:8445`    |
 | `scheduler`     | `php artisan schedule:work`                                       |
 | `provisioner`   | asegura usuarios runtime y consume la cola `provisioning` con DDL |
 | `nginx`         | TLS, wildcard tenant y proxy                                      |
@@ -43,9 +45,16 @@ El perfil local está calibrado para el i7-7700K de 4 núcleos/8 hilos con Maria
 - `app`: cuota de 6 CPU, 2 GiB y 128 procesos, sin capabilities y con `no-new-privileges`;
 - FPM: 8 workers estáticos, backlog 1024, reciclaje cada 500 requests, slowlog a 5 s y corte a
   60 s;
-- PHP: 128 MiB por request, OPcache 192 MiB/16 MiB de strings, JIT desactivado y subida máxima
+- PHP: 512 MiB por request, OPcache 192 MiB/16 MiB de strings, JIT desactivado y subida máxima
   de 64 MiB para respetar el contrato Kilkana de 50 MiB;
 - Nginx: compresión de JSON, buffer FastCGI, sesiones TLS y `X-Content-Type-Options`.
+
+Los perfiles `octane` y `swoole` levantan la misma API sobre Laravel Octane con el mismo código
+montado, la misma cuota de CPU/procesos y los mismos ocho workers reciclados cada 500 peticiones;
+`OCTANE_CONTAINER_MEMORY` y `OCTANE_WORKERS` los recalibran aparte. Nginx los expone en `:8444` y
+`:8445` con el mismo certificado, para medirlos contra FPM por el mismo camino
+([A/B de runtimes](#ab-php-fpm-frente-a-octane-del-05-09-2026)). Los workers no re-arrancan la
+aplicación al cambiar un fichero PHP: tras editar código, `docker compose restart octane`.
 
 `APP_CONTAINER_CPUS`, `APP_CONTAINER_MEMORY` y `APP_CONTAINER_PIDS` permiten recalibrar el
 presupuesto sin editar Compose. `opcache.validate_timestamps=1` se conserva porque local monta el
@@ -335,8 +344,8 @@ procesar los demás.
 ## Simulación de capacidad multi-tenant
 
 `scripts/simulate.sh` caracteriza routing, cambio de conexión, carga y aislamiento con las
-herramientas ya instaladas. Solo admite `APP_ENV=local` y dominios `.test`. Descubre instancias
-`ready/active` y el escenario actual exige tres Kilkana y una DemoApp.
+herramientas ya instaladas. Solo admite `APP_ENV=local` y dominios `.test`. Descubre las instancias
+`ready/active` que haya: exige al menos dos Kilkana, y usa DemoApp si existe.
 
 ```bash
 bash scripts/simulate.sh smoke
@@ -348,11 +357,11 @@ bash scripts/simulate.sh rate-limit
 bash scripts/simulate.sh matrix
 ```
 
-`read`, `write` y `mixed` —90/10 por operaciones— se pueden cruzar con:
+`read`, `write` y `mixed` —una escritura cada veinte operaciones— se pueden cruzar con:
 
 - `single`: una instancia Kilkana;
-- `same-package`: tres bases Kilkana en round-robin;
-- `cross-package`: las tres Kilkana más DemoApp.
+- `same-package`: todas las bases Kilkana en round-robin;
+- `cross-package`: todas las instancias, DemoApp incluida.
 
 `login-load` mide por separado el driver de hashing configurado y la emisión de tokens sobre un
 usuario efímero. Genera el hash mediante Laravel, eleva temporalmente los límites API y de login
@@ -360,8 +369,10 @@ para que el throttle no falsee la capacidad y elimina al usuario con todos sus t
 No admite credenciales de usuarios existentes.
 
 `matrix` prueba concurrencias `1, 5, 10, 25, 50`. Para que los `429` no oculten el techo de la
-aplicación, recrea solo `app` con límites altos mediante un override Compose temporal y restaura
-la configuración normal en `trap`. `rate-limit` comprueba por separado que doce accesos correctos
+aplicación, recrea solo el servicio medido —`BENCH_SERVICE`, `app` por defecto— con límites altos
+mediante un override Compose temporal y restaura la configuración normal en `trap`. Con
+`TENANT_PORT=8444 BENCH_SERVICE=octane` (o `8445`/`octane-swoole`) el harness entero apunta a una
+variante Octane. `rate-limit` comprueba por separado que doce accesos correctos
 desde una IP pasan y que los fallos posteriores reciben `429`. Cada
 ejecución crea usuarios admin efímeros con contraseña aleatoria dentro de las bases locales,
 genera y borra tags o tokens, y los elimina al salir. No modifica cuentas existentes. Los request
@@ -448,6 +459,72 @@ workers. Esta línea base solo tiene cuatro bases; no mide backups, migraciones,
 cortas desde el mismo host Docker, por lo que es una medida conservadora extremo a extremo, no un
 sustituto de una prueba distribuida.
 
+### A/B PHP-FPM frente a Octane del 05-09-2026
+
+```bash
+docker compose --profile octane --profile swoole up -d --build
+bash scripts/octane-ab.sh all        # isolation, bench, soak, tune → compare.md en OUTPUT_DIR
+```
+
+Mismo i7-7700K y misma MariaDB de la baseline, metering activo. `scripts/octane-ab.sh` presta de
+`simulate.sh` los usuarios efímeros, el modo capacidad y el muestreo de recursos, y añade `oha`
+(contenedor, keepalive real) como generador de lectura; escritura, login y mixto siguen con curl
+porque necesitan cuerpos únicos, y solo se compara generador contra generador: las filas curl de
+FPM reproducen la baseline de agosto (74,7 RPS mixtos frente a 74,49), y las de oha enseñan el techo
+que curl-por-proceso no alcanza. Los tres runtimes conviven detrás del mismo nginx (`:8443`,
+`:8444`, `:8445`), se intercalan en cada iteración y se toma la mediana de tres.
+
+| Escenario                  | Gen. |   c |   FPM | FrankenPHP     | Swoole        | p95 FPM → FrankenPHP → Swoole | RAM pico FPM/Fr/Sw |
+| -------------------------- | ---- | --: | ----: | -------------- | ------------- | ----------------------------: | -----------------: |
+| lectura, un inquilino      | oha  |  10 | 217,3 | 439,2 (+102 %) | 424,5 (+95 %) |                61 → 31 → 40 ms |     69/379/499 MiB |
+| lectura, un inquilino      | oha  |  25 | 212,3 | 408,6 (+93 %)  | 406,4 (+91 %) |               146 → 79 → 95 ms |     63/381/482 MiB |
+| lectura, dos inquilinos    | oha  | 5+5 | 169,3 | 248,0 (+46 %)  | 242,7 (+43 %) |                97 → 79 → 94 ms |     72/381/496 MiB |
+| escritura                  | curl |  10 |  73,9 | 90,3 (+22 %)   | 91,1 (+23 %)  |               100 → 69 → 66 ms |     67/379/492 MiB |
+| login                      | curl |   8 |  61,8 | 81,1 (+31 %)   | 75,0 (+21 %)  |              131 → 96 → 100 ms |    142/379/556 MiB |
+| mixto                      | curl |   5 |  74,7 | 97,0 (+30 %)   | 99,5 (+33 %)  |                67 → 50 → 48 ms |     69/381/496 MiB |
+
+Sin `5xx` ni timeouts en ninguna celda. Las dos lecturas simultáneas sobre inquilinos distintos
+son el caso que un worker persistente puede mezclar: cada worker cambia de base en turnos
+consecutivos, y aun así FrankenPHP gana un 46 %.
+
+**Aislamiento.** Cien vueltas de alternancia estricta a concurrencia 1, 2, 4 y 8 —identidad por
+token en A, token de A rechazado en B, identidad en B, inquilino fantasma `404` seguido del conteo
+de piezas de B, `422` en A seguido del nombre del diario de B, desconexión a mitad de respuesta
+seguida de identidad en A— dieron cero discrepancias en los tres runtimes. Doce logins fallidos en
+A frenaron A con `429` y B siguió admitiendo un login correcto: la clave del freno lleva el
+inquilino.
+
+**Soak.** 100.000 peticiones repartidas entre dos inquilinos a concurrencia 4, reciclando workers
+cada 500: FPM 177,6 RPS y 70,8 → 80,9 MiB; FrankenPHP 328,4 RPS y 223,2 → 225,0 MiB; Swoole 314,9
+RPS y 489,0 → 489,2 MiB. Sin un solo fallo y sin crecimiento.
+
+**Memoria × workers.** Lectura a concurrencia 25 con oha y mixto a 10 con curl por celda, en RPS
+lectura / RPS mixto:
+
+| Runtime    | Workers | 2 GiB     | 3 GiB     | 4 GiB     | RAM pico |
+| ---------- | ------: | --------- | --------- | --------- | -------: |
+| FrankenPHP |       8 | 440 / 115 | 411 / 107 | 408 / 119 |  245 MiB |
+| FrankenPHP |      12 | 451 / 111 | 453 / 123 | 485 / 107 |  278 MiB |
+| FrankenPHP |      16 | 501 / 117 | 491 / 114 | 465 / 122 |  327 MiB |
+| Swoole     |       8 | 411 / 113 | 422 / 107 | 403 / 119 |  479 MiB |
+| Swoole     |      12 | 450 / 112 | 426 / 118 | 481 / 121 |  605 MiB |
+| Swoole     |      16 | 461 / 112 | 488 / 120 | 447 / 123 |  735 MiB |
+
+La memoria del contenedor no mueve nada: las columnas quedan dentro del ruido entre corridas y el
+pico nunca pasa de 740 MiB, así que 2 GiB sobra con holgura y no hay punto dulce que buscar por
+ahí. Los workers sí: dieciséis dan a FrankenPHP un 10-14 % más de lectura que ocho, a diferencia
+de FPM, donde diez y doce empeoraron. El mixto no se mueve en ninguna celda (110-123 RPS): con una
+escritura cada veinte, mandan SQL y los cuatro núcleos físicos. El punto dulce local es FrankenPHP
+con 12-16 workers y el límite de 2 GiB que ya tiene; `OCTANE_WORKERS` lo fija sin tocar Compose.
+
+**Decisión.** FrankenPHP cumple todos los criterios de
+[arquitectura](architecture.md#octane-medido-y-frankenphp-es-el-candidato): aislamiento limpio,
+soak estable, lectura muy por encima del +40 %, mixto por encima del +25 % y sin regresión en
+escritura ni login. Swoole no lo supera en más de un 15 % en ningún escenario y usa el doble de
+memoria residente. `app` sigue en PHP-FPM; pasar el servicio a FrankenPHP exige llevar el
+entrypoint (Composer, migraciones, catálogo) a la imagen Octane, añadir `octane:reload` al deploy y
+repetir esta matriz en el hardware de producción.
+
 ## Comprobaciones
 
 ```bash
@@ -528,7 +605,8 @@ provisioning roto para el despliegue entero antes del primer DDL, que es lo que 
 Requisitos adicionales:
 
 - DNS y certificado wildcard;
-- PHP-FPM sin concurrencia interna tipo Octane;
+- PHP-FPM, u Octane con una petición por worker (FrankenPHP worker mode o Swoole sin corrutinas);
+  nunca corrutinas concurrentes dentro del proceso;
 - la imagen de PHP con GD compilado con JPEG, WebP y AVIF, y con `ffmpeg` (el `Dockerfile` la
   trae): sin ellos la mediateca no abre un JPEG ni mide un vídeo;
 - scheduler permanente o cron `schedule:run`, y reiniciar el worker de colas cada vez que cambie

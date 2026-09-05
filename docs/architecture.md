@@ -30,6 +30,15 @@ jobs usan su ID numérico.
 Los hosts reservados son `api`, `commander` y `www`. El cliente es un único label DNS de hasta 63
 caracteres. Base y usuario se validan siempre contra `[a-z0-9_]{1,64}` antes de usarse en DDL.
 
+El cliente sale del `Host`, y solo del `Host`. De las cabeceras de proxy se confía en
+`X-Forwarded-For`, `-Port` y `-Proto` (`bootstrap/app.php`), nunca en `X-Forwarded-Host` ni
+`-Prefix`: con `TRUSTED_PROXIES='*'`, Symfony prefiere la reenviada sobre `Host` y cualquier
+llamador elegiría la base de otro inquilino con una cabecera. Ningún proxy la necesita: todos fijan
+`Host` al del inquilino. Las tres de confianza las escribe nginx pisando lo que traiga el cliente
+en todos los vhosts —`X-Forwarded-For`, porque los frenos por IP y el conteo de lectores cuelgan de
+ella, y `-Proto`, porque de ella salen las URL absolutas y los enlaces firmados—;
+`simulate.sh security` y `octane-ab.sh isolation` comprueban que el `Host` manda.
+
 ### Dominios
 
 El control plane privado usa `commander.<BASE_DOMAIN>`. La API de todos los productos usa
@@ -155,9 +164,10 @@ y escribe el log al terminar la respuesta. Un fallo de metering nunca modifica l
 | `nginx` | TLS, wildcard tenant y proxy |
 | `db` | MariaDB con `commander` y bases por instancia |
 
-La conmutación de conexión/configuración es estado global mutable. Está soportada en PHP-FPM y
-workers secuenciales. No debe usarse con requests concurrentes dentro del mismo proceso
-(Octane/Swoole) sin contexto aislado por coroutine.
+La conmutación de conexión/configuración es estado global mutable. Está soportada en PHP-FPM y en
+workers secuenciales —Octane sobre FrankenPHP o Swoole, que sirven una petición por worker—. No
+debe usarse con peticiones concurrentes dentro del mismo proceso (corrutinas de Swoole) sin
+contexto aislado por corrutina.
 
 ### Capacidad y conexiones
 
@@ -180,25 +190,48 @@ Con `CORE_METERING_SAMPLE_RATE=1`, 100 RPS producen 8,64 millones de logs/día. 
 aproximadamente 233 bytes por fila entre datos e índices, del orden de 2 GB/día y 60 GB para la
 retención predeterminada de 30 días, antes de margen operativo. El rollup diario conserva todas
 las duraciones del bucket en arrays PHP para calcular p95; `chunkById` limita cada lectura, pero no
-ese acumulado. Ese algoritmo no es viable a millones de peticiones/día con `memory_limit=128M` y
+ese acumulado. Ese algoritmo no es viable a millones de peticiones/día con `memory_limit=512M` y
 debe cambiarse antes de sostener ese volumen.
 
-### Octane y FrankenPHP: evaluación futura
+### Octane: medido, y FrankenPHP es el candidato
 
-PHP-FPM sigue siendo el único runtime HTTP soportado. Más workers no ofrecen otro salto: ocho
-fueron el óptimo medido y diez o doce empeoraron throughput y p95. FrankenPHP clásico simplificaría
-Nginx/FastCGI, pero vuelve a arrancar Laravel por petición y no es candidato razonable a duplicar
-el rendimiento. La prueba con potencial es Laravel Octane sobre FrankenPHP en worker mode, que
-mantiene la aplicación cargada; no se ha implementado ni medido en este proyecto.
+Laravel Octane 2 mantiene la aplicación cargada y sirve una petición por worker. FrankenPHP en
+worker mode (glibc) y Swoole (sin corrutinas) se midieron el 05-09-2026 contra PHP-FPM con el mismo
+código, el mismo nginx y TLS, la misma cuota de CPU y los mismos ocho workers reciclados cada 500
+peticiones; los tres conviven como perfiles Compose y la matriz completa, con el barrido de memoria
+y workers, está en [Operación](operations.md#ab-php-fpm-frente-a-octane-del-05-09-2026). En
+resumen: la lectura dobla el throughput con la mitad de p95, el tráfico mixto sube un 30 %,
+escritura y login entre un 20 y un 30 % —los limitan SQL y Argon2, no el arranque—, y ni la
+alternancia estricta de inquilinos ni 100.000 peticiones con reciclaje mostraron una fuga o un
+crecimiento de memoria. FrankenPHP rinde igual o mejor que Swoole con la mitad de memoria
+residente, es MIT, es proyecto oficial de PHP y no exige compilar una extensión: es el candidato.
+PHP-FPM sigue siendo el runtime del servicio `app`; cambiar el runtime del servicio es una
+decisión de despliegue —entrypoint, imagen, `octane:reload` en el deploy y repetir la matriz en el
+hardware de producción—, no de código.
 
-El riesgo es de aislamiento, no solo de memoria. El resolutor modifica la conexión por defecto,
-credenciales tenant, configuración de package/overlay y el singleton de instancia activa. El
-`finally` actual es una buena base para workers secuenciales, pero un estado propio no restaurado
-podría contaminar la siguiente petición del mismo worker. Laravel reinicia su estado conocido,
-no garantiza limpiar el estado global creado por la aplicación.
+El riesgo era de aislamiento, no de memoria: el resolutor modifica la conexión por defecto, las
+credenciales tenant, la configuración de package/overlay y el singleton de instancia activa, y
+Laravel reinicia su estado conocido pero no el que crea la aplicación. Lo que hizo posible el
+worker persistente también es correcto en FPM y en la CLI que recorre inquilinos:
 
-Una prueba de concepto deberá usar FrankenPHP con glibc, sin Swoole ni tareas concurrentes, y no
-se considerará compatible hasta cumplir simultáneamente:
+- el resolutor vacía la colección de permisos de Spatie al conmutar
+  (`clearPermissionsCollection()`): `initializeCache()` cambia clave y almacén pero no la
+  colección en memoria, y un proceso que sirve dos inquilinos seguidos le daría al segundo los
+  permisos del primero. `CoreResolverPermissionIsolationTest` lo fija;
+- el metering toma el inicio de `REQUEST_TIME_FLOAT`, que es por petición en cualquier SAPI; una
+  constante de arranque sería el uptime del worker;
+- el store de caché `database` se ancla a `commander` con `DB_CACHE_CONNECTION`: sin eso toma la
+  conexión por defecto, que durante una petición es la del inquilino, y el gestor de caché la
+  memoriza más allá de la petición.
+
+Lo que Octane ya cubre sin código propio: sandbox de configuración por petición, reinicio de los
+guards de autenticación, caché `array` y una aplicación nueva para el gestor de base de datos. El
+`finally` del resolutor sigue siendo la fuente de verdad en FPM y purga la conexión tenant en
+ambos. `route()->forgetParameter('client')` no es un riesgo: `Route::bind()` reasigna los
+parámetros en cada petición antes de que corra ningún middleware.
+
+Los criterios que evalúa `scripts/octane-ab.sh`, y que cualquier runtime tiene que cumplir a la
+vez para considerarse compatible:
 
 - alternar tenants, packages y tokens bajo respuestas normales, excepciones, `404`, `429`,
   streaming y desconexiones sin fuga de conexión, config, usuario ni permisos;
@@ -207,10 +240,14 @@ se considerará compatible hasta cumplir simultáneamente:
   `5xx`, timeouts ni errores de aislamiento;
 - conservar la purga de PDO tenant y no introducir un pool ilimitado por credencial.
 
-Octane puede reducir mucho el coste de bootstrap en lecturas simples, pero no elimina SQL,
-metering ni hashing. Por eso un 2× es plausible para lecturas y tráfico mixto, no una expectativa
-para todos los endpoints. Una segunda réplica en CPU separada continúa siendo la vía predecible
-para duplicar capacidad agregada.
+Lo que queda vigilado: la conexión `commander` persiste por worker —un handshake menos por
+petición; si tras horas ociosas aparece «server has gone away», `DisconnectFromDatabases` en
+`OperationTerminated` lo cierra—; `terminate()` corre antes de cerrar la respuesta, así que el
+insert de metering entra en la latencia medida, a diferencia de FPM; y el límite es la CPU, no la
+memoria: dieciséis workers ganan un 10-14 % en lectura sobre ocho y nada en mixto, mientras el pico
+de FrankenPHP con dieciséis fue de 327 MiB frente a los 2 GiB del contenedor. Octane no elimina
+SQL, metering ni hashing: el 2× es de la lectura, no de todos los endpoints, y una segunda réplica
+en CPU separada sigue siendo la vía predecible para duplicar capacidad agregada.
 
 Referencias: [Octane y estado persistente](https://laravel.com/docs/13.x/octane#dependency-injection-and-octane),
 [FrankenPHP clásico frente a worker](https://frankenphp.dev/docs/migrate/#step-5-consider-worker-mode-optional)

@@ -21,7 +21,7 @@ class CoreMeteringMiddleware
 {
     public function handle(Request $request, Closure $next): Response
     {
-        // Fallback de inicio si LARAVEL_START no estuviese definido
+        // Fallback de inicio si el SAPI no informa REQUEST_TIME_FLOAT.
         $request->attributes->set('core_metering_start', microtime(true));
 
         // La instancia activa ya la fijó el resolutor (que va antes). Se captura aquí,
@@ -57,13 +57,20 @@ class CoreMeteringMiddleware
                 return;
             }
 
-            $start = defined('LARAVEL_START')
-                ? LARAVEL_START
-                : (float) $request->attributes->get('core_metering_start', microtime(true));
+            // REQUEST_TIME_FLOAT es por peticion en todo SAPI, incluido un worker persistente,
+            // donde una constante de arranque seria el uptime del proceso.
+            $start = (float) $request->server(
+                'REQUEST_TIME_FLOAT',
+                $request->attributes->get('core_metering_start', microtime(true)),
+            );
 
             $route = $request->route()?->uri();
 
             $now = now('UTC');
+
+            // Solo quien la peticion ya autentico dentro del inquilino: aqui la conexion ya volvio
+            // a commander, y resolver el guard ahora buscaria el token en la base de control.
+            $user = auth()->hasUser() ? auth()->user() : null;
 
             CommanderRequestLogModel::query()->insert([
                 'instance_id' => $instanceId,
@@ -76,8 +83,8 @@ class CoreMeteringMiddleware
                 'path' => Str::limit($path, 255, ''),
                 'status' => $response->getStatusCode(),
                 'duration_ms' => max(0, (int) round((microtime(true) - $start) * 1000)),
-                'user_id' => $request->user()?->getKey(),
-                'token_id' => $request->user()?->currentAccessToken()?->id,
+                'user_id' => $user?->getKey(),
+                'token_id' => $user?->currentAccessToken()?->id,
                 'ip' => $request->ip(),
                 'request_bytes' => (int) $request->header('Content-Length', '0') ?: strlen($request->getContent()),
                 'response_bytes' => $this->responseBytes($response),

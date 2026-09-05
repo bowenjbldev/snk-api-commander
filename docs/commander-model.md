@@ -307,8 +307,8 @@ usage/platform
 - Las cuotas operativas siguen siendo por instancia; una suscripción puede añadir una cuota
   compartida que suma la misma métrica de sus cabeceras activas.
 - No se generan ni clonan packages durante el alta.
-- La conmutación global de conexión soporta PHP-FPM y workers secuenciales, no concurrencia
-  Octane/Swoole.
+- La conmutación global de conexión soporta PHP-FPM y workers secuenciales (Octane, una
+  petición por worker), no corrutinas concurrentes dentro del proceso.
 - El storage genérico de una aplicación aún no es declarativo; la baja solo conoce
   `media/{database}`.
 - El enqueue no usa outbox. `failed`, `last_error` y el retry estable permiten operar el fallo,

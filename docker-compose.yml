@@ -28,6 +28,7 @@ services:
       DB_USERNAME: ${COMMANDER_DB_USERNAME:-commander_app}
       DB_PASSWORD: ${COMMANDER_DB_PASSWORD:-commander-local-secret}
       DB_QUEUE_CONNECTION: commander
+      DB_CACHE_CONNECTION: commander
       # Solo nginx llega a este php-fpm, y sin fiarse de su X-Forwarded-For toda la calle
       # tiene la IP del proxy: el contador de lectores distintos colapsa por navegador y día.
       # Va de la mano de `fastcgi_param HTTP_X_FORWARDED_FOR $remote_addr` en el nginx: sin
@@ -42,6 +43,102 @@ services:
       app-network:
         aliases:
           - api-app
+
+  # La misma API sobre Laravel Octane, para medirla contra php-fpm: FrankenPHP en worker mode
+  # (perfil `octane`, nginx :8444) y Swoole (perfil `swoole`, nginx :8445). Mismo código, mismos
+  # límites y mismos 8 workers reciclados cada 500 peticiones que fpm.conf. Saltan el entrypoint
+  # como scheduler: vendor/, migraciones y catálogo ya los deja `app`; solo hace falta
+  # `package:discover` porque bootstrap/cache es un volumen anónimo por contenedor.
+  octane:
+    profiles: ["octane"]
+    image: snk-api-commander-octane
+    build:
+      context: .
+      dockerfile: docker/php/octane.Dockerfile
+      args:
+        WWWUSER: ${WWWUSER:-1000}
+        WWWGROUP: ${WWWGROUP:-1000}
+    restart: unless-stopped
+    working_dir: /var/www/src
+    cpus: "${APP_CONTAINER_CPUS:-6.0}"
+    mem_limit: "${OCTANE_CONTAINER_MEMORY:-2g}"
+    pids_limit: ${APP_CONTAINER_PIDS:-128}
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    entrypoint: ["sh", "-c"]
+    command: ["php artisan package:discover --ansi >/dev/null && exec php artisan octane:frankenphp --host=0.0.0.0 --port=8000 --workers=${OCTANE_WORKERS:-8} --max-requests=500"]
+    volumes:
+      - ./src:/var/www/src
+      - ./.git:/var/www/.git:ro
+      - /var/www/src/bootstrap/cache
+      - ./docker/php/commander.ini:/usr/local/etc/php/conf.d/zz-commander.ini:ro
+      - ./docker/php/octane.ini:/usr/local/etc/php/conf.d/zz-octane.ini:ro
+    environment:
+      DB_USERNAME: ${COMMANDER_DB_USERNAME:-commander_app}
+      DB_PASSWORD: ${COMMANDER_DB_PASSWORD:-commander-local-secret}
+      DB_QUEUE_CONNECTION: commander
+      DB_CACHE_CONNECTION: commander
+      TRUSTED_PROXIES: '*'
+      OCTANE_SERVER: frankenphp
+      OCTANE_HTTPS: "true"
+      # Caddy escribe su estado aquí; www-data no tiene HOME utilizable.
+      XDG_CONFIG_HOME: /tmp/caddy
+      XDG_DATA_HOME: /tmp/caddy
+    depends_on:
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
+    networks:
+      app-network:
+        aliases:
+          - api-octane
+
+  octane-swoole:
+    profiles: ["swoole"]
+    image: snk-api-commander-swoole
+    build:
+      context: .
+      dockerfile: docker/php/swoole.Dockerfile
+      args:
+        WWWUSER: ${WWWUSER:-1000}
+        WWWGROUP: ${WWWGROUP:-1000}
+    restart: unless-stopped
+    working_dir: /var/www/src
+    cpus: "${APP_CONTAINER_CPUS:-6.0}"
+    mem_limit: "${OCTANE_CONTAINER_MEMORY:-2g}"
+    pids_limit: ${APP_CONTAINER_PIDS:-128}
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    entrypoint: ["sh", "-c"]
+    command: ["php artisan package:discover --ansi >/dev/null && exec php artisan octane:swoole --host=0.0.0.0 --port=8000 --workers=${OCTANE_WORKERS:-8} --max-requests=500"]
+    volumes:
+      - ./src:/var/www/src
+      - ./.git:/var/www/.git:ro
+      - /var/www/src/bootstrap/cache
+      - ./docker/php/commander.ini:/usr/local/etc/php/conf.d/zz-commander.ini:ro
+      - ./docker/php/octane.ini:/usr/local/etc/php/conf.d/zz-octane.ini:ro
+    environment:
+      DB_USERNAME: ${COMMANDER_DB_USERNAME:-commander_app}
+      DB_PASSWORD: ${COMMANDER_DB_PASSWORD:-commander-local-secret}
+      DB_QUEUE_CONNECTION: commander
+      DB_CACHE_CONNECTION: commander
+      TRUSTED_PROXIES: '*'
+      OCTANE_SERVER: swoole
+      OCTANE_HTTPS: "true"
+    depends_on:
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
+    networks:
+      app-network:
+        aliases:
+          - api-swoole
 
   # Laravel scheduler: dispara los comandos programados (commander:* y kilkana:*).
   # schedule:work corre en foreground y evalúa el schedule cada minuto — el
@@ -136,6 +233,9 @@ services:
     ports:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
+      # La misma API detrás de Octane, solo con el perfil `octane`/`swoole` levantado.
+      - "${OCTANE_HTTPS_PORT:-8444}:8444"
+      - "${SWOOLE_HTTPS_PORT:-8445}:8445"
       # Las URLs limpias de Commander usan otra IP de loopback para no compartir
       # proxy, red ni certificados con los productos locales.
       - "127.0.0.2:80:80"
