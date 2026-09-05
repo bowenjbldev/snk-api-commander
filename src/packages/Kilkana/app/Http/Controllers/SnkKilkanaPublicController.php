@@ -126,6 +126,16 @@ class SnkKilkanaPublicController extends Controller
             : response()->json(['error' => 'Not found'], 404);
     }
 
+    /** La previa por enlace: la pieza entera si la firma vale y no ha caducado; si no, como si no existiera. */
+    public function preview(Request $request, int $post): JsonResponse
+    {
+        $pieza = $this->public->preview($post, (int) $request->query('until', '0'), (string) $request->query('sig', ''));
+
+        return $pieza
+            ? response()->json($pieza)
+            : response()->json(['error' => 'Not found'], 404);
+    }
+
     /** Comentarios aprobados de un artículo publicado (planos; parent_id arma el hilo). */
     public function comments(string $year, string $month, string $day, string $slug): JsonResponse
     {

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Packages\Kilkana\Models\SnkKilkanaSettingModel;
 use Packages\Kilkana\Services\SnkKilkanaSettingService;
 
@@ -26,7 +27,7 @@ class SnkKilkanaSettingsController extends Controller
 
     public function show(): JsonResponse
     {
-        return response()->json($this->settings->payload($this->settings->get()));
+        return response()->json($this->settings->payload($this->settings->get()) + $this->settings->facts());
     }
 
     public function update(Request $request): JsonResponse
@@ -49,8 +50,19 @@ class SnkKilkanaSettingsController extends Controller
             // que lo era en la web de una firma.
             'tenant.url' => 'nullable|url:http,https|max:255',
             'onboarded' => 'nullable|boolean',
+            'lang' => ['sometimes', 'string', Rule::in(SnkKilkanaSettingModel::LANGS)],
+            'tz' => 'sometimes|string|timezone:all',
+            'search_visible' => 'sometimes|boolean',
+            'newsletter_reply_to' => 'nullable|email|max:255',
+            'legal' => 'nullable|array',
+            'legal.name' => 'nullable|string|max:255',
+            'legal.email' => 'nullable|email|max:255',
+            'social' => 'nullable|array',
+            'social.x' => 'nullable|url:http,https|max:255',
+            'social.facebook' => 'nullable|url:http,https|max:255',
+            'social.instagram' => 'nullable|url:http,https|max:255',
         ]);
 
-        return response()->json($this->settings->payload($this->settings->update($data)));
+        return response()->json($this->settings->payload($this->settings->update($data)) + $this->settings->facts());
     }
 }

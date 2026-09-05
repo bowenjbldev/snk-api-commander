@@ -2,6 +2,7 @@
 
 namespace Packages\Kilkana\Services;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -280,37 +281,9 @@ class SnkKilkanaPublicService
 
     public function post(string $year, string $month, string $day, string $slug): SnkKilkanaPostModel|string|null
     {
-        $post = $this->publishedAt($year, $month, $day, $slug)
-            ->with([self::AUTHOR_PUBLIC, 'ogImage:id,url'])
-            ->withSum('views as views_total', 'engaged')
-            ->withCount(['comments as approved_comments_count' => fn ($c) => $c->approved()])
-            ->first();
+        $post = $this->article($this->publishedAt($year, $month, $day, $slug));
         if ($post) {
-            $blocks = $post->publicBodyBlocks();
-            $post->setAttribute('body_blocks', $blocks);
-            // Las fotos del cuerpo, resueltas: un bloque de imagen lleva solo `media_id`, y la
-            // calle no puede pedirlas una a una —ni tiene con qué, que la mediateca es del
-            // panel—. Van aparte y no dentro del bloque para que el bloque siga siendo el que
-            // el editor escribe.
-            $ids = collect($blocks)
-                ->filter(fn (array $b) => ($b['type'] ?? null) === 'image')
-                ->map(fn (array $b) => (int) (($b['config']['media_id'] ?? 0)))
-                ->filter()->unique()->values();
-            $post->setAttribute('media', $ids->isEmpty() ? [] : SnkKilkanaMediaModel::query()
-                ->whereKey($ids)
-                ->get(['id', 'url', 'alt', 'caption', 'credit', 'width', 'height', 'mime', 'master_path', 'master_width', 'master_height', 'variants_key', 'focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h'])
-                ->map(fn (SnkKilkanaMediaModel $m) => [
-                    'id' => (string) $m->getKey(),
-                    'url' => $m->url,
-                    'alt' => (string) $m->alt,
-                    'caption' => (string) $m->caption,
-                    'credit' => (string) $m->credit,
-                    'width' => (int) $m->width,
-                    'height' => (int) $m->height,
-                    'variants' => $m->variants,
-                ])->values()->all());
-
-            return $this->publicCount($post);
+            return $post;
         }
 
         $history = SnkKilkanaPostSlugModel::query()
@@ -476,6 +449,70 @@ class SnkKilkanaPublicService
     }
 
     /**
+     * La previa por enlace: la pieza tal y como saldría, esté en el estado que esté, para
+     * quien tenga el enlace. El enlace lleva la firma del periódico y una caducidad, y con
+     * eso no hace falta sesión: se manda a quien tiene que dar el visto bueno y ya.
+     */
+    public function preview(int $id, int $until, string $signature): ?SnkKilkanaPostModel
+    {
+        if ($until < now()->getTimestamp() || ! hash_equals($this->previewSignature($id, $until), $signature)) {
+            return null;
+        }
+
+        return $this->article(SnkKilkanaPostModel::query()->whereKey($id));
+    }
+
+    /** Lo que firma un enlace de previa: la pieza, la caducidad y el periódico, con la llave de la instalación. */
+    public function previewSignature(int $id, int $until): string
+    {
+        $periodico = (string) config('database.connections.tenant.database');
+
+        return hash_hmac('sha256', "preview:{$periodico}:{$id}:{$until}", (string) config('app.key'));
+    }
+
+    /**
+     * Una pieza servida entera: firma, portada, el cuerpo ya recortado por el muro y las
+     * fotos que ese cuerpo necesita. La consulta dice cuál; esto dice cómo sale.
+     */
+    private function article(Builder $query): ?SnkKilkanaPostModel
+    {
+        $post = $query
+            ->with([self::AUTHOR_PUBLIC, 'ogImage:id,url'])
+            ->withSum('views as views_total', 'engaged')
+            ->withCount(['comments as approved_comments_count' => fn ($c) => $c->approved()])
+            ->first();
+        if (! $post) {
+            return null;
+        }
+
+        $blocks = $post->publicBodyBlocks();
+        $post->setAttribute('body_blocks', $blocks);
+        // Las fotos del cuerpo, resueltas: un bloque de imagen lleva solo `media_id`, y la
+        // calle no puede pedirlas una a una —ni tiene con qué, que la mediateca es del
+        // panel—. Van aparte y no dentro del bloque para que el bloque siga siendo el que
+        // el editor escribe.
+        $ids = collect($blocks)
+            ->filter(fn (array $b) => ($b['type'] ?? null) === 'image')
+            ->map(fn (array $b) => (int) (($b['config']['media_id'] ?? 0)))
+            ->filter()->unique()->values();
+        $post->setAttribute('media', $ids->isEmpty() ? [] : SnkKilkanaMediaModel::query()
+            ->whereKey($ids)
+            ->get(['id', 'url', 'alt', 'caption', 'credit', 'width', 'height', 'mime', 'master_path', 'master_width', 'master_height', 'variants_key', 'focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h'])
+            ->map(fn (SnkKilkanaMediaModel $m) => [
+                'id' => (string) $m->getKey(),
+                'url' => $m->url,
+                'alt' => (string) $m->alt,
+                'caption' => (string) $m->caption,
+                'credit' => (string) $m->credit,
+                'width' => (int) $m->width,
+                'height' => (int) $m->height,
+                'variants' => $m->variants,
+            ])->values()->all());
+
+        return $this->publicCount($post);
+    }
+
+    /**
      * La identidad y la piel del periódico para un lector.
      *
      * La forma es SIEMPRE la misma, haya fila o no. Antes `tenant` salía nulo cuando la fila no
@@ -494,7 +531,15 @@ class SnkKilkanaPublicService
                 'name' => $ajustes?->tenant_name,
                 'tagline' => $ajustes?->tenant_tagline,
                 'city' => $ajustes?->tenant_city,
+                'url' => $ajustes?->tenant_url,
             ],
+            // Lo que la hoja necesita para hablar como el periódico: su idioma y su reloj, si se
+            // deja encontrar, y quién es y dónde está en las redes para el JSON-LD.
+            'lang' => $ajustes?->lang ?? SnkKilkanaSettingModel::DEFAULT_LANG,
+            'tz' => $ajustes?->tz ?? SnkKilkanaSettingModel::DEFAULT_TZ,
+            'search_visible' => $ajustes === null || (bool) $ajustes->search_visible,
+            'legal' => SnkKilkanaSettingService::group($ajustes?->legal, SnkKilkanaSettingModel::LEGAL),
+            'social' => SnkKilkanaSettingService::group($ajustes?->social, SnkKilkanaSettingModel::SOCIAL),
             // La variante resuelta: `base_slug` para buscar en código lo que no baja a la base
             // —layouts, cabecera, lenguaje de bloques— y encima lo que tocó la redacción.
             'theme' => $ajustes?->themePayload(),

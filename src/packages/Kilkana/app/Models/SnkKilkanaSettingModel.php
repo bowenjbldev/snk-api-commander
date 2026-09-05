@@ -70,14 +70,32 @@ class SnkKilkanaSettingModel extends Model
      */
     protected $attributes = [
         'onboarded' => false,
+        'lang' => self::DEFAULT_LANG,
+        'tz' => self::DEFAULT_TZ,
+        'search_visible' => true,
     ];
+
+    /** Los idiomas que la calle sabe servir: `lang`, `hreflang` y el formato de fecha. */
+    public const LANGS = ['es-ES', 'ca-ES', 'gl-ES', 'eu-ES', 'pt-PT', 'en-GB'];
+
+    public const DEFAULT_LANG = 'es-ES';
+
+    public const DEFAULT_TZ = 'Europe/Madrid';
+
+    /** Las claves de los dos grupos abiertos; lo que no esté aquí no se guarda. */
+    public const LEGAL = ['name', 'email'];
+
+    public const SOCIAL = ['x', 'facebook', 'instagram'];
 
     protected function casts(): array
     {
         return [
             'onboarded' => 'boolean',
+            'search_visible' => 'boolean',
             'theme_spec' => 'array',
             'theme_overrides' => 'array',
+            'legal' => 'array',
+            'social' => 'array',
         ];
     }
 

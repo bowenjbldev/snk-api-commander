@@ -176,6 +176,12 @@ se va a pintar y nadie lo sabría.
 | `tenant_city` | varchar(255) | sí | Su ciudad. |
 | `tenant_url` | varchar(255) | sí | Su dirección pública. Validada `url:http,https`. |
 | `onboarded` | boolean | no · def. `false` | Si ya pasó la puesta en marcha inicial. |
+| `lang` | varchar(8) | no · def. `es-ES` | El idioma de la hoja: `lang`, `hreflang`, `inLanguage` y el formato de fecha. Lista cerrada en `SnkKilkanaSettingModel::LANGS`. |
+| `tz` | varchar(64) | no · def. `Europe/Madrid` | La zona horaria de la redacción: la hora de pared del panel y el sello del JSON-LD. Validada `timezone:all`. |
+| `search_visible` | boolean | no · def. `true` | Si la calle se deja indexar. Apagada, `robots.txt` cierra y toda hoja sale `noindex`: el periódico sigue abierto por su dirección, fuera de los buscadores hasta el lanzamiento. |
+| `newsletter_reply_to` | varchar(255) | sí | A quién contestan los lectores del boletín. La dirección de envío es de la instalación y se lee, no se escribe. |
+| `legal` | longtext (JSON) | sí | Grupo abierto: `name` (la razón social) y `email` (el contacto). Normalizado al escribir: solo esas claves, recortadas, nulas si vacías. |
+| `social` | longtext (JSON) | sí | Grupo abierto: `x`, `facebook`, `instagram`, como URL `http(s)`. Salen en el `sameAs` del JSON-LD. |
 | `created_at` · `updated_at` | timestamp | sí | Alta y última modificación. |
 
 ### Aquí hubo `theme` y `version`

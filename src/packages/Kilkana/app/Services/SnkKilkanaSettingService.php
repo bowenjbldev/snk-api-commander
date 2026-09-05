@@ -2,6 +2,7 @@
 
 namespace Packages\Kilkana\Services;
 
+use Packages\Kilkana\Models\SnkKilkanaPostSlugModel;
 use Packages\Kilkana\Models\SnkKilkanaSettingModel;
 use Packages\Kilkana\Models\SnkKilkanaThemeModel;
 
@@ -82,7 +83,38 @@ class SnkKilkanaSettingService
                 'url' => $fila->tenant_url,
             ],
             'onboarded' => (bool) $fila->onboarded,
+            'lang' => $fila->lang,
+            'tz' => $fila->tz,
+            'search_visible' => (bool) $fila->search_visible,
+            'newsletter_reply_to' => $fila->newsletter_reply_to,
+            'legal' => self::group($fila->legal, SnkKilkanaSettingModel::LEGAL),
+            'social' => self::group($fila->social, SnkKilkanaSettingModel::SOCIAL),
         ];
+    }
+
+    /**
+     * Lo que la instalación decide y el periódico solo lee: desde qué dirección sale el
+     * boletín, y cuántas direcciones viejas sigue contestando la calle con un 301. Aparte del
+     * payload porque no sale de la fila, sale de la instalación y del archivo.
+     */
+    public function facts(): array
+    {
+        return [
+            'sender_address' => (string) config('mail.from.address'),
+            'redirects' => SnkKilkanaPostSlugModel::query()->count(),
+        ];
+    }
+
+    /** Un grupo abierto, siempre con todas sus claves: nula la que no se ha escrito. */
+    public static function group(?array $valor, array $claves): array
+    {
+        $grupo = [];
+        foreach ($claves as $clave) {
+            $v = $valor[$clave] ?? null;
+            $grupo[$clave] = is_string($v) && trim($v) !== '' ? trim($v) : null;
+        }
+
+        return $grupo;
     }
 
     /**
@@ -93,7 +125,12 @@ class SnkKilkanaSettingService
      */
     private function columnsFrom(array $data): array
     {
-        $columnas = collect($data)->only(['theme_overrides', 'onboarded'])->all();
+        $columnas = collect($data)->only(['theme_overrides', 'onboarded', 'lang', 'tz', 'search_visible', 'newsletter_reply_to'])->all();
+        foreach (['legal' => SnkKilkanaSettingModel::LEGAL, 'social' => SnkKilkanaSettingModel::SOCIAL] as $grupo => $claves) {
+            if (is_array($data[$grupo] ?? null)) {
+                $columnas[$grupo] = self::group($data[$grupo], $claves);
+            }
+        }
 
         // Vestir es SIEMPRE copiar. Si llega un tema del catálogo se copia su spec aquí, porque
         // apuntar a la fila del catálogo dejaría al periódico a merced de la siguiente

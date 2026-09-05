@@ -17,6 +17,7 @@ use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Models\SnkKilkanaTagModel;
 use Packages\Kilkana\Services\SnkKilkanaActivityService;
 use Packages\Kilkana\Services\SnkKilkanaPostService;
+use Packages\Kilkana\Services\SnkKilkanaPublicService;
 
 /**
  * CRUD de artículos con BD normalizada. La escritura acepta texto libre del editor
@@ -476,6 +477,29 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         }
 
         return response()->json($this->posts->revisions((int) $id));
+    }
+
+    /**
+     * Un enlace de previa para quien no tiene sesión: firmado por el periódico y con una
+     * semana de vida. Se mira con las mismas llaves que la pieza, y la ruta es la de la
+     * calle, que es donde se abre.
+     */
+    public function previewLink($id): JsonResponse
+    {
+        if ($response = $this->requirePermission($this->showPermission)) {
+            return $response;
+        }
+        if ($this->findModel($id) === null) {
+            return response()->json(['error' => 'Record not found'], 404);
+        }
+
+        $until = now()->addWeek()->getTimestamp();
+        $firma = app(SnkKilkanaPublicService::class)->previewSignature((int) $id, $until);
+
+        return response()->json([
+            'path' => "/preview/{$id}?until={$until}&sig={$firma}",
+            'expires_at' => now()->addWeek()->toIso8601String(),
+        ]);
     }
 
     /** Restaura una revisión: el estado actual se snapshotea antes (restore reversible). */

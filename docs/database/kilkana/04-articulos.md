@@ -214,6 +214,16 @@ reservada como cualquier pieza que sale de la calle, y la hora se borra para que
 publicarla no la retire otra vez. `PUT posts/{id}` la exige por delante del reloj; nula es «no se
 retira».
 
+## La previa por enlace
+
+`POST posts/{id}/preview-link` devuelve, a quien puede ver la pieza, una ruta de la calle
+`/preview/{id}?until=…&sig=…` con una semana de vida. La firma es un HMAC con la llave de la
+instalación sobre la pieza, la caducidad y la base del periódico, así que un enlace de un
+inquilino no abre nada en otro. `GET public/preview/{id}` la comprueba con `hash_equals`, y sirve
+la pieza en cualquier estado con la misma forma que `public/posts/…`: cuerpo recortado por el
+muro y fotos resueltas. Firma tocada, caducidad alargada o enlace vencido son un 404, sin decir
+cuál de las tres cosas pasó. Lleva el freno `kilkana-signed`, como los enlaces del boletín.
+
 ## Lo que la calle lee
 
 `public/posts/{y}/{m}/{d}/{slug}` sirve la pieza con el cuerpo ya recortado por el muro y, aparte

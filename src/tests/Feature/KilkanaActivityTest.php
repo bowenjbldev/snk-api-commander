@@ -113,16 +113,40 @@ class KilkanaActivityTest extends TestCase
         $contenido = $this->registro(['tab' => 'content', 'who' => 'Marta Beneyto'])->index()->getData(true);
         $this->assertSame(['Plan de aparcamientos'], array_column($contenido['data'], 'what'));
 
-        // La campana pide un adelanto y recibe solo filas: ni gente ni cifras.
+        // La campana pide un adelanto y recibe las filas y hasta cuándo se miró: ni gente ni cifras.
         $adelanto = $this->registro(['count' => '2'])->index()->getData(true);
-        $this->assertSame(['data'], array_keys($adelanto));
+        $this->assertSame(['data', 'seen_at'], array_keys($adelanto));
         $this->assertCount(2, $adelanto['data']);
+
+        // Por páginas: la segunda de a dos trae la tercera fila, con la cuenta entera al lado;
+        // `all` se lleva lo filtrado sin partir, que es lo que pide un export.
+        $segunda = $this->registro(['per_page' => '2', 'page' => '2'])->index()->getData(true);
+        $this->assertSame(['Plan de aparcamientos'], array_column($segunda['data'], 'what'), 'La más antigua de las tres visibles.');
+        $this->assertSame(['current_page' => 2, 'per_page' => 2, 'total' => 3, 'last_page' => 2], $segunda['meta']);
+        $this->assertSame(['data'], array_keys($this->registro(['all' => '1', 'per_page' => '1'])->index()->getData(true)));
+        $this->assertCount(3, $this->registro(['all' => '1'])->index()->getData(true)['data']);
 
         // `index users` lo da el seeder de Core, no el catálogo: aquí se concede a mano.
         $admin = $this->cuenta('admin@eldiario.example', 'Admin', 'admin');
         $admin->givePermissionTo(Permission::findOrCreate('index users', 'sanctum'));
         $this->actingAs($admin, 'sanctum');
         $this->assertContains('seat', array_column($this->registro()->index()->getData(true)['data'], 'kind'));
+    }
+
+    /** La campana sabe hasta cuándo miró cada cuenta, y abrirla lo pone al día. */
+    public function test_la_campana_lleva_hasta_cuando_se_miro_y_abrirla_lo_pone_al_dia(): void
+    {
+        $marta = $this->cuenta('marta@eldiario.example', 'Marta', 'director');
+        $this->actingAs($marta, 'sanctum');
+        $this->pieza('Una', 'published');
+
+        $this->assertNull($this->registro(['count' => 6])->index()->getData(true)['seen_at'], 'Nunca abierta.');
+
+        $this->registro()->seen();
+        $visto = $this->registro(['count' => 6])->index()->getData(true)['seen_at'];
+        $this->assertNotNull($visto);
+        $this->assertEqualsWithDelta(now()->getTimestamp(), strtotime($visto), 2);
+        $this->assertArrayNotHasKey('seen_at', $this->registro()->index()->getData(true), 'La pantalla entera no la lleva: es de la campana.');
     }
 
     private function registro(array $query = []): SnkKilkanaActivityController

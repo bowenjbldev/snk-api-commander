@@ -73,6 +73,10 @@ Route::middleware(['api'])->group(function () {
     Route::post('public/posts/{year}/{month}/{day}/{slug}/view', [SnkKilkanaPublicController::class, 'view'])
         ->whereNumber(['year', 'month', 'day'])
         ->middleware('throttle:kilkana-view');
+    // La previa por enlace: firmada y con caducidad, para quien no tiene sesión.
+    Route::get('public/preview/{post}', [SnkKilkanaPublicController::class, 'preview'])
+        ->whereNumber('post')
+        ->middleware('throttle:kilkana-signed');
     Route::get('public/posts/{year}/{month}/{day}/{slug}/comments', [SnkKilkanaPublicController::class, 'comments'])
         ->whereNumber(['year', 'month', 'day']);
     Route::get('public/layouts/{layout}', [SnkKilkanaPublicController::class, 'layout'])->whereIn('layout', SnkKilkanaLayoutEnum::values());
@@ -106,6 +110,7 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::post('posts/bulk', [SnkKilkanaPostsController::class, 'bulk']);
     Route::apiResource('posts', SnkKilkanaPostsController::class);
     Route::get('posts/{post}/revisions', [SnkKilkanaPostsController::class, 'revisions']);
+    Route::post('posts/{post}/preview-link', [SnkKilkanaPostsController::class, 'previewLink'])->whereNumber('post');
     Route::post('posts/{post}/revisions/{revision}/restore', [SnkKilkanaPostsController::class, 'restore']);
     // Las notas de mesa de una pieza: se leen con la pieza y se escriben con editarla.
     Route::get('posts/{post}/notes', [SnkKilkanaPostNotesController::class, 'list'])->whereNumber('post');
@@ -188,6 +193,7 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     // dentro; un colaborador externo ve lo suyo y ya—, y los movimientos de cuentas solo quien
     // las administra. Solo lectura: lo escribe el propio panel al escribir.
     Route::get('activity', [SnkKilkanaActivityController::class, 'index'])->middleware('can:view others posts');
+    Route::post('activity/seen', [SnkKilkanaActivityController::class, 'seen'])->middleware('can:view others posts');
 
     // El output gate: el veredicto de la última pasada, y la pasada nueva que lo sustituye.
     // Quien audita es la salida pública; aquí se guarda y se lee.

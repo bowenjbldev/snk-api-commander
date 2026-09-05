@@ -39,14 +39,15 @@ estado, y con una instancia por llamada el que calla no sería el que escucha.
 ## Lo que el panel lee
 
 `GET activity` (`view others posts`: lo ve quien ve el sumario de la redacción, que deja fuera al
-colaborador externo) devuelve `data` —del más reciente al más
-antiguo, hasta quinientos—, `people` —quién aparece en el registro visible, para el desplegable— y
-`stats`: movimientos de hoy, personas activas en siete días (la máquina no cuenta), lo que salió
-—publicado o programado— y las decisiones de la puerta, que hoy son cero porque la puerta no
-existe. Acepta `tab` (`content`, `people`, `system`), `who` (el nombre tal cual) y `count`: por debajo del
-techo solo viajan filas, que es lo que pide la campana, y así el armazón paga una consulta y no
-seis. Todas las cuentas van acotadas a los noventa días; `actor_name` lleva índice porque se
-filtra y se lista por él y la tabla solo crece.
+colaborador externo) devuelve `data` —del más reciente al más antiguo, por páginas de cincuenta
+(`page`, `per_page` hasta cien) con `meta` como en `readers`—, `people` —quién aparece en el
+registro visible, para el desplegable— y `stats`: movimientos de hoy, personas activas en siete
+días (la máquina no cuenta), lo que salió —publicado o programado— y las decisiones de la puerta,
+que hoy son cero porque la puerta no existe. Acepta `tab` (`content`, `people`, `system`), `who`
+(el nombre tal cual), `count` —solo filas y hasta quinientas, que es lo que pide la campana, y así
+el armazón paga una consulta y no seis— y `all`, que se lleva lo filtrado entero hasta cinco mil
+para un export. Todas las cuentas van acotadas a los noventa días; `actor_name` lleva índice
+porque se filtra y se lista por él y la tabla solo crece.
 
 **Los movimientos de cuentas —`seat`— solo los ve quien tiene `index users`.** El resto de la
 redacción no ve quién entró ni quién salió; es la única fila del registro que no es de todos.
@@ -55,3 +56,11 @@ redacción no ve quién entró ni quién salió; es la única fila del registro 
 
 Ni búsqueda por texto, ni poda, ni marca de «leído» por cuenta, ni menciones. La puerta de salida
 no escribe porque no existe.
+
+## Hasta cuándo se miró
+
+`users.activity_seen_at` guarda cuándo abrió cada cuenta la campana por última vez. `GET
+activity?count=N` lo devuelve como `seen_at` junto a las filas, y la campana marca como no leído
+lo posterior; `POST activity/seen` lo pone a ahora. Es una fecha por cuenta y no un aviso por
+fila: lo que se lee es el registro, y una marca por fila sería inventarse avisos dirigidos que
+no existen.
