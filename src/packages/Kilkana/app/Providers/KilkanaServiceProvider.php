@@ -8,7 +8,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Packages\Core\Support\CoreActiveInstanceSupport;
-use Packages\Kilkana\Console\Commands\SnkKilkanaBuildMastersCommand;
 use Packages\Kilkana\Console\Commands\SnkKilkanaEnrichMediaCommand;
 use Packages\Kilkana\Console\Commands\SnkKilkanaNewsletterSendDueCommand;
 use Packages\Kilkana\Console\Commands\SnkKilkanaPublishScheduledCommand;
@@ -51,7 +50,6 @@ class KilkanaServiceProvider extends ServiceProvider
                 SnkKilkanaNewsletterSendDueCommand::class,
                 SnkKilkanaPurgeTrashCommand::class,
                 SnkKilkanaPurgeVariantsCommand::class,
-                SnkKilkanaBuildMastersCommand::class,
                 SnkKilkanaEnrichMediaCommand::class,
                 SnkKilkanaSyncPermissionsCommand::class,
                 SnkKilkanaSyncThemesCommand::class,

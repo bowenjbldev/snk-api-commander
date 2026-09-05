@@ -108,8 +108,7 @@ solo con lo que se pinta (`MEDIA_PUBLIC`), sin `path`, `disk` ni huellas.
 
 `SnkKilkanaMediaWarmJob` calienta por la cola `og` y `card` a 640 y 960 al subir, reemplazar o
 reencuadrar; `kilkana:purge-variants` barre cada madrugada las carpetas cuya huella ya no es la
-vigente; `kilkana:build-masters` da máster a lo que entró antes de la fábrica, una vez por
-instalación. Un worker de colas guarda la configuración en memoria: tras cambiar
+vigente. Un worker de colas guarda la configuración en memoria: tras cambiar
 `config/kilkana.php` hay que reiniciarlo.
 
 `deleted_at` es borrado **lógico**: la fila sobrevive y se puede restaurar. Un medio se usa
