@@ -241,8 +241,12 @@ vez para considerarse compatible:
 
 Lo que queda vigilado: la conexión `commander` persiste por worker —un handshake menos por
 petición; si MariaDB la cierra por `wait_timeout` tras horas ociosas, Laravel reconecta y repite
-la consulta fuera de transacción («server has gone away» es una conexión perdida reconocida), y si
-alguna vez no bastara, `DisconnectFromDatabases` en `OperationTerminated` la cierra por petición—; `terminate()` corre antes de cerrar la respuesta, así que el
+la consulta **solo fuera de transacción**: dentro de una, la excepción sale tal cual. Lo cubre el
+orden de cada petición: la primera consulta a `commander` es la del resolutor o la del token, las
+dos fuera de transacción, y ahí se reconecta antes de que ningún controlador abra una. Una ruta
+cuya primera consulta a `commander` fuera transaccional fallaría una vez por worker tras el
+timeout; si apareciera, `DisconnectFromDatabases` en `OperationTerminated` cierra la conexión por
+petición al precio de un handshake—; `terminate()` corre antes de cerrar la respuesta, así que el
 insert de metering entra en la latencia medida, a diferencia de FPM; y el límite es la CPU, no la
 memoria: dieciséis workers ganan un 10-14 % en lectura sobre ocho y nada en mixto, mientras el pico
 de FrankenPHP con dieciséis fue de 327 MiB frente a los 2 GiB del contenedor. Octane no elimina

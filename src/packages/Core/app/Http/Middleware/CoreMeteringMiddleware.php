@@ -24,6 +24,10 @@ class CoreMeteringMiddleware
         // Fallback de inicio si el SAPI no informa REQUEST_TIME_FLOAT.
         $request->attributes->set('core_metering_start', microtime(true));
 
+        // En un worker persistente el pico de memoria es el historico del proceso, no el de la
+        // peticion: sin esto memory_kb valdria lo mismo para ocho peticiones seguidas.
+        memory_reset_peak_usage();
+
         // La instancia activa ya la fijó el resolutor (que va antes). Se captura aquí,
         // no en terminate, para conservar la identidad resuelta del request.
         $request->attributes->set('core_metering_instance_id', app(CoreActiveInstanceSupport::class)->id());
@@ -88,7 +92,9 @@ class CoreMeteringMiddleware
                 'ip' => $request->ip(),
                 'request_bytes' => (int) $request->header('Content-Length', '0') ?: strlen($request->getContent()),
                 'response_bytes' => $this->responseBytes($response),
-                'memory_kb' => (int) (memory_get_peak_usage(true) / 1024),
+                // Uso real del heap y no paginas reservadas: en un worker persistente las paginas
+                // ya estan cogidas del arranque y no distinguen una peticion ligera de una pesada.
+                'memory_kb' => (int) (memory_get_peak_usage() / 1024),
             ]);
         } catch (\Throwable $e) {
             report($e);
