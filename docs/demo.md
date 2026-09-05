@@ -91,8 +91,9 @@ Los ocho lectores con nombre tienen altas repartidas en dos años y medio.
 - **Fotos.** Las ciento setenta y seis direcciones del snapshot se reparten entre los sesenta
   ficheros por carga, de la más compartida a la menos y siempre al fichero que menos piezas lleva:
   ninguno se queda sin estrenar y el más cargado queda cerca de la media.
-- **La portada no se siembra.** `kilkana_layouts` sigue vacía a propósito: la calle cae al tema y
-  el compositor del panel no lee de la API todavía; sembrarla no cambiaría nada visible.
+- **La portada no se siembra.** `kilkana_layouts` arranca vacía a propósito: la calle compone con
+  la plantilla del tema hasta que la redacción publica desde el panel, y una demo que enseña ese
+  gesto necesita empezar sin nada publicado.
 - **Medio ambiente es la sección más joven.** Diez piezas del snapshot —el embalse, el humedal, los
   azudes, el parque solar— para que un comarcal de la Ribera hable del río, y su propia familia de
   prosa y de voces.

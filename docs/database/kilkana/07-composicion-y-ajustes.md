@@ -36,6 +36,13 @@ de confiar en que esté bien.
 Esa normalización es lo que hace que retirar un tipo de módulo no invalide una composición
 guardada: la que traiga un módulo desconocido pierde ese módulo y conserva el resto.
 
+Lo que el panel escribe hoy en `front` es su propio documento: `{"version": 1, "sections":
+[{"id": "home" | slug de sección, "bands": [...]}]}`, una entrada por edición abierta con las
+bandas tal cual las edita el composer —reparto, filas, piezas elegidas por su id—. La fila
+`section` no se usa: cada sección se compone aparte dentro de `front`, y las que nadie publica
+salen con la plantilla del tema. La calle lo lee por `public/layouts/front` y lo normaliza en el
+cliente; aquí solo se exige `schema.version` entero y `schema.sections` presente.
+
 ### `version` es control de concurrencia optimista
 
 Quien guarda manda la versión que leyó. Si no coincide con la almacenada, alguien ha

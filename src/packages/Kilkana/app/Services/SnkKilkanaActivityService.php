@@ -99,7 +99,8 @@ class SnkKilkanaActivityService
         });
         SnkKilkanaMediaModel::restored(fn (SnkKilkanaMediaModel $m) => $this->log('restore', 'restored', $m->title ?: ($m->original_name ?: 'a file'), '/media'));
 
-        SnkKilkanaLayoutModel::saved(fn (SnkKilkanaLayoutModel $l) => $this->log('front', 'changed the front page of', ucfirst((string) ($l->layout ?? 'home')), '/front'));
+        // `layout` es un enum: su valor, no el objeto, que no sabe volverse cadena.
+        SnkKilkanaLayoutModel::saved(fn (SnkKilkanaLayoutModel $l) => $this->log('front', 'published the front page', ucfirst($l->layout?->value ?? 'front'), '/front'));
 
         SnkKilkanaSettingModel::updated(function (SnkKilkanaSettingModel $s) {
             if ($s->wasChanged('theme_id')) {
