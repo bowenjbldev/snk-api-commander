@@ -32,7 +32,10 @@ class SnkKilkanaPublicController extends Controller
             'author' => 'nullable|string|max:255',
             'tag' => 'nullable|string|max:64',
             'q' => 'nullable|string|min:2|max:128',
-            'count' => 'nullable|integer|min:1|max:100',
+            // `per_page`, como el resto de la API. Se llamaba `count`, y `count` es lo que
+            // otros recursos usan para «cuántas filas del adelanto»: dos ideas separadas por
+            // una letra de `counts`, que es «solo las cifras». Un nombre para cada cosa.
+            'per_page' => 'nullable|integer|min:1|max:'.SnkKilkanaPublicService::PER_PAGE_MAX,
             'page' => 'nullable|integer|min:1|max:1000',
         ]);
 

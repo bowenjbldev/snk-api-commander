@@ -106,9 +106,9 @@ class KilkanaStreetTest extends TestCase
         }
         $servicio = app(SnkKilkanaPublicService::class);
 
-        $this->assertSame(['a', 'b'], $servicio->posts(['count' => 2])->pluck('slug')->all());
-        $this->assertSame(['c'], $servicio->posts(['count' => 2, 'page' => 2])->pluck('slug')->all());
-        $this->assertSame([], $servicio->posts(['count' => 2, 'page' => 3])->pluck('slug')->all());
+        $this->assertSame(['a', 'b'], $servicio->posts(['per_page' => 2])->pluck('slug')->all());
+        $this->assertSame(['c'], $servicio->posts(['per_page' => 2, 'page' => 2])->pluck('slug')->all());
+        $this->assertSame([], $servicio->posts(['per_page' => 2, 'page' => 3])->pluck('slug')->all());
 
         $this->assertSame(['/2026/07/03/a', '/2026/07/02/b'], array_column($servicio->sitemap(), 'path'));
     }
@@ -153,7 +153,7 @@ class KilkanaStreetTest extends TestCase
 
         DB::flushQueryLog();
         DB::enableQueryLog();
-        $fila = app(SnkKilkanaPublicService::class)->posts(['count' => 5])->first()->toArray();
+        $fila = app(SnkKilkanaPublicService::class)->posts(['per_page' => 5])->first()->toArray();
         $sql = DB::getQueryLog()[0]['query'];
         DB::disableQueryLog();
 
@@ -214,10 +214,10 @@ class KilkanaStreetTest extends TestCase
 
         DB::flushQueryLog();
         DB::enableQueryLog();
-        $primera = $servicio->posts(['count' => 2])->pluck('slug')->all();
+        $primera = $servicio->posts(['per_page' => 2])->pluck('slug')->all();
         $sql = DB::getQueryLog()[0]['query'];
         DB::disableQueryLog();
-        $segunda = $servicio->posts(['count' => 2, 'page' => 2])->pluck('slug')->all();
+        $segunda = $servicio->posts(['per_page' => 2, 'page' => 2])->pluck('slug')->all();
 
         // Sobre el SQL y no solo sobre el resultado: con tres filas en sqlite los empates salen
         // estables por casualidad, así que comprobar el orden devuelto no fija nada. Lo que hay
@@ -230,7 +230,7 @@ class KilkanaStreetTest extends TestCase
 
         $this->assertCount(2, $primera);
         $this->assertSame([], array_intersect($primera, $segunda), 'La página 2 repite una pieza de la página 1.');
-        $this->assertSame($primera, $servicio->posts(['count' => 2])->pluck('slug')->all(), 'La misma consulta da otro orden.');
+        $this->assertSame($primera, $servicio->posts(['per_page' => 2])->pluck('slug')->all(), 'La misma consulta da otro orden.');
     }
 
     /**

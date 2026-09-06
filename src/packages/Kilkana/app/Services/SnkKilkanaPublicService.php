@@ -30,6 +30,17 @@ use Packages\Kilkana\Models\SnkKilkanaTagModel;
 
 class SnkKilkanaPublicService
 {
+    /**
+     * Cuántas piezas trae un listado de la calle, y su techo.
+     *
+     * Más que las veinticinco del panel porque una portada compone con un fondo de cien: el
+     * compositor elige de ahí, y con menos no saldría lo elegido. El techo es el mismo que el
+     * del panel, que es lo que impide que un enlace a mano se lleve el archivo entero.
+     */
+    public const PER_PAGE = 50;
+
+    public const PER_PAGE_MAX = 100;
+
     private const AUTHOR_PUBLIC = 'author:id,user_id,alias,slug,noindex';
 
     /**
@@ -97,7 +108,7 @@ class SnkKilkanaPublicService
         // Los listados son tarjetas: además de ahorrar peso, no pueden filtrar el cuerpo
         // completo de una pieza cerrada antes de que el detalle aplique el muro. `page` es
         // la hemeroteca: la misma lista, más atrás.
-        return $query->forPage((int) ($filters['page'] ?? 1), (int) ($filters['count'] ?? 50))->get()
+        return $query->forPage((int) ($filters['page'] ?? 1), (int) ($filters['per_page'] ?? self::PER_PAGE))->get()
             ->each(fn (SnkKilkanaPostModel $post) => $this->publicCount($post))
             ->each->makeHidden('body_blocks');
     }
