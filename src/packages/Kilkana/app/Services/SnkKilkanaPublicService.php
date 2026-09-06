@@ -60,6 +60,38 @@ class SnkKilkanaPublicService
      * Las tres FKs no salen al JSON —el modelo las esconde— pero tienen que estar: son las que
      * resuelven la sección, la firma y la portada.
      */
+    /**
+     * Lo que la calle **puede** pedir con `?fields=`, y el techo de lo que sale.
+     *
+     * No es una lista de rendimiento, es de contención: este endpoint es anónimo, y sin techo
+     * elegir campos libremente repartiría `created_by`, `deleted_at` o el cuerpo de una pieza
+     * de pago. Quien llama elige dentro; nunca fuera.
+     */
+    public const CAMPOS_PUBLICOS = [
+        'id', 'title', 'excerpt', 'slug', 'status', 'content_tier',
+        'publish_at', 'unpublish_at', 'updated_at', 'url_date', 'url_path',
+        'noindex', 'seo_title', 'seo_description', 'og_title', 'og_description', 'og_image_id',
+        'cover', 'category', 'author', 'tags', 'views_total', 'comments_count',
+    ];
+
+    /**
+     * Qué columnas hay que traer para poder devolver cada campo.
+     *
+     * Casi todos son ellos mismos y no hacen falta aquí. Los que no: `url_path` no es una
+     * columna sino un accesor sobre `url_date` y `slug`, y la portada, la sección y la firma
+     * cuelgan de sus claves foráneas. Sin este mapa, pedir `url_path` devolvería `null` sin
+     * decir por qué, que es exactamente la trampa que ya pagó el sitemap.
+     */
+    private const COLUMNAS_DE = [
+        'url_path' => ['url_date', 'slug'],
+        'cover' => ['cover_media_id'],
+        'category' => ['category_id'],
+        'author' => ['author_id'],
+        'tags' => ['id'],
+        'views_total' => ['id'],
+        'comments_count' => ['id'],
+    ];
+
     private const FILA_PUBLICA = [
         'id', 'title', 'excerpt', 'slug', 'status', 'content_tier',
         'publish_at', 'unpublish_at', 'updated_at', 'url_date',
@@ -69,8 +101,18 @@ class SnkKilkanaPublicService
 
     public function posts(array $filters)
     {
+        // Sin `fields`, lo de siempre. Con ellos, solo lo pedido más las columnas de las que
+        // dependen los que no son columnas.
+        $campos = array_values(array_intersect((array) ($filters['fields'] ?? []), self::CAMPOS_PUBLICOS));
+        $columnas = $campos === []
+            ? self::FILA_PUBLICA
+            : array_values(array_unique(array_merge(
+                array_intersect($campos, self::FILA_PUBLICA),
+                ...array_map(fn (string $campo) => self::COLUMNAS_DE[$campo] ?? [], $campos),
+            )));
+
         $query = SnkKilkanaPostModel::query()
-            ->select(self::FILA_PUBLICA)
+            ->select($columnas)
             ->with(self::AUTHOR_PUBLIC)
             ->published()
             // Se suma `engaged`, no `opens`: «lo más leído» tiene que ordenarse por lo que la
@@ -110,6 +152,7 @@ class SnkKilkanaPublicService
         // la hemeroteca: la misma lista, más atrás.
         return $query->forPage((int) ($filters['page'] ?? 1), (int) ($filters['per_page'] ?? self::PER_PAGE))->get()
             ->each(fn (SnkKilkanaPostModel $post) => $this->publicCount($post))
+            ->each(fn (SnkKilkanaPostModel $post) => $campos === [] ? null : $post->setVisible($campos))
             ->each->makeHidden('body_blocks');
     }
 

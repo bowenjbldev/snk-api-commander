@@ -238,6 +238,32 @@ class KilkanaStreetTest extends TestCase
      *
      * @param  list<string>  $slugs
      */
+    /**
+     * Quien llama elige los campos, dentro del techo del servicio.
+     *
+     * Y elige de verdad: `url_path` no es una columna sino un accesor sobre `url_date` y
+     * `slug`, así que pedirlo tiene que traer las dos o devolvería `null` sin decir por qué
+     * —la trampa que ya pagó el sitemap—. Lo que no está en el techo se ignora, como el resto
+     * de la query: nunca un 422, y nunca una columna que la calle no puede ver.
+     */
+    public function test_la_calle_elige_los_campos_y_no_puede_pedir_los_que_no_son_suyos(): void
+    {
+        $this->piezas(['una', 'otra']);
+        $servicio = app(SnkKilkanaPublicService::class);
+
+        $entera = $servicio->posts([])->first()->toArray();
+        $this->assertArrayHasKey('seo_title', $entera, 'Sin pedir campos, lo de siempre.');
+
+        $minima = $servicio->posts(['fields' => ['id', 'title', 'url_path']])->first()->toArray();
+
+        $this->assertSame(['id', 'title', 'url_path'], array_keys($minima));
+        $this->assertNotNull($minima['url_path'], 'El accesor necesita `url_date` y `slug`, y se traen.');
+
+        // El techo: lo que no es suyo no sale ni pidiéndolo por su nombre.
+        $colada = $servicio->posts(['fields' => ['id', 'created_by', 'body_blocks', 'deleted_at']])->first()->toArray();
+        $this->assertSame(['id'], array_keys($colada));
+    }
+
     private function piezas(array $slugs, ?string $cuando = null): void
     {
         $seccion = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);

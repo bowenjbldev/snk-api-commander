@@ -39,7 +39,11 @@ class SnkKilkanaPublicController extends Controller
             'page' => 'nullable|integer|min:1|max:1000',
         ]);
 
-        return response()->json($this->public->posts($data));
+        // Los campos los elige quien llama, dentro del techo del servicio. Sin ellos, lo de
+        // siempre: ninguna llamada que no se entere cambia de comportamiento.
+        $campos = array_filter(array_map('trim', explode(',', (string) $request->query('fields', ''))));
+
+        return response()->json($this->public->posts([...$data, 'fields' => $campos]));
     }
 
     /** Una etiqueta por su slug: lo que `/tag/{slug}` necesita para rotularse. */

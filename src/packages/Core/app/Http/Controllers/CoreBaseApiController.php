@@ -33,6 +33,16 @@ abstract class CoreBaseApiController extends Controller
     /** Bloques de agregados que este recurso sabe calcular, para `?summary=`. */
     protected array $allowedSummary = [];
 
+    /**
+     * Los campos que este recurso deja pedir con `?fields=`, y el techo de lo que puede salir.
+     *
+     * **Es una lista de contención antes que de rendimiento.** Quien llama elige DENTRO de
+     * ella y nunca fuera: un endpoint público es anónimo, y sin techo elegir campos libremente
+     * reparte `created_by`, `deleted_at` o el correo de acceso de la redacción. Vacía significa
+     * que este recurso no admite elegir y devuelve lo suyo de siempre.
+     */
+    protected array $allowedFields = [];
+
     protected array $withMap = [];
 
     protected ?string $storeRequestClass = null;
@@ -168,6 +178,29 @@ abstract class CoreBaseApiController extends Controller
         $asked = array_filter(array_map('trim', explode(',', $raw)));
 
         return array_values(array_intersect($asked, $this->allowedSummary));
+    }
+
+    /**
+     * Qué campos se han pedido, de los que este recurso ofrece. Vacío es «los de siempre».
+     *
+     * Que lo elija quien llama y no el servidor cierra un acoplamiento que ya costó caro: la
+     * lista de campos del listado y el parser del panel eran gemelas mantenidas a mano, y
+     * divergieron —seis campos pasaron a `undefined` sin que fallara nada—. Quien parsea es
+     * ahora quien pide.
+     *
+     * @return list<string>
+     */
+    protected function fields(): array
+    {
+        $raw = request()->query('fields');
+
+        if (! is_string($raw) || trim($raw) === '' || $this->allowedFields === []) {
+            return [];
+        }
+
+        $asked = array_filter(array_map('trim', explode(',', $raw)));
+
+        return array_values(array_intersect($asked, $this->allowedFields));
     }
 
     protected function wants(string $block): bool
