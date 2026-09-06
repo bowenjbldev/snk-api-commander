@@ -30,6 +30,8 @@ class CoreResolverPermissionIsolationTest extends TestCase
 
         $this->assertSame(['only-north'], $this->permissionsSeenBy('north.commander.test', 'only-north'));
         $this->assertSame(['only-south'], $this->permissionsSeenBy('south.commander.test', 'only-south'));
+        // Y de vuelta: lo que el registrar recuerda por worker es lo de north, no lo de south.
+        $this->assertSame(['only-north'], $this->permissionsSeenBy('north.commander.test', 'only-north'));
     }
 
     /** Corre el resolutor sobre un tenant sqlite recién creado con UN permiso y devuelve lo que ve el registrar. */

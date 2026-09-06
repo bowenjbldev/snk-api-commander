@@ -53,8 +53,10 @@ El perfil local está calibrado para el i7-7700K de 4 núcleos/8 hilos con Maria
   pendiente. Con lote 1 —consola, pruebas, php-fpm— se escribe al momento;
 - nginx mantiene 32 conexiones vivas hacia Octane (`upstream api_app`, `keepalive`): un TCP nuevo
   por petición sobraba;
-- PHP: 512 MiB por request, OPcache 192 MiB/16 MiB de strings también en CLI, JIT desactivado y
-  subida máxima de 64 MiB para respetar el contrato Kilkana de 50 MiB;
+- PHP: 512 MiB por request, OPcache 192 MiB/16 MiB de strings también en CLI, JIT `tracing` con
+  64 MiB de búfer (medido en [coste común](#coste-común-por-petición-del-06-09-2026): +6-9 % donde
+  manda PHP, plano donde manda MariaDB) y subida máxima de 64 MiB para respetar el contrato
+  Kilkana de 50 MiB;
 - Nginx: proxy HTTP/1.1 a `api-app:8000`, compresión de JSON, sesiones TLS y
   `X-Content-Type-Options`.
 
@@ -570,6 +572,167 @@ La lectura pasa de ×2 a casi ×3 sobre FPM y el p95 bajo carga cae a un tercio;
 siguen mandados por MariaDB y ganan lo mismo que el día anterior. Los absolutos de las dos pasadas
 no se comparan entre sí (la máquina rendía distinto), solo cada pasada con su propio FPM.
 
+### Coste común por petición del 06-09-2026
+
+```bash
+docker compose exec -T app php < scripts/common-cost.php   # un proceso con la app cargada, N=300
+LABEL=antes bash scripts/common-cost-http.sh                 # oha: tres endpoints, c=10, 20 s × 2 rondas
+```
+
+Lo que toda petición tenant repite antes de tocar negocio —resolutor, conexión tenant, freno,
+kill-switch, auth, permisos y metering— medido componente a componente dentro de un proceso con la
+app cargada (lo que hace un worker de Octane, sin su sandbox ni nginx ni TLS), y por HTTP con tres
+endpoints del mismo periódico que solo se diferencian en esa parte común: `public/site` (público),
+`auth/me` (token) y `tags` (token y `can`). `common-cost.php` crea un token y lo borra, y borra las
+filas de metering que deja; `common-cost-http.sh` levanta el freno recreando `app` como hace
+`simulate.sh` y lo restaura al salir. Mismo i7-7700K, FrankenPHP con doce workers, caché `file`.
+
+Antes, mediana por petición en un proceso:
+
+| Componente | ms | Nota |
+| --- | ---: | --- |
+| resolutor: SELECT de la instancia con dos `whereHas` | 0,83 | conexión `commander` viva; en SQL crudo con un JOIN, 0,38 |
+| descifrado, overrides de config y clave de permisos | 0,20 | `glob(config/*.php)` cuesta 0,01: caché de directorio |
+| conexión tenant: abrir y cerrar | 0,87 | TCP, auth, `use` y `SET`; una ida y vuelta son 0,25 |
+| freno `throttle:api` sobre caché `file` | 0,31 | dos lecturas y una escritura con `flock` |
+| kill-switch sobre caché `file` | 0,06 | |
+| metering, INSERT de veinte filas repartido | 0,16 | con lote 1 serían 2,1 por petición |
+| Sanctum: token, usuario y UPDATE de `last_used_at` | 1,68 | sin el UPDATE, 1,38 |
+| Spatie: leer la caché e hidratar 63 permisos y 7 roles | 0,62 | reconstruir desde SQL, 26; solo con la caché vacía |
+| `can()`: permisos directos y roles, dos SELECT | 1,69 | `model_has_permissions` está vacía en todas las bases |
+
+Unos 2,4 ms comunes en una petición pública y 6,4 en una autenticada con permiso, sobre un suelo
+de framework de unos 3 ms (el `404` de un inquilino fantasma cuesta 3,7). Cinco cambios, todos en
+Core y ninguno en el aislamiento: el resolutor consulta la instancia con un SQL de un JOIN
+(0,83 → 0,38); la conexión tenant no manda el `use` tras el handshake (0,80 → 0,71);
+`CorePermissionRegistrarSupport` recuerda por worker la colección hidratada de cada base y en cada
+petición solo lee la caché y la compara (0,62 → 0,12); `CoreUserModel::hasPermissionTo` pregunta
+primero al rol y a los directos solo si el rol dice que no (1,69 → 0,92, una consulta); y
+`CorePersonalAccessTokenModel` escribe `last_used_at` al minuto (1,68 → 1,18, y una escritura
+menos por cada lectura del panel).
+
+| Petición completa, un proceso | Antes | Después |
+| --- | ---: | ---: |
+| `public/site` | 6,69 ms | 6,38 ms |
+| `auth/me` | 15,96 ms | 15,51 ms |
+| `tags` con `can index tags` | 22,31 ms | 19,40 ms, seis → cinco consultas |
+| inquilino fantasma, `404` | 3,71 ms | 3,31 ms |
+
+Y la pregunta directa, después de los cambios: cuánto tarda la API en llegar al controlador del
+package. El harness engancha el `ControllerDispatcher` y parte cada petición en enrutar
+(middleware global y matching), middleware de ruta (resolutor, freno, kill-switch, auth y `can:`)
+y package. En una petición pública la conexión tenant (~0,7 ms) se abre en la primera consulta del
+package y cuenta ahí; con token la abre Sanctum dentro del freno y cuenta en la entrada.
+
+Con el JIT ya puesto y el proceso recién arrancado:
+
+| Petición, un proceso | Enrutar | Middleware de ruta | Hasta el controlador | Package | Total |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `public/site` | 0,4 ms | 1,5 | **1,9** | 2,8 | 5,2 |
+| `auth/me` | 0,6 | 4,1 | **4,7** | 6,7 | 12,0 |
+| `tags`, `can` en el controlador | 0,9 | 4,1 | **5,0** | 10,0 | 15,6 |
+| `settings`, `can:` en la ruta | 1,1 | 5,3 | **6,5** | 2,1 | 9,2 |
+
+Sin JIT esas entradas eran 2,4 / 5,4 / 5,8 / 7,6. Y son el **suelo**, no la media: el mismo script
+medido tras 1.500 peticiones en el mismo proceso da 3,4 en la pública, por presión de heap. Un
+worker vive entre esos dos puntos según dónde esté de su ciclo de 500 peticiones.
+
+La entrada de `settings` no es mayor porque haga más trabajo, sino porque su `can:` corre como
+middleware de ruta; en `tags` esa misma comprobación cuenta como package. La frontera es útil, no
+es una ley física.
+
+Repartida esa entrada por piezas, con JIT: enrutado y middleware global 0,40; SELECT de la
+instancia 0,42 (0,57 con los dos `whereHas` de antes); descifrado, `glob`, overrides y clave de
+permisos 0,11; abrir y cerrar la conexión tenant 0,72; freno 0,23; kill-switch 0,05; Sanctum 1,06;
+`can()` 1,05; metering amortizado 0,13. **Lo que se paga por ser multi-tenant son 1,25 ms** —
+resolver quién es y conectarse a su base—, o 1,43 contando kill-switch y metering. El resto lo paga
+cualquier API de Laravel con tokens y roles, tenga un inquilino o mil.
+
+Lo que queda tras el controlador (0,7 a 1,2 ms) es el `finally` del resolutor, las cabeceras del
+kill-switch y del freno y el `terminate` del metering.
+
+Por HTTP, con `oha` a concurrencia 10 sobre los cuatro núcleos saturados, la diferencia entre
+rondas seguidas de la misma variante llega al 15 %, así que solo vale intercalar: tres rondas
+alternando el orden antes/después, quince segundos por celda y medianas. Y la máquina tiene que
+estar quieta de verdad: la barra de estado de Claude Code (`npm exec claude-powerline`) quema un
+núcleo un par de segundos con cada llamada, y una pasada hecha mientras se trabaja en la sesión
+salió un 13 % por debajo de su propia línea base.
+
+| Escenario HTTP, c=10 | Antes | Después | p95 antes → después |
+| --- | ---: | ---: | ---: |
+| `public/site` | 554,1 rps | 590,6 (+6,6 %) | 29,8 → 26,4 ms |
+| `auth/me` | 264,6 rps | 289,2 (+9,3 %) | 62,0 → 53,8 ms |
+| `tags` con `can` | 199,2 rps | 230,7 (+15,8 %) | 76,5 → 67,9 ms |
+
+**JIT de opcache**, mismo día y mismo método, con `app` recreada con y sin un `.ini` extra
+(`opcache.jit=tracing`, búfer 128M) e intercalando tres rondas. En proceso, con la máquina quieta:
+`public/site` 5,86 → 5,44 ms, `auth/me` 14,3 → 12,3, `tags` 17,2 → 16,2, y la entrada al
+controlador entre un 10 y un 15 % menos. Una primera pasada con otras aplicaciones abiertas en el
+host exageraba el efecto al doble: la que vale es la quieta.
+
+| Escenario HTTP, c=10 | JIT off | JIT tracing | p95 off → tracing |
+| --- | ---: | ---: | ---: |
+| `public/site` | 617,3 rps | 651,6 (+5,6 %) | 26,0 → 24,8 ms |
+| `auth/me` | 300,1 rps | 325,6 (+8,5 %) | 51,8 → 49,0 ms |
+| `tags` con `can` | 247,6 rps | 245,0 (−1 %) | 60,9 → 63,5 ms |
+
+Gana donde manda PHP y no mueve nada donde manda MariaDB. Queda fijado en `docker/php/commander.ini`
+con 64 MiB de búfer: 400 peticiones de una ruta usaron 1 MiB, y es memoria compartida del proceso,
+una sola vez. Vale también para scheduler, queue y provisioner, que montan el mismo fichero.
+
+### El store de caché, y por qué condiciona una segunda réplica
+
+```bash
+docker compose exec -T -e CACHE_STORE=file     app php < scripts/common-cost-cache.php
+docker compose exec -T -e CACHE_STORE=database app php < scripts/common-cost-cache.php
+```
+
+`CACHE_STORE=file` es local al contenedor, así que una segunda réplica no comparte lo que de esa
+caché cuelga: el freno, el kill-switch y la caché de permisos de Spatie. El sustituto previsto era
+el store `database` anclado a `commander`. Medido el 06-09-2026, no sirve tal cual:
+
+| Operación cruda del store | `file` | `database` |
+| --- | ---: | ---: |
+| leer una clave presente | 0,03 ms | 0,29 |
+| escribir | 0,21 | 0,29 |
+| `increment`, lo que hace el freno | 0,19 | **2,3** |
+
+| Por petición | `file` | `database` |
+| --- | ---: | ---: |
+| kill-switch | 0,04 ms | 0,29 |
+| freno (`tooManyAttempts` + `hit`) | 0,26 | **3,03** |
+| memo de permisos (leer, comparar, copiar) | 0,11 | 0,35 |
+| `public/site` completa | 5,73 | 9,65 (+68 %) |
+| `auth/me` completa | 12,92 | 16,73 (+29 %) |
+| `tags` completa | 16,71 | 21,55 (+29 %) |
+
+El culpable es `DatabaseStore::increment`, que envuelve un `SELECT … FOR UPDATE` y un `UPDATE` en
+una transacción: cuatro idas y vueltas y un commit durable por petición. Los casi 4 ms que suma a
+una pública son el triple de todo el impuesto multi-tenant.
+
+Lo que la medida sí deja claro es **qué necesita compartirse de verdad**, que no es lo mismo para
+los tres:
+
+- el **kill-switch** no lo necesita: su caché ya caduca a los 30 segundos, así que una caché por
+  réplica da exactamente la misma garantía que hoy;
+- los **permisos** sí: su TTL es de 24 horas y `forgetCachedPermissions()` solo vacía la réplica
+  que atendió la edición, de modo que otra serviría permisos viejos durante un día. Es la única
+  rotura real, y moverlos solos al store compartido cuesta 0,25 ms por petición, no cuatro;
+- el **freno** a medias: el general (240/min) pasaría a ser 240 por réplica, que degrada un
+  control defensivo sin romperlo; el del login (cinco fallos por cuenta) sí es de seguridad, pero
+  vive en una petición que ya cuesta 24 ms de Argon2, así que ahí los 3 ms no se notan.
+
+Conclusión operativa: con una sola réplica, `file` es lo correcto y lo más rápido. Para la segunda,
+Redis resuelve los tres a la vez por debajo de 0,1 ms y es la vía recomendada; si no lo hubiera, el
+apaño medido es dejar `file` de general y mover al store compartido solo los permisos y el freno
+del login. Lo que no debe hacerse es cambiar `CACHE_STORE` a `database` y ya.
+
+Lo que queda es estructural y no se ha tocado: abrir y cerrar la conexión tenant (0,8 ms, y el
+criterio de [arquitectura](architecture.md#capacidad-y-conexiones) es conservar la purga en vez de
+un pool por worker), la consulta del resolutor (0,4, memorizable por worker a cambio de segundos de
+retraso al desaprovisionar), el freno sobre `file` (0,25; no hay APCu y `array` no se comparte
+entre workers) y el suelo del framework (~3 ms de enrutado, pipeline y respuesta).
+
 ## Comprobaciones
 
 ```bash
@@ -683,6 +846,10 @@ Requisitos adicionales:
 - Los workers de Octane guardan la aplicación en memoria: el `--watch` nativo de `app` los recarga
   en local; sin él hace falta `php artisan octane:reload`. No sustituye limpiar/regenerar cachés.
 - Un package nuevo requiere autoload/recache y sync de aplicaciones.
+- `docker/php/commander.ini` se monta como fichero suelto: tras editarlo, `docker compose up -d
+  --no-deps --force-recreate app scheduler queue provisioner`. Un `restart` falla en Docker Desktop
+  («error mounting … zz-commander.ini … no such file») porque el mount sigue al inodo viejo, y deja
+  el servicio parado.
 - Un token tenant no autentica en Commander ni viceversa.
 - Cambiar un plan de catálogo no propaga límites a instancias hasta provisionar/cambiar plan.
 - Una suscripción negociada agrupa billing y puede tener cuotas compartidas; no agrupa bases,

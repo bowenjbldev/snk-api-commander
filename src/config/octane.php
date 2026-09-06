@@ -24,6 +24,7 @@ use Laravel\Octane\Listeners\StopWorkerIfNecessary;
 use Laravel\Octane\Octane;
 use Packages\Core\Listeners\CoreFlushMeteringListener;
 use Packages\Core\Support\CoreMeteringBufferSupport;
+use Spatie\Permission\PermissionRegistrar;
 
 return [
 
@@ -138,6 +139,9 @@ return [
         // La cola de metering tiene que vivir en el contenedor base del worker: resuelta dentro de
         // una peticion caeria en su sandbox y se perderia con ella.
         CoreMeteringBufferSupport::class,
+        // Y el registrar de permisos igual: guarda por worker la colección hidratada de cada base
+        // (`CorePermissionRegistrarSupport`), y resuelto dentro de una petición moriría con ella.
+        PermissionRegistrar::class,
     ],
 
     'flush' => [

@@ -7,9 +7,13 @@ use Illuminate\Contracts\Foundation\CachesConfiguration;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Support\Arr;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Sanctum\Sanctum;
+use Packages\Core\Models\CorePersonalAccessTokenModel;
 use Packages\Core\Support\CoreActiveInstanceSupport;
 use Packages\Core\Support\CoreMeteringBufferSupport;
 use Packages\Core\Support\CorePackageDiscoverySupport;
+use Packages\Core\Support\CorePermissionRegistrarSupport;
+use Spatie\Permission\PermissionRegistrar;
 
 class CoreServiceProvider extends ServiceProvider
 {
@@ -68,6 +72,14 @@ class CoreServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // El registrar de Spatie con memoria por worker de la colección hidratada. En `boot()` y
+        // no en `register()`: el provider de Spatie registra su singleton al arrancar y pisaría
+        // lo atado antes; Spatie arranca antes que Core, así que esto es lo último que se ata.
+        $this->app->singleton(PermissionRegistrar::class, CorePermissionRegistrarSupport::class);
+
+        // El token de Sanctum con `last_used_at` escrito al minuto y no en cada petición.
+        Sanctum::usePersonalAccessTokenModel(CorePersonalAccessTokenModel::class);
+
         // Migraciones del deploy COMMANDER (conexion default = commander): base del operador
         // (roles/users/tokens) + registro + metering + operador (commander_*). Las de NEGOCIO
         // de cada package NO se auto-cargan: las corre el provisioning sobre la conexion del tenant

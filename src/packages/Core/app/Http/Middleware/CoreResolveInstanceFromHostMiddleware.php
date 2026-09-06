@@ -19,17 +19,18 @@ class CoreResolveInstanceFromHostMiddleware
     public function handle(Request $request, Closure $next, string $slug): Response
     {
         $clientSubdomain = CorePackageSelectorSupport::subdomainFromHost($request->getHost());
+        // SQL crudo y un solo JOIN a propósito: es la consulta de TODAS las peticiones tenant, y
+        // aquí Eloquent pesaba más que MariaDB. Medido: 0,83 ms con dos `whereHas` frente a 0,38
+        // así, con la misma fila, los mismos casts y el mismo modelo a la salida.
         $instance = $clientSubdomain !== null
-            ? CommanderInstanceModel::query()
-                ->ready()
-                ->whereHas('client', fn ($query) => $query
-                    ->where('slug', $clientSubdomain)
-                    ->where('status', 'active'))
-                ->whereHas('application', fn ($query) => $query
-                    ->where('slug', $slug)
-                    ->where('status', 'active')
-                    ->where('code_status', 'available'))
-                ->first()
+            ? CommanderInstanceModel::query()->fromQuery(
+                'select i.* from commander_instances i'
+                .' join commander_clients c on c.id = i.client_id'
+                .' join commander_applications a on a.id = i.application_id'
+                .' where i.provisioning_status = ? and c.slug = ? and c.status = ?'
+                .' and a.slug = ? and a.status = ? and a.code_status = ? limit 1',
+                ['ready', $clientSubdomain, 'active', $slug, 'active', 'available'],
+            )->first()
             : null;
 
         if ($instance === null) {
@@ -86,16 +87,16 @@ class CoreResolveInstanceFromHostMiddleware
     /**
      * La cache de permisos de Spatie, acotada a ESTA base.
      *
-     * El registro de permisos cuesta **~19 ms de PHP** por carga —medido: 1,4 ms de SQL y 23,5
-     * de construir el arbol de 57 permisos y 7 roles— y `CoreServiceProvider` lo deja en el
-     * almacen `array`, que es por peticion: se reconstruye entero en cada request y se tira.
-     * Ese `array` no es un descuido, es lo que impide que una cache compartida sirva los
-     * permisos de un periodico a otro, y esa regla no se toca.
+     * `CoreServiceProvider` deja el almacén en `array`, que es por petición, y no es un
+     * descuido: es lo que impide que una caché compartida sirva los permisos de un periódico a
+     * otro, y esa regla no se toca. Lo que cambia aquí es que la clave lleve el nombre de la
+     * base, con lo que la caché persistente vuelve a ser segura: dos inquilinos no pueden
+     * compartir entrada porque no comparten clave. `forgetCachedPermissions()` sigue olvidando
+     * solo la del inquilino activo, que es lo correcto cuando alguien edita un rol.
      *
-     * Lo que cambia es que la clave lleve el nombre de la base, con lo que la cache persistente
-     * vuelve a ser segura: dos inquilinos no pueden compartir entrada porque no comparten
-     * clave. `forgetCachedPermissions()` sigue olvidando solo la del inquilino activo, que es
-     * lo correcto cuando alguien edita un rol.
+     * Y hace falta que sea persistente: reconstruir la lista desde la base cuesta unos 26 ms.
+     * Leerla e hidratarla en modelos, 0,6 ms por petición, y eso es lo que
+     * `CorePermissionRegistrarSupport` recuerda por worker y por base.
      *
      * **Y se hace aqui y solo aqui, a proposito.** Este es el unico sitio que conmuta la
      * conexion en HTTP —una peticion, un inquilino, un cambio—, asi que la clave no puede

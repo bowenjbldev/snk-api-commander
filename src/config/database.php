@@ -150,6 +150,9 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
+            // Esta conexión se abre y se cierra en cada petición, y el DSN ya lleva la base: el
+            // `use` que Laravel manda después de conectar es una ida y vuelta de más.
+            'use_db_after_connecting' => false,
         ],
 
         // Solo existe en el worker de provisioning; el proceso HTTP no recibe estas credenciales.

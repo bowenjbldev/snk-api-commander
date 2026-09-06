@@ -129,7 +129,9 @@ demo_kilkana
 ```
 
 No hay `tenant_id` ni bypass por token. Sanctum busca el token en la base activa. El mismo correo
-en dos diarios son dos usuarios locales y dos tokens independientes.
+en dos diarios son dos usuarios locales y dos tokens independientes. El `last_used_at` del token
+se escribe al minuto y no en cada petición (`CorePersonalAccessTokenModel`): es la «última
+actividad» de una cuenta, no un libro mayor, y así una lectura del panel no es una escritura.
 
 El proceso HTTP usa el usuario de control solo sobre `commander`. El worker `provisioner` recibe
 la credencial DDL y crea un usuario runtime por instancia con únicamente `SELECT`, `INSERT`,
@@ -178,7 +180,9 @@ contexto aislado por corrutina.
 
 PDO no usa conexiones persistentes ni existe un pool externo. Cada request resuelve la instancia
 en `commander`, abre la conexión tenant al primer acceso SQL y `DB::purge('tenant')` la cierra al
-salir. Por tanto, el número de tenants registrados no determina las conexiones simultáneas; la
+salir. Esa apertura no manda el `use` que Laravel añade tras el handshake
+(`use_db_after_connecting`): el DSN ya lleva la base y era una ida y vuelta más por petición.
+Por tanto, el número de tenants registrados no determina las conexiones simultáneas; la
 aproximación conservadora es dos conexiones por worker HTTP ocupado, más scheduler, provisioner
 y operación. Sí existe churn de autenticación/conexión proporcional a las peticiones.
 
@@ -221,21 +225,27 @@ worker persistente también es correcto en FPM y en la CLI que recorre inquilino
 - el resolutor vacía la colección de permisos de Spatie al conmutar
   (`clearPermissionsCollection()`): `initializeCache()` cambia clave y almacén pero no la
   colección en memoria, y un proceso que sirve dos inquilinos seguidos le daría al segundo los
-  permisos del primero. `CoreResolverPermissionIsolationTest` lo fija;
+  permisos del primero. `CoreResolverPermissionIsolationTest` lo fija. Lo que sí sobrevive por
+  worker es la colección ya **hidratada** de cada base (`CorePermissionRegistrarSupport`): la
+  clave es la de la caché, que lleva el nombre de la base, en cada petición se compara con el
+  contenido de la caché y se sirven copias; un rol editado se ve en la siguiente petición y dos
+  inquilinos no pueden compartir entrada. `CorePermissionRegistrarMemoTest` lo fija;
 - el metering toma el inicio de `REQUEST_TIME_FLOAT`, que es por petición en cualquier SAPI; una
   constante de arranque sería el uptime del worker;
 - el store de caché `database` se ancla a `commander` con `DB_CACHE_CONNECTION`: sin eso toma la
   conexión por defecto, que durante una petición es la del inquilino, y el gestor de caché la
-  memoriza más allá de la petición. **Esa ruta no la ejecuta nadie todavía**: local corre con
-  `CACHE_STORE=file` y la suite con `array`, así que las claves de permisos por inquilino y los
-  cubos del freno sobre `database` se estrenarán en el primer despliegue que lo active, y ahí hay
-  que medirlo antes de fiarse.
+  memoriza más allá de la petición. Esa ruta se estrenó el 06-09-2026 al medirla: con
+  `CACHE_STORE=database` las seis claves de la prueba —freno, kill-switch y permisos— fueron a
+  `commander.cache` y la tabla `cache` del inquilino se quedó a cero, que es lo que esa variable
+  tiene que garantizar. Lo que la prueba desaconseja es usar ese store para todo:
+  [cuesta un 68 % en una petición pública](operations.md#coste-común-por-petición-del-06-09-2026)
+  y el culpable es el freno.
 
 Lo que Octane ya cubre sin código propio: sandbox de configuración por petición, reinicio de los
 guards de autenticación, caché `array` y una aplicación nueva para el gestor de base de datos. El
 sandbox corta en los dos sentidos: un singleton que deba sobrevivir a la petición —la cola de
-metering— se resuelve al arrancar el worker (`octane.warm`), porque resuelto dentro de una
-petición nace y muere en su sandbox. El
+metering y el registrar de permisos— se resuelve al arrancar el worker (`octane.warm`), porque
+resuelto dentro de una petición nace y muere en su sandbox. El
 `finally` del resolutor sigue siendo la fuente de verdad en FPM y purga la conexión tenant en
 ambos. `route()->forgetParameter('client')` no es un riesgo: `Route::bind()` reasigna los
 parámetros en cada petición antes de que corra ningún middleware.
