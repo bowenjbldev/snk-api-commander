@@ -34,11 +34,13 @@ class SnkKilkanaGateController extends CoreBaseApiController
             return $response;
         }
 
+        // La cifra sola no necesita las filas: es lo que pide el raíl del panel en cada carga.
+        if (request()->boolean('counts')) {
+            return response()->json(['failing' => SnkKilkanaGateResultModel::failingCount()]);
+        }
+
         $filas = SnkKilkanaGateResultModel::query()->orderBy('id')->get();
         $failing = $filas->filter(fn (SnkKilkanaGateResultModel $r) => $r->failing())->count();
-        if (request()->boolean('counts')) {
-            return response()->json(['failing' => $failing]);
-        }
 
         return response()->json([
             'data' => $filas->map(fn (SnkKilkanaGateResultModel $r) => [

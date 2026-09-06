@@ -73,15 +73,7 @@ class SnkKilkanaTrashController extends CoreBaseApiController
     /** Las clases que quien pregunta puede borrar, que son las que ve y las que puede purgar. */
     private function kinds(): array
     {
-        $user = auth()->user();
-        if ($user === null) {
-            return [];
-        }
-
-        return array_values(array_filter(
-            SnkKilkanaTrashService::KINDS,
-            fn (string $kind) => $user->can("delete {$kind}".($kind === 'post' ? 's' : '')),
-        ));
+        return $this->trash->kindsFor(auth()->user());
     }
 
     private function allowed(string $kind): ?JsonResponse

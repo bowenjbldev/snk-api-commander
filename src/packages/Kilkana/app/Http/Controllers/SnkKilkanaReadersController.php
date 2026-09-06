@@ -16,7 +16,6 @@ use Packages\Kilkana\Models\SnkKilkanaCommentModel;
 use Packages\Kilkana\Models\SnkKilkanaReaderReadModel;
 use Packages\Kilkana\Models\SnkKilkanaSubscriberModel;
 use Packages\Kilkana\Services\SnkKilkanaReaderService;
-use Packages\Kilkana\Services\SnkKilkanaRoleCatalogService;
 
 /**
  * Las cuentas lectoras: quien comenta, quien recibe el boletín y quien consume piezas medidas.
@@ -156,9 +155,7 @@ class SnkKilkanaReadersController extends CoreBaseApiController
     /** Solo las cuentas que son SOLO lectoras: la redacción no sale aquí ni con `id` a mano. */
     private function readers(): Builder
     {
-        return $this->newQuery()
-            ->whereHas('roles', fn (Builder $r) => $r->where('name', 'reader'))
-            ->whereDoesntHave('roles', fn (Builder $r) => $r->whereNotIn('name', SnkKilkanaRoleCatalogService::WITHOUT_SEAT));
+        return $this->readers->accounts();
     }
 
     private function reader($id): ?CoreUserModel

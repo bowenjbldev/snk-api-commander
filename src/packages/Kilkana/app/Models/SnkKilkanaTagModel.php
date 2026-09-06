@@ -2,6 +2,7 @@
 
 namespace Packages\Kilkana\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Str;
@@ -9,6 +10,25 @@ use Illuminate\Validation\ValidationException;
 
 class SnkKilkanaTagModel extends Model
 {
+    /**
+     * La lista del vocabulario: con lo que el panel pinta de cada etiqueta, por nombre.
+     *
+     * Es un scope y no el estado normal del modelo porque solo lo quiere quien LISTA: pedir una
+     * etiqueta para renombrarla no necesita recorrer su pivote. Y vive aquí y no en el
+     * controlador porque lo preguntan dos puertas —el recurso y el armazón del panel—.
+     *
+     * `last_used_at` mira solo lo publicado, igual que en firmas: un borrador de hoy no es uso
+     * del vocabulario, es una intención. `posts_count` cuenta todo lo que la lleva, incluidos
+     * borradores, porque para fundir importa cuántas piezas hay que mover, no cuántas se ven.
+     */
+    public function scopeAsCatalogue(Builder $query): Builder
+    {
+        return $query
+            ->withCount('posts')
+            ->withMax(['posts as last_used_at' => fn ($q) => $q->published()], 'publish_at')
+            ->orderBy('name');
+    }
+
     protected $table = 'kilkana_tags';
 
     protected $guarded = [];

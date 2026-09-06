@@ -76,8 +76,8 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
         // y contestarle con la pagina entera son diez consultas para un entero.
         if ($request->boolean('counts')) {
             return response()->json([
-                'counts' => $this->countsByStatus(),
-                'oldest_pending_at' => $this->oldestPendingAt(),
+                'counts' => $this->comments->countsByStatus(),
+                'oldest_pending_at' => $this->comments->oldestPendingAt(),
             ]);
         }
 
@@ -116,8 +116,8 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
                 'total' => $page->total(),
                 'last_page' => $page->lastPage(),
             ],
-            'counts' => $this->countsByStatus(),
-            'oldest_pending_at' => $this->oldestPendingAt(),
+            'counts' => $this->comments->countsByStatus(),
+            'oldest_pending_at' => $this->comments->oldestPendingAt(),
             'blocked_readers' => CoreUserModel::query()
                 ->whereNotNull('suspended_at')
                 ->whereHas('roles', fn (Builder $r) => $r->where('name', 'reader')->where('guard_name', 'sanctum'))
@@ -126,28 +126,6 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
     }
 
     /** Los conteos del periodico entero, por estado y en total: las pestañas dicen cuanto queda. */
-    private function countsByStatus(): array
-    {
-        $porEstado = SnkKilkanaCommentModel::query()
-            ->selectRaw('status, count(*) as total')
-            ->groupBy('status')
-            ->pluck('total', 'status');
-        $counts = [];
-        foreach (SnkKilkanaCommentStatusEnum::cases() as $caso) {
-            $counts[$caso->value] = (int) $porEstado->get($caso->value, 0);
-        }
-        $counts['all'] = array_sum($counts);
-
-        return $counts;
-    }
-
-    private function oldestPendingAt(): ?string
-    {
-        return SnkKilkanaCommentModel::query()
-            ->where('status', SnkKilkanaCommentStatusEnum::Pending)
-            ->min('created_at');
-    }
-
     public function store(Request $request): JsonResponse
     {
         if ($response = $this->requirePermission($this->storePermission)) {

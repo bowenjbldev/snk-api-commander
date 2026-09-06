@@ -325,6 +325,39 @@ producto, recuperación de cuenta y operación; no sustituyen esta migración po
 Referencias: [hashing de Laravel](https://laravel.com/docs/13.x/hashing),
 [almacenamiento de contraseñas de OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html).
 
+## Endpoints compuestos: dos, y medidos
+
+Kilkana se construyó con «un modelo, un CRUD». Sirve para arrancar y es la causa de que una
+pantalla del panel cueste entre doce y dieciocho viajes. Dos de ellas los pagaban sin necesidad:
+
+- **`GET panel/bootstrap`** sustituye a las nueve del armazón: los tres catálogos y las seis
+  cifras del raíl.
+- **`GET panel/dashboard`** sustituye a las cinco del tablero: las cuatro colas de piezas y el plan.
+
+**Lo que ahorran no es SQL, es peaje.** Cada llamada autenticada paga entre 4,7 y 6,5 ms antes de
+llegar a su lógica —resolver el inquilino, abrir su base, el freno, el kill-switch, Sanctum y el
+permiso—, y el armazón lo pagaba nueve veces en cada navegación, con nueve conexiones a la base
+abiertas y cerradas y nueve peticiones compitiendo por los mismos cuatro núcleos. Ningún índice
+arregla eso.
+
+Cuatro reglas, y las cuatro son lo que impide que esto se convierta en una segunda API:
+
+1. **No hay negocio nuevo.** `SnkKilkanaPanelService` solo compone: cada sección la resuelve el
+   servicio o el scope que ya la posee. Lo que estaba en un controlador —las cifras de la
+   moderación, el conjunto de cuentas lectoras, la campana, las clases de la papelera, las tres
+   listas de catálogo— se bajó a su capa para que las dos puertas cuenten lo mismo.
+2. **Cada sección conserva su permiso**, y la que quien mira no puede ver llega `null` en vez de
+   tumbar la pantalla con un 403. Por eso `panel/bootstrap` no lleva `can:` en la ruta: un
+   moderador no tiene ninguno de los tres catálogos y aun así necesita armazón.
+3. **Cada sección viaja con la forma exacta del endpoint al que sustituye**, y hay una prueba que
+   lo compara sección a sección. Un contrato propio sería una segunda forma que mantener
+   sincronizada, y se desincronizaría en silencio.
+4. **Solo lectura, y el CRUD por recurso no se toca.** Escribir sigue yendo a su recurso, que es
+   donde están la validación, la transacción y el registro.
+
+No se hace un endpoint por pantalla: cada uno acopla la API a una pantalla concreta, y ese
+acoplamiento se paga solo donde la medida lo justifique.
+
 ## Invariantes de implementación
 
 - Solo `provisioning_status = ready` enruta.

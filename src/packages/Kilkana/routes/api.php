@@ -12,6 +12,7 @@ use Packages\Kilkana\Http\Controllers\SnkKilkanaLayoutsController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaMediaController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaMediaTaxonomiesController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaNewsletterController;
+use Packages\Kilkana\Http\Controllers\SnkKilkanaPanelController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaPlanController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaPostNotesController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaPostsController;
@@ -188,6 +189,16 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     // autenticada que podría leer, con el precio, los asientos y la banda del periódico dentro.
     // Tampoco `can:show settings`, que dejaría sin plan a cuatro de los seis que sí deben verlo.
     Route::get('plan', [SnkKilkanaPlanController::class, 'show'])->middleware('can:index posts');
+
+    // Las dos pantallas que el panel pedía a trozos. No sustituyen al CRUD por recurso —que
+    // sigue siendo el contrato general y lo usa el resto del panel—: son un atajo para las dos
+    // pantallas donde la medida decía que el coste eran los viajes y no las consultas.
+    //
+    // `bootstrap` no lleva permiso propio a propósito: cada sección conserva el suyo y la que
+    // quien mira no puede ver llega nula. Un `can:` aquí dejaría al moderador —que no tiene
+    // ninguno de los tres catálogos— sin armazón desde el que irse a su pantalla.
+    Route::get('panel/bootstrap', [SnkKilkanaPanelController::class, 'bootstrap']);
+    Route::get('panel/dashboard', [SnkKilkanaPanelController::class, 'dashboard'])->middleware('can:index posts');
 
     // El registro de la redacción: lo lee quien ve el sumario de la redacción —los cinco de
     // dentro; un colaborador externo ve lo suyo y ya—, y los movimientos de cuentas solo quien

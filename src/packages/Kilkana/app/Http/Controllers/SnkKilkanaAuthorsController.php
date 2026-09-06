@@ -6,7 +6,6 @@ use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
-use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Enums\SnkKilkanaAuthorKindEnum;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
@@ -59,16 +58,7 @@ class SnkKilkanaAuthorsController extends CoreBaseApiController
      */
     protected function newQuery()
     {
-        return parent::newQuery()
-            ->addSelect(['seat' => CoreUserModel::query()
-                ->select('email')
-                ->whereColumn('users.id', 'kilkana_authors.user_id')
-                ->limit(1),
-            ])
-            ->withCount('posts')
-            ->withMax(['posts as last_published_at' => fn ($query) => $query->published()], 'publish_at')
-            ->with(['retiredSlugs' => fn ($query) => $query->orderByDesc('created_at')])
-            ->orderBy('slug');
+        return parent::newQuery()->asCatalogue();
     }
 
     /**

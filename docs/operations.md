@@ -895,7 +895,11 @@ Requisitos adicionales:
 
 - `CoreUserModel.password` ya tiene cast `hashed`; no uses `Hash::make` al asignarlo.
 - El usuario es `Packages\Core\Models\CoreUserModel`, no `App\Models\User`.
-- Dominios quedan en route cache; regenera tras cambiarlos.
+- **La route cache se traga las rutas nuevas sin decir nada.** Con
+  `bootstrap/cache/routes-v7.php` puesto, una ruta añadida al fichero de un package no existe: no
+  aparece en `route:list`, no falla al arrancar, y responde 404 como si no la hubieras escrito
+  —ni siquiera un marcador puesto en la primera línea del grupo—. `php artisan route:clear` en
+  local, y regenerar en despliegue. Vale también para los dominios, que se congelan igual.
 - Los workers de Octane guardan la aplicación en memoria: el `--watch` nativo de `app` los recarga
   en local; sin él hace falta `php artisan octane:reload`. No sustituye limpiar/regenerar cachés.
 - Un package nuevo requiere autoload/recache y sync de aplicaciones.

@@ -268,6 +268,12 @@ class SnkKilkanaNewsletterService
         return $porNumero;
     }
 
+    /** Cuántos borradores esperan, que es la cifra del raíl. */
+    public function drafts(): int
+    {
+        return SnkKilkanaNewsletterIssueModel::query()->where('status', SnkKilkanaNewsletterIssueModel::DRAFT)->count();
+    }
+
     /**
      * La salud de la lista y de dónde salieron las altas: la pestaña de suscriptores.
      *

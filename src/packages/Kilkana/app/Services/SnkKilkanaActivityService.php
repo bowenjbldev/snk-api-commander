@@ -2,6 +2,9 @@
 
 namespace Packages\Kilkana\Services;
 
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Enums\SnkKilkanaPostStatusEnum;
 use Packages\Kilkana\Models\SnkKilkanaActivityModel;
@@ -28,6 +31,65 @@ class SnkKilkanaActivityService
 {
     /** Mientras es verdad, los modelos no cuentan nada: lo cuenta quien los mueve, o nadie. */
     private bool $callado = false;
+
+    /** Techo del adelanto: `count` lo pide quien llama y no puede pedir el registro entero. */
+    public const COUNT_MAX = 500;
+
+    /**
+     * Lo que puede ver quien pregunta. Los movimientos de cuentas —invitar, suspender— son
+     * de quien administra cuentas: el resto de la redacción no ve quién entró ni quién salió.
+     */
+    public function visible(): Builder
+    {
+        $query = SnkKilkanaActivityModel::query()->recent();
+        if (! auth()->user()?->can('index users')) {
+            $query->where('kind', '<>', 'seat');
+        }
+
+        return $query;
+    }
+
+    /**
+     * Una línea del registro tal como la lee el panel.
+     *
+     * @return array<string, mixed>
+     */
+    public function row(SnkKilkanaActivityModel $a): array
+    {
+        return [
+            'id' => (string) $a->id,
+            'who' => $a->actor_name,
+            'role' => $a->actor_role,
+            'system' => $a->user_id === null && $a->actor_name === SnkKilkanaActivityModel::SYSTEM,
+            'kind' => $a->kind,
+            'verb' => $a->verb,
+            'what' => $a->what,
+            'before' => $a->before,
+            'after' => $a->after,
+            'href' => $a->href,
+            'at' => $a->created_at->toIso8601String(),
+        ];
+    }
+
+    /**
+     * El adelanto de la campana: solo filas y hasta cuándo miró esta cuenta.
+     *
+     * La gente y las cifras de la pantalla del registro son cinco consultas más que el armazón
+     * pagaría en cada carga para no pintarlas. `$desde` es lo ya filtrado cuando quien llama
+     * tiene pestaña o persona; sin él, todo lo visible.
+     *
+     * @return array{data: Collection<int, array<string, mixed>>, seen_at: ?string}
+     */
+    public function bell(int $count, ?Builder $desde = null): array
+    {
+        $visto = auth()->user()?->getAttribute('activity_seen_at');
+
+        return [
+            'data' => ($desde ?? $this->visible())->limit(min($count, self::COUNT_MAX))->get()->map($this->row(...))->values(),
+            // Hasta cuándo miró esta cuenta: lo posterior es lo que la campana marca.
+            'seen_at' => $visto ? Carbon::parse($visto)->toIso8601String() : null,
+        ];
+    }
 
     /**
      * Corre algo sin que los modelos lo cuenten. Para lo que ya se apunta con su propio verbo

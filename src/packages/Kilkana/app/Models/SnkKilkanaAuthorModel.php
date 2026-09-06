@@ -2,6 +2,7 @@
 
 namespace Packages\Kilkana\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -15,6 +16,34 @@ use Packages\Kilkana\Models\Concerns\SnkKilkanaRetiredSlugsSupport;
 // lo editorial: alias, slug público, bio, web, redes y foto.
 class SnkKilkanaAuthorModel extends Model
 {
+    /**
+     * La lista del catálogo: con lo que el panel pinta de cada firma, por slug.
+     *
+     * Es un scope y no el estado normal del modelo porque **solo lo quiere quien lista**: pedir
+     * una firma para editarla no necesita contar sus piezas. Y vive aquí y no en el controlador
+     * porque lo preguntan dos puertas —el recurso y el armazón del panel—.
+     *
+     * **`seat` es una subconsulta y no un accesor, y esa diferencia es lo que lo mantiene
+     * dentro del panel.** Es el correo con el que se ENTRA, así que anexado al modelo viajaba
+     * en cada firma que serializa cualquiera —y la portada pública y la página de cada artículo
+     * anidan la firma entera—: el correo de acceso de la redacción salía a la calle sin sesión.
+     * Aquí solo existe para quien pide el catálogo, y ningún serializador futuro tiene que
+     * acordarse de esconderlo.
+     */
+    public function scopeAsCatalogue(Builder $query): Builder
+    {
+        return $query
+            ->addSelect(['seat' => CoreUserModel::query()
+                ->select('email')
+                ->whereColumn('users.id', 'kilkana_authors.user_id')
+                ->limit(1),
+            ])
+            ->withCount('posts')
+            ->withMax(['posts as last_published_at' => fn ($q) => $q->published()], 'publish_at')
+            ->with(['retiredSlugs' => fn ($q) => $q->orderByDesc('created_at')])
+            ->orderBy('slug');
+    }
+
     use SnkKilkanaRetiredSlugsSupport;
 
     protected $table = 'kilkana_authors';

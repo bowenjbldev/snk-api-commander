@@ -26,4 +26,14 @@ class SnkKilkanaGateResultModel extends Model
     {
         return $this->checked_at !== null && in_array(false, $this->passing ?? [], true);
     }
+
+    /**
+     * Cuántas fallan, para quien solo quiere la cifra. El veredicto se decide en PHP —`passing`
+     * es un JSON de nueve booleanos—, así que hay que leer las filas; son una por ruta auditada.
+     */
+    public static function failingCount(): int
+    {
+        return self::query()->whereNotNull('checked_at')->get(['checked_at', 'passing'])
+            ->filter(fn (self $r) => $r->failing())->count();
+    }
 }

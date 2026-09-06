@@ -53,10 +53,7 @@ class SnkKilkanaTagsController extends CoreBaseApiController
      */
     protected function newQuery()
     {
-        return parent::newQuery()
-            ->withCount('posts')
-            ->withMax(['posts as last_used_at' => fn ($query) => $query->published()], 'publish_at')
-            ->orderBy('name');
+        return parent::newQuery()->asCatalogue();
     }
 
     /**

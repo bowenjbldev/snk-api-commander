@@ -43,12 +43,7 @@ class SnkKilkanaCategoriesController extends CoreBaseApiController
      */
     protected function newQuery()
     {
-        return parent::newQuery()
-            ->withCount('posts')
-            ->withMax(['posts as last_published_at' => fn ($query) => $query->published()], 'publish_at')
-            ->with(['retiredSlugs' => fn ($query) => $query->orderByDesc('created_at')])
-            ->orderBy('position')
-            ->orderBy('id');
+        return parent::newQuery()->asCatalogue();
     }
 
     protected string $indexPermission = 'index categories';

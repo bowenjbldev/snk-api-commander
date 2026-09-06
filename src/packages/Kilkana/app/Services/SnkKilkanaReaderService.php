@@ -2,6 +2,7 @@
 
 namespace Packages\Kilkana\Services;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Enums\SnkKilkanaCommentStatusEnum;
@@ -18,6 +19,21 @@ use Packages\Kilkana\Models\SnkKilkanaSubscriberModel;
 class SnkKilkanaReaderService
 {
     public function __construct(private readonly SnkKilkanaActivityService $registro) {}
+
+    /**
+     * El conjunto de las cuentas lectoras, como consulta.
+     *
+     * Es la misma pregunta que `isReader()` hace sobre una cuenta ya cargada, escrita en SQL
+     * para poder listarlas y contarlas. Vive aquí porque la hacen dos puertas —la pantalla de
+     * lectores y el raíl del panel— y quien la escriba de nuevo acabará contando también a la
+     * redacción.
+     */
+    public function accounts(): Builder
+    {
+        return CoreUserModel::query()
+            ->whereHas('roles', fn (Builder $r) => $r->where('name', 'reader'))
+            ->whereDoesntHave('roles', fn (Builder $r) => $r->whereNotIn('name', SnkKilkanaRoleCatalogService::WITHOUT_SEAT));
+    }
 
     /**
      * Si la cuenta es SOLO lectora. Spatie admite varios roles, y quien además tiene un asiento

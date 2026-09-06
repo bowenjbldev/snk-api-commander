@@ -5,9 +5,9 @@ namespace Packages\Kilkana\Http\Controllers;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Carbon;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Kilkana\Models\SnkKilkanaActivityModel;
+use Packages\Kilkana\Services\SnkKilkanaActivityService;
 
 /**
  * El registro de la redacción: una línea de tiempo por páginas.
@@ -22,13 +22,13 @@ use Packages\Kilkana\Models\SnkKilkanaActivityModel;
 #[Group('Activity')]
 class SnkKilkanaActivityController extends CoreBaseApiController
 {
-    private const COUNT_MAX = 500;
-
     private const PER_PAGE = 50;
 
     private const PER_PAGE_MAX = 100;
 
     private const EXPORT_MAX = 5000;
+
+    public function __construct(private readonly SnkKilkanaActivityService $registro) {}
 
     protected string $modelClass = SnkKilkanaActivityModel::class;
 
@@ -48,35 +48,17 @@ class SnkKilkanaActivityController extends CoreBaseApiController
         $who = trim((string) $request->query('who', ''));
         $count = (int) $request->query('count', '0');
 
-        $visible = $this->visible();
+        $visible = $this->registro->visible();
         $filtrado = (clone $visible)
             ->when(isset(SnkKilkanaActivityModel::TABS[$tab]), fn (Builder $q) => $q->whereIn('kind', SnkKilkanaActivityModel::TABS[$tab]))
             ->when($who !== '', fn (Builder $q) => $q->where('actor_name', $who));
 
-        $fila = fn (SnkKilkanaActivityModel $a) => [
-            'id' => (string) $a->id,
-            'who' => $a->actor_name,
-            'role' => $a->actor_role,
-            'system' => $a->user_id === null && $a->actor_name === SnkKilkanaActivityModel::SYSTEM,
-            'kind' => $a->kind,
-            'verb' => $a->verb,
-            'what' => $a->what,
-            'before' => $a->before,
-            'after' => $a->after,
-            'href' => $a->href,
-            'at' => $a->created_at->toIso8601String(),
-        ];
+        $fila = $this->registro->row(...);
 
         // Un adelanto —la campana— es solo filas: la gente y las cifras son cinco consultas
         // más que el armazón pagaría en cada carga para no pintarlas.
         if ($count > 0) {
-            $visto = auth()->user()?->getAttribute('activity_seen_at');
-
-            return response()->json([
-                'data' => $filtrado->limit(min($count, self::COUNT_MAX))->get()->map($fila)->values(),
-                // Hasta cuándo miró esta cuenta: lo posterior es lo que la campana marca.
-                'seen_at' => $visto ? Carbon::parse($visto)->toIso8601String() : null,
-            ]);
+            return response()->json($this->registro->bell($count, $filtrado));
         }
         // Un export se lleva lo filtrado entero, hasta el techo.
         if ($request->boolean('all')) {
@@ -104,19 +86,5 @@ class SnkKilkanaActivityController extends CoreBaseApiController
                 'gate' => (clone $visible)->where('kind', 'gate')->count(),
             ],
         ]);
-    }
-
-    /**
-     * Lo que puede ver quien pregunta. Los movimientos de cuentas —invitar, suspender— son
-     * de quien administra cuentas: el resto de la redacción no ve quién entró ni quién salió.
-     */
-    private function visible(): Builder
-    {
-        $query = $this->newQuery()->recent();
-        if (! auth()->user()?->can('index users')) {
-            $query->where('kind', '<>', 'seat');
-        }
-
-        return $query;
     }
 }

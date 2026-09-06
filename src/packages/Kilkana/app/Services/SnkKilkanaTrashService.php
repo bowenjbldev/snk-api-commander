@@ -159,6 +159,25 @@ class SnkKilkanaTrashService
      *
      * @param  list<string>  $kinds
      */
+    /**
+     * Qué clases puede ver quien pregunta: cada una entra con el permiso de borrarla. Vive
+     * aquí porque la preguntan dos puertas —la pantalla de la papelera y el raíl del panel— y
+     * es la regla que decide si alguien ve algo o recibe un 403.
+     *
+     * @return list<string>
+     */
+    public function kindsFor(?CoreUserModel $user): array
+    {
+        if ($user === null) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            self::KINDS,
+            fn (string $kind) => $user->can("delete {$kind}".($kind === 'post' ? 's' : '')),
+        ));
+    }
+
     public function count(array $kinds): int
     {
         $n = 0;

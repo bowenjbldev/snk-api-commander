@@ -67,6 +67,29 @@ class SnkKilkanaCategoryModel extends Model
     }
 
     /** Las que el lector puede abrir por su URL: las del menu y las retiradas de el. */
+    /**
+     * La lista del catálogo: con lo que el panel pinta de cada sección y en el orden del menú.
+     *
+     * Es un scope y no el estado normal del modelo porque **solo lo quiere quien lista**: pedir
+     * una sección para editarla no necesita contar sus piezas. Y vive aquí y no en el
+     * controlador porque lo preguntan dos puertas —el recurso y el armazón del panel—, y una
+     * lista que se arma dos veces acaba enseñando columnas distintas en cada una.
+     *
+     * El orden es `position` y no la clave: el menú del periódico es esta lista, y ordenar por
+     * id devolvería el orden de creación en cuanto alguien reordene. `id` desempata, porque
+     * `position` nace a cero en todas y sin segundo criterio el orden sería el que quisiera la
+     * base.
+     */
+    public function scopeAsCatalogue(Builder $query): Builder
+    {
+        return $query
+            ->withCount('posts')
+            ->withMax(['posts as last_published_at' => fn ($q) => $q->published()], 'publish_at')
+            ->with(['retiredSlugs' => fn ($q) => $q->orderByDesc('created_at')])
+            ->orderBy('position')
+            ->orderBy('id');
+    }
+
     public function scopeReachable(Builder $query): Builder
     {
         return $query->whereIn('status', self::statuses(fn ($estado) => $estado->isPublic()));
