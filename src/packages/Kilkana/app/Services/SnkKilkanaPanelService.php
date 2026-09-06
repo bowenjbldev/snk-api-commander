@@ -32,7 +32,7 @@ use Packages\Kilkana\Models\SnkKilkanaTagModel;
  */
 class SnkKilkanaPanelService
 {
-    /** Cuántos movimientos lleva la campana. Es lo que el armazón pedía con `activity?count=6`. */
+    /** Cuántos movimientos lleva la campana. Es lo que el armazón pedía con `activity?bell=6`. */
     public const BELL = 6;
 
     /** Cuántas piezas enseña cada cola del tablero, y cuántas «lo más leído». */

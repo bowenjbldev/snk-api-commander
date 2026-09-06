@@ -347,7 +347,24 @@ Lo que hay ahora, y de dónde sale cada elección:
 | Tamaño de página | `per_page`, con `page` | GitHub |
 | Orden | `sort`, con `-` delante para descendente | JSON:API, `spatie/laravel-query-builder` |
 | Relaciones | `with`, contra `$allowedWith` | Laravel |
+| Agregados | `summary`, contra `$allowedSummary` | `expand` de Stripe |
 | Filtros | por recurso y declarados | — |
+
+**Los agregados de un listado no viajan solos.** Las cifras de las pestañas, la banda de la
+cabecera y el desplegable de quién aparece cuentan **la tabla entera y no la página**, así que no
+son parte de una página: son otra pregunta que da la casualidad de que se responde en el mismo
+viaje. Se piden con `?summary=counts,stats`. El ahorro está medido: cuatro llamadas del panel
+piden `posts` solo para enseñar filas y pagaban el recuento sin usarlo, y existían así porque
+hasta entonces no había forma de no pedirlo.
+
+`summary` y no `include`: en JSON:API `include` significa **relaciones**, que es lo que aquí hace
+`with`, y usar el mismo nombre para lo contrario es la peor pista posible. Y no es `with`: eso
+carga relaciones de cada fila, y esto son cifras SOBRE la colección.
+
+Queda `counts=1`, que es otra cosa: **solo las cifras y ninguna fila**, sin ejecutar el listado.
+No lo llama el panel —`panel/bootstrap` se lo llevó— y se mantiene porque es la definición
+canónica de la cifra de cada recurso y el oráculo contra el que
+`KilkanaPanelCompositeTest` comprueba sección a sección que el compuesto no ha derivado.
 
 **El orden va en un parámetro y no en dos.** `sort=-date` es descendente y `sort=date`
 ascendente. Antes eran `sort` y `dir`, y ninguno decía por sí solo cómo iba a salir la lista:

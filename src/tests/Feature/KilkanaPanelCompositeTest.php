@@ -64,7 +64,7 @@ class KilkanaPanelCompositeTest extends TestCase
         $this->assertSame($this->de(SnkKilkanaTagsController::class), $panel['tags']);
         $this->assertSame($this->de(SnkKilkanaCommentsController::class, ['counts' => '1']), $panel['comments']);
         $this->assertSame($this->de(SnkKilkanaReadersController::class, ['counts' => '1']), $panel['readers']);
-        $this->assertSame($this->de(SnkKilkanaActivityController::class, ['count' => '6']), $panel['activity']);
+        $this->assertSame($this->de(SnkKilkanaActivityController::class, ['bell' => '6']), $panel['activity']);
         $this->assertSame($this->de(SnkKilkanaTrashController::class, ['counts' => '1']), $panel['trash']);
         $this->assertSame($this->de(SnkKilkanaGateController::class, ['counts' => '1']), $panel['gate']);
         $this->assertSame($this->de(SnkKilkanaNewsletterController::class, ['counts' => '1']), $panel['newsletter']);

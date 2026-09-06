@@ -55,7 +55,9 @@ class SnkKilkanaReadersController extends CoreBaseApiController
      * Las pestañas no son estados: son tres preguntas distintas sobre la misma persona
      * —¿recibe el boletín?, ¿comenta?, ¿está bloqueada?— y alguien cae en las tres. La única
      * regla que las cruza: un bloqueado no cuenta como comentarista, porque esa pestaña es
-     * con quién se puede contar. `counts=1` devuelve solo las cifras; `all=1`, lo filtrado
+     * con quién se puede contar. `summary=counts,stats` añade las pestañas y la banda —que
+     * cuentan la tabla, no la página, así que no viajan si no se piden—; `counts=1` devuelve
+     * solo las cifras y nada más; `all=1`, lo filtrado
      * entero sin paginar, que es lo que se lleva un export.
      */
     public function index(): JsonResponse

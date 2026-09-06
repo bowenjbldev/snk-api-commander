@@ -114,7 +114,7 @@ class KilkanaActivityTest extends TestCase
         $this->assertSame(['Plan de aparcamientos'], array_column($contenido['data'], 'what'));
 
         // La campana pide un adelanto y recibe las filas y hasta cuándo se miró: ni gente ni cifras.
-        $adelanto = $this->registro(['count' => '2'])->index()->getData(true);
+        $adelanto = $this->registro(['bell' => '2'])->index()->getData(true);
         $this->assertSame(['data', 'seen_at'], array_keys($adelanto));
         $this->assertCount(2, $adelanto['data']);
 
@@ -140,10 +140,10 @@ class KilkanaActivityTest extends TestCase
         $this->actingAs($marta, 'sanctum');
         $this->pieza('Una', 'published');
 
-        $this->assertNull($this->registro(['count' => 6])->index()->getData(true)['seen_at'], 'Nunca abierta.');
+        $this->assertNull($this->registro(['bell' => 6])->index()->getData(true)['seen_at'], 'Nunca abierta.');
 
         $this->registro()->seen();
-        $visto = $this->registro(['count' => 6])->index()->getData(true)['seen_at'];
+        $visto = $this->registro(['bell' => 6])->index()->getData(true)['seen_at'];
         $this->assertNotNull($visto);
         $this->assertEqualsWithDelta(now()->getTimestamp(), strtotime($visto), 2);
         $this->assertArrayNotHasKey('seen_at', $this->registro()->index()->getData(true), 'La pantalla entera no la lleva: es de la campana.');

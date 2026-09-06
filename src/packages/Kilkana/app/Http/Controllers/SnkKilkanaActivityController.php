@@ -52,7 +52,10 @@ class SnkKilkanaActivityController extends CoreBaseApiController
         $request = request();
         $tab = (string) $request->query('tab', 'all');
         $who = trim((string) $request->query('who', ''));
-        $count = (int) $request->query('count', '0');
+        // `bell` y no `count`: se llamaba así y significaba «cuántas filas del adelanto»,
+        // mientras `counts` en otros recursos significa «solo las cifras». Dos ideas separadas
+        // por una letra, y nadie las lee con calma a las tres de la mañana.
+        $adelanto = (int) $request->query('bell', '0');
 
         $visible = $this->registro->visible();
         $filtrado = (clone $visible)
@@ -63,8 +66,8 @@ class SnkKilkanaActivityController extends CoreBaseApiController
 
         // Un adelanto —la campana— es solo filas: la gente y las cifras son cinco consultas
         // más que el armazón pagaría en cada carga para no pintarlas.
-        if ($count > 0) {
-            return response()->json($this->registro->bell($count, $filtrado));
+        if ($adelanto > 0) {
+            return response()->json($this->registro->bell($adelanto, $filtrado));
         }
         // Un export se lleva lo filtrado entero, hasta el techo.
         if ($request->boolean('all')) {

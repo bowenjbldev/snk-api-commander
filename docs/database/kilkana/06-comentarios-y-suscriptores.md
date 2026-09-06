@@ -84,7 +84,9 @@ reconocer el siguiente; borrar es para lo que no debe quedar ni en el historial.
 ### Lo que el panel lee y escribe de la cola
 
 `GET comments` es la cola de moderación: acepta `status`, `q` (texto o cuenta, dos letras como
-mínimo), `per_page` y `counts=1` —solo los conteos y la edad del pendiente más viejo, para el
+mínimo), `per_page`, `summary=counts,blocked_readers` —los conteos, la edad del pendiente más
+viejo y los lectores bloqueados, que cuentan la tabla y no la página, así que no viajan si no se
+piden— y `counts=1` —solo los conteos y nada más, para el
 raíl—, ordena por fecha descendente y devuelve `data`, `meta`, `counts` por estado del periódico
 entero, `oldest_pending_at` y `blocked_readers`. Cada fila lleva `author` —nombre, correo, alta,
 cuántos ha escrito, cuántos rechazados y si está bloqueada; `null` si la cuenta se dio de baja—,
@@ -115,7 +117,9 @@ gobernar personas no es moderar frases. Lo tienen `director` y `moderador`.
 `GET readers` (`index readers`) lista **solo** cuentas que son únicamente lectoras —la redacción no
 sale ni con su id a mano—, de la más nueva a la más vieja. Acepta `tab` (`all`, `subscribers`
 —correo confirmado en el boletín—, `commenters` —ha comentado algo que no es spam y no está
-bloqueada—, `blocked`), `q` (nombre o correo, dos letras como mínimo), `per_page`, `counts=1`
+bloqueada—, `blocked`), `q` (nombre o correo, dos letras como mínimo), `per_page`,
+`summary=counts,stats` —las pestañas y la banda; juntas cuestan seis consultas y no ocho, porque
+dos de ellas son la misma—, `counts=1`
 —solo `accounts`, en una consulta, para el raíl— y `all=1` —lo filtrado entero sin paginar, hasta
 cinco mil, que es lo que se lleva un export—. Devuelve `data`, `meta`, `counts` por pestaña y
 `stats`: cuentas, suscriptores confirmados de la lista entera, quién comentó este mes y
