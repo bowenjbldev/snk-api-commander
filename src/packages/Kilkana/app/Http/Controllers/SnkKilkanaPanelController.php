@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Packages\Kilkana\Services\SnkKilkanaPanelService;
+use Packages\Kilkana\Services\SnkKilkanaPostService;
 
 /**
  * Las dos pantallas del panel que se piden enteras. Solo lectura, y el CRUD por recurso sigue
@@ -33,8 +34,6 @@ class SnkKilkanaPanelController extends Controller
      */
     public function dashboard(): JsonResponse
     {
-        $dias = (int) request()->query('reads', '0');
-
-        return response()->json($this->panel->dashboard(in_array($dias, [7, 30], true) ? $dias : null));
+        return response()->json($this->panel->dashboard(SnkKilkanaPostService::readsWindow(request()->query('reads'))));
     }
 }

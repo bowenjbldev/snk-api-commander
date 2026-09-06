@@ -12,7 +12,6 @@ use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Kilkana\Enums\SnkKilkanaBlockTypeEnum;
 use Packages\Kilkana\Enums\SnkKilkanaContentTierEnum;
 use Packages\Kilkana\Enums\SnkKilkanaPostStatusEnum;
-use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Models\SnkKilkanaTagModel;
 use Packages\Kilkana\Services\SnkKilkanaActivityService;
@@ -41,22 +40,11 @@ class SnkKilkanaPostsController extends CoreBaseApiController
      */
     protected function newQuery()
     {
-        return $this->posts->query((int) auth()->id(), $this->canEditOthers(), $this->readsWindow());
-    }
-
-    /**
-     * Sobre cuantos dias se cuentan las lecturas, si la peticion lo acota.
-     *
-     * El panel enseña «lo mas leido» de siete o de treinta dias, y sin esto la unica forma de
-     * tener las dos cifras era inventarse la segunda — el prototipo multiplicaba la de siete
-     * por 3,4. Solo dos valores porque solo hay dos botones: una ventana libre invita a pedir
-     * mil dias y a pagar la subconsulta entera sin que nadie mire el resultado.
-     */
-    private function readsWindow(): ?int
-    {
-        $dias = (int) request()->query('reads', '0');
-
-        return in_array($dias, [7, 30], true) ? $dias : null;
+        return $this->posts->query(
+            (int) auth()->id(),
+            $this->canEditOthers(),
+            SnkKilkanaPostService::readsWindow(request()->query('reads')),
+        );
     }
 
     /** Una pieza ajena no existe: 404, no 403 — el id es correlativo y un 403 confirmaría cuántas hay. */
@@ -185,13 +173,6 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         'noindex' => 'nullable|boolean',
     ];
 
-    /** Página por defecto, y el techo que impide restaurar el volcado entero. */
-    private const PER_PAGE = 25;
-
-    private const PER_PAGE_MAX = 100;
-
-    private const SORTS = ['date', 'title', 'reads'];
-
     /**
      * El listado editorial: paginado, filtrado y con las cifras de las pestañas.
      *
@@ -268,28 +249,19 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             'status' => SnkKilkanaPostStatusEnum::tryFrom((string) $request->query('status', ''))?->value,
             // Una sección que no existe se **ignora**, no filtra a cero: dejar la tabla vacía
             // sin decir por qué es exactamente lo que la validación en la frontera evita.
-            'category' => $this->knownCategory($category),
+            'category' => $category === '' ? null : $this->posts->knownCategory($category),
             // Con una sola letra la búsqueda no acota nada y recorre la tabla entera.
             'q' => mb_strlen($term) >= 2 ? mb_substr($term, 0, 128) : null,
-            'sort' => in_array($sort, self::SORTS, true) ? $sort : 'date',
+            'sort' => array_key_exists($sort, SnkKilkanaPostService::SORTS) ? $sort : 'date',
             'dir' => $request->query('dir') === 'asc' ? 'asc' : 'desc',
         ];
     }
 
-    private function knownCategory(string $name): ?string
-    {
-        if ($name === '') {
-            return null;
-        }
-
-        return SnkKilkanaCategoryModel::query()->where('name', $name)->exists() ? $name : null;
-    }
-
     private function perPage(Request $request): int
     {
-        $asked = (int) $request->query('per_page', (string) self::PER_PAGE);
+        $asked = (int) $request->query('per_page', (string) SnkKilkanaPostService::PER_PAGE);
 
-        return $asked < 1 ? self::PER_PAGE : min($asked, self::PER_PAGE_MAX);
+        return $asked < 1 ? SnkKilkanaPostService::PER_PAGE : min($asked, SnkKilkanaPostService::PER_PAGE_MAX);
     }
 
     public function store(Request $request): JsonResponse
@@ -418,7 +390,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             // selección, que solo puede marcar lo que tiene delante. Sin `max`, un `?/bulk`
             // con cincuenta mil ids entra entero en la transacción y hace cincuenta mil
             // `save()` dentro de ella.
-            'ids' => 'required|array|min:1|max:'.self::PER_PAGE_MAX,
+            'ids' => 'required|array|min:1|max:'.SnkKilkanaPostService::PER_PAGE_MAX,
             'ids.*' => 'integer',
             // Los cinco que ofrece la barra de selección del panel, más los dos del
             // reetiquetado. Faltaban `review` y `scheduled`, así que dos de sus botones no
@@ -427,7 +399,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             'action' => 'required|in:publish,draft,review,scheduled,delete,tag,untag',
             // Nombres y no ids: es lo que el backend ya escribe (`firstOrCreateByName`) y lo
             // que un humano lee. Un id de etiqueta no significa nada fuera de esta base.
-            'tags' => 'required_if:action,tag,untag|array|min:1|max:'.self::PER_PAGE_MAX,
+            'tags' => 'required_if:action,tag,untag|array|min:1|max:'.SnkKilkanaPostService::PER_PAGE_MAX,
             'tags.*' => 'string|max:'.SnkKilkanaTagModel::NAME_MAX,
         ]);
 

@@ -57,12 +57,49 @@ class SnkKilkanaPostService
         return null;
     }
 
-    /** Por qué columna ordena cada clave de la vista. `reads` es el alias del `withSum`. */
-    private const SORTS = [
+    /**
+     * Por qué columna ordena cada clave de la vista, y **por tanto el vocabulario de `sort`**.
+     *
+     * Público y una sola lista: el controlador tenía las claves (`['date','title','reads']`)
+     * para validar la query y esto tenía el mapa para ordenar. Eran la misma lista escrita dos
+     * veces con distinta forma, y un orden nuevo había que darlo de alta en los dos sitios o
+     * quedaba aceptado y sin efecto. `reads` es el alias del `withSum`.
+     */
+    public const SORTS = [
         'date' => 'publish_at',
         'title' => 'title',
         'reads' => 'views_total',
     ];
+
+    /** Página por defecto, y el techo que impide restaurar el volcado entero. */
+    public const PER_PAGE = 25;
+
+    public const PER_PAGE_MAX = 100;
+
+    /**
+     * Sobre cuántos días se cuentan las lecturas, y `null` es «desde siempre».
+     *
+     * Estático porque lo preguntan dos puertas —el listado editorial y el tablero— y porque no
+     * necesita nada del servicio. Solo dos valores porque solo hay dos botones: una ventana
+     * libre invita a pedir mil días y a pagar la subconsulta entera sin que nadie mire el
+     * resultado. Lo que no sea uno de los dos es «desde siempre», no un 422.
+     */
+    public static function readsWindow(mixed $dias): ?int
+    {
+        return in_array((int) $dias, [7, 30], true) ? (int) $dias : null;
+    }
+
+    /**
+     * La sección que existe, por su nombre; `null` si no está.
+     *
+     * Una sección desconocida se **ignora**, no filtra a cero: dejar la tabla vacía sin decir
+     * por qué es lo que la validación en la frontera evita. Vive aquí y no en el controlador
+     * porque es una consulta.
+     */
+    public function knownCategory(string $nombre): ?string
+    {
+        return SnkKilkanaCategoryModel::query()->where('name', $nombre)->exists() ? $nombre : null;
+    }
 
     /**
      * El filtro del listado editorial: estado, sección, búsqueda y orden.
