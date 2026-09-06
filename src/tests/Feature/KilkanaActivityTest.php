@@ -149,9 +149,13 @@ class KilkanaActivityTest extends TestCase
         $this->assertArrayNotHasKey('seen_at', $this->registro()->index()->getData(true), 'La pantalla entera no la lleva: es de la campana.');
     }
 
+    /**
+     * Con los agregados pedidos por defecto, que es lo que hace la pantalla: la API ya no los
+     * manda solos. Quien quiera probar que no llegan, pasa `summary` vacío.
+     */
     private function registro(array $query = []): SnkKilkanaActivityController
     {
-        request()->query->replace($query);
+        request()->query->replace(['summary' => 'people,stats', ...$query]);
 
         return app(SnkKilkanaActivityController::class);
     }

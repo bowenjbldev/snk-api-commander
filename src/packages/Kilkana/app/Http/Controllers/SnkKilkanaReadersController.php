@@ -40,6 +40,9 @@ class SnkKilkanaReadersController extends CoreBaseApiController
 
     protected string $modelClass = CoreUserModel::class;
 
+    /** Las cifras de las pestañas y la banda de la cabecera: cuentan el archivo, no la página. */
+    protected array $allowedSummary = ['counts', 'stats'];
+
     protected string $indexPermission = 'index readers';
 
     protected string $updatePermission = 'update readers';
@@ -91,6 +94,7 @@ class SnkKilkanaReadersController extends CoreBaseApiController
 
         $asked = (int) $request->query('per_page', (string) self::PER_PAGE);
         $page = $query->paginate($asked < 1 ? self::PER_PAGE : min($asked, self::PER_PAGE_MAX));
+        $cifras = $this->wants('counts') ? $this->counts() : null;
 
         return response()->json([
             'data' => $this->asRows($page->getCollection()),
@@ -100,8 +104,10 @@ class SnkKilkanaReadersController extends CoreBaseApiController
                 'total' => $page->total(),
                 'last_page' => $page->lastPage(),
             ],
-            'counts' => $this->counts(),
-            'stats' => $this->stats(),
+            // Las dos comparten dos consultas, así que se calculan en este orden y la banda
+            // reutiliza lo que las pestañas ya contaron. Ver `stats()`.
+            ...$cifras === null ? [] : ['counts' => $cifras],
+            ...$this->wants('stats') ? ['stats' => $this->stats($cifras)] : [],
         ]);
     }
 
@@ -205,17 +211,21 @@ class SnkKilkanaReadersController extends CoreBaseApiController
      *
      * @return array<string, int>
      */
-    private function stats(): array
+    private function stats(?array $counts = null): array
     {
         return [
-            'accounts' => $this->readers()->count(),
+            // **`accounts` es `counts['all']` y `blocked` es `counts['blocked']`**: la misma
+            // consulta escrita dos veces. La pantalla pide las dos cosas a la vez, así que se
+            // contaban dos de más en cada carga, en cada página y en cada tecla del buscador.
+            // Cuando las pestañas ya se han contado, la banda las reutiliza.
+            'accounts' => $counts['all'] ?? $this->readers()->count(),
             'confirmed_subscribers' => SnkKilkanaSubscriberModel::query()->where('status', SnkKilkanaSubscriberStatusEnum::Confirmed)->count(),
             'commented_this_month' => SnkKilkanaCommentModel::query()
                 ->where('created_at', '>=', now()->startOfMonth())
                 ->whereIn('user_id', $this->readers()->select('users.id'))
                 ->distinct()
                 ->count('user_id'),
-            'blocked' => $this->readers()->whereNotNull('suspended_at')->count(),
+            'blocked' => $counts['blocked'] ?? $this->readers()->whereNotNull('suspended_at')->count(),
         ];
     }
 

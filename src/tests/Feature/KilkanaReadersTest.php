@@ -167,9 +167,54 @@ class KilkanaReadersTest extends TestCase
         return $elena;
     }
 
+    /**
+     * La banda no vuelve a contar lo que las pestañas ya contaron.
+     *
+     * `stats['accounts']` es la misma consulta que `counts['all']`, y `stats['blocked']` la
+     * misma que `counts['blocked']`. La pantalla pide las dos cosas a la vez, así que se
+     * contaban dos de más en cada carga, en cada página y en cada tecla del buscador.
+     */
+    public function test_la_banda_no_vuelve_a_contar_lo_que_las_pestanas_ya_contaron(): void
+    {
+        $this->comoModerador();
+        $amparo = $this->lector('amparo@lectores.example', 'Amparo Ruiz');
+        $this->lector('joaquin@lectores.example', 'Joaquín Vidal');
+        $this->comentario($amparo, $this->pieza('Plan'), 'Cabe.', 'approved');
+
+        // La primera pasada hidrata los permisos y deja la caché caliente: sin esto, la medida
+        // que salga primero carga con consultas que no son del listado.
+        $this->lectores(['summary' => 'counts,stats'])->index();
+
+        $solas = $this->consultasDelListado(['summary' => '']);
+        $cifras = $this->consultasDelListado(['summary' => 'counts']);
+        $banda = $this->consultasDelListado(['summary' => 'stats']);
+        $juntas = $this->consultasDelListado(['summary' => 'counts,stats']);
+
+        $this->assertSame(4, $cifras - $solas, 'Una consulta por pestaña.');
+        $this->assertSame(4, $banda - $solas, 'Y cuatro cifras en la banda.');
+        $this->assertSame(6, $juntas - $solas, 'Pero juntas, seis: dos de las ocho eran la misma consulta.');
+        $this->assertArrayNotHasKey('counts', $this->lectores(['summary' => ''])->index()->getData(true), 'Y sin pedirlas no llegan.');
+    }
+
+    private function consultasDelListado(array $query): int
+    {
+        $conexion = DB::connection();
+        $conexion->flushQueryLog();
+        $conexion->enableQueryLog();
+        $this->lectores($query)->index();
+        $n = count($conexion->getQueryLog());
+        $conexion->disableQueryLog();
+
+        return $n;
+    }
+
+    /**
+     * Con los agregados pedidos por defecto, que es lo que hace la pantalla: la API ya no los
+     * manda solos. Quien quiera probar que no llegan, pasa `summary` vacío.
+     */
     private function lectores(array $query = []): SnkKilkanaReadersController
     {
-        request()->query->replace($query);
+        request()->query->replace(['summary' => 'counts,stats', ...$query]);
 
         return app(SnkKilkanaReadersController::class);
     }

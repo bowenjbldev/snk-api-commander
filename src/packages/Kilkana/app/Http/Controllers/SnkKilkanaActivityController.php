@@ -30,6 +30,12 @@ class SnkKilkanaActivityController extends CoreBaseApiController
 
     public function __construct(private readonly SnkKilkanaActivityService $registro) {}
 
+    /**
+     * `people` es el desplegable de quién aparece —todo el registro visible, no lo filtrado— y
+     * `stats` la banda. Ninguna de las dos cambia al pasar de página.
+     */
+    protected array $allowedSummary = ['people', 'stats'];
+
     protected string $modelClass = SnkKilkanaActivityModel::class;
 
     /** Abrir la campana: desde ahora, lo que hay es leído. */
@@ -78,13 +84,17 @@ class SnkKilkanaActivityController extends CoreBaseApiController
                 'last_page' => $page->lastPage(),
             ],
             // Quién aparece, para el desplegable: todo el registro visible, no lo filtrado.
-            'people' => (clone $visible)->reorder()->distinct()->orderBy('actor_name')->pluck('actor_name')->values(),
-            'stats' => [
-                'today' => (clone $visible)->where('created_at', '>=', now()->startOfDay())->count(),
-                'active_people' => (clone $visible)->where('created_at', '>=', $semana)->whereNotNull('user_id')->distinct()->count('user_id'),
-                'went_out' => (clone $visible)->whereIn('kind', ['publish', 'schedule'])->whereIn('verb', ['published', 'scheduled'])->count(),
-                'gate' => (clone $visible)->where('kind', 'gate')->count(),
-            ],
+            ...$this->wants('people') ? [
+                'people' => (clone $visible)->reorder()->distinct()->orderBy('actor_name')->pluck('actor_name')->values(),
+            ] : [],
+            ...$this->wants('stats') ? [
+                'stats' => [
+                    'today' => (clone $visible)->where('created_at', '>=', now()->startOfDay())->count(),
+                    'active_people' => (clone $visible)->where('created_at', '>=', $semana)->whereNotNull('user_id')->distinct()->count('user_id'),
+                    'went_out' => (clone $visible)->whereIn('kind', ['publish', 'schedule'])->whereIn('verb', ['published', 'scheduled'])->count(),
+                    'gate' => (clone $visible)->where('kind', 'gate')->count(),
+                ],
+            ] : [],
         ]);
     }
 }

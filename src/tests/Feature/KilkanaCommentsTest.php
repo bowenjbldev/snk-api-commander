@@ -203,9 +203,13 @@ class KilkanaCommentsTest extends TestCase
         return $elena;
     }
 
+    /**
+     * Con los agregados pedidos por defecto, que es lo que hace la pantalla: la API ya no los
+     * manda solos. Quien quiera probar que no llegan, pasa `summary` vacío.
+     */
     private function moderacion(array $query = []): SnkKilkanaCommentsController
     {
-        request()->query->replace($query);
+        request()->query->replace(['summary' => 'counts,blocked_readers', ...$query]);
 
         return app(SnkKilkanaCommentsController::class);
     }

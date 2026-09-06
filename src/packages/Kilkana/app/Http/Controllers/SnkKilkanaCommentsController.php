@@ -39,6 +39,12 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
 
     protected string $modelClass = SnkKilkanaCommentModel::class;
 
+    /**
+     * `counts` es la salud de la cola —cuántos de cada estado y desde cuándo espera el más
+     * viejo—, y `blocked_readers` una cifra de la banda. Las dos cuentan la tabla entera.
+     */
+    protected array $allowedSummary = ['counts', 'blocked_readers'];
+
     protected string $indexPermission = 'index comments';
 
     protected string $showPermission = 'show comments';
@@ -116,12 +122,16 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
                 'total' => $page->total(),
                 'last_page' => $page->lastPage(),
             ],
-            'counts' => $this->comments->countsByStatus(),
-            'oldest_pending_at' => $this->comments->oldestPendingAt(),
-            'blocked_readers' => CoreUserModel::query()
-                ->whereNotNull('suspended_at')
-                ->whereHas('roles', fn (Builder $r) => $r->where('name', 'reader')->where('guard_name', 'sanctum'))
-                ->count(),
+            ...$this->wants('counts') ? [
+                'counts' => $this->comments->countsByStatus(),
+                'oldest_pending_at' => $this->comments->oldestPendingAt(),
+            ] : [],
+            ...$this->wants('blocked_readers') ? [
+                'blocked_readers' => CoreUserModel::query()
+                    ->whereNotNull('suspended_at')
+                    ->whereHas('roles', fn (Builder $r) => $r->where('name', 'reader')->where('guard_name', 'sanctum'))
+                    ->count(),
+            ] : [],
         ]);
     }
 
