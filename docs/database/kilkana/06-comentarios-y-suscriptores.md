@@ -170,6 +170,14 @@ que un humano lo lea.
 | `consent_ip`                | varchar(45)     | sí                  | La del clic de confirmación. IPv6 cabe.                                        |
 | `created_at` · `updated_at` | timestamp       | sí                  | Alta y última modificación.                                                    |
 
+Dos índices además de la clave y el único de `email`: `(status, consent_at)` y
+`(status, updated_at)`. Las cuatro cifras de la banda preguntan por un estado y luego por una
+ventana de tiempo, y las cuatro barrían la tabla. Sobre 52 352 filas, medido con `ANALYZE` de
+MariaDB: las altas de la semana de 17,2 a 0,37 ms, las bajas de la ventana de 12,0 a 1,68, y el
+`group by status` de 44,9 a 28,9 porque pasa a recorrer el índice y no la tabla. `(consent_source)`
+se probó y **no está**: con él el otro `group by` va peor —18,2 a 22,4 ms—, porque son tres
+valores repartidos sobre cincuenta mil filas y recorrer ese índice entero no ahorra nada.
+
 **Sin claves foráneas**, y es a propósito: un suscriptor **no es una cuenta**. Quien recibe
 el boletín no tiene por qué existir en `users`, y de hecho la mayoría no existe — se apuntó
 desde la portada dejando un correo.

@@ -56,8 +56,36 @@ escribió, solo deja de saberse quién lo tecleó.
 | `(status, publish_at)`            | Las dos consultas calientes con un solo índice: listar lo publicado por fecha y encontrar lo programado que ya vence. |
 | `(status, unpublish_at)`          | Lo publicado que ya toca retirar.                                                                                     |
 | `(status, created_by)`            | El listado acotado a lo propio, por estado.                                                                           |
+| `(publish_at, id)`                | El listado editorial sin filtro, que ordena por los dos y antes recorría la tabla entera.                             |
+| `(author_id, status, publish_at)` | La portada de una firma. Ver abajo.                                                                                   |
+| el del sitemap, de ocho columnas  | `public/sitemap`, que se resuelve entero dentro del índice. Ver abajo.                                                |
 | `deleted_at`                      | La papelera y el scope global que la esconde.                                                                         |
 | texto completo `(title, excerpt)` | Buscador del sitio, sin motor externo.                                                                                |
+
+#### Los dos de la salida pública, y el que se descartó
+
+Medidos con `ANALYZE` de MariaDB sobre una copia de 68 096 piezas, no sobre las 532 de la demo:
+con quinientas filas el optimizador elige el barrido haga lo que haga el índice, así que el plan
+no dice nada y el `EXPLAIN` de la demo no vale como prueba.
+
+**`(author_id, status, publish_at)`**: el `whereHas('author')` del listado se resuelve como una
+constante —`slug` es único—, pero sin índice que empiece por ahí la consulta recorría
+`(publish_at, id)` leyendo 1 202 filas para quedarse con 50. Ahora lee 50. De 73,6 a 1,8 ms.
+
+**El del sitemap** lleva `(status, noindex, deleted_at, publish_at, id, url_date, slug,
+updated_at)`: las tres del filtro, las dos del orden y las tres que devuelve. Con eso la consulta
+se resuelve dentro del índice, sin ordenar y sin bajar a la tabla: 1 800 ms → 39,6 ms. `id` va
+nombrado aunque InnoDB lo lleve implícito —sin nombrarlo vuelve el filesort de 58 838 filas y la
+consulta se dobla— y `deleted_at` va dentro porque `is null` cuenta como igualdad; fuera, el
+índice deja de cubrir y la consulta sale peor que el barrido. Ocupa un 3 % de la tabla y se paga
+en cada escritura: caro para un índice, y aun así a cuenta, porque el sitemap lo piden los
+buscadores solos.
+
+**`(category_id, status, publish_at)` NO existe, y es deliberado.** Parecía el gemelo del de la
+firma. La sección no llega como constante —el filtro acepta la sección o cualquiera de sus hijas,
+así que es un conjunto—, y con el índice delante MariaDB deja de guiarse por `(status,
+publish_at)`: recorre `kilkana_categories`, entra por `category_id` y ordena a mano lo que saca.
+De 3,5 ms a 2 329 ms. Sin él lee 434 filas para devolver 50.
 
 ---
 
