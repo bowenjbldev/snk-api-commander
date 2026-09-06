@@ -40,7 +40,7 @@ class CommanderInstancesController extends CoreBaseApiController
 
     protected string $destroyPermission = 'delete instances';
 
-    protected array $allowedWith = [
+    protected array $allowedIncludes = [
         'client', 'client.account', 'application', 'subscriptionItem',
         'subscriptionItem.subscription', 'subscriptionItem.plan', 'quotas.metric',
     ];
@@ -56,7 +56,7 @@ class CommanderInstancesController extends CoreBaseApiController
             return $response;
         }
 
-        $query = $this->applyWith(CommanderInstanceModel::query()->with(['client', 'application', 'subscriptionItem.plan']));
+        $query = $this->queryBuilder(CommanderInstanceModel::query()->with(['client', 'application', 'subscriptionItem.plan']));
         if (request()->filled('application_id')) {
             $query->where('application_id', request()->integer('application_id'));
         }

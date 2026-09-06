@@ -27,7 +27,7 @@ class CommanderInvoicesController extends CoreBaseApiController
 
     protected string $destroyPermission = 'delete invoices';
 
-    protected array $allowedWith = ['account', 'lines', 'lines.subscription', 'lines.subscriptionItem.instance'];
+    protected array $allowedIncludes = ['account', 'lines', 'lines.subscription', 'lines.subscriptionItem.instance'];
 
     protected array $validationRulesUpdate = [
         'status' => 'sometimes|required|in:draft,pending,paid,overdue,void',

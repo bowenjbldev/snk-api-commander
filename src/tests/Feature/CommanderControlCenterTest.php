@@ -224,7 +224,7 @@ class CommanderControlCenterTest extends CommanderTestCase
         $this->assertSame(2, CommanderActivityEventModel::query()
             ->where('subscription_id', $contract->id)->where('kind', 'grace')->count());
         $this->actingAs($admin, 'sanctum')
-            ->getJson("/api/v1/subscriptions/{$contract->id}?with=quotas.metric")
+            ->getJson("/api/v1/subscriptions/{$contract->id}?include=quotas.metric")
             ->assertOk()
             ->assertJsonPath('quotas.0.current_value', 12);
 

@@ -23,7 +23,7 @@ class CommanderSubscriptionsController extends CoreBaseApiController
 
     protected string $destroyPermission = 'delete subscriptions';
 
-    protected array $allowedWith = ['account', 'application', 'items', 'items.instance.client', 'items.plan', 'quotas.metric'];
+    protected array $allowedIncludes = ['account', 'application', 'items', 'items.instance.client', 'items.plan', 'quotas.metric'];
 
     protected array $validationRulesStore = [
         'account_id' => 'required|integer|exists:commander_accounts,id',

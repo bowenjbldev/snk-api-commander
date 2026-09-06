@@ -196,9 +196,9 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         $filters = $this->listFilters($request);
         $perPage = $this->perPage($request);
 
-        // Sin `applyWith`: cortocircuita en cuanto `$allowedWith` está vacío, y este
-        // controlador no declara ninguna relación pedible. Las cuatro que sirven el listado
-        // ya vienen del `$with` del modelo.
+        // Sin pasar por `queryBuilder()`: este controlador no declara ninguna relación
+        // pedible —las cuatro que sirven el listado ya vienen del `$with` del modelo— y el
+        // orden y los filtros los arma el servicio, que es quien acota por propiedad.
         $page = $this->posts
             ->filter($this->newQuery(), $filters)
             ->paginate($perPage);

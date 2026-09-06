@@ -21,7 +21,7 @@ class CommanderClientsController extends CoreBaseApiController
 
     protected string $destroyPermission = 'delete clients';
 
-    protected array $allowedWith = ['account', 'instances', 'instances.application', 'instances.subscriptionItem.plan'];
+    protected array $allowedIncludes = ['account', 'instances', 'instances.application', 'instances.subscriptionItem.plan'];
 
     protected array $validationRulesStore = [
         'account_id' => 'required|integer|exists:commander_accounts,id',

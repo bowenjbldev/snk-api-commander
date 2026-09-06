@@ -127,7 +127,7 @@ class CommanderAccountTest extends CommanderTestCase
         Queue::assertPushed(CommanderProvisionInstanceJob::class, 3);
 
         $this->actingAs($admin, 'sanctum')
-            ->getJson("/api/v1/accounts/{$account->id}?with=clients.instances.application,subscriptions.items.instance")
+            ->getJson("/api/v1/accounts/{$account->id}?include=clients.instances.application,subscriptions.items.instance")
             ->assertOk()
             ->assertJsonCount(3, 'clients')
             ->assertJsonCount(3, 'subscriptions.0.items');

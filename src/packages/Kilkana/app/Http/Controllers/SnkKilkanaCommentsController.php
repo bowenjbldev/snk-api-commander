@@ -58,7 +58,7 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
     // Moderación: solo el estado; el cuerpo y la autoría no se reescriben.
     protected array $validationRulesUpdate = [];
 
-    protected array $allowedWith = ['user', 'post', 'replies'];
+    protected array $allowedIncludes = ['user', 'post', 'replies'];
 
     /**
      * La cola de moderacion: filtrada, paginada y con lo que hace falta para decidir sin abrir

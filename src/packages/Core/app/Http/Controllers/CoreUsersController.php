@@ -21,7 +21,7 @@ class CoreUsersController extends CoreBaseApiController
     protected string $storePermission   = 'create users';
     protected string $updatePermission  = 'update users';
     protected string $destroyPermission = 'delete users';
-    protected array $allowedWith = [
+    protected array $allowedIncludes = [
         'roles',
     ];
     protected array $validationRulesStore = [

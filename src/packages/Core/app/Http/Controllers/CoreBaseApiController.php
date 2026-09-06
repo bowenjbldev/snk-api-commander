@@ -3,10 +3,12 @@
 namespace Packages\Core\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Spatie\QueryBuilder\QueryBuilder;
 
 abstract class CoreBaseApiController extends Controller
 {
@@ -28,7 +30,16 @@ abstract class CoreBaseApiController extends Controller
 
     protected array $validationMessages = [];
 
-    protected array $allowedWith = [];
+    /**
+     * Lo que este recurso deja pedir por query string, con los nombres de
+     * `spatie/laravel-query-builder`: `?include=`, `?fields=`, `?sort=` y `?filter[x]=`.
+     *
+     * Se adoptan **sus** nombres y no los que había aquí. Lo que estaba escrito a mano
+     * —resolver `?with=`, recortar columnas, leer el `-` del orden— lo hace el paquete, y con
+     * su vocabulario: quien conoce spatie conoce esta API sin leer nada, y no hay una segunda
+     * convención de la casa que mantener.
+     */
+    protected array $allowedIncludes = [];
 
     /** Bloques de agregados que este recurso sabe calcular, para `?summary=`. */
     protected array $allowedSummary = [];
@@ -43,7 +54,9 @@ abstract class CoreBaseApiController extends Controller
      */
     protected array $allowedFields = [];
 
-    protected array $withMap = [];
+    protected array $allowedSorts = [];
+
+    protected array $allowedFilters = [];
 
     protected ?string $storeRequestClass = null;
 
@@ -80,77 +93,26 @@ abstract class CoreBaseApiController extends Controller
     {
         $class = $this->modelClass;
 
-        $query = $class::query();
-
-        if ($applyWith) {
-            $query = $this->applyWith($query);
-        }
-
-        return $query->find($id);
+        return $applyWith
+            ? $this->queryBuilder($class::query())->find($id)
+            : $class::query()->find($id);
     }
 
-    protected function applyWith($query)
+    /**
+     * La consulta de este recurso con lo que la query string pida, dentro de lo declarado.
+     *
+     * Todo lo declarado es lista blanca: lo que no esté no se aplica, y el paquete no lo
+     * inventa. `newQuery()` sigue siendo el gancho por el que un recurso acota lo suyo —por
+     * propiedad, por permiso— **antes** de que nadie pida nada.
+     */
+    protected function queryBuilder(?Builder $query = null): QueryBuilder
     {
-        $with = $this->parseWithParam();
-
-        if ($with !== []) {
-            $query->with($with);
-
-            $class = $this->modelClass;
-            $withCount = [];
-            foreach ($with as $relationPath) {
-                $relation = explode('.', $relationPath)[0] ?? '';
-                if ($relation !== '' && method_exists($class, $relation)) {
-                    $withCount[] = $relation;
-                }
-            }
-
-            if ($withCount !== []) {
-                $query->withCount(array_values(array_unique($withCount)));
-            }
-        }
-
-        return $query;
-    }
-
-    protected function parseWithParam(): array
-    {
-        $raw = request()->query('with');
-
-        if (! is_string($raw) || trim($raw) === '') {
-            return [];
-        }
-
-        $requested = array_filter(array_map('trim', explode(',', $raw)));
-
-        if ($requested === [] || $this->allowedWith === []) {
-            return [];
-        }
-
-        $with = [];
-
-        foreach ($requested as $item) {
-            if ($item === '') {
-                continue;
-            }
-
-            if (isset($this->withMap[$item])) {
-                $mapped = $this->withMap[$item];
-                foreach ((array) $mapped as $value) {
-                    if (in_array($value, $this->allowedWith, true)) {
-                        $with[] = $value;
-                    }
-                }
-
-                continue;
-            }
-
-            if (in_array($item, $this->allowedWith, true)) {
-                $with[] = $item;
-            }
-        }
-
-        return array_values(array_unique($with));
+        // Desempaquetados: las cuatro son variádicas y una lista suelta las revienta con un 500.
+        return QueryBuilder::for($query ?? $this->newQuery())
+            ->allowedIncludes(...$this->allowedIncludes)
+            ->allowedFields(...$this->allowedFields)
+            ->allowedSorts(...$this->allowedSorts)
+            ->allowedFilters(...$this->allowedFilters);
     }
 
     /**
@@ -178,29 +140,6 @@ abstract class CoreBaseApiController extends Controller
         $asked = array_filter(array_map('trim', explode(',', $raw)));
 
         return array_values(array_intersect($asked, $this->allowedSummary));
-    }
-
-    /**
-     * Qué campos se han pedido, de los que este recurso ofrece. Vacío es «los de siempre».
-     *
-     * Que lo elija quien llama y no el servidor cierra un acoplamiento que ya costó caro: la
-     * lista de campos del listado y el parser del panel eran gemelas mantenidas a mano, y
-     * divergieron —seis campos pasaron a `undefined` sin que fallara nada—. Quien parsea es
-     * ahora quien pide.
-     *
-     * @return list<string>
-     */
-    protected function fields(): array
-    {
-        $raw = request()->query('fields');
-
-        if (! is_string($raw) || trim($raw) === '' || $this->allowedFields === []) {
-            return [];
-        }
-
-        $asked = array_filter(array_map('trim', explode(',', $raw)));
-
-        return array_values(array_intersect($asked, $this->allowedFields));
     }
 
     protected function wants(string $block): bool
@@ -250,9 +189,7 @@ abstract class CoreBaseApiController extends Controller
             return $response;
         }
 
-        $query = $this->applyWith($this->newQuery());
-
-        return response()->json($query->get());
+        return response()->json($this->queryBuilder()->get());
     }
 
     public function show($id = null): JsonResponse

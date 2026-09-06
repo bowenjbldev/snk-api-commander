@@ -27,7 +27,7 @@ class CommanderApplicationsController extends CoreBaseApiController
 
     protected string $destroyPermission = 'delete applications';
 
-    protected array $allowedWith = ['metrics', 'plans', 'plans.limits.metric', 'instances'];
+    protected array $allowedIncludes = ['metrics', 'plans', 'plans.limits.metric', 'instances'];
 
     protected array $validationRulesUpdate = [
         'name' => 'sometimes|required|string|max:255',
@@ -41,7 +41,7 @@ class CommanderApplicationsController extends CoreBaseApiController
             return $response;
         }
 
-        return response()->json($this->applyWith(
+        return response()->json($this->queryBuilder(
             CommanderApplicationModel::query()->withCount(['instances', 'plans'])
         )->orderBy('name')->get());
     }

@@ -27,7 +27,7 @@ class CommanderPlansController extends CoreBaseApiController
 
     protected string $destroyPermission = 'delete plans';
 
-    protected array $allowedWith = ['application', 'limits', 'limits.metric'];
+    protected array $allowedIncludes = ['application', 'limits', 'limits.metric'];
 
     public function index(): JsonResponse
     {
@@ -35,7 +35,7 @@ class CommanderPlansController extends CoreBaseApiController
             return $response;
         }
 
-        return response()->json($this->applyWith(
+        return response()->json($this->queryBuilder(
             CommanderPlanModel::query()->with(['application', 'limits.metric'])
         )->orderBy('application_id')->orderBy('price_monthly')->get());
     }

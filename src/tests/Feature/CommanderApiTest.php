@@ -132,7 +132,7 @@ class CommanderApiTest extends CommanderTestCase
         $this->actingAs($admin, 'sanctum')->getJson('/api/v1/applications')->assertOk()->assertExactJson([]);
         app(CommanderApplicationRegistryService::class)->sync();
 
-        $response = $this->actingAs($admin, 'sanctum')->getJson('/api/v1/applications?with=metrics')->assertOk();
+        $response = $this->actingAs($admin, 'sanctum')->getJson('/api/v1/applications?include=metrics')->assertOk();
         $this->assertContains('Kilkana', array_column($response->json(), 'package_name'));
         $response->assertJsonFragment(['key' => 'editorial_seats'])->assertJsonFragment(['key' => 'reads_month']);
     }

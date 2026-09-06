@@ -15,5 +15,5 @@ class CommanderActivityController extends CoreBaseApiController
 
     protected string $showPermission = 'show activity';
 
-    protected array $allowedWith = ['instance.client', 'instance.application', 'subscription.account', 'subscription.application', 'invoice.account'];
+    protected array $allowedIncludes = ['instance.client', 'instance.application', 'subscription.account', 'subscription.application', 'invoice.account'];
 }

@@ -36,7 +36,7 @@ class SnkKilkanaAuthorsController extends CoreBaseApiController
 
     /** La foto de la firma vive en la biblioteca: `?with=avatarMedia` la resuelve a URL para que
      *  el consumidor no reciba solo un id opaco. */
-    protected array $allowedWith = ['avatarMedia'];
+    protected array $allowedIncludes = ['avatarMedia'];
 
     /**
      * Cada firma sale con cuanto ha publicado, cuando fue la ultima y con que asiento cruza.

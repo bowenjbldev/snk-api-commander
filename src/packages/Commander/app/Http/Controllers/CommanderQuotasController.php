@@ -29,7 +29,7 @@ class CommanderQuotasController extends CoreBaseApiController
 
     protected string $destroyPermission = 'delete quotas';
 
-    protected array $allowedWith = [
+    protected array $allowedIncludes = [
         'instance', 'instance.client', 'instance.application',
         'subscription', 'subscription.account', 'subscription.application',
         'metric', 'measurements',
