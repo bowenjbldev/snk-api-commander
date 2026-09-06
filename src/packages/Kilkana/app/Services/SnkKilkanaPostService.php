@@ -25,8 +25,8 @@ class SnkKilkanaPostService
      * peticion del listado. Medido en 522 piezas y 12 212 filas de audiencia, ordenar por
      * lecturas pasaba de 5,9 a 18,6 ms de SQL solo por ellas — porque ordenar por el alias de
      * una correlacionada obliga a calcularla para TODAS las filas, no para las veinticinco que
-     * se devuelven. Las ventanas de dia y semana siguen existiendo donde se usan, en
-     * `SnkKilkanaPublicService`, que tiene las suyas.
+     * se devuelven. La calle tenia las suyas y **tampoco las pintaba nadie**: se quitaron
+     * despues, asi que hoy ningun listado suma mas de una ventana.
      *
      * `engaged`, no `opens`: la API de audiencia cuenta lecturas reales.
      */

@@ -238,6 +238,19 @@ y no hay `total` porque la calle pide una tarjeta de más para saber si hay pág
 publicada que no sea `noindex`, sin relaciones: es lo único que un rastreador necesita y la lista
 es larga.
 
+**«Sin cuerpo» y «sin relaciones» son ahora columnas y no buenas intenciones.** Las dos consultas
+llevan una lista blanca en el `select` (`FILA_PUBLICA` en `SnkKilkanaPublicService`), y tiene que
+ir ahí y no como argumento de `get()`: el `$withCount` que declara `SnkKilkanaPostModel` fija
+`kilkana_posts.*` en cuanto se construye la consulta, así que un `get(['id','title'])` se ignora
+**en silencio**. Hasta que se escribió así, el listado traía el cuerpo entero de cada pieza para
+esconderlo al serializar, y el sitemap traía el archivo publicado completo con sus cuatro
+relaciones para devolver dos campos por fila. La calle no ve `body_blocks`, `created_by`,
+`updated_by`, `deleted_by`, `deleted_at`, `canonical_url` ni `featured`.
+
+Y los dos listados **desempatan por `id`**. `order by publish_at desc` no es un orden total, la
+lista se pagina con `forPage` y dos piezas del mismo minuto salían en un orden u otro según el
+plan: la página 2 repetía una pieza y se saltaba otra. El índice `(publish_at, id)` ya existía.
+
 ## La papelera: `deleted_at` y `deleted_by`
 
 Borrar una pieza desde el panel es **tirarla**: la fila se queda con `deleted_at` y con quién la
@@ -451,6 +464,13 @@ borraría justo el dato que dice quién te cita.
 
 «Lo más leído hoy» lo dominan las piezas recientes; el total, las que más se leyeron en su
 momento aunque hoy no las abra nadie. Un periódico necesita las dos cosas y ordenan distinto.
+
+Las tres se pueden calcular, pero **la API sirve una: `views_total`**. Las ventanas de día y de
+semana viajaban en cada fila de los dos listados, el del panel y el de la calle, y no las pintaba
+ningún consumidor: eran dos subconsultas correlacionadas por fila, doscientas en una portada de
+cien piezas. Se quitaron del panel primero y de la calle después. Volver a servirlas es sumar
+filas de `kilkana_post_views` por fecha, que es lo que hacían; lo que no se hace es calcularlas
+para tirarlas.
 
 ### No hay contador en la pieza
 

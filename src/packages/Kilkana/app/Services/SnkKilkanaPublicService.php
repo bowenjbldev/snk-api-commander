@@ -32,18 +32,52 @@ class SnkKilkanaPublicService
 {
     private const AUTHOR_PUBLIC = 'author:id,user_id,alias,slug,noindex';
 
+    /**
+     * Las columnas de una pieza que la calle necesita, y **ni una más**.
+     *
+     * Es una lista blanca y no un `makeHidden`, que es lo que había: esconder al serializar
+     * llega tarde, porque la columna ya viajó de MariaDB a PHP y ya se hidrató. `body_blocks`
+     * es el cuerpo entero del artículo, y un listado de cien piezas arrastraba **239 KB** de
+     * cuerpos para tirarlos al final. El detalle sí lo necesita, y lo pide por su cuenta.
+     *
+     * Va como `select()` y no como argumento de `get()` **a propósito**: el `$withCount` que
+     * declara el modelo fija `kilkana_posts.*` en cuanto se construye la consulta, así que un
+     * `get(['id','title'])` se ignora en silencio. Un `select()` sí pisa esas columnas, y de
+     * paso se lleva el `comments_count` del modelo, que `publicCount()` reescribe con el de
+     * aprobados.
+     *
+     * Las tres FKs no salen al JSON —el modelo las esconde— pero tienen que estar: son las que
+     * resuelven la sección, la firma y la portada.
+     */
+    private const FILA_PUBLICA = [
+        'id', 'title', 'excerpt', 'slug', 'status', 'content_tier',
+        'publish_at', 'unpublish_at', 'updated_at', 'url_date',
+        'noindex', 'seo_title', 'seo_description', 'og_title', 'og_description', 'og_image_id',
+        'category_id', 'author_id', 'cover_media_id',
+    ];
+
     public function posts(array $filters)
     {
         $query = SnkKilkanaPostModel::query()
+            ->select(self::FILA_PUBLICA)
             ->with(self::AUTHOR_PUBLIC)
             ->published()
             // Se suma `engaged`, no `opens`: «lo más leído» tiene que ordenarse por lo que la
             // gente lee, no por lo que consigue que pulsen.
-            ->withSum(['views as views_day' => fn ($q) => $q->where('date', now()->toDateString())], 'engaged')
-            ->withSum(['views as views_week' => fn ($q) => $q->where('date', '>=', now()->subDays(6)->toDateString())], 'engaged')
+            //
+            // **Y una suma, no tres.** Aquí hubo también `views_day` y `views_week`, dos
+            // subconsultas correlacionadas por fila que no lee nadie: ni la calle ni el panel
+            // las pintan. El listado del panel ya se las quitó y su comentario daba por hecho
+            // que aquí sí se usaban; no era cierto. En una portada de cien piezas eran
+            // doscientas subconsultas por carga.
             ->withSum('views as views_total', 'engaged')
             ->withCount(['comments as approved_comments_count' => fn ($c) => $c->approved()])
-            ->orderByDesc('publish_at');
+            // El desempate por `id` no es adorno, y aquí menos: dos piezas publicadas en el
+            // mismo minuto salían en un orden u otro según el plan de la consulta, y esta
+            // lista se pagina con `forPage`. Un orden inestable hace que la página 2 repita
+            // una pieza y se salte otra. El índice `(publish_at, id)` ya existe.
+            ->orderByDesc('publish_at')
+            ->orderByDesc('id');
 
         if (! empty($filters['cat'])) {
             $query->whereHas('category', fn ($q) => $q
@@ -184,10 +218,22 @@ class SnkKilkanaPublicService
     public function sitemap(): array
     {
         return SnkKilkanaPostModel::query()
+            // `select()` y `without()`, y no el argumento de `get()`, porque **eso no hacía
+            // nada**: el `$withCount` del modelo fija `kilkana_posts.*` antes, así que esta
+            // consulta traía el archivo publicado entero con todas sus columnas —`body_blocks`
+            // incluido—, un `COUNT` correlacionado por fila y las cuatro cargas ansiosas del
+            // modelo, para devolver dos campos por pieza. `url_path` ni siquiera es una
+            // columna, es un accesor sobre `url_date` y `slug`: lo único que evitaba un
+            // «Unknown column» era que el argumento se ignorase.
+            ->select(['id', 'url_date', 'slug', 'updated_at'])
+            ->without(['category', 'author', 'coverMedia', 'tags'])
             ->published()
             ->where('noindex', false)
+            // Mismo desempate que el listado: sin él, dos piezas del mismo minuto salen en un
+            // orden distinto en cada consulta y el sitemap cambia sin que cambie el periódico.
             ->orderByDesc('publish_at')
-            ->get(['url_path', 'updated_at'])
+            ->orderByDesc('id')
+            ->get()
             ->map(fn (SnkKilkanaPostModel $post) => [
                 'path' => '/'.ltrim((string) $post->url_path, '/'),
                 'updated_at' => $post->updated_at?->toIso8601String(),

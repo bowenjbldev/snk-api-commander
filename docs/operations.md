@@ -680,6 +680,43 @@ Gana donde manda PHP y no mueve nada donde manda MariaDB. Queda fijado en `docke
 con 64 MiB de búfer: 400 peticiones de una ruta usaron 1 MiB, y es memoria compartida del proceso,
 una sola vez. Vale también para scheduler, queue y provisioner, que montan el mismo fichero.
 
+### Qué le cuesta a la API cada página del BFF, del 06-09-2026
+
+```bash
+bash scripts/bff-cost.sh                 # calle y panel
+SCOPE=public LABEL=despues bash scripts/bff-cost.sh
+```
+
+El frontend de Kilkana es un BFF: no toca ninguna base, llama a esta API. `bff-cost.sh` no
+instrumenta nada —anota el último id de `commander_request_logs`, pide la página al BFF y se queda
+con las filas que aparecieron entre medias—, así que atribuye a cada pantalla sus llamadas, su
+tiempo y su peso. Recrea `app` con lote de metering 1, porque con el lote de 20 las filas se
+quedan en el búfer del worker, y sin freno, porque un barrido de dieciocho páginas pasa de 240
+llamadas. Restaura todo al salir.
+
+Línea base, con `demo` y la máquina quieta:
+
+| Página | Llamadas | ms de API | KB |
+| --- | ---: | ---: | ---: |
+| portada | 4 | 143 | 247 |
+| artículo | 5 | 75 | 28 |
+| sitemap | 2 | 84 | 59 |
+| `/admin` tablero | 14 | 490 | 33 |
+| `/admin/posts/{id}` | 16 | 445 | 116 |
+| `/admin/front` | 13 | 420 | 260 |
+| resto del panel | 10-12 | 206-344 | 23-78 |
+
+Dos lecturas que condicionan el trabajo. **En la calle manda una sola llamada**: `public/posts`
+con `count=100` son 114 de los 143 ms de la portada, y reaparece igual en `/admin/front`. **En el
+panel manda el número de viajes**: nueve llamadas de layout antes de pintar nada, que suman entre
+220 y 250 ms porque además compiten entre ellas por los cuatro núcleos. Cada una paga entre 4,7 y
+6,5 ms de coste común antes de llegar a su lógica.
+
+Dos avisos sobre el harness. El panel se mide por su ruta de datos (`__data.json`) y no por la
+página: su layout exporta `ssr = false`, así que el servidor devuelve un armazón de 2 KB sin tocar
+la API. Y calienta cada página una vez, lo que con doce workers deja fríos a la mayoría: una celda
+suelta puede salir al triple, y esas se repiten en vez de creérselas.
+
 ### El store de caché, y por qué condiciona una segunda réplica
 
 ```bash
