@@ -5,6 +5,7 @@ namespace Packages\Kilkana\Http\Controllers;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Core\Support\CorePackageSelectorSupport;
@@ -38,16 +39,22 @@ class SnkKilkanaNewsletterController extends CoreBaseApiController
             return response()->json(['drafts' => SnkKilkanaNewsletterIssueModel::query()->where('status', SnkKilkanaNewsletterIssueModel::DRAFT)->count()]);
         }
 
-        $issues = SnkKilkanaNewsletterIssueModel::query()->orderByRaw("case when status = 'draft' then 0 else 1 end")->orderByDesc('sent_at')->orderByDesc('id')->get();
+        $issues = SnkKilkanaNewsletterIssueModel::query()->orderByRaw("case when status = 'draft' then 0 else 1 end")->orderByDesc('sent_at')->orderByDesc('id')->get()->values();
+
+        // Las piezas y las cifras de TODOS los números de una vez. Pedirlas número a número
+        // eran seis consultas por fila —una por las cifras y cinco por las piezas, que se
+        // traían las cuatro relaciones del modelo—, y el listado no tiene cota de números.
+        // El borrador en blanco va en la misma tanda porque pregunta lo mismo que un borrador
+        // sin piezas elegidas: qué llevaría un número nuevo.
+        $piezas = $this->newsletter->piecesFor($issues->collect()->push(new SnkKilkanaNewsletterIssueModel(['status' => SnkKilkanaNewsletterIssueModel::DRAFT])));
+        $cifras = $this->newsletter->countsFor($issues->modelKeys());
 
         return response()->json([
-            'data' => $issues->map(fn (SnkKilkanaNewsletterIssueModel $i) => $this->row($i))->values(),
+            'data' => $issues->map(fn (SnkKilkanaNewsletterIssueModel $i, int $p) => $this->row($i, $piezas[$p], $cifras[(int) $i->getKey()]))->values(),
             'list' => $this->newsletter->listStats(),
             // Lo que se puede elegir para un número: las veinte publicadas más recientes.
-            'candidates' => SnkKilkanaPostModel::query()->published()->orderByDesc('publish_at')->limit(20)->get(['id', 'title'])
-                ->map(fn (SnkKilkanaPostModel $p) => ['id' => (string) $p->getKey(), 'title' => $p->title])->values()->all(),
-            'pieces' => $this->newsletter->pieces(new SnkKilkanaNewsletterIssueModel(['status' => SnkKilkanaNewsletterIssueModel::DRAFT]))
-                ->map(fn (SnkKilkanaPostModel $p) => ['id' => (string) $p->getKey(), 'title' => $p->title])->values(),
+            'candidates' => $this->titulos($this->newsletter->recent(20)),
+            'pieces' => $this->titulos($piezas->last()),
             'sender' => config('mail.from.address'),
         ]);
     }
@@ -128,8 +135,12 @@ class SnkKilkanaNewsletterController extends CoreBaseApiController
         return response()->json($this->row($issue->fresh()));
     }
 
-    /** @return array<string, mixed> */
-    private function row(SnkKilkanaNewsletterIssueModel $issue): array
+    /**
+     * @param  ?Collection<int, SnkKilkanaPostModel>  $piezas  ya resueltas por el listado
+     * @param  ?array{opens: int, clicks: int, unsubs: int}  $cifras  ya resueltas por el listado
+     * @return array<string, mixed>
+     */
+    private function row(SnkKilkanaNewsletterIssueModel $issue, ?Collection $piezas = null, ?array $cifras = null): array
     {
         return [
             'id' => (string) $issue->getKey(),
@@ -142,8 +153,19 @@ class SnkKilkanaNewsletterController extends CoreBaseApiController
             'recipients' => (int) $issue->recipients_count,
             'test_sent_to' => $issue->test_sent_to,
             'test_sent_at' => $issue->test_sent_at?->toIso8601String(),
-            'pieces' => $this->newsletter->pieces($issue)->map(fn (SnkKilkanaPostModel $p) => ['id' => (string) $p->getKey(), 'title' => $p->title])->values()->all(),
-            ...$this->newsletter->counts($issue),
+            'pieces' => $this->titulos($piezas ?? $this->newsletter->pieces($issue)),
+            ...$cifras ?? $this->newsletter->counts($issue),
         ];
+    }
+
+    /**
+     * Lo único que el panel necesita de una pieza en esta pantalla.
+     *
+     * @param  Collection<int, SnkKilkanaPostModel>  $piezas
+     * @return list<array{id: string, title: string}>
+     */
+    private function titulos(Collection $piezas): array
+    {
+        return $piezas->map(fn (SnkKilkanaPostModel $p) => ['id' => (string) $p->getKey(), 'title' => $p->title])->values()->all();
     }
 }

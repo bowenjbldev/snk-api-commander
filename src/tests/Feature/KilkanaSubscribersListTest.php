@@ -16,6 +16,8 @@ use Tests\TestCase;
  * La lista entra y sale como fichero. Lo que se fija: lo importado queda marcado `import`,
  * quien ya estaba no se toca —una baja no vuelve a alta por venir en la lista vieja—, una
  * dirección que no lo es se cuenta y no rompe, y sin declarar el consentimiento no entra nada.
+ *
+ * Y se lee paginada: llevarse la lista entera es `export`, no un `GET` del listado.
  */
 class KilkanaSubscribersListTest extends TestCase
 {
@@ -81,6 +83,37 @@ class KilkanaSubscribersListTest extends TestCase
         // Una dirección que empieza como una fórmula sale como texto, no como fórmula.
         SnkKilkanaSubscriberModel::create(['email' => '=cmd@lectores.example', 'status' => 'confirmed', 'consent_source' => 'public_form']);
         $this->assertStringContainsString("'=cmd@lectores.example,", app(SnkKilkanaSubscribersController::class)->export()->getContent());
+    }
+
+    /**
+     * La lista se pagina. Es el único listado del paquete que crece sin techo, y devolverla
+     * entera son megabytes de JSON para pintar una página de veinticinco.
+     */
+    public function test_la_lista_se_pagina_y_el_tope_por_pagina_no_lo_elige_quien_llama(): void
+    {
+        for ($i = 0; $i < 30; $i++) {
+            SnkKilkanaSubscriberModel::create(['email' => "s{$i}@lectores.example", 'status' => 'confirmed', 'consent_source' => 'public_form']);
+        }
+
+        $primera = $this->listar()->getData(true);
+
+        $this->assertCount(25, $primera['data']);
+        $this->assertSame(['current_page' => 1, 'per_page' => 25, 'total' => 30, 'last_page' => 2], $primera['meta']);
+        $this->assertSame('s29@lectores.example', $primera['data'][0]['email'], 'La última alta, arriba.');
+
+        $segunda = $this->listar(['page' => '2'])->getData(true);
+        $this->assertCount(5, $segunda['data']);
+        $this->assertSame([], array_intersect(array_column($primera['data'], 'id'), array_column($segunda['data'], 'id')), 'Ninguna dirección sale en las dos páginas.');
+
+        // Llevarse la lista entera tiene su puerta, y es `export`, no un `per_page` gigante.
+        $this->assertSame(100, $this->listar(['per_page' => '100000'])->getData(true)['meta']['per_page']);
+    }
+
+    private function listar(array $query = [])
+    {
+        request()->query->replace($query);
+
+        return app(SnkKilkanaSubscribersController::class)->index();
     }
 
     private function importar(string $csv, bool $consented = true)

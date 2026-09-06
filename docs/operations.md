@@ -717,6 +717,22 @@ página: su layout exporta `ssr = false`, así que el servidor devuelve un armaz
 la API. Y calienta cada página una vez, lo que con doce workers deja fríos a la mayoría: una celda
 suelta puede salir al triple, y esas se repiten en vez de creérselas.
 
+Lo bajado hasta ahora contra esa línea base:
+
+| Endpoint | Antes | Después | Qué era |
+| --- | ---: | ---: | --- |
+| `public/posts?count=100` | 77,0 ms · 235 KB | 66,4 ms · 217 KB | traía los cuerpos y los escondía al serializar |
+| `public/sitemap` | 76 ms · 5 consultas | 29 ms · 1 consulta | el archivo entero, con seis cargas ansiosas, para devolver dos campos |
+| `newsletter` (panel) | 66,6 ms | 26,5 ms | una consulta por número y cinco más por las relaciones del modelo |
+
+Las dos primeras, aisladas y con la mediana de veinticinco pasadas. La del boletín, **alternando
+A-B-A** contra el contenedor —la misma petición con y sin el cambio, recreando `app` entre
+pasadas—, y hace falta hacerlo así: una tirada entera del harness deriva hasta un 30 % entre
+ejecuciones, y esa deriva se come el resultado. En la tirada donde el boletín bajó de 81 a 45 ms,
+los otros ocho endpoints de esa misma pantalla subieron todos. Medido con los cinco números de
+`demo`; el listado pasó de 25 consultas con dos números y 45 con seis, a 12 con cualquiera de los
+dos, así que la distancia crece con cada boletín que se manda.
+
 ### El store de caché, y por qué condiciona una segunda réplica
 
 ```bash

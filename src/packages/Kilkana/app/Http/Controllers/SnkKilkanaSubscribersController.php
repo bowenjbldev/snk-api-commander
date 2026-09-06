@@ -47,8 +47,43 @@ class SnkKilkanaSubscribersController extends CoreBaseApiController
     /** Filas que admite un fichero importado. Por encima se rechaza entero: se parte y se vuelve. */
     public const IMPORT_MAX = 20000;
 
+    private const PER_PAGE = 25;
+
+    private const PER_PAGE_MAX = 100;
+
     /** Las columnas que salen y las que se reconocen al entrar, en este orden cuando no hay cabecera. */
     private const COLUMNS = ['email', 'status', 'consent_at'];
+
+    /**
+     * La lista paginada, con la forma que ya usan lectores y comentarios.
+     *
+     * El `index()` del base devuelve la tabla entera, y este es el único listado del paquete
+     * que crece sin techo: los demás que lo heredan son catálogos acotados y este son las
+     * direcciones. Con cincuenta mil, la respuesta son megabytes de JSON para pintar una
+     * página de veinticinco. Llevarse la lista completa ya tiene su puerta, que es `export`.
+     */
+    public function index(): JsonResponse
+    {
+        if ($response = $this->requirePermission($this->indexPermission)) {
+            return $response;
+        }
+
+        $pedidas = (int) request()->query('per_page', (string) self::PER_PAGE);
+        // Por id y no por alta: es orden total, y sin él dos altas del mismo segundo pueden
+        // salir dos veces en la página siguiente o no salir en ninguna.
+        $pagina = $this->newQuery()->orderByDesc('id')
+            ->paginate($pedidas < 1 ? self::PER_PAGE : min($pedidas, self::PER_PAGE_MAX));
+
+        return response()->json([
+            'data' => $pagina->getCollection(),
+            'meta' => [
+                'current_page' => $pagina->currentPage(),
+                'per_page' => $pagina->perPage(),
+                'total' => $pagina->total(),
+                'last_page' => $pagina->lastPage(),
+            ],
+        ]);
+    }
 
     /**
      * La lista entera como CSV: correo, estado, origen y sello del consentimiento. Es lo que

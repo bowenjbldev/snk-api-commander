@@ -268,6 +268,13 @@ cuatro columnas más `consent_source`, que es lo que permite demostrar de dónde
 Las dos van declaradas antes del `apiResource` (`index`, `show`, `store`, `update`, `destroy`)
 para que `show` no se trague «export» como id.
 
+`GET subscribers` **pagina**: `per_page` de 25 por defecto y 100 de techo, `page`, de la última
+alta a la primera y con el mismo `meta` que lectores y comentarios. Es el único listado del
+paquete que crece sin cota —los demás que heredan el `index()` del base son catálogos acotados—
+y devolvía la tabla entera: con cincuenta mil direcciones, megabytes de JSON para pintar
+veinticinco filas. Llevarse la lista completa sigue teniendo su puerta, que es `export`, y esa
+sí recorre la tabla, pero en streaming y como CSV.
+
 Separar el origen es lo que permite acreditar y purgar por separado: **la lista importada es la
 que trae el riesgo**, y sin la columna todas las filas parecen iguales.
 
@@ -286,6 +293,16 @@ hay en las bandejas. `kilkana:newsletter-send-due` corre al minuto por cada inqu
 borradores con hora cumplida, uno a uno y con la fila bloqueada, para que dos ticks no manden el
 mismo dos veces. El correo sale con la dirección de la instalación y el nombre del periódico como
 remitente, y `newsletter_reply_to` de los ajustes como `Reply-To`.
+
+El listado resuelve las piezas y las cifras de **todos** los números a la vez y no número a
+número: las elegidas de los enviados en una consulta, las de los borradores en otra, las cuatro
+últimas publicadas en una tercera —que sirve a la vez a los borradores sin elección y al
+`pieces` del número en blanco— y las cifras de todos en una cuarta, agrupando por `issue_id` y
+clase. Pintar seis números cuesta las mismas consultas que pintar dos. De cada pieza se leen
+solo `id`, `title`, `excerpt`, `url_date` y `slug`, y sin las cuatro relaciones que
+`SnkKilkanaPostModel` carga él solo: aquí nadie serializa una pieza entera —el panel pinta el
+titular, y el correo el titular, la entradilla y el enlace—, así que eran cuatro consultas por
+llamada para nada.
 
 ### El envío va por tandas a la cola de la instalación
 

@@ -2,6 +2,7 @@
 
 namespace Packages\Kilkana\Services;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -52,18 +53,66 @@ class SnkKilkanaNewsletterService
      */
     public function pieces(SnkKilkanaNewsletterIssueModel $issue): Collection
     {
-        $elegidas = is_array($issue->post_ids) ? array_values(array_filter($issue->post_ids)) : [];
+        return $this->piecesFor(collect([$issue]))->first();
+    }
+
+    /**
+     * Lo mismo para varios números y en su misma posición, en tres consultas como mucho en vez
+     * de una por número: el panel los pinta todos a la vez y antes preguntaba uno a uno.
+     *
+     * @param  Collection<int, SnkKilkanaNewsletterIssueModel>  $issues
+     * @return Collection<int, Collection<int, SnkKilkanaPostModel>>
+     */
+    public function piecesFor(Collection $issues): Collection
+    {
+        $numeros = $issues->values();
+        $elegidas = $numeros->map(fn (SnkKilkanaNewsletterIssueModel $i) => is_array($i->post_ids) ? array_values(array_filter($i->post_ids)) : []);
+        $ids = fn (bool $enviado) => $elegidas
+            ->filter(fn (array $suyas, int $p) => $numeros[$p]->sent() === $enviado)
+            ->flatten()->unique()->values()->all();
+        $porId = fn (Builder $consulta, array $suyos) => $suyos === []
+            ? collect()
+            : $this->fila($consulta)->whereKey($suyos)->get()->keyBy('id');
 
         // Un número enviado enseña lo que llevó, aunque una pieza se haya tirado después; un
         // borrador con piezas elegidas enseña las que sigan publicadas, en el orden elegido.
-        if ($elegidas !== []) {
-            $consulta = $issue->sent() ? SnkKilkanaPostModel::withTrashed() : SnkKilkanaPostModel::query()->published();
-            $porId = $consulta->whereKey($elegidas)->get()->keyBy('id');
+        // Son dos consultas distintas, pero dos para todos los números, no dos por número.
+        $delArchivo = $porId(SnkKilkanaPostModel::withTrashed(), $ids(true));
+        $publicadas = $porId(SnkKilkanaPostModel::query()->published(), $ids(false));
+        $ultimas = null;
 
-            return collect($elegidas)->map(fn ($id) => $porId->get($id))->filter()->values();
-        }
+        return $numeros->map(function (SnkKilkanaNewsletterIssueModel $issue, int $p) use ($elegidas, $delArchivo, $publicadas, &$ultimas) {
+            if ($elegidas[$p] === []) {
+                return $ultimas ??= $this->recent(SnkKilkanaNewsletterIssueModel::PIECES);
+            }
+            $pool = $issue->sent() ? $delArchivo : $publicadas;
 
-        return SnkKilkanaPostModel::query()->published()->orderByDesc('publish_at')->limit(SnkKilkanaNewsletterIssueModel::PIECES)->get();
+            return collect($elegidas[$p])->map(fn ($id) => $pool->get($id))->filter()->values();
+        });
+    }
+
+    /**
+     * Las últimas publicadas: lo que lleva un número que no eligió piezas, y lo que se ofrece
+     * para elegirlas. Con desempate por id, o dos piezas del mismo minuto se turnan.
+     *
+     * @return Collection<int, SnkKilkanaPostModel>
+     */
+    public function recent(int $limit): Collection
+    {
+        return $this->fila(SnkKilkanaPostModel::query()->published())
+            ->orderByDesc('publish_at')->orderByDesc('id')->limit($limit)->get();
+    }
+
+    /**
+     * De una pieza aquí solo se lee esto: el panel pinta el titular, y el correo el titular, la
+     * entradilla y el enlace —que sale de `url_date` y `slug`—. Nadie serializa la pieza entera,
+     * así que las cuatro relaciones que `$with` carga sola eran cuatro consultas por llamada
+     * para nada.
+     */
+    private function fila(Builder $consulta): Builder
+    {
+        return $consulta->select(['id', 'title', 'excerpt', 'url_date', 'slug'])
+            ->without(['category', 'author', 'coverMedia', 'tags']);
     }
 
     /**
@@ -182,18 +231,41 @@ class SnkKilkanaNewsletterService
      */
     public function counts(SnkKilkanaNewsletterIssueModel $issue): array
     {
-        $porClase = SnkKilkanaNewsletterEventModel::query()
-            ->where('issue_id', $issue->getKey())
-            ->whereIn('kind', [SnkKilkanaNewsletterEventModel::OPEN, SnkKilkanaNewsletterEventModel::CLICK, SnkKilkanaNewsletterEventModel::UNSUB])
-            ->selectRaw('kind, count(distinct subscriber_id) as total')
-            ->groupBy('kind')
-            ->pluck('total', 'kind');
+        $id = (int) $issue->getKey();
 
-        return [
-            'opens' => (int) $porClase->get(SnkKilkanaNewsletterEventModel::OPEN, 0),
-            'clicks' => (int) $porClase->get(SnkKilkanaNewsletterEventModel::CLICK, 0),
-            'unsubs' => (int) $porClase->get(SnkKilkanaNewsletterEventModel::UNSUB, 0),
+        return $this->countsFor([$id])[$id];
+    }
+
+    /**
+     * Las cifras de varios números en una sola consulta, que es como las pide el listado.
+     *
+     * @param  list<int>  $issueIds
+     * @return array<int, array{opens: int, clicks: int, unsubs: int}>
+     */
+    public function countsFor(array $issueIds): array
+    {
+        if ($issueIds === []) {
+            return [];
+        }
+        $clase = [
+            SnkKilkanaNewsletterEventModel::OPEN => 'opens',
+            SnkKilkanaNewsletterEventModel::CLICK => 'clicks',
+            SnkKilkanaNewsletterEventModel::UNSUB => 'unsubs',
         ];
+        $porNumero = array_fill_keys($issueIds, ['opens' => 0, 'clicks' => 0, 'unsubs' => 0]);
+
+        $filas = SnkKilkanaNewsletterEventModel::query()
+            ->whereIn('issue_id', $issueIds)
+            ->whereIn('kind', array_keys($clase))
+            ->selectRaw('issue_id, kind, count(distinct subscriber_id) as total')
+            ->groupBy('issue_id', 'kind')
+            ->get();
+
+        foreach ($filas as $fila) {
+            $porNumero[(int) $fila->issue_id][$clase[$fila->kind]] = (int) $fila->total;
+        }
+
+        return $porNumero;
     }
 
     /**

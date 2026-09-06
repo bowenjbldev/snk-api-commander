@@ -14,6 +14,7 @@ use Packages\Kilkana\Mail\SnkKilkanaNewsletterMail;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaNewsletterEventModel;
+use Packages\Kilkana\Models\SnkKilkanaNewsletterIssueModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Models\SnkKilkanaSettingModel;
 use Packages\Kilkana\Models\SnkKilkanaSubscriberModel;
@@ -115,11 +116,65 @@ class KilkanaNewsletterTest extends TestCase
 
         $prueba = $this->controlador()->test(Request::create('https://demo.commander.test/', 'POST', ['to' => 'marta@eldiario.example']), $issue->id)->getData(true);
         $this->assertSame('marta@eldiario.example', $prueba['test_sent_to']);
-        Mail::assertSent(SnkKilkanaNewsletterMail::class, fn (SnkKilkanaNewsletterMail $c) => $c->hasTo('marta@eldiario.example') && $c->openUrl === null);
+        // Y llega entero con lo que trae la lista blanca de columnas: titular, entradilla y la
+        // ruta, que se compone de `url_date` y `slug`.
+        Mail::assertSent(SnkKilkanaNewsletterMail::class, fn (SnkKilkanaNewsletterMail $c) => $c->hasTo('marta@eldiario.example') && $c->openUrl === null
+            && $c->pieces[0] === ['title' => 'Pieza 0', 'excerpt' => 'Entradilla.', 'url' => 'https://demo.kilkana.test/2026/07/01/pieza-0']);
 
         $lista = $this->controlador()->index()->getData(true);
         $this->assertSame(1, $lista['list']['confirmed']);
         $this->assertSame(['drafts' => 1], $this->controlador(['counts' => '1'])->index()->getData(true));
+    }
+
+    /**
+     * Pintar seis números cuesta lo mismo que pintar dos.
+     *
+     * Antes eran seis consultas por fila —una por las cifras y cinco por las piezas, porque
+     * el modelo carga cuatro relaciones él solo—, y el listado no tiene cota de números: la
+     * pantalla se hacía más cara cada vez que se mandaba un boletín.
+     */
+    public function test_el_listado_del_boletin_cuesta_lo_mismo_con_dos_numeros_que_con_seis(): void
+    {
+        $this->comoModeradora();
+        $this->piezas(6);
+        $ids = SnkKilkanaPostModel::query()->published()->orderBy('id')->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+        $this->dosNumeros($ids);
+        // El primer paso hidrata los permisos —dos consultas que no son del listado— y las
+        // deja cacheadas para el resto del proceso: sin esto la primera medida sale más cara.
+        $this->controlador()->index();
+        $conDos = $this->consultasDelListado();
+
+        $this->dosNumeros($ids);
+        $this->dosNumeros($ids);
+        $conSeis = $this->consultasDelListado();
+
+        $this->assertSame($conDos, $conSeis, "Seis números costaron {$conSeis} consultas y dos, {$conDos}.");
+    }
+
+    /** Uno enviado y un borrador con piezas elegidas: las dos formas que resuelve el listado. */
+    private function dosNumeros(array $ids): void
+    {
+        $servicio = app(SnkKilkanaNewsletterService::class);
+        $servicio->create(null)->forceFill([
+            'status' => SnkKilkanaNewsletterIssueModel::SENT,
+            'sent_at' => now(),
+            'post_ids' => [$ids[0], $ids[1]],
+            'recipients_count' => 3,
+        ])->save();
+        $servicio->create(null)->forceFill(['post_ids' => [$ids[2]]])->save();
+    }
+
+    private function consultasDelListado(): int
+    {
+        $conexion = DB::connection();
+        $conexion->flushQueryLog();
+        $conexion->enableQueryLog();
+        $this->controlador()->index();
+        $consultas = count($conexion->getQueryLog());
+        $conexion->disableQueryLog();
+
+        return $consultas;
     }
 
     private function controlador(array $query = []): SnkKilkanaNewsletterController
