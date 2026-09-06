@@ -131,10 +131,12 @@ class KilkanaPanelCompositeTest extends TestCase
 
         $tablero = $this->cuerpo(app(SnkKilkanaPanelController::class)->dashboard());
 
-        $this->assertSame($this->piezas('status=review&sort=date&dir=asc&per_page=5'), $tablero['review']);
-        $this->assertSame($this->piezas('status=scheduled&sort=date&dir=asc&per_page=5'), $tablero['scheduled']);
-        $this->assertSame($this->piezas('status=published&per_page=5'), $tablero['published']);
-        $this->assertSame($this->piezas('sort=reads&per_page=6'), $tablero['reads']);
+        // Con `summary=counts`: el tablero pinta la barra de estados, así que la llamada
+        // equivalente tiene que pedir las cifras. Sin ellas el listado ya no las devuelve.
+        $this->assertSame($this->piezas('status=review&sort=date&per_page=5&summary=counts'), $tablero['review']);
+        $this->assertSame($this->piezas('status=scheduled&sort=date&per_page=5&summary=counts'), $tablero['scheduled']);
+        $this->assertSame($this->piezas('status=published&per_page=5&summary=counts'), $tablero['published']);
+        $this->assertSame($this->piezas('sort=-reads&per_page=6&summary=counts'), $tablero['reads']);
 
         $this->assertSame(1, $tablero['review']['meta']['total']);
         $this->assertSame(1, $tablero['published']['meta']['total']);

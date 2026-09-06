@@ -90,6 +90,9 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         return response()->json(['error' => 'Forbidden', 'permission' => 'publish posts'], 403);
     }
 
+    /** Las cifras de las pestañas, que cuentan el archivo entero y no la página. */
+    protected array $allowedSummary = ['counts'];
+
     protected string $indexPermission = 'index posts';
 
     protected string $showPermission = 'show posts';
@@ -211,7 +214,20 @@ class SnkKilkanaPostsController extends CoreBaseApiController
 
         $page->getCollection()->each($this->posts->asListRow(...));
 
-        $counts = $this->posts->countsByStatus((int) auth()->id(), $this->canEditOthers(), $this->canViewOthers());
+        // `counts` es lo que ve quien mira, que es lo que cuentan las pestanas de Posts.
+        // `counts_all` es el periodico entero, y el tablero las ensena juntas: sin la
+        // segunda su cifra queda al lado de una seccion del periodico entero y se lee como
+        // una contradiccion. Sin `view others posts` las dos vienen iguales — el servicio
+        // las iguala, no las calla, porque el panel deduce de esa igualdad que hay una
+        // sola escala que dibujar.
+        //
+        // **Y solo si se piden.** Cuentan el archivo entero, no la página, así que no son
+        // parte de esta respuesta: son otra pregunta. Tres pantallas del panel piden este
+        // listado solo para enseñar «lo último publicado» —secciones, etiquetas, firmas— y
+        // pagaban el recuento sin usarlo.
+        $cifras = $this->wants('counts')
+            ? $this->posts->countsByStatus((int) auth()->id(), $this->canEditOthers(), $this->canViewOthers())
+            : null;
 
         return response()->json([
             'data' => $page->items(),
@@ -221,14 +237,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
                 'total' => $page->total(),
                 'last_page' => $page->lastPage(),
             ],
-            // `counts` es lo que ve quien mira, que es lo que cuentan las pestanas de Posts.
-            // `counts_all` es el periodico entero, y el tablero las ensena juntas: sin la
-            // segunda su cifra queda al lado de una seccion del periodico entero y se lee como
-            // una contradiccion. Sin `view others posts` las dos vienen iguales — el servicio
-            // las iguala, no las calla, porque el panel deduce de esa igualdad que hay una
-            // sola escala que dibujar.
-            'counts' => $counts['scoped'],
-            'counts_all' => $counts['all'],
+            ...$cifras === null ? [] : ['counts' => $cifras['scoped'], 'counts_all' => $cifras['all']],
         ]);
     }
 

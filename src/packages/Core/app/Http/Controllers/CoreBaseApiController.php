@@ -20,6 +20,8 @@ abstract class CoreBaseApiController extends Controller
     protected array $validationRulesUpdate = [];
     protected array $validationMessages = [];
     protected array $allowedWith = [];
+    /** Bloques de agregados que este recurso sabe calcular, para `?summary=`. */
+    protected array $allowedSummary = [];
     protected array $withMap = [];
     protected ?string $storeRequestClass = null;
     protected ?string $updateRequestClass = null;
@@ -125,6 +127,38 @@ abstract class CoreBaseApiController extends Controller
         }
 
         return array_values(array_unique($with));
+    }
+
+    /**
+     * Qué agregados de los que ofrece este recurso se han pedido con `?summary=`.
+     *
+     * Los agregados de un listado —las cifras de las pestañas, la banda de la cabecera— cuentan
+     * el archivo entero y **no la página**, así que no son parte de una página: son otra
+     * pregunta que da la casualidad de que se responde en el mismo viaje. Hacerlos opcionales
+     * es lo que permite que una llamada que solo quiere filas no los pague.
+     *
+     * No es `with`, que carga relaciones de cada fila, ni `include`, que en JSON:API significa
+     * justo eso: son cifras SOBRE la colección. Lo que no esté declarado se ignora, como el
+     * resto de la query: nunca un 422.
+     *
+     * @return list<string>
+     */
+    protected function summary(): array
+    {
+        $raw = request()->query('summary');
+
+        if (!is_string($raw) || trim($raw) === '' || $this->allowedSummary === []) {
+            return [];
+        }
+
+        $asked = array_filter(array_map('trim', explode(',', $raw)));
+
+        return array_values(array_intersect($asked, $this->allowedSummary));
+    }
+
+    protected function wants(string $block): bool
+    {
+        return in_array($block, $this->summary(), true);
     }
 
     protected function requirePermission(string $permission): ?JsonResponse

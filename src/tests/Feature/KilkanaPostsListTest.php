@@ -141,6 +141,40 @@ class KilkanaPostsListTest extends TestCase
         $this->assertSame($titulos([]), $titulos(['sort' => '-banana']));
     }
 
+    /**
+     * Las cifras de las pestañas solo viajan si se piden.
+     *
+     * Cuentan el archivo entero y no la página, así que no son parte de esta respuesta: son
+     * otra pregunta que se contesta en el mismo viaje. Tres pantallas del panel piden este
+     * listado solo para enseñar «lo último publicado» y pagaban el recuento sin usarlo.
+     */
+    public function test_las_cifras_solo_viajan_si_se_piden(): void
+    {
+        $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
+        $marta->assignRole('director');
+        $this->actingAs($marta, 'sanctum');
+        $this->makePost('Una', $this->category('Local', 'local'), $this->author('Redacción', alias: 'Redacción'), 'draft', null, $marta->id);
+
+        $pedir = function (array $query) {
+            request()->query->replace($query);
+
+            return app(SnkKilkanaPostsController::class)->index()->getData(true);
+        };
+
+        $sin = $pedir([]);
+        $this->assertArrayNotHasKey('counts', $sin);
+        $this->assertArrayNotHasKey('counts_all', $sin);
+        $this->assertCount(1, $sin['data'], 'Las filas siguen llegando.');
+
+        $con = $pedir(['summary' => 'counts']);
+        $this->assertSame(1, $con['counts']['draft']);
+        $this->assertArrayHasKey('counts_all', $con);
+
+        // Y lo que no se ofrece se ignora, como el resto de la query: nunca un 422.
+        $this->assertArrayNotHasKey('counts', $pedir(['summary' => 'banana']));
+        $this->assertArrayHasKey('counts', $pedir(['summary' => 'banana,counts']));
+    }
+
     public function test_el_filtro_acota_y_el_orden_es_estable(): void
     {
         $deportes = $this->category('Deportes', 'deportes');
