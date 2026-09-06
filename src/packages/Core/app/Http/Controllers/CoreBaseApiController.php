@@ -11,19 +11,32 @@ use Illuminate\Http\Request;
 abstract class CoreBaseApiController extends Controller
 {
     protected string $modelClass;
+
     protected string $indexPermission;
+
     protected string $showPermission;
+
     protected string $storePermission;
+
     protected string $updatePermission;
+
     protected string $destroyPermission;
+
     protected array $validationRulesStore = [];
+
     protected array $validationRulesUpdate = [];
+
     protected array $validationMessages = [];
+
     protected array $allowedWith = [];
+
     /** Bloques de agregados que este recurso sabe calcular, para `?summary=`. */
     protected array $allowedSummary = [];
+
     protected array $withMap = [];
+
     protected ?string $storeRequestClass = null;
+
     protected ?string $updateRequestClass = null;
 
     protected function buildFormRequest(string $class, Request $request): FormRequest
@@ -94,7 +107,7 @@ abstract class CoreBaseApiController extends Controller
     {
         $raw = request()->query('with');
 
-        if (!is_string($raw) || trim($raw) === '') {
+        if (! is_string($raw) || trim($raw) === '') {
             return [];
         }
 
@@ -118,6 +131,7 @@ abstract class CoreBaseApiController extends Controller
                         $with[] = $value;
                     }
                 }
+
                 continue;
             }
 
@@ -147,7 +161,7 @@ abstract class CoreBaseApiController extends Controller
     {
         $raw = request()->query('summary');
 
-        if (!is_string($raw) || trim($raw) === '' || $this->allowedSummary === []) {
+        if (! is_string($raw) || trim($raw) === '' || $this->allowedSummary === []) {
             return [];
         }
 
@@ -169,7 +183,7 @@ abstract class CoreBaseApiController extends Controller
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        if (!$user->can($permission)) {
+        if (! $user->can($permission)) {
             return response()->json(['error' => 'Forbidden'], 403);
         }
 
@@ -185,6 +199,7 @@ abstract class CoreBaseApiController extends Controller
         foreach ($rules as $field => $rule) {
             if (is_string($rule)) {
                 $rules[$field] = str_replace('{id}', (string) $id, $rule);
+
                 continue;
             }
 
