@@ -725,6 +725,30 @@ Lo bajado hasta ahora contra esa línea base:
 | `public/sitemap` | 76 ms · 5 consultas | 29 ms · 1 consulta | el archivo entero, con seis cargas ansiosas, para devolver dos campos |
 | `newsletter` (panel) | 66,6 ms | 26,5 ms | una consulta por número y cinco más por las relaciones del modelo |
 
+Y el panel, tras los dos endpoints compuestos —`panel/bootstrap` y `panel/dashboard`—, contado
+en llamadas, que es lo que ahí manda:
+
+| Pantalla | Llamadas antes | Después | ms de API antes | Después |
+| --- | ---: | ---: | ---: | ---: |
+| tablero | 14 | 2 | 490 | 124 |
+| posts | 10 | 2 | 260 | 90 |
+| editor | 16 | 8 | 445 | 384 |
+| mediateca | 12 | 4 | 344 | 196 |
+| portada | 13 | 5 | 420 | 261 |
+| cuentas | 12 | 5 | 327 | 174 |
+| secciones | 11 | 3 | 325 | 120 |
+| ajustes | 11 | 3 | 206 | 94 |
+| boletín | 10 | 2 | 231 | 80 |
+| papelera | 10 | 2 | 262 | 130 |
+| **total** | **119** | **36** | | |
+
+**La latencia de una pantalla apenas se mueve con esto, y hay que decirlo así.** Las llamadas ya
+salían en paralelo, de modo que en una máquina quieta la novena no costaba reloj: `ms_pagina` se
+queda donde estaba, y en alguna pantalla sale peor por el ruido de la propia medida. Lo que se
+quita es carga —ochenta y tres peticiones con su peaje de 4,7 a 6,5 ms, su conexión a la base del
+inquilino y su competencia por cuatro núcleos—, y eso se ve con gente dentro y con los workers
+fríos, no en una tirada suelta. La columna de llamadas es la honesta.
+
 Las dos primeras, aisladas y con la mediana de veinticinco pasadas. La del boletín, **alternando
 A-B-A** contra el contenedor —la misma petición con y sin el cambio, recreando `app` entre
 pasadas—, y hace falta hacerlo así: una tirada entera del harness deriva hasta un 30 % entre

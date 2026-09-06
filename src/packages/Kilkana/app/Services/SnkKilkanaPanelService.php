@@ -65,17 +65,17 @@ class SnkKilkanaPanelService
             'categories' => $this->conPermiso('index categories', fn () => SnkKilkanaCategoryModel::query()->asCatalogue()->get()),
             'authors' => $this->conPermiso('index authors', fn () => SnkKilkanaAuthorModel::query()->asCatalogue()->get()),
             'tags' => $this->conPermiso('index tags', fn () => SnkKilkanaTagModel::query()->asCatalogue()->get()),
-            'comments' => $this->conPermiso('index comments', fn () => [
+            'comments' => $this->cifra('index comments', fn () => [
                 'counts' => $this->comentarios->countsByStatus(),
                 'oldest_pending_at' => $this->comentarios->oldestPendingAt(),
             ]),
-            'readers' => $this->conPermiso('index readers', fn () => ['accounts' => $this->lectores->accounts()->count()]),
+            'readers' => $this->cifra('index readers', fn () => ['accounts' => $this->lectores->accounts()->count()]),
             // La campana la guarda `can:view others posts` en su ruta, no un `indexPermission`.
-            'activity' => $this->conPermiso('view others posts', fn () => $this->registro->bell(self::BELL)),
+            'activity' => $this->cifra('view others posts', fn () => $this->registro->bell(self::BELL)),
             // La papelera no tiene un permiso suyo: se ve si se puede borrar algo de lo que hay.
             'trash' => $clases === [] ? null : ['count' => $this->papelera->count($clases)],
-            'gate' => $this->conPermiso('index posts', fn () => ['failing' => SnkKilkanaGateResultModel::failingCount()]),
-            'newsletter' => $this->conPermiso('index subscribers', fn () => ['drafts' => $this->boletin->drafts()]),
+            'gate' => $this->cifra('index posts', fn () => ['failing' => SnkKilkanaGateResultModel::failingCount()]),
+            'newsletter' => $this->cifra('index subscribers', fn () => ['drafts' => $this->boletin->drafts()]),
         ];
     }
 
@@ -135,5 +135,26 @@ class SnkKilkanaPanelService
     private function conPermiso(string $permiso, callable $seccion): mixed
     {
         return auth()->user()?->can($permiso) === true ? $seccion() : null;
+    }
+
+    /**
+     * Una cifra del raíl que se rompe llega nula, igual que una sin permiso.
+     *
+     * Los tres catálogos NO se protegen así a propósito: sin ellos el armazón no sabe si hay
+     * periódico y un 502 es la respuesta honesta. Una cifra es otra cosa —es un entero al lado
+     * de un icono—, y ya costó una pantalla entera en «Something went wrong»: una columna que
+     * faltaba en la consulta de la cola de moderación se llevó el panel por delante. Antes lo
+     * paraba el armazón, que las pedía una a una; ahora vienen en la misma respuesta, así que
+     * lo tiene que parar esto. Se reporta, no se traga.
+     */
+    private function cifra(string $permiso, callable $seccion): mixed
+    {
+        try {
+            return $this->conPermiso($permiso, $seccion);
+        } catch (\Throwable $fallo) {
+            report($fallo);
+
+            return null;
+        }
     }
 }

@@ -23,6 +23,7 @@ use Packages\Kilkana\Models\SnkKilkanaGateResultModel;
 use Packages\Kilkana\Models\SnkKilkanaNewsletterIssueModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Models\SnkKilkanaTagModel;
+use Packages\Kilkana\Services\SnkKilkanaCommentService;
 use Packages\Kilkana\Services\SnkKilkanaRoleCatalogService;
 use Tests\TestCase;
 
@@ -94,6 +95,32 @@ class KilkanaPanelCompositeTest extends TestCase
         // El gate y la campana se leen con permisos de piezas, que el moderador sí tiene.
         $this->assertSame(1, $panel['gate']['failing']);
         $this->assertSame(1, $panel['comments']['counts']['pending'], 'Y lo suyo sí lo ve.');
+        $this->assertSame(1, $panel['newsletter']['drafts']);
+    }
+
+    /**
+     * Una cifra que se rompe llega nula, como una sin permiso, y el armazón se pinta igual.
+     *
+     * Antes lo paraba el propio panel, que las pedía una a una; ahora vienen en la misma
+     * respuesta, así que lo tiene que parar la API. Es la caída que ya costó una pantalla
+     * entera en «Something went wrong»: una columna que faltaba en la cola de moderación.
+     */
+    public function test_una_cifra_que_revienta_no_se_lleva_el_armazon(): void
+    {
+        $this->comoDirectora();
+        $this->contenido();
+        $this->app->bind(SnkKilkanaCommentService::class, fn () => new class extends SnkKilkanaCommentService
+        {
+            public function countsByStatus(): array
+            {
+                throw new \RuntimeException('la columna que faltaba');
+            }
+        });
+
+        $panel = $this->cuerpo(app(SnkKilkanaPanelController::class)->bootstrap());
+
+        $this->assertNull($panel['comments'], 'La cifra rota deja su hueco.');
+        $this->assertCount(1, $panel['categories'], 'Y el resto del armazón llega entero.');
         $this->assertSame(1, $panel['newsletter']['drafts']);
     }
 
