@@ -5,12 +5,14 @@ namespace Tests\Feature;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Packages\Core\Models\CoreUserModel;
+use Packages\Kilkana\Http\Controllers\SnkKilkanaPostsController;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaMediaModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Models\SnkKilkanaTagModel;
 use Packages\Kilkana\Services\SnkKilkanaPostService;
+use Packages\Kilkana\Services\SnkKilkanaRoleCatalogService;
 use Tests\TestCase;
 
 /**
@@ -43,7 +45,64 @@ class KilkanaPostsListTest extends TestCase
             '--path' => 'packages/Kilkana/database/migrations',
         ])->run();
 
+        app(SnkKilkanaRoleCatalogService::class)->sync();
         $this->posts = app(SnkKilkanaPostService::class);
+    }
+
+    /**
+     * Un enlace con `?page=999` enseña la última página, no una tabla vacía.
+     *
+     * Es lo que hace que un enlace viejo siga significando algo. Sin esto la respuesta venía
+     * con `data` vacío y un `meta` diciendo que hay siete piezas, que es una contradicción que
+     * el panel pinta como «no hay nada».
+     */
+    public function test_una_pagina_fuera_de_rango_ensena_la_ultima_y_no_una_tabla_vacia(): void
+    {
+        $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
+        $marta->assignRole('director');
+        $this->actingAs($marta, 'sanctum');
+        $seccion = $this->category('Local', 'local');
+        $firma = $this->author('Redacción', alias: 'Redacción');
+        for ($i = 0; $i < 7; $i++) {
+            $this->makePost("Pieza {$i}", $seccion, $firma, 'draft', null, $marta->id);
+        }
+
+        request()->query->replace(['per_page' => '5', 'page' => '999']);
+        $fuera = app(SnkKilkanaPostsController::class)->index()->getData(true);
+
+        $this->assertSame(2, $fuera['meta']['current_page'], 'Cae a la última, no se queda en la 999.');
+        $this->assertSame(2, $fuera['meta']['last_page']);
+        $this->assertSame(7, $fuera['meta']['total']);
+        $this->assertCount(2, $fuera['data'], 'Y trae las filas de esa última página.');
+    }
+
+    /**
+     * Lo que no se reconoce cae al defecto; nunca es un 422 ni una tabla vacía.
+     *
+     * Es la misma regla que aplica el panel al leer sus `searchParams`: quien teclea
+     * `?status=banana` a mano se merece la lista entera, no una pantalla en blanco. Y el tope
+     * por página no lo elige quien llama, o `?per_page=500` restaura el volcado entero.
+     */
+    public function test_lo_que_la_query_no_reconoce_cae_al_defecto(): void
+    {
+        $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
+        $marta->assignRole('director');
+        $this->actingAs($marta, 'sanctum');
+        $seccion = $this->category('Local', 'local');
+        $firma = $this->author('Redacción', alias: 'Redacción');
+        $this->makePost('Una', $seccion, $firma, 'draft', null, $marta->id);
+
+        $pedir = function (array $query) {
+            request()->query->replace($query);
+
+            return app(SnkKilkanaPostsController::class)->index()->getData(true);
+        };
+
+        $this->assertCount(1, $pedir(['status' => 'banana'])['data'], 'Un estado inventado no filtra a cero.');
+        $this->assertCount(1, $pedir(['category' => 'No existe'])['data'], 'Ni una sección que no está.');
+        $this->assertCount(1, $pedir(['sort' => 'banana'])['data'], 'Ni un orden que no existe.');
+        $this->assertSame(100, $pedir(['per_page' => '500'])['meta']['per_page'], 'El techo no lo elige quien llama.');
+        $this->assertSame(25, $pedir([])['meta']['per_page'], 'Y sin pedir nada, veinticinco.');
     }
 
     public function test_el_filtro_acota_y_el_orden_es_estable(): void
