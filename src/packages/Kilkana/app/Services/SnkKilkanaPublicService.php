@@ -51,7 +51,10 @@ class SnkKilkanaPublicService
      * es el cuerpo entero del artículo, y un listado de cien piezas arrastraba **239 KB** de
      * cuerpos para tirarlos al final. El detalle sí lo necesita, y lo pide por su cuenta.
      *
-     * Va como `select()` y no como argumento de `get()` **a propósito**: el `$withCount` que
+     * Va como `select()` y no como argumento de `get()`, que es lo que había que hacer mientras
+     * existió el `$withCount` global del modelo —ya retirado—. Se mantiene porque es lo correcto
+     * de todas formas, y porque el `withCount` de los aprobados de aquí abajo hace lo mismo si
+     * llegase antes. Lo que dice el párrafo siguiente sigue valiendo palabra por palabra: el
      * declara el modelo fija `kilkana_posts.*` en cuanto se construye la consulta, así que un
      * `get(['id','title'])` se ignora en silencio. Un `select()` sí pisa esas columnas, y de
      * paso se lleva el `comments_count` del modelo, que `publicCount()` reescribe con el de

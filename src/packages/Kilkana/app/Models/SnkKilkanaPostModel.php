@@ -28,11 +28,6 @@ class SnkKilkanaPostModel extends Model
 
     protected $with = ['category', 'author', 'coverMedia', 'tags'];
 
-    // Una subconsulta por listado en vez de N contadores: la API incluye cuántos comentarios
-    // lleva cada artículo. Total, no solo aprobados: para moderar hay que ver
-    // que hay algo que moderar.
-    protected $withCount = ['comments'];
-
     protected $hidden = ['category_id', 'author_id', 'cover_media_id', 'coverMedia'];
 
     protected $appends = ['cover', 'url_path'];

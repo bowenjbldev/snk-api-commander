@@ -364,7 +364,9 @@ class SnkKilkanaPostService
      * una campo se cae de aqui, alli deja de llegar sin que nada falle en este lado.
      *
      * Lo que sigue calculandose aunque no salga: `comments_count`, que es una subconsulta del
-     * `$withCount` del modelo. Son 0,1 ms y quitarlo obliga a rehacer el `$withCount` global.
+     * `comments_count`. Ya no: ese `$withCount` global se retiró del modelo, y con él la
+     * subconsulta que viajaba en toda consulta de piezas para un valor que no publica esta fila
+     * ni parsea el panel. Quien lo necesite lo pide con un `withCount('comments')` suyo.
      */
     public const FILA_DEL_LISTADO = [
         'id', 'title', 'excerpt', 'slug', 'status', 'content_tier',

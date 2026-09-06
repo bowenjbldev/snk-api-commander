@@ -188,7 +188,12 @@ class KilkanaCommentsTest extends TestCase
         $lista = $calle->posts([])->first();
         $detalle = $calle->post('2026', '07', '01', $pieza->slug);
 
-        $this->assertSame(3, $pieza->fresh()->comments_count, 'El panel ve que hay algo que moderar.');
+        // Contar los comentarios de una pieza **se pide**: era un `$withCount` del modelo
+        // encendido siempre, que añadía una subconsulta a toda consulta de piezas del sistema
+        // para un valor que no publica la fila del listado ni parsea el panel. Y de paso fijaba
+        // `select kilkana_posts.*`, que es lo que anulaba las proyecciones en silencio.
+        $conCuenta = SnkKilkanaPostModel::query()->withCount('comments')->find($pieza->id);
+        $this->assertSame(3, $conCuenta->comments_count, 'Total, no solo aprobados: para moderar hay que ver que hay algo.');
         $this->assertSame(1, $lista->comments_count);
         $this->assertSame(1, $detalle->comments_count);
         $this->assertArrayNotHasKey('approved_comments_count', $detalle->toArray());
