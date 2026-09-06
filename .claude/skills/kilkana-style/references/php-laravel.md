@@ -29,6 +29,10 @@ src/packages/<Paquete>/
 `DTOs/`, `Repositories/`, `Observers/`, `Events/`. `Jobs/` solo en Commander. Y los tests **no**
 viven en el paquete: van en `src/tests/{Unit,Feature}`.
 
+**Lo que sí se apoya en un paquete**: la query string la resuelve `spatie/laravel-query-builder`,
+con sus nombres por defecto. Ver «La query la resuelve…» más abajo. La regla es no reinventar lo
+que el gremio ya tiene resuelto, y no ponerle encima un vocabulario propio.
+
 **No hay FormRequests. Cero.** El andamiaje existe en el base controller (`$storeRequestClass`,
 `buildFormRequest()`) y nadie lo usa. Un endpoint nuevo no estrena uno.
 
@@ -188,17 +192,52 @@ $data = $validator->validated();
 
 Fuera del CRUD (`bulk`, `upload`, `subscribe`, `settings`) sí va `$request->validate([...])` inline.
 
-### Filtros de query: lo desconocido cae al defecto, nunca 422
+### La query la resuelve `spatie/laravel-query-builder`, con SUS nombres
 
-```php
-return [
-    'status' => SnkKilkanaPostStatusEnum::tryFrom((string) $request->query('status', ''))?->value,
-    // Con una sola letra la búsqueda no acota nada y recorre la tabla entera.
-    'q' => mb_strlen($term) >= 2 ? mb_substr($term, 0, 128) : null,
-    'sort' => in_array($sort, self::SORTS, true) ? $sort : 'date',
-    'dir' => $request->query('dir') === 'asc' ? 'asc' : 'desc',
-];
-```
+No se escribe a mano el parseo de la query, y **no se inventa vocabulario de la casa**: se usan
+los nombres por defecto del paquete, que es el estándar del gremio. Quien lo conoce conoce esta
+API sin leer nada.
+
+| Idea | Parámetro | Se declara con |
+|---|---|---|
+| Relaciones | `?include=author,tags` | `$allowedIncludes` |
+| Columnas | `?fields=id,title` | `$allowedFields` |
+| Orden | `?sort=-publish_at` (`-` es descendente) | `$allowedSorts` |
+| Filtros | `?filter[status]=draft` | `$allowedFilters` |
+| Paginación | `?per_page=25&page=2` | el paginador de Laravel |
+
+`CoreBaseApiController::queryBuilder()` las aplica todas; el controlador solo las declara.
+**Todo es lista blanca**: lo que no esté declarado no se aplica, y el paquete no lo inventa.
+
+**`newQuery()` sigue siendo el gancho** por el que un recurso acota lo suyo —por propiedad, por
+permiso— *antes* de que nadie pida nada. Quien llama elige dentro de eso; nunca fuera.
+
+**El alias del orden no es cosmético.** `AllowedSort::field('date', 'publish_at')` mantiene los
+nombres de columna fuera de la URL, y en un API multi-inquilino eso es contención, no comodidad.
+Lo mismo con `AllowedFilter::scope()`, que expone un scope y no una columna.
+
+**Lo desconocido cae al defecto, nunca 422.** Es la regla de siempre y el paquete la respeta: lo
+que no está declarado se ignora. Quien teclea `?sort=banana` se merece la lista, no una pantalla
+en blanco.
+
+**Lo que NO es del paquete y sigue siendo nuestro:**
+
+- **`?summary=counts,stats`**, con `$allowedSummary` y `wants()`. Son cifras **sobre la
+  colección** —las pestañas, la banda—, y los agregados del paquete van por relación
+  (`include=commentsCount`). No viajan si no se piden: cuentan la tabla entera y no la página,
+  así que una llamada que solo quiere filas no los paga.
+- **El techo de lo que se puede leer**, que vive en el modelo: `PUBLIC_FIELDS` dice qué ve un
+  anónimo, y es más estrecho que `$hidden`, que es lo que no se ve nunca en ningún contexto. La
+  misma fila la leen la calle, el listado del panel y el editor, y el conjunto seguro es distinto
+  en cada uno.
+- **El mapa accesor → columnas**, también en el modelo (`COLUMNS_FOR`). El paquete no sabe que
+  `url_path` se compone de `url_date` y `slug`: sin el mapa, pedirlo devuelve `null` sin decir
+  por qué.
+
+**Dos trampas ya pagadas.** Las cuatro `allowed*` son **variádicas**: pasarles un array da un
+500, van con `...`. Y un `$withCount` en el modelo fija `select tabla.*` vía `withAggregate`
+**antes** de que llegue ninguna columna, así que anula cualquier proyección en silencio — un
+`select()` explícito sí manda.
 
 ### Formato de respuesta
 
@@ -208,7 +247,7 @@ No hay envoltura `data` genérica.
 |---|---|
 | `show`/`store`/`update` | el modelo pelado, `201` en el alta |
 | `index` sin paginar | el array pelado |
-| `index` paginado | `{data, meta:{current_page, per_page, total, last_page}, counts\|facets}` |
+| `index` paginado | `{data, meta:{current_page, per_page, total, last_page}}`, más `counts`/`stats` **solo si se piden** con `?summary=` |
 | `destroy` | `{"id": 12}` |
 | `bulk` | `{"ok": true, "count": 3}` |
 | error | `{"error": "Texto en inglés"}` (+ campos extra en 409) |
