@@ -552,6 +552,24 @@ memoria residente. **`app` corre sobre FrankenPHP desde el 06-09-2026**: la imag
 scheduler, queue y provisioner; php-fpm queda como perfil `fpm` para repetir esta matriz, que debe
 repetirse en el hardware de producción antes de fijar `OCTANE_WORKERS` allí.
 
+**Segunda pasada del 06-09-2026**, ya con `app` en FrankenPHP y con metering en lote
+(`CORE_METERING_BATCH=20`), doce workers y keepalive de nginx al upstream. Misma máquina, mismo
+guion (`RUNTIMES="franken:8443:app fpm:8444:fpm" bash scripts/octane-ab.sh bench`), mediana de
+tres, sin `5xx` ni `429` en ninguna celda:
+
+| Escenario               | Gen. |   c |   FPM | FrankenPHP     | p95 FPM → FrankenPHP | RAM pico FPM/Fr |
+| ----------------------- | ---- | --: | ----: | -------------- | -------------------: | --------------: |
+| lectura, un inquilino   | oha  |  10 | 187,4 | 527,1 (+181 %) |          81 → 32 ms |     67/427 MiB |
+| lectura, un inquilino   | oha  |  25 | 158,7 | 515,8 (+225 %) |         212 → 71 ms |     65/429 MiB |
+| lectura, dos inquilinos | oha  | 5+5 | 145,1 | 269,1 (+85 %)  |        131 → 111 ms |     74/429 MiB |
+| escritura               | curl |  10 |  66,2 | 78,8 (+19 %)   |         130 → 89 ms |     83/430 MiB |
+| login                   | curl |   8 |  51,6 | 73,8 (+43 %)   |        167 → 118 ms |    111/430 MiB |
+| mixto                   | curl |   5 |  67,8 | 91,5 (+35 %)   |          75 → 56 ms |     73/448 MiB |
+
+La lectura pasa de ×2 a casi ×3 sobre FPM y el p95 bajo carga cae a un tercio; escritura y login
+siguen mandados por MariaDB y ganan lo mismo que el día anterior. Los absolutos de las dos pasadas
+no se comparan entre sí (la máquina rendía distinto), solo cada pasada con su propio FPM.
+
 ## Comprobaciones
 
 ```bash
