@@ -16,7 +16,7 @@ Ese host es el frontend del producto. La API de la misma instancia usa
 | Secciones | `CATEGORIES` en el seeder | Diecisiete secciones con estados reales: una oculta del menú, una en preparación sin piezas. |
 | Redacción y firmas | `REDACCION`, `FIRMAS_EXTERNAS` | Seis de plantilla, una agencia, la firma colectiva, un columnista y una colaboradora, con bio, cargo, redes y retrato. |
 | Piezas | `data/posts.json`, 532 | Titulares y entradillas escritos a mano; el cuerpo lo compone `SnkKilkanaDemoBodyFactory`. |
-| Fotos | `data/media/`, 60 JPEG con licencia | La mediateca con crédito, alt, pie y estante por mesa. |
+| Fotos | `data/media/`, 60 JPEG de 1920 × 1080 con licencia Unsplash; autor y página en `sources.json` | La mediateca con crédito, alt, pie y estante por mesa, y derivadas de 160 a 1920. |
 | Lecturas | `seedViews()` | Una curva por edad de la pieza sobre `reads` del snapshot. |
 | Lectores y comentarios | `seedReaders()`, `seedComments()` | Gente de la Ribera comentando lo que acaba de salir. |
 | Suscriptores | `seedSubscribers()` | La lista del boletín con sus tres estados y dos orígenes. |

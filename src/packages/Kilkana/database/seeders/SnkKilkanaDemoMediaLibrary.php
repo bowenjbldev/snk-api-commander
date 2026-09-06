@@ -20,8 +20,13 @@ use Packages\Kilkana\Services\SnkKilkanaImageService;
  *
  * Aquí las sesenta fotos de `data/media/` entran por el mismo camino que una subida real:
  * se copian al disco `public` bajo la base del inquilino, la fila guarda `disk`, `path`,
- * `content_hash` y las medidas leídas del fichero, y la dirección pasa a ser la ruta
- * relativa `/storage/…` que devuelve el servicio de medios.
+ * `content_hash`, las medidas leídas del fichero y el máster, y la dirección pasa a ser la
+ * ruta relativa `/storage/…` que devuelve el servicio de medios.
+ *
+ * **Miden 1920 × 1080**, y no es capricho: la escalera de derivadas se corta en el ancho del
+ * máster, así que con originales de 800 la apertura de una portada de 1032 se servía a 640 y
+ * estirada. Son fotos de Unsplash servidas por Lorem Picsum a ese tamaño; `sources.json`
+ * guarda autor y página de Unsplash de cada una, y de ahí sale `source_url`.
  *
  * **Sesenta ficheros para ciento setenta y seis direcciones**: la foto se elige por
  * `crc32` de la dirección original, así que dos piezas que compartían foto la siguen
@@ -56,6 +61,20 @@ final class SnkKilkanaDemoMediaLibrary
         $ficheros = glob($this->directorio.'/*.jpg') ?: [];
         sort($ficheros);
         $this->ficheros = array_values($ficheros);
+    }
+
+    /** @var array<string, array{author: string, url: string}>|null fichero → autor y página de Unsplash */
+    private ?array $fuentes = null;
+
+    /** Autor y página de Unsplash de cada foto, de `sources.json`; vacío si la carpeta no lo trae. */
+    private function fuentes(): array
+    {
+        if ($this->fuentes === null) {
+            $json = @file_get_contents($this->directorio.'/sources.json');
+            $this->fuentes = is_string($json) ? (json_decode($json, true) ?: []) : [];
+        }
+
+        return $this->fuentes;
     }
 
     /** Cuántas fotos hay de verdad en el disco. */
@@ -182,9 +201,9 @@ final class SnkKilkanaDemoMediaLibrary
 
         $nombre = basename($fichero);
         $ruta = 'media/'.DB::connection()->getDatabaseName().'/'.$nombre;
-        if (! Storage::disk('public')->exists($ruta)) {
-            Storage::disk('public')->put($ruta, (string) file_get_contents($fichero));
-        }
+        // Se escribe siempre: la fila lleva el `content_hash` de ESTE fichero, y un disco con
+        // la versión anterior bajo el mismo nombre dejaría la huella y la foto sin casar.
+        Storage::disk('public')->put($ruta, (string) file_get_contents($fichero));
 
         $url = '/storage/'.$ruta;
         [$ancho, $alto, $mime] = $this->medidas($fichero);
@@ -208,6 +227,7 @@ final class SnkKilkanaDemoMediaLibrary
             'height' => $alto,
             'rights_status' => SnkKilkanaMediaRightsEnum::Licensed,
             'license' => self::LICENCIA,
+            'source_url' => $this->fuentes()[$nombre]['url'] ?? null,
             'master_path' => $master['path'] ?? null,
             'master_width' => $master['width'] ?? null,
             'master_height' => $master['height'] ?? null,

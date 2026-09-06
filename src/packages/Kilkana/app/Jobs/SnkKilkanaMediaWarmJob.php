@@ -34,7 +34,9 @@ class SnkKilkanaMediaWarmJob implements ShouldQueue
             // Las miniaturas del panel van también en avif, que es lo que el navegador del
             // panel pide primero: a 160 y 320 codificarlo cuesta poco y es lo que hace que la
             // rejilla salga entera a la primera visita en vez de generar cuarenta y ocho a la vez.
-            foreach ([['hero', 320], ['thumb', 160]] as [$ratio, $width]) {
+            // La rejilla pide `hero` a 160 en una pantalla normal y a 320 en una densa; la tabla,
+            // `thumb` a 160.
+            foreach ([['hero', 160], ['hero', 320], ['thumb', 160]] as [$ratio, $width]) {
                 foreach (SnkKilkanaImageService::formats() as $format) {
                     $images->variant($media, $ratio, $width, $format);
                 }
