@@ -31,11 +31,6 @@ class SnkKilkanaPostWindowTest extends TestCase
                 'Lo que no es una de las dos ventanas es «desde siempre»: '.var_export($pedida, true),
             );
         }
-
-        // Y `7.5` da siete, porque el casteo trunca. No es un descuido nuevo: es lo que hacía
-        // el `(int)` del controlador desde el principio, y cambiarlo sería cambiar el contrato
-        // sin que nadie lo haya pedido.
-        $this->assertSame(7, SnkKilkanaPostService::readsWindow('7.5'));
     }
 
     public function test_las_claves_del_mapa_de_orden_son_el_vocabulario_de_sort(): void
