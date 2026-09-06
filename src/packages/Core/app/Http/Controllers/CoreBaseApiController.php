@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Packages\Core\Support\CorePaginationSupport;
@@ -71,30 +70,6 @@ abstract class CoreBaseApiController extends Controller
     protected array $allowedSorts = [];
 
     protected array $allowedFilters = [];
-
-    protected ?string $storeRequestClass = null;
-
-    protected ?string $updateRequestClass = null;
-
-    protected function buildFormRequest(string $class, Request $request): FormRequest
-    {
-        /** @var FormRequest $formRequest */
-        $formRequest = $class::createFrom($request);
-        $formRequest->setContainer(app());
-        $formRequest->setRedirector(app('redirect'));
-        $formRequest->setRouteResolver($request->getRouteResolver());
-        $formRequest->setUserResolver($request->getUserResolver());
-
-        return $formRequest;
-    }
-
-    protected function validatedFromFormRequest(string $class, Request $request): array
-    {
-        $formRequest = $this->buildFormRequest($class, $request);
-        $formRequest->validateResolved();
-
-        return $formRequest->validated();
-    }
 
     protected function newQuery()
     {
@@ -251,17 +226,13 @@ abstract class CoreBaseApiController extends Controller
             return $response;
         }
 
-        if ($this->storeRequestClass !== null) {
-            $data = $this->validatedFromFormRequest($this->storeRequestClass, $request);
-        } else {
-            $data = $request->all();
-            if ($this->validationRulesStore !== []) {
-                $validator = validator($data, $this->validationRulesStore, $this->validationMessages);
-                if ($validator->fails()) {
-                    return response()->json($validator->errors(), 422);
-                }
-                $data = $validator->validated();
+        $data = $request->all();
+        if ($this->validationRulesStore !== []) {
+            $validator = validator($data, $this->validationRulesStore, $this->validationMessages);
+            if ($validator->fails()) {
+                return response()->json($validator->errors(), 422);
             }
+            $data = $validator->validated();
         }
 
         $class = $this->modelClass;
@@ -286,18 +257,14 @@ abstract class CoreBaseApiController extends Controller
             return response()->json(['error' => 'Record not found'], 404);
         }
 
-        if ($this->updateRequestClass !== null) {
-            $data = $this->validatedFromFormRequest($this->updateRequestClass, $request);
-        } else {
-            $data = $request->all();
-            if ($this->validationRulesUpdate !== []) {
-                $rules = $this->interpolateRules($this->validationRulesUpdate, $id);
-                $validator = validator($data, $rules, $this->validationMessages);
-                if ($validator->fails()) {
-                    return response()->json($validator->errors(), 422);
-                }
-                $data = $validator->validated();
+        $data = $request->all();
+        if ($this->validationRulesUpdate !== []) {
+            $rules = $this->interpolateRules($this->validationRulesUpdate, $id);
+            $validator = validator($data, $rules, $this->validationMessages);
+            if ($validator->fails()) {
+                return response()->json($validator->errors(), 422);
             }
+            $data = $validator->validated();
         }
 
         $record->fill($data);

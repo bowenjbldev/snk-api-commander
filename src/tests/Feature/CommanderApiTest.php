@@ -135,6 +135,12 @@ class CommanderApiTest extends CommanderTestCase
         $response = $this->actingAs($admin, 'sanctum')->getJson('/api/v1/applications?include=metrics')->assertOk();
         $this->assertContains('Kilkana', array_column($response->json(), 'package_name'));
         $response->assertJsonFragment(['key' => 'editorial_seats'])->assertJsonFragment(['key' => 'reads_month']);
+
+        // Una relación que este recurso no declara **se ignora**: devuelve el listado, no un 400.
+        // Es la regla del resto de la query —`summary`, `per_page`, `sort`— y por defecto el
+        // paquete hace lo contrario: `InvalidIncludeQuery` lleva `HTTP_BAD_REQUEST` dentro. Lo
+        // apaga `config/query-builder.php`, y sin esa configuración esta línea falla.
+        $this->actingAs($admin, 'sanctum')->getJson('/api/v1/applications?include=banana')->assertOk();
     }
 
     public function test_instance_state_actions_are_scoped_by_numeric_instance_id(): void

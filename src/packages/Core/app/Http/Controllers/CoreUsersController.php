@@ -47,7 +47,7 @@ class CoreUsersController extends CoreBaseApiController
         title: '1. List users',
         description: 'Returns a list of all users.',
     )]
-    #[QueryParameter('with', description: 'Relationships to include (e.g. roles).', type: 'string', example: 'roles')]
+    #[QueryParameter('include', description: 'Relationships to include (e.g. roles).', type: 'string', example: 'roles')]
     #[Response(status: 200, description: 'Success', type: 'array<Packages\\Core\\Models\\CoreUserModel>')]
     public function index(): JsonResponse
     {
@@ -96,7 +96,7 @@ class CoreUsersController extends CoreBaseApiController
         description: 'Returns details for a specific user.',
     )]
     #[PathParameter('id', description: 'User ID.', type: 'int', example: 1)]
-    #[QueryParameter('with', description: 'Relationships to include (roles).', type: 'string', example: 'roles')]
+    #[QueryParameter('include', description: 'Relationships to include (roles).', type: 'string', example: 'roles')]
     #[Response(status: 200, description: 'Success', type: 'Packages\\Core\\Models\\CoreUserModel')]
     #[Response(404, 'Not found')]
     public function show($id = null): JsonResponse

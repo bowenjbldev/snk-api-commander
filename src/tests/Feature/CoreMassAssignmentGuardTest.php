@@ -57,9 +57,8 @@ class CoreMassAssignmentGuardTest extends TestCase
             // propiedad no se inicializa con eso—, asi que se mira la INSTANCIA, no la clase.
             $controlador = app($clase);
             $reglas = $this->propiedad($espejo, $controlador, 'validationRulesUpdate');
-            $formRequest = $this->propiedad($espejo, $controlador, 'updateRequestClass');
 
-            if ($reglas === [] && $formRequest === null) {
+            if ($reglas === []) {
                 $sinDeclarar[] = $ruta->uri().' → '.class_basename($clase);
             }
         }
@@ -67,7 +66,7 @@ class CoreMassAssignmentGuardTest extends TestCase
         $this->assertSame([], $sinDeclarar, implode("\n", [
             'Estas rutas escriben lo que llegue en la peticion, columna a columna:',
             ...$sinDeclarar,
-            'Declara `$validationRulesUpdate`, un `$updateRequestClass`, o escribe su `update()`.',
+            'Declara `$validationRulesUpdate` o escribe su `update()`.',
         ]));
     }
 
