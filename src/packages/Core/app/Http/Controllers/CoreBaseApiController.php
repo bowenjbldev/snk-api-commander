@@ -3,11 +3,13 @@
 namespace Packages\Core\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Packages\Core\Support\CorePaginationSupport;
 use Spatie\QueryBuilder\QueryBuilder;
 
 abstract class CoreBaseApiController extends Controller
@@ -53,6 +55,18 @@ abstract class CoreBaseApiController extends Controller
      * que este recurso no admite elegir y devuelve lo suyo de siempre.
      */
     protected array $allowedFields = [];
+
+    /**
+     * Cuántas filas trae una página de este recurso, y el techo que **no elige quien llama**.
+     *
+     * El techo no es cortesía: sin él, `?per_page=100000` restaura el volcado entero de la
+     * tabla en un listado que el panel pinta de veinticinco en veinticinco. Un recurso que
+     * necesite otra cifra la declara —el registro de actividad trae cincuenta—; lo que no
+     * hace es reescribir el clamp.
+     */
+    protected int $perPageDefault = 25;
+
+    protected int $perPageMax = 100;
 
     protected array $allowedSorts = [];
 
@@ -145,6 +159,26 @@ abstract class CoreBaseApiController extends Controller
     protected function wants(string $block): bool
     {
         return in_array($block, $this->summary(), true);
+    }
+
+    /**
+     * El tamaño de página pedido, dentro de lo que este recurso admite.
+     *
+     * Un valor imposible —cero, negativo, texto— **cae al de por defecto** y un valor
+     * enorme al techo; ninguno de los dos es un 422. Es la misma regla que el resto de la
+     * query: quien teclea a mano se lleva la página normal, no una pantalla de error.
+     */
+    protected function perPage(): int
+    {
+        $asked = (int) request()->query('per_page', (string) $this->perPageDefault);
+
+        return $asked < 1 ? $this->perPageDefault : min($asked, $this->perPageMax);
+    }
+
+    /** @return array{current_page: int, per_page: int, total: int, last_page: int} */
+    protected function paginationMeta(LengthAwarePaginator $page): array
+    {
+        return CorePaginationSupport::meta($page);
     }
 
     protected function requirePermission(string $permission): ?JsonResponse

@@ -47,10 +47,6 @@ class SnkKilkanaSubscribersController extends CoreBaseApiController
     /** Filas que admite un fichero importado. Por encima se rechaza entero: se parte y se vuelve. */
     public const IMPORT_MAX = 20000;
 
-    private const PER_PAGE = 25;
-
-    private const PER_PAGE_MAX = 100;
-
     /** Las columnas que salen y las que se reconocen al entrar, en este orden cuando no hay cabecera. */
     private const COLUMNS = ['email', 'status', 'consent_at'];
 
@@ -68,20 +64,13 @@ class SnkKilkanaSubscribersController extends CoreBaseApiController
             return $response;
         }
 
-        $pedidas = (int) request()->query('per_page', (string) self::PER_PAGE);
         // Por id y no por alta: es orden total, y sin él dos altas del mismo segundo pueden
         // salir dos veces en la página siguiente o no salir en ninguna.
-        $pagina = $this->newQuery()->orderByDesc('id')
-            ->paginate($pedidas < 1 ? self::PER_PAGE : min($pedidas, self::PER_PAGE_MAX));
+        $pagina = $this->newQuery()->orderByDesc('id')->paginate($this->perPage());
 
         return response()->json([
             'data' => $pagina->getCollection(),
-            'meta' => [
-                'current_page' => $pagina->currentPage(),
-                'per_page' => $pagina->perPage(),
-                'total' => $pagina->total(),
-                'last_page' => $pagina->lastPage(),
-            ],
+            'meta' => $this->paginationMeta($pagina),
         ]);
     }
 

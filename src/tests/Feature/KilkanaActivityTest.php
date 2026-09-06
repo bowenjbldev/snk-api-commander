@@ -107,6 +107,9 @@ class KilkanaActivityTest extends TestCase
         $todo = $this->registro()->index()->getData(true);
         $this->assertSame(['theme', 'publish', 'publish'], array_column($todo['data'], 'kind'), 'Sin asientos, del más reciente al más antiguo.');
         $this->assertSame(['Marta Beneyto', 'Scheduler'], $todo['people']);
+        // Cincuenta por página, no los veinticinco del resto: son líneas de una línea, y el
+        // defecto lo declara este controlador sobre el clamp que ahora vive en el base.
+        $this->assertSame(50, $todo['meta']['per_page']);
         $this->assertSame(['today' => 3, 'active_people' => 1, 'went_out' => 2, 'gate' => 0], $todo['stats']);
         $this->assertTrue($todo['data'][1]['system'] || $todo['data'][2]['system']);
 

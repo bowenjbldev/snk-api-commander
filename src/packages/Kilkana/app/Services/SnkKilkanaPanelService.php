@@ -2,6 +2,7 @@
 
 namespace Packages\Kilkana\Services;
 
+use Packages\Core\Support\CorePaginationSupport;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaGateResultModel;
@@ -95,20 +96,19 @@ class SnkKilkanaPanelService
         $puedeEditarAjenas = auth()->user()?->can('edit others posts') === true;
         $cifras = $this->piezas->countsByStatus($userId, $puedeEditarAjenas, auth()->user()?->can('view others posts') === true);
 
+        // La misma página que sirve `GET posts`, y por la misma puerta: `KilkanaPanelCompositeTest`
+        // compara sección a sección estas cuatro colas con las cuatro llamadas que sustituyen, y
+        // lo que podía romper esa comparación era que aquí estuviera copiada.
         $cola = function (array $filtros, int $cuantas, ?int $dias) use ($userId, $puedeEditarAjenas, $cifras) {
-            $pagina = $this->piezas
-                ->filter($this->piezas->query($userId, $puedeEditarAjenas, $dias), $filtros)
-                ->paginate($cuantas);
-            $pagina->getCollection()->each($this->piezas->asListRow(...));
+            $pagina = $this->piezas->page(
+                $this->piezas->query($userId, $puedeEditarAjenas, $dias),
+                $filtros,
+                $cuantas,
+            );
 
             return [
                 'data' => $pagina->items(),
-                'meta' => [
-                    'current_page' => $pagina->currentPage(),
-                    'per_page' => $pagina->perPage(),
-                    'total' => $pagina->total(),
-                    'last_page' => $pagina->lastPage(),
-                ],
+                'meta' => CorePaginationSupport::meta($pagina),
                 'counts' => $cifras['scoped'],
                 'counts_all' => $cifras['all'],
             ];

@@ -22,9 +22,8 @@ use Packages\Kilkana\Services\SnkKilkanaActivityService;
 #[Group('Activity')]
 class SnkKilkanaActivityController extends CoreBaseApiController
 {
-    private const PER_PAGE = 50;
-
-    private const PER_PAGE_MAX = 100;
+    /** El registro trae el doble que un listado editorial: son líneas de una línea. */
+    protected int $perPageDefault = 50;
 
     private const EXPORT_MAX = 5000;
 
@@ -74,18 +73,12 @@ class SnkKilkanaActivityController extends CoreBaseApiController
             return response()->json(['data' => $filtrado->limit(self::EXPORT_MAX)->get()->map($fila)->values()]);
         }
 
-        $asked = (int) $request->query('per_page', (string) self::PER_PAGE);
-        $page = $filtrado->paginate($asked < 1 ? self::PER_PAGE : min($asked, self::PER_PAGE_MAX));
+        $page = $filtrado->paginate($this->perPage());
         $semana = now()->subDays(7);
 
         return response()->json([
             'data' => $page->getCollection()->map($fila)->values(),
-            'meta' => [
-                'current_page' => $page->currentPage(),
-                'per_page' => $page->perPage(),
-                'total' => $page->total(),
-                'last_page' => $page->lastPage(),
-            ],
+            'meta' => $this->paginationMeta($page),
             // Quién aparece, para el desplegable: todo el registro visible, no lo filtrado.
             ...$this->wants('people') ? [
                 'people' => (clone $visible)->reorder()->distinct()->orderBy('actor_name')->pluck('actor_name')->values(),

@@ -24,10 +24,6 @@ use Packages\Kilkana\Services\SnkKilkanaReaderService;
 #[Group('Comments')]
 class SnkKilkanaCommentsController extends CoreBaseApiController
 {
-    private const PER_PAGE = 25;
-
-    private const PER_PAGE_MAX = 100;
-
     /** `rule()` es una llamada, y una propiedad no se inicializa con eso: va aqui. */
     public function __construct(
         private readonly SnkKilkanaCommentService $comments,
@@ -90,8 +86,6 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
         $status = SnkKilkanaCommentStatusEnum::tryFrom((string) $request->query('status', ''));
         $term = trim((string) $request->query('q', ''));
         $term = mb_strlen($term) >= 2 ? mb_substr($term, 0, 128) : '';
-        $asked = (int) $request->query('per_page', (string) self::PER_PAGE);
-        $perPage = $asked < 1 ? self::PER_PAGE : min($asked, self::PER_PAGE_MAX);
 
         $page = $this->newQuery()
             ->when($status !== null, fn (Builder $q) => $q->where('status', $status))
@@ -109,19 +103,14 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
             ])
             ->orderByDesc('created_at')
             ->orderByDesc('id')
-            ->paginate($perPage);
+            ->paginate($this->perPage());
 
         $historial = $this->accountHistory($page->getCollection());
         $page->getCollection()->each(fn (SnkKilkanaCommentModel $c) => $this->asRow($c, $historial));
 
         return response()->json([
             'data' => $page->items(),
-            'meta' => [
-                'current_page' => $page->currentPage(),
-                'per_page' => $page->perPage(),
-                'total' => $page->total(),
-                'last_page' => $page->lastPage(),
-            ],
+            'meta' => $this->paginationMeta($page),
             ...$this->wants('counts') ? [
                 'counts' => $this->comments->countsByStatus(),
                 'oldest_pending_at' => $this->comments->oldestPendingAt(),

@@ -2,6 +2,7 @@
 
 namespace Packages\Kilkana\Services;
 
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -131,6 +132,36 @@ class SnkKilkanaPostService
         // salir en distinto orden en dos consultas, y entonces paginar repite una fila en la
         // página 2 y se salta otra. Un orden estable es requisito de la paginación.
         return $query->orderBy($column, $direction)->orderBy('id', 'desc');
+    }
+
+    /**
+     * Una página del archivo: filtrada, ordenada, acotada y con las filas ya recortadas.
+     *
+     * Existe porque **esto se escribía dos veces**: el listado editorial y las cuatro colas del
+     * tablero repetían `filter()->paginate()->each(asListRow)`, y la segunda copia la escribí yo
+     * al componer `panel/bootstrap`. Un orden nuevo o un recorte distinto en una de las dos las
+     * separaba en silencio, que es justo lo que `KilkanaPanelCompositeTest` vigila comparándolas.
+     *
+     * **Una página fuera de rango enseña la última**, no una tabla vacía: es lo que hace que un
+     * enlace guardado con `?page=999` siga significando algo cuando el archivo ha encogido. La
+     * segunda consulta parte de un `clone` y no de la primera, porque paginar deja el `limit`
+     * puesto en el constructor y repaginar sobre ella heredaría el de la página que no existe.
+     *
+     * @param  array<string, mixed>  $filters  ya saneados por quien leyó la query
+     * @return LengthAwarePaginator<int, SnkKilkanaPostModel>
+     */
+    public function page(Builder $query, array $filters, int $perPage): LengthAwarePaginator
+    {
+        $filtrada = $this->filter($query, $filters);
+        $pagina = (clone $filtrada)->paginate($perPage);
+
+        if ($pagina->currentPage() > $pagina->lastPage() && $pagina->total() > 0) {
+            $pagina = $filtrada->paginate($perPage, ['*'], 'page', $pagina->lastPage());
+        }
+
+        $pagina->getCollection()->each($this->asListRow(...));
+
+        return $pagina;
     }
 
     /**

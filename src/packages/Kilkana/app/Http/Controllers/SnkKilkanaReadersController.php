@@ -27,10 +27,6 @@ use Packages\Kilkana\Services\SnkKilkanaReaderService;
 #[Group('Readers')]
 class SnkKilkanaReadersController extends CoreBaseApiController
 {
-    private const PER_PAGE = 25;
-
-    private const PER_PAGE_MAX = 100;
-
     /** El techo de un export: lo filtrado entero, sin paginar, hasta aquí. */
     private const EXPORT_MAX = 5000;
 
@@ -94,18 +90,12 @@ class SnkKilkanaReadersController extends CoreBaseApiController
             return response()->json(['data' => $this->asRows($rows)]);
         }
 
-        $asked = (int) $request->query('per_page', (string) self::PER_PAGE);
-        $page = $query->paginate($asked < 1 ? self::PER_PAGE : min($asked, self::PER_PAGE_MAX));
+        $page = $query->paginate($this->perPage());
         $cifras = $this->wants('counts') ? $this->counts() : null;
 
         return response()->json([
             'data' => $this->asRows($page->getCollection()),
-            'meta' => [
-                'current_page' => $page->currentPage(),
-                'per_page' => $page->perPage(),
-                'total' => $page->total(),
-                'last_page' => $page->lastPage(),
-            ],
+            'meta' => $this->paginationMeta($page),
             // Las dos comparten dos consultas, así que se calculan en este orden y la banda
             // reutiliza lo que las pestañas ya contaron. Ver `stats()`.
             ...$cifras === null ? [] : ['counts' => $cifras],

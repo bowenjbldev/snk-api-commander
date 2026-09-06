@@ -30,6 +30,10 @@ class SnkKilkanaPostsController extends CoreBaseApiController
 {
     protected string $modelClass = SnkKilkanaPostModel::class;
 
+    protected int $perPageDefault = SnkKilkanaPostService::PER_PAGE;
+
+    protected int $perPageMax = SnkKilkanaPostService::PER_PAGE_MAX;
+
     /**
      * Vistas reales agregadas también en la API editorial, no solo en la salida pública.
      *
@@ -192,27 +196,11 @@ class SnkKilkanaPostsController extends CoreBaseApiController
 
         // Sin parámetro: la firma la fija `CoreBaseApiController::index()`, que la comparten
         // todos los recursos. La petición se pide al contenedor, que es lo mismo que inyectarla.
-        $request = request();
-        $filters = $this->listFilters($request);
-        $perPage = $this->perPage($request);
-
+        //
         // Sin pasar por `queryBuilder()`: este controlador no declara ninguna relación
         // pedible —las cuatro que sirven el listado ya vienen del `$with` del modelo— y el
         // orden y los filtros los arma el servicio, que es quien acota por propiedad.
-        $page = $this->posts
-            ->filter($this->newQuery(), $filters)
-            ->paginate($perPage);
-
-        // Una página fuera de rango enseña la última, no una tabla vacía: es lo que hace que
-        // un enlace con `?page=999` siga significando algo. La consulta se rehace porque
-        // paginar deja el `limit` puesto en el constructor.
-        if ($page->currentPage() > $page->lastPage() && $page->total() > 0) {
-            $page = $this->posts
-                ->filter($this->newQuery(), $filters)
-                ->paginate($perPage, ['*'], 'page', $page->lastPage());
-        }
-
-        $page->getCollection()->each($this->posts->asListRow(...));
+        $page = $this->posts->page($this->newQuery(), $this->listFilters(request()), $this->perPage());
 
         // `counts` es lo que ve quien mira, que es lo que cuentan las pestanas de Posts.
         // `counts_all` es el periodico entero, y el tablero las ensena juntas: sin la
@@ -231,12 +219,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
 
         return response()->json([
             'data' => $page->items(),
-            'meta' => [
-                'current_page' => $page->currentPage(),
-                'per_page' => $page->perPage(),
-                'total' => $page->total(),
-                'last_page' => $page->lastPage(),
-            ],
+            'meta' => $this->paginationMeta($page),
             ...$cifras === null ? [] : ['counts' => $cifras['scoped'], 'counts_all' => $cifras['all']],
         ]);
     }
@@ -274,13 +257,6 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             'sort' => $conocida ? $clave : 'date',
             'dir' => $conocida && ! str_starts_with($pedido, '-') ? 'asc' : 'desc',
         ];
-    }
-
-    private function perPage(Request $request): int
-    {
-        $asked = (int) $request->query('per_page', (string) SnkKilkanaPostService::PER_PAGE);
-
-        return $asked < 1 ? SnkKilkanaPostService::PER_PAGE : min($asked, SnkKilkanaPostService::PER_PAGE_MAX);
     }
 
     public function store(Request $request): JsonResponse
