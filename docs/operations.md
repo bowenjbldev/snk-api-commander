@@ -27,7 +27,6 @@ No migra automáticamente las bases tenant existentes.
 | `app`           | Octane sobre FrankenPHP (worker mode) y comandos sin DDL tenant   |
 | `fpm`           | perfil opt-in: la misma API sobre php-fpm, nginx `:8444`          |
 | `octane-swoole` | perfil opt-in: la misma API sobre Octane/Swoole, nginx `:8445`    |
-| `watch`         | recarga los workers de Octane al cambiar código, config o `.env`  |
 | `scheduler`     | `php artisan schedule:work`                                       |
 | `provisioner`   | asegura usuarios runtime y consume la cola `provisioning` con DDL |
 | `nginx`         | TLS, wildcard tenant y proxy                                      |
@@ -59,14 +58,22 @@ El perfil local está calibrado para el i7-7700K de 4 núcleos/8 hilos con Maria
 - Nginx: proxy HTTP/1.1 a `api-app:8000`, compresión de JSON, sesiones TLS y
   `X-Content-Type-Options`.
 
-**Los workers guardan la aplicación en memoria**: un cambio en un fichero PHP no se ve hasta
-`docker compose exec app php artisan octane:reload` (o reiniciar `app`). Config, rutas y
-`.env` igual. Es la única diferencia de trabajo diario con php-fpm, y `watch` la quita: arranca
-con el resto, es un sidecar con `chokidar` que comparte la red de `app`, vigila `app/`,
-`packages/`, `config/`, `bootstrap/`, `routes/`, `.env` y `composer.lock`, y al cambiar algo pide
-al puerto de administración de Caddy —que solo escucha en el loopback del contenedor— que reinicie
-los workers: dos segundos y la API contesta con el código nuevo. Si `watch` no está arriba,
-`octane:reload` a mano. Producción no pasa por Docker y no lleva nada de esto.
+**Los workers guardan la aplicación en memoria**. En Docker local `app` arranca con `--watch`:
+Octane configura el [watcher nativo de FrankenPHP](https://frankenphp.dev/docs/config/#watching-for-file-changes)
+con las rutas de `config/octane.php`, incluidos `packages/**/*.php`, config, rutas y `.env`.
+No necesita Node ni un sidecar: recrear `app` también recrea su watcher. El puerto de
+administración de Caddy sigue limitado al loopback del contenedor.
+
+La recarga de workers **no invalida las cachés de Laravel**. Si hay rutas o config cacheadas,
+limpia o regenera esas cachés dentro de `app` antes de recargar (`route:clear` / `config:clear`
+en desarrollo). Cambiar variables de Compose requiere recrear el contenedor; cambiar la lista
+`octane.watch` requiere reiniciar `app`. Sin `--watch`, y en producción, ejecuta
+`php artisan octane:reload` tras los cambios y el recache.
+
+Nginx rechaza el acceso directo a scripts PHP (incluido `frankenphp-worker.php`), también en
+storage y en los perfiles alternativos. En FPM solo el fallback interno ejecuta `index.php`.
+Regresión HTTP reproducible, sin modificar datos: `bash scripts/check-php-exposure.sh`
+(puertos locales 8443/8444/8445; admite otros puertos como argumentos).
 
 Los perfiles `fpm` y `swoole` levantan la misma API sobre php-fpm (`docker/php/fpm.Dockerfile`,
 8 workers estáticos de `fpm.conf`) y sobre Octane/Swoole, con el mismo código montado, la misma
@@ -655,8 +662,8 @@ Requisitos adicionales:
 - `CoreUserModel.password` ya tiene cast `hashed`; no uses `Hash::make` al asignarlo.
 - El usuario es `Packages\Core\Models\CoreUserModel`, no `App\Models\User`.
 - Dominios quedan en route cache; regenera tras cambiarlos.
-- Los workers de Octane guardan la aplicación en memoria: un cambio de código, config o `.env` no
-  se ve hasta `php artisan octane:reload` dentro de `app`.
+- Los workers de Octane guardan la aplicación en memoria: el `--watch` nativo de `app` los recarga
+  en local; sin él hace falta `php artisan octane:reload`. No sustituye limpiar/regenerar cachés.
 - Un package nuevo requiere autoload/recache y sync de aplicaciones.
 - Un token tenant no autentica en Commander ni viceversa.
 - Cambiar un plan de catálogo no propaga límites a instancias hasta provisionar/cambiar plan.

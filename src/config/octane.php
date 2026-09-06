@@ -22,6 +22,8 @@ use Laravel\Octane\Listeners\FlushUploadedFiles;
 use Laravel\Octane\Listeners\ReportException;
 use Laravel\Octane\Listeners\StopWorkerIfNecessary;
 use Laravel\Octane\Octane;
+use Packages\Core\Listeners\CoreFlushMeteringListener;
+use Packages\Core\Support\CoreMeteringBufferSupport;
 
 return [
 
@@ -115,7 +117,7 @@ return [
         ],
 
         WorkerStopping::class => [
-            \Packages\Core\Listeners\CoreFlushMeteringListener::class,
+            CoreFlushMeteringListener::class,
             CloseMonologHandlers::class,
         ],
     ],
@@ -135,7 +137,7 @@ return [
         ...Octane::defaultServicesToWarm(),
         // La cola de metering tiene que vivir en el contenedor base del worker: resuelta dentro de
         // una peticion caeria en su sandbox y se perderia con ella.
-        \Packages\Core\Support\CoreMeteringBufferSupport::class,
+        CoreMeteringBufferSupport::class,
     ],
 
     'flush' => [
@@ -192,8 +194,8 @@ return [
         'bootstrap',
         'config/**/*.php',
         'database/**/*.php',
+        'packages/**/*.php',
         'public/**/*.php',
-        'resources/**/*.php',
         'routes',
         'composer.lock',
         '.env',

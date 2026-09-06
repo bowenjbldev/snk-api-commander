@@ -43,6 +43,11 @@ server {
     gzip_comp_level 4;
     gzip_types application/json application/problem+json application/xml application/javascript image/svg+xml text/plain text/css;
 
+    # PHP nunca es un estático: también bloquea PATH_INFO y copias .php.bak, antes de media.
+    location ~* \.php(?:$|[/.]) {
+        return 404;
+    }
+
     # Las derivadas de imagen llevan la huella del contenido y del encuadre en la ruta: lo que
     # existe no cambia nunca, y lo que no existe lo genera Laravel una vez (`try_files` cae en
     # `@octane`) y la siguiente petición ya la sirve esto.

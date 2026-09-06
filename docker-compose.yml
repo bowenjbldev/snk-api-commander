@@ -25,8 +25,8 @@ services:
       - ./docker/php/commander.ini:/usr/local/etc/php/conf.d/zz-commander.ini:ro
     # Octane sobre FrankenPHP: doce workers reciclados cada 500 peticiones (el barrido dio +10-14 %
     # en lectura sobre ocho en este hardware). OCTANE_WORKERS los recalibra sin tocar Compose; los workers guardan la aplicación en memoria, así que un cambio
-    # de código PHP se ve tras `php artisan octane:reload`.
-    command: ["php", "artisan", "octane:frankenphp", "--host=0.0.0.0", "--port=8000", "--workers=${OCTANE_WORKERS:-12}", "--max-requests=500"]
+    # de código PHP recarga los workers con el watcher nativo de FrankenPHP (solo desarrollo).
+    command: ["php", "artisan", "octane:frankenphp", "--host=0.0.0.0", "--port=8000", "--workers=${OCTANE_WORKERS:-12}", "--max-requests=500", "--watch"]
     environment:
       DB_USERNAME: ${COMMANDER_DB_USERNAME:-commander_app}
       DB_PASSWORD: ${COMMANDER_DB_PASSWORD:-commander-local-secret}
@@ -48,32 +48,6 @@ services:
       app-network:
         aliases:
           - api-app
-
-  # Los workers de Octane guardan la aplicación en memoria, y esto los recarga solo al cambiar
-  # código, config o `.env`: es lo que en local hace de `octane:reload`, y por eso arranca siempre
-  # con el resto. Comparte la red de `app` porque el puerto de administración de Caddy (2019) solo
-  # escucha en loopback, y le pide reiniciar los workers, que vuelven a arrancar Laravel leyendo el
-  # disco. Producción no va por Docker ni necesita esto.
-  watch:
-    image: node:24-alpine
-    restart: unless-stopped
-    network_mode: "service:app"
-    working_dir: /src
-    environment:
-      # chokidar-cli ejecuta `-c` con $SHELL y la imagen no lo define.
-      SHELL: /bin/sh
-    volumes:
-      - ./src:/src:ro
-      - watch_npm:/root/.npm
-    command: >-
-      npx -y chokidar-cli@3.0.0
-      "/src/app/**/*.php" "/src/packages/**/*.php" "/src/config/**/*.php"
-      "/src/bootstrap/**/*.php" "/src/routes/**/*.php" "/src/.env" "/src/composer.lock"
-      --ignore "**/vendor/**" --ignore "**/node_modules/**" --debounce 500
-      -c "wget -qO- --post-data= http://127.0.0.1:2019/frankenphp/workers/restart && echo workers reloaded"
-    depends_on:
-      app:
-        condition: service_started
 
   # Los otros dos runtimes de la misma API, para medirlos contra `app` con `scripts/octane-ab.sh`:
   # php-fpm (perfil `fpm`, nginx :8444) y Octane sobre Swoole (perfil `swoole`, nginx :8445).
@@ -359,5 +333,3 @@ networks:
 
 volumes:
   db_data:
-  # Caché de npm del watcher: sin ella `npx` descarga chokidar-cli en cada arranque.
-  watch_npm:
