@@ -38,6 +38,49 @@ class SnkKilkanaPostModel extends Model
     protected $appends = ['cover', 'url_path'];
 
     /**
+     * Lo que un lector anónimo **puede** leer de una pieza, y el techo de `?fields=`.
+     *
+     * Vive aquí y no en el servicio público porque «¿esta columna sale a la calle?» se responde
+     * donde está la columna: quien añade una a `kilkana_posts` tiene la decisión delante, y no
+     * hay que ir a buscarla a otra capa para acordarse.
+     *
+     * No sustituye a `$hidden`, que es lo que no se ve **nunca, en ningún contexto**. Esto es
+     * más estrecho: es lo que se ve **sin sesión**. Los dos hacen falta, porque la misma pieza
+     * la leen un anónimo, el listado del panel y el editor, y el conjunto seguro es distinto en
+     * cada uno — por eso hay `setVisible()` en dos servicios con listas que no coinciden.
+     *
+     * Fuera quedan a propósito `created_by`, `updated_by`, `deleted_at`, `deleted_by` y
+     * `body_blocks`: el cuerpo de la calle lo sirve `publicBodyBlocks()`, que aplica el muro.
+     */
+    public const PUBLIC_FIELDS = [
+        'id', 'title', 'excerpt', 'slug', 'status', 'content_tier',
+        'publish_at', 'unpublish_at', 'updated_at', 'url_date', 'url_path',
+        'noindex', 'seo_title', 'seo_description', 'og_title', 'og_description', 'og_image_id',
+        'cover', 'category', 'author', 'tags', 'views_total', 'comments_count',
+    ];
+
+    /**
+     * De qué columnas depende cada campo que **no es una columna**.
+     *
+     * `url_path` es un accesor sobre `url_date` y `slug`; la portada, la sección y la firma
+     * cuelgan de sus claves foráneas; y las etiquetas, la audiencia y los comentarios se
+     * resuelven a partir de la clave. Sin esto, pedir `url_path` devuelve `null` sin decir por
+     * qué, que es la trampa que ya pagó el sitemap: una proyección que se ignora en silencio.
+     *
+     * Es conocimiento del modelo, no de quien consulta: lo que `url_path` necesita no cambia
+     * según quién pregunte.
+     */
+    public const COLUMNS_FOR = [
+        'url_path' => ['url_date', 'slug'],
+        'cover' => ['cover_media_id'],
+        'category' => ['category_id'],
+        'author' => ['author_id'],
+        'tags' => ['id'],
+        'views_total' => ['id'],
+        'comments_count' => ['id'],
+    ];
+
+    /**
      * El `config` de un bloque es un OBJETO, tambien cuando esta vacio.
      *
      * En PHP no hay diferencia entre una lista vacia y un mapa vacio —los dos son `[]`—, asi
