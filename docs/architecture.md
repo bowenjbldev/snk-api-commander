@@ -146,6 +146,12 @@ la credencial DDL y crea un usuario runtime por instancia con únicamente `SELEC
 - `suspended` o grace vencida: `402`;
 - error al verificar estado: `503` fail-closed.
 
+En HTTP reutiliza el estado de la fila que el resolutor acaba de leer de Commander: no consulta
+otra vez la caché ni la BD. Una suspensión confirmada antes de esa lectura se ve en la siguiente
+resolución, sin esperar un TTL; una petición ya iniciada no se cancela retroactivamente.
+`CoreInstanceStateService::current($id)` conserva la consulta cacheada explícita para comandos y
+cuotas. `set()` invalida esa caché y actualiza el estado activo si corresponde a la misma instancia.
+
 El rate limit general usa `instance_id` más usuario autenticado o IP. El login limita únicamente
 respuestas `401`: cinco fallos por cuenta normalizada y diez por IP cada minuto, siempre dentro de
 la instancia. Así los accesos correctos de usuarios que comparten NAT no consumen el presupuesto,
@@ -228,7 +234,8 @@ worker persistente también es correcto en FPM y en la CLI que recorre inquilino
   permisos del primero. `CoreResolverPermissionIsolationTest` lo fija. Lo que sí sobrevive por
   worker es la colección ya **hidratada** de cada base (`CorePermissionRegistrarSupport`): la
   clave es la de la caché, que lleva el nombre de la base, en cada petición se compara con el
-  contenido de la caché y se sirven copias; un rol editado se ve en la siguiente petición y dos
+  contenido de la caché y se sirven copias del permiso, de su colección de roles y de cada rol
+  (el `clone` superficial de Eloquent no basta); un rol editado se ve en la siguiente petición y dos
   inquilinos no pueden compartir entrada. `CorePermissionRegistrarMemoTest` lo fija;
 - el metering toma el inicio de `REQUEST_TIME_FLOAT`, que es por petición en cualquier SAPI; una
   constante de arranque sería el uptime del worker;
@@ -324,6 +331,40 @@ producto, recuperación de cuenta y operación; no sustituyen esta migración po
 
 Referencias: [hashing de Laravel](https://laravel.com/docs/13.x/hashing),
 [almacenamiento de contraseñas de OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html).
+
+## El vocabulario de la query
+
+La API leía diecinueve parámetros con tres vocabularios conviviendo, y una trampa de las que no
+avisan: **`count` y `counts` eran cosas distintas separadas por una letra**. `counts=1` era «solo
+las cifras»; `count=6`, «seis filas»; y `count` significaba además «tamaño de página» en la calle,
+donde el resto de la API dice `per_page`. Escribir uno por otro daba resultados silenciosamente
+equivocados.
+
+Lo que hay ahora, y de dónde sale cada elección:
+
+| Idea | Parámetro | Referencia |
+| --- | --- | --- |
+| Tamaño de página | `per_page`, con `page` | GitHub |
+| Orden | `sort`, con `-` delante para descendente | JSON:API, `spatie/laravel-query-builder` |
+| Relaciones | `with`, contra `$allowedWith` | Laravel |
+| Filtros | por recurso y declarados | — |
+
+**El orden va en un parámetro y no en dos.** `sort=-date` es descendente y `sort=date`
+ascendente. Antes eran `sort` y `dir`, y ninguno decía por sí solo cómo iba a salir la lista:
+`sort=title` sin `dir` salía descendente, que es lo contrario de lo que cualquiera espera de un
+alfabético. La clave es un **alias** —`date`, `title`, `reads`— y no el nombre de la columna, y eso
+no es cosmético: es lo que impide que quien llama nombre columnas reales, que en un API
+multi-inquilino es justo lo que no se quiere. Lo que no esté en el vocabulario cae al orden por
+defecto, nunca a un 422.
+
+Ordenar por **nombre** —`sort=recent`, `sort=popular` en mediateca y temas— es otro patrón y se
+queda: ahí la dirección va dentro del nombre y no hay un eje que elegir. Solo los artículos tienen
+las dos cosas.
+
+**Nada de `filter[]` genérico, y nada de `limit`.** Un filtro genérico en un API multi-inquilino
+invita a combinaciones que nadie ha medido ni indexado, y `tab=commenters` no es un filtro de
+campo: son tres cláusulas y una subconsulta. `limit` junto a `page` es exactamente cómo se llega
+al lío del que se sale.
 
 ## Endpoints compuestos: dos, y medidos
 

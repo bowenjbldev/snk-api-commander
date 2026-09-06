@@ -241,9 +241,19 @@ class SnkKilkanaPostsController extends CoreBaseApiController
      */
     private function listFilters(Request $request): array
     {
-        $sort = (string) $request->query('sort', '');
         $term = trim((string) $request->query('q', ''));
         $category = trim((string) $request->query('category', ''));
+
+        // **Un parámetro para una idea.** `sort=-date` es descendente y `sort=date`
+        // ascendente, que es como lo escriben JSON:API y el resto del gremio. Antes eran dos,
+        // `sort` y `dir`, y ninguno de los dos decía por sí solo cómo iba a salir la lista.
+        //
+        // La clave es un alias —`date`, `title`, `reads`— y no el nombre de la columna: lo que
+        // impide que quien llama nombre columnas reales, que en un API multi-inquilino es justo
+        // lo que no se quiere. Lo que no esté en el vocabulario cae al orden por defecto.
+        $pedido = (string) $request->query('sort', '');
+        $clave = ltrim($pedido, '-');
+        $conocida = array_key_exists($clave, SnkKilkanaPostService::SORTS);
 
         return [
             'status' => SnkKilkanaPostStatusEnum::tryFrom((string) $request->query('status', ''))?->value,
@@ -252,8 +262,8 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             'category' => $category === '' ? null : $this->posts->knownCategory($category),
             // Con una sola letra la búsqueda no acota nada y recorre la tabla entera.
             'q' => mb_strlen($term) >= 2 ? mb_substr($term, 0, 128) : null,
-            'sort' => array_key_exists($sort, SnkKilkanaPostService::SORTS) ? $sort : 'date',
-            'dir' => $request->query('dir') === 'asc' ? 'asc' : 'desc',
+            'sort' => $conocida ? $clave : 'date',
+            'dir' => $conocida && ! str_starts_with($pedido, '-') ? 'asc' : 'desc',
         ];
     }
 

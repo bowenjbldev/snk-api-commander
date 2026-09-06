@@ -105,6 +105,42 @@ class KilkanaPostsListTest extends TestCase
         $this->assertSame(25, $pedir([])['meta']['per_page'], 'Y sin pedir nada, veinticinco.');
     }
 
+    /**
+     * El orden va en un parámetro, y el `-` delante es descendente.
+     *
+     * Eran dos —`sort` y `dir`—, y ninguno decía por sí solo cómo iba a salir la lista: `sort=title`
+     * sin `dir` salía descendente, que es lo contrario de lo que cualquiera espera de un
+     * alfabético. Ahora sin signo es ascendente, como en JSON:API.
+     */
+    public function test_el_orden_va_en_un_parametro_y_el_menos_es_descendente(): void
+    {
+        $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
+        $marta->assignRole('director');
+        $this->actingAs($marta, 'sanctum');
+        $seccion = $this->category('Local', 'local');
+        $firma = $this->author('Redacción', alias: 'Redacción');
+        foreach (['Bravo' => '2026-06-02 10:00:00', 'Alfa' => '2026-06-03 10:00:00', 'Charlie' => '2026-06-01 10:00:00'] as $titular => $cuando) {
+            $this->makePost($titular, $seccion, $firma, 'published', $cuando, $marta->id);
+        }
+
+        $titulos = function (array $query) {
+            request()->query->replace($query);
+
+            return array_column(app(SnkKilkanaPostsController::class)->index()->getData(true)['data'], 'title');
+        };
+
+        $this->assertSame(['Alfa', 'Bravo', 'Charlie'], $titulos(['sort' => 'title']));
+        $this->assertSame(['Charlie', 'Bravo', 'Alfa'], $titulos(['sort' => '-title']));
+
+        // Sin pedir orden, lo más nuevo primero: es con lo que se abre el panel.
+        $this->assertSame(['Alfa', 'Bravo', 'Charlie'], $titulos(['sort' => '-date']));
+        $this->assertSame($titulos([]), $titulos(['sort' => '-date']));
+
+        // Y lo que no está en el vocabulario cae ahí, con signo o sin él.
+        $this->assertSame($titulos([]), $titulos(['sort' => 'banana']));
+        $this->assertSame($titulos([]), $titulos(['sort' => '-banana']));
+    }
+
     public function test_el_filtro_acota_y_el_orden_es_estable(): void
     {
         $deportes = $this->category('Deportes', 'deportes');
