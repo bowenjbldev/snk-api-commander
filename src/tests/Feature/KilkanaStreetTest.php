@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Packages\Kilkana\Http\Resources\SnkKilkanaPostResource;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaMediaModel;
@@ -13,6 +14,7 @@ use Packages\Kilkana\Models\SnkKilkanaSettingModel;
 use Packages\Kilkana\Models\SnkKilkanaTagModel;
 use Packages\Kilkana\Services\SnkKilkanaPublicService;
 use Packages\Kilkana\Services\SnkKilkanaRoleCatalogService;
+use Spatie\QueryBuilder\Exceptions\InvalidFieldQuery;
 use Tests\TestCase;
 
 /**
@@ -249,19 +251,46 @@ class KilkanaStreetTest extends TestCase
     public function test_la_calle_elige_los_campos_y_no_puede_pedir_los_que_no_son_suyos(): void
     {
         $this->piezas(['una', 'otra']);
-        $servicio = app(SnkKilkanaPublicService::class);
+        $fila = function (string $campos) {
+            request()->query->replace($campos === '' ? [] : ['fields' => $campos]);
 
-        $entera = $servicio->posts([])->first()->toArray();
-        $this->assertArrayHasKey('seo_title', $entera, 'Sin pedir campos, lo de siempre.');
+            return json_decode(json_encode(new SnkKilkanaPostResource(
+                app(SnkKilkanaPublicService::class)->posts([])->first(),
+            )), true);
+        };
 
-        $minima = $servicio->posts(['fields' => ['id', 'title', 'url_path']])->first()->toArray();
+        // Sin pedir nada, el techo: la lista blanca de la puerta, y **no la fila entera**.
+        // El paquete, cuando nadie recorta, selecciona todo; en una puerta anónima eso sería
+        // servir `body_blocks` con su muro de pago dentro a quien pida `/public/posts` a secas.
+        $entera = $fila('');
+        $this->assertArrayHasKey('seo_title', $entera);
+        $this->assertArrayNotHasKey('body_blocks', $entera, 'El cuerpo no sale de aquí ni por defecto.');
 
-        $this->assertSame(['id', 'title', 'url_path'], array_keys($minima));
-        $this->assertNotNull($minima['url_path'], 'El accesor necesita `url_date` y `slug`, y se traen.');
+        // Y elige de verdad: `url_path` no es una columna sino un derivado de `url_date` y
+        // `slug`, así que se pide su columna y el Resource lo compone.
+        $minima = $fila('id,title,url_date,slug');
 
-        // El techo: lo que no es suyo no sale ni pidiéndolo por su nombre.
-        $colada = $servicio->posts(['fields' => ['id', 'created_by', 'body_blocks', 'deleted_at']])->first()->toArray();
-        $this->assertSame(['id'], array_keys($colada));
+        $this->assertSame(
+            ['id', 'title', 'slug', 'views_total', 'url_path', 'category', 'author', 'tags', 'cover', 'comments_count'],
+            array_keys($minima),
+        );
+        $this->assertNotNull($minima['url_path'], 'El derivado sale con la columna de la que depende.');
+
+        // De esas diez, cuatro son las columnas pedidas y `url_path` el derivado que sale con
+        // `url_date`. Las otras cinco no las elige quien llama **todavía**: `views_total` y
+        // `comments_count` son agregados que esta puerta cuelga siempre, y las tres relaciones
+        // más la portada viajan porque el modelo las declara en su `$with`. Eso último se va en
+        // el paso siguiente, y entonces esta lista se queda en cinco.
+        foreach (['excerpt', 'seo_title', 'og_title', 'publish_at', 'noindex'] as $noPedida) {
+            $this->assertArrayNotHasKey($noPedida, $minima, "`{$noPedida}` no se pidió: no viaja.");
+        }
+
+        // El techo: lo que no es suyo lanza, que es lo único que `?fields=` no perdona —no
+        // tiene bandera para ignorarlo— y aquí es lo correcto: pedir `created_by` por su
+        // nombre no puede devolver la lista como si tal cosa.
+        request()->query->replace(['fields' => 'id,created_by']);
+        $this->expectException(InvalidFieldQuery::class);
+        app(SnkKilkanaPublicService::class)->posts([]);
     }
 
     private function piezas(array $slugs, ?string $cuando = null): void

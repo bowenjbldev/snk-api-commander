@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Packages\Kilkana\Http\Resources\SnkKilkanaPostResource;
 use Packages\Kilkana\Models\SnkKilkanaNewsletterEventModel;
 use Packages\Kilkana\Models\SnkKilkanaNewsletterIssueModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
@@ -39,11 +40,10 @@ class SnkKilkanaPublicController extends Controller
             'page' => 'nullable|integer|min:1|max:1000',
         ]);
 
-        // Los campos los elige quien llama, dentro del techo del servicio. Sin ellos, lo de
-        // siempre: ninguna llamada que no se entere cambia de comportamiento.
-        $campos = array_filter(array_map('trim', explode(',', (string) $request->query('fields', ''))));
-
-        return response()->json($this->public->posts([...$data, 'fields' => $campos]));
+        // Los campos y las relaciones los lee el paquete de la query, dentro del techo que
+        // declara el servicio. Aquí solo viajan los filtros de la calle, que sí se validan:
+        // `q` con menos de dos letras recorre la tabla entera.
+        return response()->json(SnkKilkanaPostResource::collection($this->public->posts($data)));
     }
 
     /** Una etiqueta por su slug: lo que `/tag/{slug}` necesita para rotularse. */
@@ -129,7 +129,7 @@ class SnkKilkanaPublicController extends Controller
         }
 
         return $post
-            ? response()->json($post)
+            ? response()->json(new SnkKilkanaPostResource($post))
             : response()->json(['error' => 'Not found'], 404);
     }
 
@@ -139,7 +139,7 @@ class SnkKilkanaPublicController extends Controller
         $pieza = $this->public->preview($post, (int) $request->query('until', '0'), (string) $request->query('sig', ''));
 
         return $pieza
-            ? response()->json($pieza)
+            ? response()->json(new SnkKilkanaPostResource($pieza))
             : response()->json(['error' => 'Not found'], 404);
     }
 

@@ -561,8 +561,8 @@ class KilkanaPostsListTest extends TestCase
 
         $this->assertSame([
             'id', 'title', 'excerpt', 'slug', 'status', 'content_tier',
-            'publish_at', 'cover_media_id', 'views_total', 'category', 'author', 'tags',
-        ], array_keys($fila));
+            'publish_at', 'cover_media_id', 'views_total', 'category', 'author', 'tags', 'cover',
+        ], array_keys($fila), '`cover` viaja porque el modelo carga `coverMedia` en su `$with`.');
 
         $this->assertSame($foto->id, $fila['cover_media_id'], 'La portada es su columna, no un objeto.');
         // Y sale sin pedirla: no es una columna, así que `?fields=` no la nombra —le antepondría

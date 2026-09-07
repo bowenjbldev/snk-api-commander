@@ -37,10 +37,37 @@ class SnkKilkanaPostResource extends JsonResource
             // se declara igual que una columna: para el Resource no hay diferencia.
             'views_total' => $this->whenHas('views_total'),
 
+            'unpublish_at' => $this->whenHas('unpublish_at'),
+            'updated_at' => $this->whenHas('updated_at'),
+            'noindex' => $this->whenHas('noindex'),
+            'seo_title' => $this->whenHas('seo_title'),
+            'seo_description' => $this->whenHas('seo_description'),
+            'og_title' => $this->whenHas('og_title'),
+            'og_description' => $this->whenHas('og_description'),
+            'og_image_id' => $this->whenHas('og_image_id'),
+            'body_blocks' => $this->whenHas('body_blocks'),
+
+            /*
+             * Derivados: no se piden por su nombre porque no son columnas, y salen cuando la
+             * columna de la que dependen está. Con `?fields=` a secas se pedirían como
+             * `kilkana_posts.url_path` y la consulta moriría con un `no such column`.
+             *
+             * `url_path` lo compone el modelo y no cada consumidor: es la ÚNICA definición de
+             * cómo se direcciona un artículo, y con la fecha repartida en dos columnas
+             * cualquier otro sitio que la recomponga acabaría discrepando.
+             */
+            'url_path' => $this->whenHas('url_date', fn () => $this->resource->url_path),
+
             'category' => new SnkKilkanaCategoryResource($this->whenLoaded('category')),
             'author' => new SnkKilkanaAuthorResource($this->whenLoaded('author')),
             'tags' => SnkKilkanaTagResource::collection($this->whenLoaded('tags')),
+            'cover' => new SnkKilkanaMediaResource($this->whenLoaded('coverMedia')),
+            'og_image' => new SnkKilkanaMediaResource($this->whenLoaded('ogImage')),
             'comments_count' => $this->whenCounted('comments'),
+
+            // Las fotos del cuerpo, que resuelve el servicio público: un bloque de imagen lleva
+            // solo `media_id` y la calle no tiene con qué pedirlas una a una.
+            'media' => $this->whenHas('media'),
         ];
     }
 }

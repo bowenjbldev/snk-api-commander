@@ -27,6 +27,7 @@ use Packages\Kilkana\Models\SnkKilkanaReaderReadModel;
 use Packages\Kilkana\Models\SnkKilkanaSettingModel;
 use Packages\Kilkana\Models\SnkKilkanaSubscriberModel;
 use Packages\Kilkana\Models\SnkKilkanaTagModel;
+use Spatie\QueryBuilder\QueryBuilder;
 
 class SnkKilkanaPublicService
 {
@@ -41,65 +42,91 @@ class SnkKilkanaPublicService
 
     public const PER_PAGE_MAX = 100;
 
+    /**
+     * La firma, con lo que la calle pinta de ella.
+     *
+     * Es proyección de la consulta, no lista de salida —eso lo declara `SnkKilkanaAuthorResource`—:
+     * `user_id` está porque el nombre publicado es derivado y sale de la cuenta cuando no hay alias.
+     */
     private const AUTHOR_PUBLIC = 'author:id,user_id,alias,slug,noindex';
 
     /**
-     * Las columnas de una pieza que la calle necesita, y **ni una más**.
+     * El techo de `?fields=` en la calle, y **es más estrecho que el del panel a propósito**.
      *
-     * Es una lista blanca y no un `makeHidden`, que es lo que había: esconder al serializar
-     * llega tarde, porque la columna ya viajó de MariaDB a PHP y ya se hidrató. `body_blocks`
-     * es el cuerpo entero del artículo, y un listado de cien piezas arrastraba **239 KB** de
-     * cuerpos para tirarlos al final. El detalle sí lo necesita, y lo pide por su cuenta.
+     * Esto era `SnkKilkanaPostModel::PUBLIC_FIELDS` —una constante en el modelo— más
+     * `FILA_PUBLICA` aquí, más el mapa `COLUMNS_FOR` para saber de qué columnas dependía cada
+     * campo que no lo era. Tres listas para una decisión: qué puede leer un anónimo.
      *
-     * Va como `select()` y no como argumento de `get()`, que es lo que había que hacer mientras
-     * existió el `$withCount` global del modelo —ya retirado—. Se mantiene porque es lo correcto
-     * de todas formas, y porque el `withCount` de los aprobados de aquí abajo hace lo mismo si
-     * llegase antes. Lo que dice el párrafo siguiente sigue valiendo palabra por palabra: el
-     * declara el modelo fija `kilkana_posts.*` en cuanto se construye la consulta, así que un
-     * `get(['id','title'])` se ignora en silencio. Un `select()` sí pisa esas columnas, y de
-     * paso se lleva el `comments_count` del modelo, que `publicCount()` reescribe con el de
-     * aprobados.
+     * Ahora es una: la lista blanca de esta puerta. Lo que no está no se puede pedir, y lo que
+     * no se pide no viaja. Fuera quedan `created_by`, `updated_by`, `deleted_at`, `deleted_by` y
+     * `featured`: dicen quién escribió, quién editó y quién tiró una pieza.
      *
-     * Las tres FKs no salen al JSON —el modelo las esconde— pero tienen que estar: son las que
-     * resuelven la sección, la firma y la portada.
+     * `body_blocks` tampoco: el cuerpo de la calle lo sirve `publicBodyBlocks()`, que aplica el
+     * muro de pago. Un listado que lo pudiera pedir se saltaría el muro y además arrastraría
+     * **239 KB** de cuerpos en una portada de cien piezas para tirarlos al final.
+     *
+     * Las tres foráneas están porque sin ellas la relación incluida llega nula: un `belongsTo`
+     * empareja por la clave de la fila, y si el recorte se la lleva, Eloquent no avisa.
      */
-    private const FILA_PUBLICA = [
+    public const FIELDS = [
         'id', 'title', 'excerpt', 'slug', 'status', 'content_tier',
         'publish_at', 'unpublish_at', 'updated_at', 'url_date',
         'noindex', 'seo_title', 'seo_description', 'og_title', 'og_description', 'og_image_id',
         'category_id', 'author_id', 'cover_media_id',
+        'categories.id', 'categories.name', 'categories.slug', 'categories.parent_id',
+        'authors.id', 'authors.alias', 'authors.slug', 'authors.noindex', 'authors.user_id',
+        'tags.id', 'tags.name', 'tags.slug',
     ];
+
+    /** Las columnas propias del techo, sin las de las relaciones incluidas. */
+    private static function columnas(): array
+    {
+        return array_values(array_filter(self::FIELDS, fn (string $campo) => ! str_contains($campo, '.')));
+    }
+
+    /** La foto no lleva `fields`: su forma la declara `SnkKilkanaMediaResource`. Ver allí. */
+    public const INCLUDES = ['category', 'author', 'tags', 'coverMedia'];
 
     public function posts(array $filters)
     {
-        // Sin `fields`, lo de siempre. Con ellos, solo lo pedido más las columnas de las que
-        // dependen los que no son columnas.
-        $campos = array_values(array_intersect((array) ($filters['fields'] ?? []), SnkKilkanaPostModel::PUBLIC_FIELDS));
-        $columnas = $campos === []
-            ? self::FILA_PUBLICA
-            : array_values(array_unique(array_merge(
-                array_intersect($campos, self::FILA_PUBLICA),
-                ...array_map(fn (string $campo) => SnkKilkanaPostModel::COLUMNS_FOR[$campo] ?? [], $campos),
-            )));
+        // El orden importa y está pagado: primero el alcance —solo publicadas—, luego lo que
+        // la query recorta e incluye, y **los agregados al final**. `withSum()` y `withCount()`
+        // pasan por `withAggregate()`, que pone `select tabla.*` y cuelga la subconsulta; el
+        // `select()` de `?fields=` reemplaza esa lista, así que aplicarlos antes es escribirlos
+        // para que los borren.
+        $query = QueryBuilder::for(SnkKilkanaPostModel::query()->published())
+            ->allowedFields(...self::FIELDS)
+            ->allowedIncludes(...self::INCLUDES);
 
-        $query = SnkKilkanaPostModel::query()
-            ->select($columnas)
-            ->with(self::AUTHOR_PUBLIC)
-            ->published()
+        // **Sin `?fields=`, el techo es también el valor por defecto**, y esto no es aseo.
+        // El paquete, cuando nadie recorta, no recorta: selecciona la fila entera. En una
+        // puerta anónima eso significa devolver `body_blocks` —el cuerpo completo, muro de
+        // pago incluido— a quien pida `/public/posts` a secas. Y 239 KB de cuerpos en una
+        // portada de cien piezas para tirarlos al final.
+        //
+        // Va antes que los agregados a propósito: `select()` reemplaza la lista de columnas,
+        // y `withSum()`/`withCount()` cuelgan la suya encima.
+        if (! request()->filled('fields')) {
+            $query->select(self::columnas());
+        }
+
+        $query
             // Se suma `engaged`, no `opens`: «lo más leído» tiene que ordenarse por lo que la
             // gente lee, no por lo que consigue que pulsen.
             //
             // **Y una suma, no tres.** Aquí hubo también `views_day` y `views_week`, dos
-            // subconsultas correlacionadas por fila que no lee nadie: ni la calle ni el panel
-            // las pintan. El listado del panel ya se las quitó y su comentario daba por hecho
-            // que aquí sí se usaban; no era cierto. En una portada de cien piezas eran
-            // doscientas subconsultas por carga.
+            // subconsultas correlacionadas por fila que no lee nadie. En una portada de cien
+            // piezas eran doscientas subconsultas por carga.
             ->withSum('views as views_total', 'engaged')
-            ->withCount(['comments as approved_comments_count' => fn ($c) => $c->approved()])
-            // El desempate por `id` no es adorno, y aquí menos: dos piezas publicadas en el
-            // mismo minuto salían en un orden u otro según el plan de la consulta, y esta
-            // lista se pagina con `forPage`. Un orden inestable hace que la página 2 repita
-            // una pieza y se salte otra. El índice `(publish_at, id)` ya existe.
+            // En la calle, `comments_count` es lo que la calle puede ver: los aprobados. Para
+            // un lector, un número que incluye spam y rechazados no es moderación: es un
+            // artículo que dice tres y enseña dos. Con el alias definitivo y no con uno que
+            // luego se reescribe: dos subconsultas con la misma etiqueta dejan al orden de las
+            // columnas decidir cuál sobrevive.
+            ->withCount(['comments as comments_count' => fn ($c) => $c->approved()])
+            // El desempate por `id` no es adorno: dos piezas publicadas en el mismo minuto
+            // salían en un orden u otro según el plan de la consulta, y esta lista se pagina
+            // con `forPage`. Un orden inestable hace que la página 2 repita una y se salte otra.
             ->orderByDesc('publish_at')
             ->orderByDesc('id');
 
@@ -118,42 +145,8 @@ class SnkKilkanaPublicService
             $query->whereFullText(['title', 'excerpt'], $filters['q']);
         }
 
-        // Los listados son tarjetas: además de ahorrar peso, no pueden filtrar el cuerpo
-        // completo de una pieza cerrada antes de que el detalle aplique el muro. `page` es
-        // la hemeroteca: la misma lista, más atrás.
-        return $query->forPage((int) ($filters['page'] ?? 1), (int) ($filters['per_page'] ?? self::PER_PAGE))->get()
-            ->each(fn (SnkKilkanaPostModel $post) => $this->publicCount($post))
-            ->each(fn (SnkKilkanaPostModel $post) => $campos === [] ? null : $post->setVisible($campos))
-            ->each->makeHidden('body_blocks');
-    }
-
-    /**
-     * En la calle, `comments_count` es lo que la calle puede ver: los aprobados.
-     *
-     * El modelo cuenta todos —para moderar hay que ver que hay algo que moderar— y ese
-     * contador viaja en cada pieza; aquí se pisa con el de aprobados, porque para un lector
-     * un número que incluye spam y rechazados no es moderación, es un artículo que dice tres
-     * y enseña dos. Con un alias propio y no con el mismo nombre: dos subconsultas con la
-     * misma etiqueta dejan al orden de las columnas decidir cuál sobrevive.
-     */
-    /** Lo que la calle ve de una foto: lo que pinta, y dónde vive no. */
-    private const MEDIA_PUBLIC = [
-        'id', 'url', 'title', 'alt', 'caption', 'credit', 'width', 'height', 'mime', 'size_bytes',
-        'focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h', 'variants',
-    ];
-
-    private function publicCount(SnkKilkanaPostModel $post): SnkKilkanaPostModel
-    {
-        $post->setAttribute('comments_count', (int) $post->getAttribute('approved_comments_count'));
-        $post->offsetUnset('approved_comments_count');
-        // La portada sale con lo que se pinta y sin `path`, `disk` ni huellas: la calle no
-        // necesita saber dónde vive el fichero, y decirlo es una superficie más.
-        $post->cover?->setVisible(self::MEDIA_PUBLIC);
-        if ($post->relationLoaded('ogImage')) {
-            $post->ogImage?->setVisible(self::MEDIA_PUBLIC);
-        }
-
-        return $post;
+        // Los listados son tarjetas: `page` es la hemeroteca, la misma lista más atrás.
+        return $query->forPage((int) ($filters['page'] ?? 1), (int) ($filters['per_page'] ?? self::PER_PAGE))->get();
     }
 
     /**
@@ -548,9 +541,10 @@ class SnkKilkanaPublicService
     private function article(Builder $query): ?SnkKilkanaPostModel
     {
         $post = $query
-            ->with([self::AUTHOR_PUBLIC, 'ogImage:id,url'])
+            ->with([self::AUTHOR_PUBLIC, 'ogImage'])
             ->withSum('views as views_total', 'engaged')
-            ->withCount(['comments as approved_comments_count' => fn ($c) => $c->approved()])
+            // Los aprobados, con el alias definitivo: es lo que la calle puede ver.
+            ->withCount(['comments as comments_count' => fn ($c) => $c->approved()])
             ->first();
         if (! $post) {
             return null;
@@ -580,7 +574,7 @@ class SnkKilkanaPublicService
                 'variants' => $m->variants,
             ])->values()->all());
 
-        return $this->publicCount($post);
+        return $post;
     }
 
     /**

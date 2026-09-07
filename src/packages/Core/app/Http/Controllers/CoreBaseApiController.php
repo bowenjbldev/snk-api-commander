@@ -71,6 +71,18 @@ abstract class CoreBaseApiController extends Controller
 
     protected array $allowedFilters = [];
 
+    /**
+     * El `JsonResource` que declara la forma de salida de este recurso, si lo tiene.
+     *
+     * Sin él, el CRUD serializa el modelo tal cual y la forma la deciden `$hidden`, `$appends` y
+     * `$with` —global por modelo, y por tanto igual para el editor, el listado y la calle, que
+     * es justo lo que obligó a inventar listas blancas en tres sitios—. Con él, la forma se
+     * declara una vez y **quien llama elige qué columnas dentro del techo**.
+     *
+     * Se declara recurso a recurso: lo que no lo tenga sigue saliendo como salía.
+     */
+    protected ?string $resourceClass = null;
+
     protected function newQuery()
     {
         $class = $this->modelClass;
@@ -162,6 +174,20 @@ abstract class CoreBaseApiController extends Controller
         return CorePaginationSupport::meta($page);
     }
 
+    /** Una fila por su Resource, o el modelo pelado si este recurso no declara ninguno. */
+    protected function asResource(Model $record): mixed
+    {
+        return $this->resourceClass === null ? $record : new $this->resourceClass($record);
+    }
+
+    /** @param  iterable<int, Model>  $records */
+    protected function asResourceCollection(iterable $records): mixed
+    {
+        return $this->resourceClass === null
+            ? $records
+            : $this->resourceClass::collection($records);
+    }
+
     protected function requirePermission(string $permission): ?JsonResponse
     {
         $user = auth()->user();
@@ -204,7 +230,7 @@ abstract class CoreBaseApiController extends Controller
             return $response;
         }
 
-        return response()->json($this->queryBuilder()->get());
+        return response()->json($this->asResourceCollection($this->queryBuilder()->get()));
     }
 
     public function show($id = null): JsonResponse
@@ -223,7 +249,7 @@ abstract class CoreBaseApiController extends Controller
             return response()->json(['error' => 'Record not found'], 404);
         }
 
-        return response()->json($record);
+        return response()->json($this->asResource($record));
     }
 
     public function store(Request $request): JsonResponse

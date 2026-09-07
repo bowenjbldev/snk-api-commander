@@ -39,6 +39,8 @@ class SnkKilkanaPostsController extends CoreBaseApiController
 
     protected array $allowedIncludes = SnkKilkanaPostService::INCLUDES;
 
+    protected ?string $resourceClass = SnkKilkanaPostResource::class;
+
     /**
      * Vistas reales agregadas también en la API editorial, no solo en la salida pública.
      *
@@ -227,7 +229,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             : null;
 
         return response()->json([
-            'data' => SnkKilkanaPostResource::collection($page->getCollection()),
+            'data' => $this->asResourceCollection($page->getCollection()),
             'meta' => $this->paginationMeta($page),
             ...$cifras === null ? [] : ['counts' => $cifras['scoped'], 'counts_all' => $cifras['all']],
         ]);
