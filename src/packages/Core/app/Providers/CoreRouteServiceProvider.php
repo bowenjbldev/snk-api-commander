@@ -22,6 +22,14 @@ class CoreRouteServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Model::preventLazyLoading(! $this->app->isProduction());
+        // Leer una columna que la consulta no seleccionó pasa de devolver `null` en silencio a
+        // reventar. Es lo que sostiene `?fields=`: con el recorte puesto, un `$post->excerpt`
+        // sobre una fila que no lo trajo devolvía «vacío» en vez de «no lo pediste», y esa
+        // diferencia no la ve nadie hasta que una pantalla pinta un hueco.
+        //
+        // Fuera de producción, igual que el anterior: en producción una respuesta a medias es
+        // mejor que un 500, y aquí lo que se busca es que salte en la suite.
+        Model::preventAccessingMissingAttributes(! $this->app->isProduction());
 
         $this->configureRateLimiting();
         $this->configureMiddlewares();

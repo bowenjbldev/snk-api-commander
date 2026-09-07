@@ -160,7 +160,7 @@ class KilkanaPostsWriteTest extends TestCase
         return Request::create('/', 'PUT', [
             'title' => 'Un titular',
             'category' => 'local',
-            'author_id' => SnkKilkanaAuthorModel::query()->value('id'),
+            'author_id' => SnkKilkanaAuthorModel::query()->toBase()->value('id'),
             'status' => 'draft',
             ...$cambios,
         ]);
@@ -185,7 +185,7 @@ class KilkanaPostsWriteTest extends TestCase
             'title' => $titular,
             'excerpt' => 'Entradilla.',
             'category_id' => SnkKilkanaCategoryModel::query()->value('id'),
-            'author_id' => SnkKilkanaAuthorModel::query()->value('id'),
+            'author_id' => SnkKilkanaAuthorModel::query()->toBase()->value('id'),
             'status' => 'draft',
             'created_by' => $de,
             'updated_by' => $de,

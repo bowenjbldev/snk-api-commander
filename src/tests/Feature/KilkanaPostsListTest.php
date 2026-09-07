@@ -559,7 +559,7 @@ class KilkanaPostsListTest extends TestCase
             // Eloquent empareja lo incluido. Sin ellas la relación llega nula, y en silencio.
             'fields' => 'id,title,excerpt,slug,status,content_tier,publish_at,cover_media_id'
                 .',category_id,author_id'
-                .',categories.id,categories.name,authors.id,authors.alias,tags.id,tags.name',
+                .',categories.id,categories.name,authors.id,authors.alias,authors.user_id,tags.id,tags.name',
             'include' => 'category,author,tags',
         ]);
         $fila = app(SnkKilkanaPostsController::class)->index()->getData(true)['data'][0];

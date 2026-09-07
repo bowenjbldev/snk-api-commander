@@ -61,7 +61,9 @@ class SnkKilkanaActivityService
      */
     public function bell(int $count, ?Builder $desde = null): array
     {
-        $visto = auth()->user()?->getAttribute('activity_seen_at');
+        // Del array crudo y no por su nombre: una cuenta recién creada no lleva sus columnas
+        // anulables, y `actingAs()` conserva ese modelo en memoria en vez de releerlo.
+        $visto = auth()->user()?->getAttributes()['activity_seen_at'] ?? null;
 
         return [
             'data' => ($desde ?? $this->visible())->limit(min($count, self::COUNT_MAX))->get()->pipe(SnkKilkanaActivityResource::collection(...)),
@@ -97,10 +99,18 @@ class SnkKilkanaActivityService
         }
         try {
             $actor = array_key_exists('user', $extra) ? $extra['user'] : auth()->user();
+            // Del array crudo: quien actúa puede llegar como un modelo que no trajo todas sus
+            // columnas —una sesión de prueba conserva el que se creó, y una consulta recortada
+            // no selecciona lo que no pinta—. Pedirlas por su nombre lanzaba, el `catch` de
+            // abajo se lo tragaba con un `report()`, y la línea del registro **desaparecía sin
+            // que nada fallara**: justo lo que la auditoría no puede hacer.
+            $suyo = $actor?->getAttributes() ?? [];
 
             SnkKilkanaActivityModel::create([
                 'user_id' => $actor?->getKey(),
-                'actor_name' => $actor === null ? SnkKilkanaActivityModel::SYSTEM : ($actor->full_name ?: $actor->name),
+                'actor_name' => $actor === null
+                    ? SnkKilkanaActivityModel::SYSTEM
+                    : (($suyo['full_name'] ?? null) ?: ($suyo['name'] ?? SnkKilkanaActivityModel::SYSTEM)),
                 'actor_role' => $actor?->roles->first()?->name,
                 'kind' => $kind,
                 'verb' => $verb,

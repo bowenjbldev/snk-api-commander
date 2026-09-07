@@ -66,6 +66,14 @@ class SnkKilkanaAuthorModel extends Model
      * post de la salida pública. `$hidden` la esconde del JSON —quien lee la firma quiere
      * `name`, no un objeto `user`— pero cargada, que es lo que necesita el accesor.
      */
+    /**
+     * La cuenta va cargada porque el nombre publicado sale de ella cuando no hay alias.
+     *
+     * **Consecuencia:** cualquier proyección sobre firmas tiene que traer `user_id`. Sin la
+     * clave no hay relación que cargar, y con el modo estricto encendido eso no devuelve null:
+     * revienta. Es la misma regla que el resto de relaciones incluidas —quien pide una, pide su
+     * llave—, solo que aquí la relación la pide el modelo y no quien consulta.
+     */
     protected $with = ['user:id,name'];
 
     /**

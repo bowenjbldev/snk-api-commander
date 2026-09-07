@@ -250,7 +250,9 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         // tiraría dos piezas más.
         $candidatas = SnkKilkanaPostModel::withTrashed()->published()
             ->whereBetween('publish_at', [now()->subDays(60), now()->subDays(10)])
-            ->orderBy('slug')->get(['id', 'slug', 'title']);
+            // `deleted_at` va en la proyección porque `trashed()` la lee: sin ella la pregunta
+            // «¿esto ya está tirado?» no se puede contestar, y con el modo estricto revienta.
+            ->orderBy('slug')->get(['id', 'slug', 'title', 'deleted_at']);
         if ($candidatas->count() >= 2) {
             $tirar($candidatas[crc32('trash:1') % $candidatas->count()], 24, $candidatas[crc32('trash:1') % $candidatas->count()]->title, '/trash');
             $otra = $candidatas[crc32('trash:2') % $candidatas->count()];
