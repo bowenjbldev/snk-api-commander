@@ -255,9 +255,31 @@ class SnkKilkanaImageService
             number_format((float) $media->crop_y, 4, '.', ''),
             number_format((float) $media->crop_w, 4, '.', ''),
             number_format((float) $media->crop_h, 4, '.', ''),
+            json_encode(self::frames($media)),
             (string) ($media->poster_at ?? ''),
             (string) ($media->poster_media_id ?? ''),
         ])), 0, 8);
+    }
+
+    /**
+     * Los encuadres propios guardados, solo los de proporciones que existen y con sus cuatro
+     * cifras redondeadas: es lo que entra en la huella, así que dos lecturas de la misma fila
+     * tienen que dar la misma cadena.
+     *
+     * @return array<string, array{x:float,y:float,w:float,h:float}>
+     */
+    public static function frames(SnkKilkanaMediaModel $media): array
+    {
+        $out = [];
+        foreach ((array) ($media->frames ?? []) as $name => $rect) {
+            if (! array_key_exists($name, self::RATIOS) || self::RATIOS[$name] === null || ! is_array($rect)) {
+                continue;
+            }
+            $out[$name] = ['x' => round((float) ($rect['x'] ?? 0), 4), 'y' => round((float) ($rect['y'] ?? 0), 4), 'w' => round((float) ($rect['w'] ?? 1), 4), 'h' => round((float) ($rect['h'] ?? 1), 4)];
+        }
+        ksort($out);
+
+        return $out;
     }
 
     /**
@@ -265,9 +287,13 @@ class SnkKilkanaImageService
      * por la redacción, y dentro de él la caja más grande con esa proporción, centrada en el
      * punto focal y empujada hasta caber. Sin proporción, el rectángulo guardado entero.
      *
+     * **Con encuadre propio, manda él**: la caja que la redacción colocó para esa proporción,
+     * en fracciones del máster, con el alto derivado del ancho para que la proporción sea exacta
+     * aunque el panel redondeara, y empujada dentro de la imagen.
+     *
      * @return array{x:int,y:int,w:int,h:int}
      */
-    public static function window(int $width, int $height, array $focal, array $crop, ?array $ratio): array
+    public static function window(int $width, int $height, array $focal, array $crop, ?array $ratio, ?array $own = null): array
     {
         $cx = (int) round($crop['x'] * $width);
         $cy = (int) round($crop['y'] * $height);
@@ -275,6 +301,21 @@ class SnkKilkanaImageService
         $ch = max(1, (int) round($crop['h'] * $height));
         $cw = min($cw, $width - $cx);
         $ch = min($ch, $height - $cy);
+        // El recorte acota también al encuadre propio: una proporción puede mirar a otro sitio
+        // que las demás, pero no a un trozo de foto que el recorte ya descartó.
+        if ($ratio !== null && $own !== null) {
+            $target = $ratio[0] / $ratio[1];
+            $w = max(1, min($cw, (int) round(((float) $own['w']) * $width)));
+            $h = max(1, (int) round($w / $target));
+            if ($h > $ch) {
+                $h = $ch;
+                $w = max(1, (int) round($h * $target));
+            }
+            $x = max($cx, min((int) round(((float) $own['x']) * $width), $cx + $cw - $w));
+            $y = max($cy, min((int) round(((float) $own['y']) * $height), $cy + $ch - $h));
+
+            return ['x' => $x, 'y' => $y, 'w' => $w, 'h' => $h];
+        }
         if ($ratio === null) {
             return ['x' => $cx, 'y' => $cy, 'w' => $cw, 'h' => $ch];
         }
@@ -318,7 +359,7 @@ class SnkKilkanaImageService
         $crop = ['x' => (float) $media->crop_x, 'y' => (float) $media->crop_y, 'w' => (float) $media->crop_w, 'h' => (float) $media->crop_h];
         $ratios = [];
         foreach (self::RATIOS as $name => $ratio) {
-            $win = self::window((int) $media->master_width, (int) $media->master_height, $focal, $crop, $ratio);
+            $win = self::window((int) $media->master_width, (int) $media->master_height, $focal, $crop, $ratio, self::frames($media)[$name] ?? null);
             $ratios[$name] = ['width' => $win['w'], 'height' => $win['h']];
         }
         $widths = array_values(array_filter(
@@ -386,7 +427,7 @@ class SnkKilkanaImageService
         $disk = Storage::disk('public');
         $focal = ['x' => (float) $media->focal_x, 'y' => (float) $media->focal_y];
         $crop = ['x' => (float) $media->crop_x, 'y' => (float) $media->crop_y, 'w' => (float) $media->crop_w, 'h' => (float) $media->crop_h];
-        $win = self::window((int) $media->master_width, (int) $media->master_height, $focal, $crop, self::RATIOS[$ratio]);
+        $win = self::window((int) $media->master_width, (int) $media->master_height, $focal, $crop, self::RATIOS[$ratio], self::frames($media)[$ratio] ?? null);
 
         $image = (new ImageManager(new Driver))->read($disk->path($media->master_path));
         $image->crop($win['w'], $win['h'], $win['x'], $win['y']);

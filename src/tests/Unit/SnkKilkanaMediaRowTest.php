@@ -14,12 +14,12 @@ use PHPUnit\Framework\TestCase;
  */
 class SnkKilkanaMediaRowTest extends TestCase
 {
-    public function test_la_ficha_de_la_biblioteca_publica_veinticinco_campos(): void
+    public function test_la_ficha_de_la_biblioteca_publica_veintinueve_campos(): void
     {
         $this->assertSame([
             'id', 'url', 'original_name', 'title', 'mime', 'size_bytes', 'width', 'height',
             'duration', 'alt', 'credit', 'license', 'rights_status', 'content_hash',
-            'focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h', 'variants', 'poster_at', 'poster_media_id',
+            'focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h', 'frames', 'variants', 'poster_at', 'poster_media_id',
             'created_at', 'deleted_at', 'usage_count', 'tags', 'collections',
         ], SnkKilkanaMediaService::FILA_DE_LA_BIBLIOTECA);
     }

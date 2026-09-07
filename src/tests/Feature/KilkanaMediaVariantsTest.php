@@ -91,6 +91,39 @@ class KilkanaMediaVariantsTest extends TestCase
         $this->assertFalse(Storage::disk('public')->exists($antes));
     }
 
+    /**
+     * Un encuadre propio manda sobre el punto en SU proporción y en ninguna otra, entra en la
+     * huella, y una proporción que la fábrica no produce no se guarda.
+     */
+    public function test_un_encuadre_propio_mueve_solo_su_proporcion_y_cambia_la_huella(): void
+    {
+        config(['kilkana.kilkana.media.master' => 800]);
+        $media = SnkKilkanaMediaModel::find($this->media->upload(['file' => UploadedFile::fake()->image('plaza.jpg', 1600, 1000)], 1)['media']->id);
+        $antes = $media->variants_key;
+        $cardAntes = $media->variants['ratios']['card'];
+
+        $this->media->update($media, ['frames' => ['portrait' => ['x' => 0.7, 'y' => 0.0, 'w' => 0.5, 'h' => 1.0], 'panorama' => ['x' => 0, 'y' => 0, 'w' => 1, 'h' => 1]]]);
+        $media->refresh();
+
+        $this->assertSame(['portrait'], array_keys($media->frames), 'Solo las proporciones de la fábrica.');
+        $this->assertNotSame($antes, $media->variants_key, 'El encuadre propio entra en la huella.');
+        $this->assertSame($cardAntes, $media->variants['ratios']['card'], 'Las demás proporciones no se mueven.');
+
+        // 800 × 500 de máster: la caja pide la mitad del ancho (400) y su alto 2:3 (600) no cabe,
+        // así que se acota al alto entero y el ancho baja a 333; y empieza donde la imagen acaba.
+        $win = SnkKilkanaImageService::window(800, 500, ['x' => 0.5, 'y' => 0.5], ['x' => 0, 'y' => 0, 'w' => 1, 'h' => 1], [2, 3], $media->frames['portrait']);
+        $this->assertSame(['x' => 467, 'y' => 0, 'w' => 333, 'h' => 500], $win);
+        $this->assertSame(['width' => 333, 'height' => 500], $media->variants['ratios']['portrait']);
+
+        // Y el recorte acota también al encuadre propio: con el marco en la mitad izquierda, la
+        // ventana entra en él aunque se guardara pegada al borde derecho.
+        $acotada = SnkKilkanaImageService::window(800, 500, ['x' => 0.5, 'y' => 0.5], ['x' => 0, 'y' => 0, 'w' => 0.5, 'h' => 1], [2, 3], $media->frames['portrait']);
+        $this->assertSame(['x' => 67, 'y' => 0, 'w' => 333, 'h' => 500], $acotada);
+
+        $this->media->update($media, ['frames' => []]);
+        $this->assertNull($media->fresh()->frames, 'Vaciar los encuadres propios deja nulo.');
+    }
+
     public function test_lo_que_no_cabe_en_memoria_se_rechaza_por_la_cabecera_con_mensaje(): void
     {
         config(['kilkana.kilkana.media.max_megapixels' => 1]);

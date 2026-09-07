@@ -5,6 +5,7 @@ namespace Packages\Kilkana\Services;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -35,7 +36,7 @@ class SnkKilkanaMediaService
     public const FILA_DE_LA_BIBLIOTECA = [
         'id', 'url', 'original_name', 'title', 'mime', 'size_bytes', 'width', 'height',
         'duration', 'alt', 'credit', 'license', 'rights_status', 'content_hash',
-        'focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h', 'variants', 'poster_at', 'poster_media_id',
+        'focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h', 'frames', 'variants', 'poster_at', 'poster_media_id',
         'created_at', 'deleted_at', 'usage_count', 'tags', 'collections',
     ];
 
@@ -64,6 +65,7 @@ class SnkKilkanaMediaService
                 'total' => $page->total(),
             ],
             'facets' => $this->facets(),
+            'scope' => $this->scope($request),
         ];
     }
 
@@ -87,6 +89,12 @@ class SnkKilkanaMediaService
     {
         DB::transaction(function () use ($media, $data) {
             $columns = collect($data)->except(['tag_ids', 'collection_ids'])->all();
+            // Los encuadres propios: solo proporciones que la fábrica produce, y vacío es nulo,
+            // para que «ninguno» se lea igual venga de donde venga.
+            if (array_key_exists('frames', $columns)) {
+                $frames = array_intersect_key((array) ($columns['frames'] ?? []), array_filter(SnkKilkanaImageService::RATIOS));
+                $columns['frames'] = $frames === [] ? null : $frames;
+            }
             if ($columns) {
                 $media->update($columns);
                 if ($media->wasChanged('variants_key')) {
@@ -487,9 +495,13 @@ class SnkKilkanaMediaService
      * sobre una columna sin indice. Agrupando por la familia del `mime` sale todo de un
      * recorrido: la misma tabla se lee una vez en vez de cuatro.
      *
+     * Con un filtro delante cuenta DENTRO de el: las pestanas del panel son un filtro mas, y
+     * decir «68 imagenes» en una coleccion de quince es una cifra que contradice la lista que
+     * tiene debajo.
+     *
      * @return array{image: int, video: int, audio: int, bytes: int}
      */
-    private function porFamilia(): array
+    private function porFamilia(?Builder $dentro = null): array
     {
         $conteo = ['image' => 0, 'video' => 0, 'audio' => 0, 'bytes' => 0];
 
@@ -499,6 +511,8 @@ class SnkKilkanaMediaService
         // docena, no una fila por foto.
         $filas = SnkKilkanaMediaModel::query()
             ->selectRaw('mime, COUNT(*) AS piezas, COALESCE(SUM(size_bytes), 0) AS peso')
+            ->when($dentro, fn (Builder $query) => $query
+                ->whereIn('kilkana_media.id', $dentro->reorder()->select('kilkana_media.id')))
             ->groupBy('mime')
             ->get();
 
@@ -511,6 +525,27 @@ class SnkKilkanaMediaService
         }
 
         return $conteo;
+    }
+
+    /**
+     * Las mismas cuatro cifras de las pestanas, pero contadas dentro de lo que se esta mirando
+     * y sin el filtro de tipo: cada pestana dice cuantos saldrian al pulsarla, con la
+     * coleccion, la busqueda y las fechas puestas. `facets` sigue siendo el archivo entero,
+     * que es lo que mide la tira de estadisticas.
+     *
+     * @return array{all: int, image: int, video: int, audio: int}
+     */
+    private function scope(Request $request): array
+    {
+        $sinTipo = $request->duplicate(Arr::except($request->query->all(), ['kind']));
+        $familias = $this->porFamilia($this->filtered($sinTipo));
+
+        return [
+            'all' => $this->filtered($sinTipo)->count(),
+            'image' => $familias['image'],
+            'video' => $familias['video'],
+            'audio' => $familias['audio'],
+        ];
     }
 
     private function facets(): array

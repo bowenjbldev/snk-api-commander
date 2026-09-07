@@ -16,8 +16,9 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 /**
  * Biblioteca de medios estilo WordPress: subida al disco del tenant con dedup por
  * hash de contenido, metadatos editoriales y de derechos, taxonomías (tags +
- * colecciones) y papelera (soft delete). El index sirve {data, meta, facets}: la
- * lista paginada y filtrada + los contadores globales de las pestañas.
+ * colecciones) y papelera (soft delete). El index sirve {data, meta, facets, scope}: la
+ * lista paginada y filtrada, los contadores globales del archivo y los de lo que se está
+ * mirando, que son los que llevan las pestañas.
  */
 #[Group('Media')]
 class SnkKilkanaMediaController extends CoreBaseApiController
@@ -109,6 +110,14 @@ class SnkKilkanaMediaController extends CoreBaseApiController
             'crop_y' => 'sometimes|numeric|between:0,1',
             'crop_w' => 'sometimes|numeric|between:0.0001,1',
             'crop_h' => 'sometimes|numeric|between:0.0001,1',
+            // El encuadre propio de una proporción, en fracciones del master; las claves que no
+            // sean una proporción de la fabrica se descartan en el servicio.
+            'frames' => 'sometimes|nullable|array',
+            'frames.*' => 'array',
+            'frames.*.x' => 'required|numeric|between:0,1',
+            'frames.*.y' => 'required|numeric|between:0,1',
+            'frames.*.w' => 'required|numeric|between:0.0001,1',
+            'frames.*.h' => 'required|numeric|between:0.0001,1',
             // `exists` y no solo `integer`: el sync mete la fila en el pivote, así que un id
             // inventado chocaba contra la clave foránea y salía como 500.
             'tag_ids' => 'sometimes|array',

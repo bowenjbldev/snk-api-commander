@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
+use Packages\Kilkana\Models\SnkKilkanaMediaCollectionModel;
 use Packages\Kilkana\Models\SnkKilkanaMediaModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Services\SnkKilkanaMediaService;
@@ -161,14 +163,39 @@ class KilkanaMediaLibraryTest extends TestCase
         $this->assertCount(0, Storage::disk('public')->allFiles());
     }
 
-    private function foto(): SnkKilkanaMediaModel
+    /**
+     * Las pestanas del panel son un filtro mas, y su cifra dice cuantos saldrian al pulsarlas
+     * DENTRO de lo que ya se esta mirando: en una coleccion de una foto, «Images 1». `facets`
+     * sigue contando el archivo entero, que es lo que mide la tira de estadisticas.
+     */
+    public function test_las_cifras_de_las_pestanas_cuentan_dentro_del_filtro(): void
     {
-        return SnkKilkanaMediaModel::create([
-            'url' => '/storage/media/pruebas/foto.jpg',
-            'content_hash' => hash('sha256', 'foto'),
-            'original_name' => 'foto.jpg',
+        $cultura = SnkKilkanaMediaCollectionModel::create(['name' => 'Cultura', 'slug' => 'cultura']);
+        $this->foto()->collections()->attach($cultura->id);
+        $this->foto('otra.jpg');
+
+        $todo = $this->media->index(Request::create('/media'));
+        $this->assertSame(['all' => 2, 'image' => 2, 'video' => 0, 'audio' => 0], $todo['scope']);
+
+        $dentro = $this->media->index(Request::create('/media', 'GET', ['collection' => 'Cultura']));
+
+        $this->assertSame(['all' => 1, 'image' => 1, 'video' => 0, 'audio' => 0], $dentro['scope']);
+        $this->assertSame(1, $dentro['meta']['total'], 'la lista y las pestanas cuentan lo mismo');
+        $this->assertSame(2, $dentro['facets']['all'], 'las estadisticas siguen midiendo el archivo entero');
+
+        // Y el propio filtro de tipo no se cuenta a si mismo: con «Video» puesto, «Images»
+        // tiene que seguir diciendo cuantas hay, no cero.
+        $video = $this->media->index(Request::create('/media', 'GET', ['kind' => 'video']));
+        $this->assertSame(['all' => 2, 'image' => 2, 'video' => 0, 'audio' => 0], $video['scope']);
+    }
+
+    private function foto(string $nombre = 'foto.jpg'): SnkKilkanaMediaModel
+    {
+        return SnkKilkanaMediaModel::firstOrCreate(['content_hash' => hash('sha256', $nombre)], [
+            'url' => "/storage/media/pruebas/{$nombre}",
+            'original_name' => $nombre,
             'disk' => 'public',
-            'path' => 'media/pruebas/foto.jpg',
+            'path' => "media/pruebas/{$nombre}",
             'mime' => 'image/jpeg',
             'size_bytes' => 1024,
             'width' => 800,
