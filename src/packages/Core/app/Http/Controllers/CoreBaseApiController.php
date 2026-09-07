@@ -96,10 +96,16 @@ abstract class CoreBaseApiController extends Controller
      */
     protected function queryBuilder(?Builder $query = null): QueryBuilder
     {
-        // Desempaquetados: las cuatro son variádicas y una lista suelta las revienta con un 500.
+        // Dos cosas del orden y de la forma, las dos pagadas con un 500:
+        //
+        // - **`allowedFields()` va antes que `allowedIncludes()`.** Declarar una inclusión
+        //   resuelve ahí mismo los campos de esa relación, y si la lista blanca todavía no
+        //   está puesta el paquete lanza `UnknownIncludedFieldsQuery`.
+        // - **Las cuatro son variádicas**: pasarles el array entero, y no desempaquetado,
+        //   las revienta.
         return QueryBuilder::for($query ?? $this->newQuery())
-            ->allowedIncludes(...$this->allowedIncludes)
             ->allowedFields(...$this->allowedFields)
+            ->allowedIncludes(...$this->allowedIncludes)
             ->allowedSorts(...$this->allowedSorts)
             ->allowedFilters(...$this->allowedFilters);
     }

@@ -3,10 +3,12 @@
 namespace Packages\Kilkana\Services;
 
 use Packages\Core\Support\CorePaginationSupport;
+use Packages\Kilkana\Http\Resources\SnkKilkanaPostResource;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaGateResultModel;
 use Packages\Kilkana\Models\SnkKilkanaTagModel;
+use Spatie\QueryBuilder\QueryBuilder;
 
 /**
  * Las dos pantallas que el panel pedía a trozos, cada una en una llamada.
@@ -100,14 +102,22 @@ class SnkKilkanaPanelService
         // compara sección a sección estas cuatro colas con las cuatro llamadas que sustituyen, y
         // lo que podía romper esa comparación era que aquí estuviera copiada.
         $cola = function (array $filtros, int $cuantas, ?int $dias) use ($userId, $puedeEditarAjenas, $cifras) {
+            // Por el mismo builder que `GET posts`, y con el mismo techo: estas cuatro colas
+            // **son** ese listado servido de otra manera, y `KilkanaPanelCompositeTest` compara
+            // las dos respuestas con `assertSame`. Sin pasar por aquí, `?fields=` e `?include=`
+            // funcionarían en una puerta y en la otra no.
+            $consulta = QueryBuilder::for($this->piezas->query($userId, $puedeEditarAjenas))
+                ->allowedFields(...SnkKilkanaPostService::FIELDS)
+                ->allowedIncludes(...SnkKilkanaPostService::INCLUDES);
+
             $pagina = $this->piezas->page(
-                $this->piezas->query($userId, $puedeEditarAjenas, $dias),
+                $this->piezas->withAudience($consulta, $dias),
                 $filtros,
                 $cuantas,
             );
 
             return [
-                'data' => $pagina->items(),
+                'data' => SnkKilkanaPostResource::collection($pagina->getCollection()),
                 'meta' => CorePaginationSupport::meta($pagina),
                 'counts' => $cifras['scoped'],
                 'counts_all' => $cifras['all'],

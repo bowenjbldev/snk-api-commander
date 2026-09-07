@@ -15,6 +15,7 @@ use Packages\Kilkana\Models\SnkKilkanaPostRevisionModel;
 use Packages\Kilkana\Models\SnkKilkanaPostSlugModel;
 use Packages\Kilkana\Models\SnkKilkanaTagModel;
 use Packages\Kilkana\Support\SnkKilkanaRichText;
+use Spatie\QueryBuilder\QueryBuilder;
 
 class SnkKilkanaPostService
 {
@@ -31,20 +32,36 @@ class SnkKilkanaPostService
      *
      * `engaged`, no `opens`: la API de audiencia cuenta lecturas reales.
      */
-    public function query(int $userId, bool $canEditOthers, ?int $dias = null): Builder
+    public function query(int $userId, bool $canEditOthers): Builder
     {
-        // Con ventana, la suma cuenta solo esos dias; sin ella, el archivo entero. Es UNA suma
-        // y no dos, porque el panel enseña una cifra: mandar las dos y elegir en el cliente
-        // seria pagar la subconsulta que no se pinta, que es lo que ya costo antes.
-        $audiencia = $dias === null
+        return $this->scopeToOwner(SnkKilkanaPostModel::query(), $userId, $canEditOthers);
+    }
+
+    /**
+     * La suma de audiencia, y **va después de elegir columnas, no antes**.
+     *
+     * `withSum()` pasa por `withAggregate()`, que si la consulta no tiene columnas le pone
+     * `select tabla.*` y encima cuelga la subconsulta. El `select()` con el que
+     * `?fields=` recorta **reemplaza** esa lista, así que aplicar la suma primero es
+     * escribirla para que la borren: `views_total` desaparecía sin error y la audiencia se
+     * leía como cero. Es la misma trampa que ya costó el `$withCount` global del modelo.
+     *
+     * Con ventana la suma cuenta solo esos días; sin ella, el archivo entero. Es UNA suma y no
+     * dos, porque el panel enseña una cifra: mandar las dos y elegir en el cliente sería pagar
+     * la subconsulta que no se pinta.
+     *
+     * @template T of Builder|\Spatie\QueryBuilder\QueryBuilder
+     *
+     * @param  T  $query
+     * @return T
+     */
+    public function withAudience($query, ?int $dias)
+    {
+        $ventana = $dias === null
             ? fn (Builder $q) => $q
             : fn (Builder $q) => $q->where('date', '>=', now()->subDays($dias - 1)->toDateString());
 
-        return $this->scopeToOwner(
-            SnkKilkanaPostModel::query()->withSum(['views as views_total' => $audiencia], 'engaged'),
-            $userId,
-            $canEditOthers,
-        );
+        return $query->withSum(['views as views_total' => $ventana], 'engaged');
     }
 
     public function find($id, int $userId, bool $canEditOthers): ?SnkKilkanaPostModel
@@ -71,6 +88,45 @@ class SnkKilkanaPostService
         'title' => 'title',
         'reads' => 'views_total',
     ];
+
+    /**
+     * El techo de `?fields=`, y **quién elige dentro es quien llama**.
+     *
+     * Vive aquí y no en el controlador porque lo declaran dos puertas: `GET posts` y las cuatro
+     * colas de `panel/dashboard`, que son el mismo listado servido de otra manera. Con una copia
+     * en cada una, el día que la calle pudiera pedir un campo más el tablero no lo sabría.
+     *
+     * Fuera quedan a propósito `created_by`, `updated_by`, `deleted_by` y `deleted_at`: son de la
+     * auditoría, no de la pieza. `body_blocks` tampoco —es el cuerpo entero, y pedirlo en una
+     * página de veinticinco es traerse el periódico—: lo trae `GET posts/{id}`.
+     *
+     * **`views_total` no está y no puede estar**: es el alias de un `withSum`, no una columna, y
+     * `?fields=` antepone la tabla a todo lo que recibe — `kilkana_posts.views_total` no existe
+     * y la consulta muere con un `no such column`. La audiencia la cuelga `withAudience()`
+     * después de recortar, y sale sola: pedirla aparte sería un `?include=` con su propia clase,
+     * que es lo que hace falta el día que un listado no quiera pagar la subconsulta.
+     *
+     * Las entradas con punto son de las relaciones incluidas, y el prefijo es **el nombre de la
+     * relación en plural snake**, no el de la tabla —`category` → `categories`—, que es como
+     * `getRequestedFieldsForRelatedTable()` las busca.
+     */
+    public const FIELDS = [
+        'id', 'title', 'excerpt', 'slug', 'status', 'content_tier',
+        'publish_at', 'unpublish_at', 'updated_at', 'created_at',
+        'url_date', 'cover_media_id', 'og_image_id', 'noindex', 'featured',
+        // Las foráneas de las relaciones incluidas. **Sin ellas la relación llega nula**: un
+        // `belongsTo` empareja lo cargado con la clave de la fila, y si el recorte se la lleva,
+        // Eloquent no tiene con qué emparejar y no avisa. Es lo que el mapa `COLUMNS_FOR` sabía
+        // y esto sustituye: aquí quien incluye una relación pide también su llave, y se ve.
+        'category_id', 'author_id',
+        'seo_title', 'seo_description', 'og_title', 'og_description',
+        'categories.id', 'categories.name', 'categories.slug',
+        'authors.id', 'authors.alias', 'authors.slug', 'authors.user_id',
+        'tags.id', 'tags.name', 'tags.slug',
+    ];
+
+    /** `commentsCount` es el sufijo de agregado de spatie: `?include=commentsCount`. */
+    public const INCLUDES = ['category', 'author', 'tags', 'commentsCount'];
 
     /** Página por defecto, y el techo que impide restaurar el volcado entero. */
     public const PER_PAGE = 25;
@@ -108,7 +164,13 @@ class SnkKilkanaPostService
      * Los valores llegan ya saneados por el controlador, que es quien conoce la URL.
      * Aquí solo se traducen a cláusulas.
      */
-    public function filter(Builder $query, array $filters): Builder
+    /**
+     * @template T of Builder|QueryBuilder
+     *
+     * @param  T  $query
+     * @return T
+     */
+    public function filter($query, array $filters)
     {
         if (($status = $filters['status'] ?? null) !== null) {
             $query->where('status', $status);
@@ -147,10 +209,14 @@ class SnkKilkanaPostService
      * segunda consulta parte de un `clone` y no de la primera, porque paginar deja el `limit`
      * puesto en el constructor y repaginar sobre ella heredaría el de la página que no existe.
      *
+     * Acepta las dos formas de consulta porque `Spatie\QueryBuilder\QueryBuilder` **no extiende**
+     * el `Builder` de Eloquent: reenvía por `__call`. Su `__clone()` sí clona el subject, así que
+     * la repaginación de abajo vale igual para las dos.
+     *
      * @param  array<string, mixed>  $filters  ya saneados por quien leyó la query
      * @return LengthAwarePaginator<int, SnkKilkanaPostModel>
      */
-    public function page(Builder $query, array $filters, int $perPage): LengthAwarePaginator
+    public function page(Builder|QueryBuilder $query, array $filters, int $perPage): LengthAwarePaginator
     {
         $filtrada = $this->filter($query, $filters);
         $pagina = (clone $filtrada)->paginate($perPage);
@@ -158,8 +224,6 @@ class SnkKilkanaPostService
         if ($pagina->currentPage() > $pagina->lastPage() && $pagina->total() > 0) {
             $pagina = $filtrada->paginate($perPage, ['*'], 'page', $pagina->lastPage());
         }
-
-        $pagina->getCollection()->each($this->asListRow(...));
 
         return $pagina;
     }
@@ -372,47 +436,6 @@ class SnkKilkanaPostService
         $vacia = $wanted === null || trim($wanted) === '';
 
         return $vacia || Carbon::parse($wanted)->isFuture() ? now()->toDateTimeString() : null;
-    }
-
-    /**
-     * Lo que devuelve una fila del listado, y **nada mas**.
-     *
-     * Es una lista blanca y no una de ocultos a proposito: con una lista de ocultos, cada
-     * columna nueva de la tabla sale al JSON el dia que se anade y nadie lo decide. Aqui lo
-     * que sale esta escrito, y lo que se anada tiene que anadirse tambien aqui.
-     *
-     * **Y no es aseo, es tiempo.** Medido con 522 piezas: serializar veinticinco filas pasa de
-     * 28,0 a 14,5 ms y de 59,7 a 14,2 kB. El 64% del coste por fila eran las relaciones, y la
-     * fila mandaba `author` y `category` ENTEROS —catorce columnas cada uno, mas la madre de la
-     * seccion y su cuenta de usuario— para pintar dos nombres.
-     *
-     * El editor NO pasa por aqui: `show` va por `findModel`, que devuelve la pieza entera. Son
-     * dos preguntas distintas —«que hay en el archivo» y «que es esta pieza»— y responderlas
-     * con la misma forma es lo que hacia que la tabla pagara el peso del editor.
-     *
-     * Vive aqui y no en el controlador porque es parte de lo que ES el listado, y porque asi
-     * hay donde comprobarla: la gemela de esta lista es `postListFromApi` en el frontend, y si
-     * una campo se cae de aqui, alli deja de llegar sin que nada falle en este lado.
-     *
-     * Lo que sigue calculandose aunque no salga: `comments_count`, que es una subconsulta del
-     * `comments_count`. Ya no: ese `$withCount` global se retiró del modelo, y con él la
-     * subconsulta que viajaba en toda consulta de piezas para un valor que no publica esta fila
-     * ni parsea el panel. Quien lo necesite lo pide con un `withCount('comments')` suyo.
-     */
-    public const FILA_DEL_LISTADO = [
-        'id', 'title', 'excerpt', 'slug', 'status', 'content_tier',
-        'publish_at', 'views_total', 'cover', 'category', 'author', 'tags',
-    ];
-
-    public function asListRow(SnkKilkanaPostModel $post): void
-    {
-        $post->setVisible(self::FILA_DEL_LISTADO);
-        // La seccion y la firma, por su nombre publicado; la portada, solo su id —la mediateca
-        // la resuelve el panel—; y las etiquetas, por nombre, que es como viajan al escribir.
-        $post->category?->setVisible(['id', 'name']);
-        $post->author?->setVisible(['id', 'name']);
-        $post->coverMedia?->setVisible(['id']);
-        $post->tags->each->setVisible(['id', 'name']);
     }
 
     /**

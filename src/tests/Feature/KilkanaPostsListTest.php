@@ -508,7 +508,7 @@ class KilkanaPostsListTest extends TestCase
      */
     public function test_el_listado_solo_suma_la_audiencia_que_se_enseña(): void
     {
-        $sql = $this->posts->query(1, true)->toSql();
+        $sql = $this->posts->withAudience($this->posts->query(1, true), null)->toSql();
 
         $this->assertStringContainsString('views_total', $sql);
         $this->assertStringNotContainsString('views_day', $sql);
@@ -516,46 +516,101 @@ class KilkanaPostsListTest extends TestCase
     }
 
     /**
-     * La fila del listado devuelve lo que el panel pinta, y nada mas.
+     * **Quien llama elige las columnas, y lo que no pide no viaja.**
      *
-     * La lista esta escrita a mano aqui **a proposito**: si alguien anade un campo a la
-     * proyeccion, esta prueba lo obliga a decidirlo dos veces. Y si alguien quita uno que el
-     * panel si lee, la gemela del frontend —`postListFromApi` y su prueba— se pone roja: son
-     * los dos lados del mismo contrato.
+     * Sustituye a `FILA_DEL_LISTADO`, que era una lista de doce campos escrita en el servidor y
+     * copiada a mano en el parser del BFF. Eran gemelas mantenidas en dos repos y ya divergieron
+     * una vez: seis campos se cayeron de aquí y allí siguieron parseándose como `undefined`, con
+     * un `noindex: false` que afirmaba «indexable» sobre un dato que no había llegado. Ahora la
+     * lista está **una sola vez**, en quien la pide.
      *
-     * Medido con 522 piezas: mandar la fila entera costaba 28,0 ms y 59,7 kB por pagina de
-     * veinticinco; recortada son 14,5 ms y 14,2 kB. El 64% del coste por fila eran las
-     * relaciones, y viajaban `author` y `category` completos para pintar dos nombres.
+     * Un campo no pedido sale **ausente**, no nulo, que es lo que permite notar la diferencia.
+     *
+     * Y `views_total` es la prueba del orden: es el alias de un `withSum`, y `withAggregate()`
+     * pone `select tabla.*` antes de colgar la subconsulta. Si la suma se aplicara antes que
+     * `?fields=`, el `select()` del recorte se la llevaría por delante y la audiencia se leería
+     * como cero, sin error.
+     *
+     * Medido con 522 piezas cuando esto era una constante: mandar la fila entera costaba 28,0 ms
+     * y 59,7 kB por página de veinticinco; recortada, 14,5 ms y 14,2 kB.
      */
-    public function test_la_fila_del_listado_lleva_solo_lo_que_el_panel_pinta(): void
+    public function test_la_fila_trae_las_columnas_que_se_piden_y_ninguna_mas(): void
     {
+        $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
+        $marta->assignRole('director');
+        $this->actingAs($marta, 'sanctum');
+
         $local = $this->category('Local', 'local');
         $firma = $this->author('Marta Beneyto', alias: 'Redacción');
         $foto = SnkKilkanaMediaModel::create(['url' => 'https://ejemplo.test/foto.jpg', 'url_hash' => sha1('https://ejemplo.test/foto.jpg')]);
-        $pieza = $this->makePost('Una pieza', $local, $firma, 'published', '2026-06-01 10:00:00');
+        $pieza = $this->makePost('Una pieza', $local, $firma, 'published', '2026-06-01 10:00:00', $marta->id);
         $pieza->update(['cover_media_id' => $foto->id]);
         $pieza->tags()->sync([SnkKilkanaTagModel::firstOrCreateByName('pleno')->id]);
 
-        $fila = $this->posts->filter($this->posts->query(1, true), [])->paginate(25)
-            ->getCollection()
-            ->each($this->posts->asListRow(...))
-            ->first();
-        $json = json_decode(json_encode($fila), true);
+        // Los campos de una relación viajan en el MISMO parámetro, con el punto delante: el
+        // prefijo es el nombre de la relación en plural snake, no el de la tabla.
+        request()->query->replace([
+            // `category_id` y `author_id` se piden y no se leen: son la llave con la que
+            // Eloquent empareja lo incluido. Sin ellas la relación llega nula, y en silencio.
+            'fields' => 'id,title,excerpt,slug,status,content_tier,publish_at,cover_media_id'
+                .',category_id,author_id'
+                .',categories.id,categories.name,authors.id,authors.alias,tags.id,tags.name',
+            'include' => 'category,author,tags',
+        ]);
+        $fila = app(SnkKilkanaPostsController::class)->index()->getData(true)['data'][0];
 
         $this->assertSame([
             'id', 'title', 'excerpt', 'slug', 'status', 'content_tier',
-            'publish_at', 'views_total', 'cover', 'category', 'author', 'tags',
-        ], array_keys($json));
+            'publish_at', 'cover_media_id', 'views_total', 'category', 'author', 'tags',
+        ], array_keys($fila));
 
-        // Y las relaciones tampoco viajan enteras: de cada una, lo que se lee.
-        $this->assertSame(['id', 'name'], array_keys($json['category']));
-        $this->assertSame(['id', 'name'], array_keys($json['author']));
-        $this->assertSame(['id'], array_keys($json['cover']));
-        $this->assertSame(['id', 'name'], array_keys($json['tags'][0]));
+        $this->assertSame($foto->id, $fila['cover_media_id'], 'La portada es su columna, no un objeto.');
+        // Y sale sin pedirla: no es una columna, así que `?fields=` no la nombra —le antepondría
+        // la tabla y `kilkana_posts.views_total` no existe—. La cuelga `withAudience()` después
+        // del recorte, y esta línea es la que prueba que ese orden se mantiene: al revés, el
+        // `select()` de los campos se llevaría la subconsulta y la audiencia se leería como cero.
+        // Sin lecturas la suma es `null`, no cero, y da igual: lo que se comprueba es que la
+        // clave **está**. Si el recorte se hubiera llevado la subconsulta, `whenHas()` no la
+        // vería y no habría clave que mirar.
+        $this->assertArrayHasKey('views_total', $fila, 'La suma sobrevive al recorte de columnas.');
+
+        // Y las relaciones tampoco viajan enteras: de cada una, lo que se pidió.
+        $this->assertSame(['id', 'name'], array_keys($fila['category']));
+        $this->assertSame(['id', 'name'], array_keys($fila['author']));
+        $this->assertSame(['id', 'name'], array_keys($fila['tags'][0]));
 
         // El nombre de la firma es el PUBLICADO, que es derivado: recortar columnas no puede
-        // dejarlo sin la cuenta de la que sale.
-        $this->assertSame('Redacción', $json['author']['name']);
+        // dejarlo sin la que lo compone.
+        $this->assertSame('Redacción', $fila['author']['name']);
+    }
+
+    /**
+     * `?fields=` recorta columnas; las relaciones **todavía no**, y aquí queda escrito por qué.
+     *
+     * El modelo declara `protected $with = ['category', 'author', 'coverMedia', 'tags']`, así que
+     * las carga aunque nadie las pida y `whenLoaded()` las ve puestas. Quitarlo es el paso
+     * siguiente y no cabe aquí: de ese `$with` dependen el editor —`GET posts/{id}` devuelve la
+     * pieza con sus relaciones sin pedirlas— y el accesor `cover`, que hace `$this->coverMedia`
+     * y con `preventLazyLoading()` encendido reventaría en cuanto no estuviera cargada.
+     *
+     * Mientras tanto: las columnas sí obedecen, que es la mitad que este paso trae. Cuando
+     * `$with` se vaya, esta prueba pasa a exigir lo contrario.
+     */
+    public function test_las_columnas_obedecen_aunque_las_relaciones_todavia_viajen_solas(): void
+    {
+        $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
+        $marta->assignRole('director');
+        $this->actingAs($marta, 'sanctum');
+        $this->makePost('Una', $this->category('Local', 'local'), $this->author('Redacción', alias: 'Redacción'), 'draft', null, $marta->id);
+
+        request()->query->replace(['fields' => 'id,title']);
+        $fila = app(SnkKilkanaPostsController::class)->index()->getData(true)['data'][0];
+
+        foreach (['excerpt', 'slug', 'status', 'publish_at', 'cover_media_id'] as $noPedida) {
+            $this->assertArrayNotHasKey($noPedida, $fila, "`{$noPedida}` no se pidió: no viaja.");
+        }
+        $this->assertSame('Una', $fila['title']);
+        $this->assertArrayHasKey('category', $fila, 'Las relaciones sí, mientras el modelo las declare en `$with`.');
     }
 
     /**

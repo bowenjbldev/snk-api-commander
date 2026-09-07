@@ -12,6 +12,7 @@ use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Kilkana\Enums\SnkKilkanaBlockTypeEnum;
 use Packages\Kilkana\Enums\SnkKilkanaContentTierEnum;
 use Packages\Kilkana\Enums\SnkKilkanaPostStatusEnum;
+use Packages\Kilkana\Http\Resources\SnkKilkanaPostResource;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Models\SnkKilkanaTagModel;
 use Packages\Kilkana\Services\SnkKilkanaActivityService;
@@ -34,6 +35,10 @@ class SnkKilkanaPostsController extends CoreBaseApiController
 
     protected int $perPageMax = SnkKilkanaPostService::PER_PAGE_MAX;
 
+    protected array $allowedFields = SnkKilkanaPostService::FIELDS;
+
+    protected array $allowedIncludes = SnkKilkanaPostService::INCLUDES;
+
     /**
      * Vistas reales agregadas también en la API editorial, no solo en la salida pública.
      *
@@ -44,11 +49,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
      */
     protected function newQuery()
     {
-        return $this->posts->query(
-            (int) auth()->id(),
-            $this->canEditOthers(),
-            SnkKilkanaPostService::readsWindow(request()->query('reads')),
-        );
+        return $this->posts->query((int) auth()->id(), $this->canEditOthers());
     }
 
     /** Una pieza ajena no existe: 404, no 403 — el id es correlativo y un 403 confirmaría cuántas hay. */
@@ -197,10 +198,18 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         // Sin parámetro: la firma la fija `CoreBaseApiController::index()`, que la comparten
         // todos los recursos. La petición se pide al contenedor, que es lo mismo que inyectarla.
         //
-        // Sin pasar por `queryBuilder()`: este controlador no declara ninguna relación
-        // pedible —las cuatro que sirven el listado ya vienen del `$with` del modelo— y el
-        // orden y los filtros los arma el servicio, que es quien acota por propiedad.
-        $page = $this->posts->page($this->newQuery(), $this->listFilters(request()), $this->perPage());
+        // El orden de los tres pasos es el que importa: `newQuery()` acota por propiedad,
+        // `queryBuilder()` recorta columnas y carga relaciones con lo que pida la query, y la
+        // suma de audiencia va **la última**, porque el `select()` de `?fields=` borraría su
+        // subconsulta. Ver `SnkKilkanaPostService::withAudience()`.
+        $page = $this->posts->page(
+            $this->posts->withAudience(
+                $this->queryBuilder(),
+                SnkKilkanaPostService::readsWindow(request()->query('reads')),
+            ),
+            $this->listFilters(request()),
+            $this->perPage(),
+        );
 
         // `counts` es lo que ve quien mira, que es lo que cuentan las pestanas de Posts.
         // `counts_all` es el periodico entero, y el tablero las ensena juntas: sin la
@@ -218,7 +227,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             : null;
 
         return response()->json([
-            'data' => $page->items(),
+            'data' => SnkKilkanaPostResource::collection($page->getCollection()),
             'meta' => $this->paginationMeta($page),
             ...$cifras === null ? [] : ['counts' => $cifras['scoped'], 'counts_all' => $cifras['all']],
         ]);
