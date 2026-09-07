@@ -51,4 +51,30 @@ class CorePermissionRegistrarMemoTest extends TestCase
         $this->registrar->forgetCachedPermissions();
         $this->assertSame(['first', 'second'], $this->registrar->getPermissions()->pluck('name')->sort()->values()->all());
     }
+
+    public function test_nested_roles_and_their_collection_do_not_survive_a_request(): void
+    {
+        $permission = DB::table('permissions')->insertGetId(['name' => 'read', 'guard_name' => 'sanctum']);
+        foreach (['editor', 'reader'] as $name) {
+            $role = DB::table('roles')->insertGetId(['name' => $name, 'guard_name' => 'sanctum']);
+            DB::table('role_has_permissions')->insert(['permission_id' => $permission, 'role_id' => $role]);
+        }
+
+        $first = $this->registrar->getPermissions()->first();
+        $first->name = 'changed-in-memory';
+        $role = $first->roles->first();
+        $role->name = 'changed-in-memory';
+        $first->roles->pop();
+
+        $this->registrar->clearPermissionsCollection();
+        $again = $this->registrar->getPermissions()->first();
+        $this->assertSame('read', $again->name);
+        $this->assertSame(['editor', 'reader'], $again->roles->pluck('name')->sort()->values()->all());
+        $this->assertNotSame($first->roles, $again->roles);
+        $this->assertNotSame($role, $again->roles->first());
+
+        DB::table('role_has_permissions')->where('permission_id', $permission)->delete();
+        $this->registrar->forgetCachedPermissions();
+        $this->assertCount(0, $this->registrar->getPermissions()->first()->roles);
+    }
 }

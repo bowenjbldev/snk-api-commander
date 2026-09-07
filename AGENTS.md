@@ -1,96 +1,98 @@
 # Contexto para agentes
 
-Este repositorio es el backend Laravel y el control plane de una plataforma SaaS multi-tenant.
-Antes de cambiar código, lee [`docs/README.md`](docs/README.md),
-[`docs/commander-model.md`](docs/commander-model.md) y después el documento de tu área.
+Snake API Commander es el backend Laravel y el control plane de una plataforma SaaS
+multi-tenant. Antes de cambiar código, lee [el índice documental](docs/README.md), el
+[modelo de Commander](docs/commander-model.md) y el documento del área afectada.
 
-## Lectura por tarea
+## Glosario
+
+| Término | Significado |
+|---|---|
+| cuenta | pagador, contrato y facturación; no es un tenant |
+| cliente | tenant operativo identificado por un subdominio |
+| aplicación | producto vendible, por ejemplo Kilkana |
+| package | implementación Laravel de una aplicación |
+| instancia | par único cliente-aplicación y unidad operativa |
+| overlay | diferencias de un cliente sobre un package compartido |
+| Commander | control plane y única base de control |
+| tenant | base aislada de una instancia, con usuarios y tokens propios |
+| provisioner | único worker con permisos DDL sobre bases tenant |
+| dominio de plataforma | host técnico de la API, gobernado por `TENANT_BASE_DOMAIN` |
+| dominio público | URL del frontend de un producto; no selecciona la base de la API |
+
+## Mapa de lectura
 
 | Tarea | Lectura obligatoria |
 |---|---|
-| Core, routing, paquetes u overlays | [`docs/architecture.md`](docs/architecture.md) y [`docs/flows.md`](docs/flows.md) |
-| provisioning, de-provisioning, estado o cuotas | [`docs/flows.md`](docs/flows.md) y [`docs/database.md`](docs/database.md) |
-| migraciones o modelos Commander | [`docs/commander-model.md`](docs/commander-model.md) y [`docs/database.md`](docs/database.md) |
-| Kilkana | [`docs/business.md`](docs/business.md) y [`docs/database/kilkana/README.md`](docs/database/kilkana/README.md) |
-| dominios propios, DNS, TLS o SEO multi-host | [`docs/domains.md`](docs/domains.md), [`docs/architecture.md`](docs/architecture.md) y [`docs/operations.md`](docs/operations.md) |
-| SPA Commander, pantallas o experiencia de operador | [`docs/design/commander-spa.md`](docs/design/commander-spa.md) |
-| comandos, Docker, tests o deploy | [`docs/operations.md`](docs/operations.md) |
+| Core, routing, packages u overlays | [Arquitectura](docs/architecture.md) y [Flujos](docs/flows.md) |
+| provisioning, estados o cuotas | [Flujos](docs/flows.md) y [Base de datos](docs/database.md) |
+| modelos o migraciones Commander | [Modelo de Commander](docs/commander-model.md) y [Base de datos](docs/database.md) |
+| Kilkana | [Producto Kilkana](docs/products/kilkana/README.md) y [su modelo de datos](docs/products/kilkana/database/README.md) |
+| dominios propios, DNS, TLS o SEO multi-host | [Diseño de dominios](docs/design/custom-domains.md), [Arquitectura](docs/architecture.md) y [Operación](docs/operations.md) |
+| Commander Web | [Diseño del SPA](docs/design/commander-spa.md) |
+| Docker, comandos, tests o deploy | [Operación](docs/operations.md) |
+| capacidad, Octane o benchmarks | [Rendimiento](docs/performance.md) |
 
 ## Invariantes
 
-- Una app sirve todos los clientes. Cliente = subdominio; producto = segmento tras `/api/v1`.
-- El control plane local usa `commander.snakepc.test` (`BASE_DOMAIN=snakepc.test`). La API de
-  todos los productos usa `{cliente}.commander.test/api/v1/{producto}`
-  (`TENANT_BASE_DOMAIN=commander.test`). Kilkana es un package: se selecciona con `/kilkana`,
-  no con el dominio. El dominio público de un periódico es independiente del dominio de la API.
-- Cada par `(cliente, producto)` provisionado tiene una BD propia `{cliente}_{producto}`.
-- Cuenta = pagador/contrato; cliente = tenant/subdominio; aplicación = producto; instancia = par
-  cliente-aplicación. Todo cliente pertenece a una cuenta: el alta normal crea una 1:1 y un grupo
-  reutiliza una 1:N. No agregues datos tenant ni cuotas dentro de la cuenta.
-- El catálogo de aplicaciones es code-first y se actualiza con `commander:applications:sync`,
-  nunca como efecto lateral de un GET. Un package es implementación, no contrato ni instancia.
-- Un plan pertenece a una aplicación. Una suscripción pertenece a cuenta+aplicación y sus ítems
-  asignan el plan operativo de cada instancia. El precio negociado no se recalcula al cambiar plan.
-- `commander` es la única base de control; los modelos `commander_*` están fijados a esa conexión.
-- Producto compartido: `src/packages/<Paquete>`. Overlay opcional:
-  `src/packages/<Cliente>/<Paquete>` con solo diferencias.
-- El overlay gana sus rutas exactas; cualquier ruta no personalizada cae en el compartido.
-- Si no existe implementación compartida ni específica, el alta responde `422`. Commander nunca
-  genera ni clona código de producto.
-- Una implementación necesita `routes/api.php` para ser descubrible. Un overlay de config puede
-  existir sin rutas solo cuando ya hay producto compartido.
-- Providers compartidos sí; providers de overlay no se cargan globalmente.
-- Solo `commander_instances.provisioning_status = ready` enruta. Pending/failed/deprovisioned no.
-- Las acciones usan `commander_instances.id` numérico, no nombre ni slug global.
-- Un fallo conserva instancia y `last_error`; retry reutiliza el mismo ID y exige credenciales
-  admin explícitas.
-- La conexión tenant, la config runtime y `CoreActiveInstanceSupport` se restauran en `finally`.
-- Un token pertenece a la base que lo contiene; no añadas bypasses de aislamiento por token/id.
-- El inquilino sale del `Host`; no se confía en `X-Forwarded-Host` ni `-Prefix`, y nginx pisa
-  `X-Forwarded-For` y `-Proto` en todos los vhosts.
-- La conmutación global soporta PHP-FPM y workers secuenciales (Octane sobre FrankenPHP o
-  Swoole, una petición por worker), no corrutinas concurrentes dentro del proceso.
+- Una aplicación sirve todos los clientes. Cliente = subdominio; producto = segmento tras
+  `/api/v1`.
+- El control plane local usa `commander.snakepc.test`. La API tenant usa
+  `{cliente}.commander.test/api/v1/{producto}`.
+- Kilkana es un package seleccionado por `/kilkana`, no un dominio de API.
+- Cada par cliente-aplicación tiene una base propia `{cliente}_{producto}`.
+- Todo cliente pertenece a una cuenta. Cuenta agrupa contrato y facturación, nunca datos tenant.
+- El catálogo de aplicaciones es code-first y se sincroniza con
+  `commander:applications:sync`; un GET no escribe.
+- Un plan pertenece a una aplicación. El precio contractual no se recalcula al cambiar el plan
+  operativo de una instancia.
+- Los modelos `Commander*` usan siempre la conexión `commander`.
+- El producto compartido vive en `src/packages/<Paquete>`; un overlay opcional en
+  `src/packages/<Cliente>/<Paquete>` contiene solo diferencias.
+- El overlay gana rutas exactas y el package compartido resuelve el resto.
+- Una implementación necesita `routes/api.php` para ser descubrible.
+- Solo una instancia con `provisioning_status = ready` enruta.
+- Las acciones operativas usan `commander_instances.id`, no nombres ni slugs globales.
+- Retry reutiliza la instancia fallida y exige credenciales admin nuevas.
+- La conexión tenant, configuración runtime y contexto activo se restauran en `finally`.
+- El provisioner es el único proceso con DDL; el usuario runtime tenant solo tiene CRUD.
+- Un token pertenece a la base que lo contiene. No se añaden bypasses por token o ID.
+- El tenant sale exclusivamente del `Host`; no se confía en `X-Forwarded-Host`.
+- La conmutación global admite PHP-FPM y workers secuenciales de Octane, no corrutinas
+  concurrentes dentro del proceso.
 
-## Convenciones de código y BD
+## Convenciones
 
 - La lógica vive en `src/packages`, no en `src/app`.
-- Namespace compartido de Kilkana: `Packages\Kilkana`. Sus clases aún conservan el prefijo
-  histórico `SnkKilkana*`; no hagas un rename lateral sin una tarea explícita.
-- Clases de overlay: namespace `Packages\<Cliente>\<Paquete>` y prefijo N2 cliente+paquete.
-- Config propia siempre namespaced. Solo Core cambia config global en boot; overrides globales de
-  producto se aplican dentro del resolutor y deben restaurarse.
-- Tabla de negocio nueva: `$table->id()`, prefijo lógico del producto, todas las FKs tras la PK,
-  negocio después y timestamps al final. No copies la excepción `kilkana_settings.id`.
-- Una migración ya aplicada no se reescribe para evolucionar producción: crea una forward migration.
-- Commander se migra sin flags. Tenant requiere `--client` y `--package` juntos. Tras deploy usa
-  `--all-tenants` con su preflight.
-- No uses `Hash::make` al asignar `CoreUserModel.password`: el cast `hashed` ya lo hace.
-- El modelo de usuario es `Packages\Core\Models\CoreUserModel`, no `App\Models\User`.
-- Valida nombres de host, BD y usuario en toda frontera; no interpolar entrada sin validar en DDL.
-- SPA (`commander-web/`): color, espaciado, tipografía y breakpoints salen **siempre** de Carbon
-  —`var(--cds-*)`, `$spacing-*`, `type-style()`, `breakpoint-up()`—, nunca un hex, un px ni un
-  `@media` a mano. Hoy la app va en `g100` fijo y un hex de tema oscuro parece correcto, pero se
-  rompe en silencio el día que haya conmutador claro/oscuro; el token ya trae los dos valores.
-  `@carbon/charts` es la excepción y tiene su propio cauce: pinta con D3 y necesita un color
-  que pueda parsear, así que su `color.scale` se arma con `tokenScale()` (`shared/lib/theme.ts`),
-  que resuelve el token contra el documento. Nunca un hex suelto en las opciones del chart.
-  Deuda conocida: quedan `@media` a mano en `styles/index.scss` que deberían ser `breakpoint-up()`.
+- Namespace compartido Kilkana: `Packages\Kilkana`. Sus clases conservan el prefijo histórico
+  `SnkKilkana*`.
+- Clases de overlay: `Packages\<Cliente>\<Paquete>` y prefijo N2 cliente+package.
+- La configuración propia va namespaced. Los overrides globales se aplican durante la resolución y
+  se restauran.
+- Una tabla nueva ordena PK, FKs, negocio y timestamps. No copies la excepción
+  `kilkana_settings.id`.
+- Una migración aplicada se evoluciona con otra forward migration.
+- Commander se migra sin flags. Tenant exige `--client` y `--package` juntos.
+- `CoreUserModel.password` usa `setPasswordAttribute()`; no apliques `Hash::make` antes de
+  asignarlo.
+- El usuario es `Packages\Core\Models\CoreUserModel`, no `App\Models\User`.
+- Valida host, base y usuario en toda frontera antes de interpolarlos en DDL.
+- Commander Web usa exclusivamente tokens, spacing, tipografía y breakpoints de Carbon. Los charts
+  resuelven colores mediante `tokenScale()`.
 
 ## Flujo de trabajo
 
-1. Ejecuta `git branch --show-current` y `git status --short`; preserva cambios ajenos.
-2. Lee completo el código afectado y todos sus callers antes de editar.
-3. Haz el cambio mínimo en la capa que concentra el comportamiento.
-4. Añade o ajusta una prueba que falle sin el cambio cuando haya lógica no trivial.
-5. Ejecuta las comprobaciones proporcionales.
+1. Ejecuta `git branch --show-current` y `git status --short`.
+2. Preserva cambios ajenos y lee completos el código afectado y sus callers.
+3. Corrige la regla en la capa que concentra el comportamiento.
+4. Añade una prueba que falle sin el cambio cuando haya lógica no trivial.
+5. Ejecuta comprobaciones proporcionales.
 6. Actualiza el documento canónico si cambia arquitectura, contrato, esquema, flujo u operación.
 
-No añadas Markdown dispersos. Salvo este fichero y el `README.md` de entrada, la documentación
-vive en `docs/`.
+No añadas Markdown dispersos. Salvo este archivo, el README de entrada y archivos específicos de
+herramientas, la documentación del proyecto vive en `docs/`.
 
 ## Comprobaciones
-
-Backend:
 
 ```bash
 docker compose exec -T app php artisan test
@@ -99,7 +101,7 @@ vendor/bin/pint --test
 composer audit
 ```
 
-Migraciones y rutas cuando apliquen:
+Cuando apliquen:
 
 ```bash
 docker compose exec -T app php artisan config:cache
@@ -107,30 +109,20 @@ docker compose exec -T app php artisan route:cache
 docker compose exec -T provisioner php artisan core:migrate --all-tenants --force
 ```
 
-Los tests SQLite no validan permisos DDL, MariaDB, collation ni `information_schema`; prueba esos
-cambios contra MariaDB. Reporta test, build y lint por separado: uno verde no implica los demás.
+SQLite no valida DDL, grants, collation ni `information_schema`; esas fronteras requieren una
+prueba adicional sobre MariaDB. Reporta tests, formato, build y audit por separado.
 
-## Riesgos conocidos
+## Riesgos que no se deben ocultar
 
-- **El contenedor `app` cachea rutas en `bootstrap/cache/routes-v7.php`**, que NO está
-  bind-mounteado: una ruta nueva no aparece en `route:list` hasta correr `php artisan route:clear`
-  dentro de `app`. El contenedor `provisioner` sí la ve, y **esa discrepancia entre los dos es la
-  pista** — desde fuera parece que la ruta no se registró.
+- Route cache puede dejar rutas nuevas fuera del contenedor `app`.
+- Octane conserva código y configuración hasta que sus workers se recargan.
+- El enqueue no usa outbox; pending y failed deben seguir siendo visibles y reintentables.
+- Deprovisioning puede dejar recursos si falla el worker.
+- Algunas igualdades entre relaciones se garantizan en la API y no mediante FKs simples.
+- Los límites de plan son plantillas y no reescriben instancias existentes.
+- La baja solo conoce el storage `media/{database}`.
+- Metering y rollups son el primer límite al sostener millones de peticiones diarias.
 
-- **`app` corre sobre Octane (FrankenPHP) y sus workers guardan la aplicación en memoria**: un
-  cambio de código PHP, config o `.env` no se ve por HTTP hasta `php artisan octane:reload` dentro
-  de `app`; en Docker local `--watch` usa el watcher nativo de FrankenPHP, incluyendo `packages/`,
-  sin sidecar. La recarga no limpia las cachés de rutas/config: invalídalas o regénéralas antes. Los
-  tests y los comandos de consola sí leen el disco en cada arranque, así que una suite verde con
-  la API contestando lo viejo es esa pista: revisa las cachés y que `app` arranque con `--watch`.
-
-- Enqueue sin outbox puede dejar pending/failed; de-provisioning puede dejar recursos si falla el
-  worker. No ocultes esos estados creando otra instancia.
-- Las igualdades cross-relation (métrica/plan/aplicación y cuenta/contrato/cliente) se garantizan en
-  la API, no todas mediante constraints simples.
-- Los límites de plan son plantillas: editarlos no reescribe instancias existentes.
-- De-provisioning solo conoce el storage `media/{database}`.
-
-Los detalles y las condiciones de mejora están documentados en
-[`docs/architecture.md`](docs/architecture.md), [`docs/database.md`](docs/database.md) y
-[`docs/flows.md`](docs/flows.md). No ocultes uno de estos riesgos con un parche local.
+Los detalles pertenecen a [Arquitectura](docs/architecture.md), [Flujos](docs/flows.md),
+[Base de datos](docs/database.md), [Operación](docs/operations.md) y
+[Rendimiento](docs/performance.md).

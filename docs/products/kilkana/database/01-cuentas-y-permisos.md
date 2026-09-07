@@ -65,7 +65,7 @@ es único y es lo que identifica a alguien**, no el nombre.
 
 El reparto lo escribe `SnkKilkanaRoleCatalogService` (`PANEL_ROLES` son los seis que abren el
 panel; `WITHOUT_SEAT`, `reader` y `service`), y lo reaplica `kilkana:sync-permissions` en cada
-inquilino ([`operations.md`](../../operations.md)).
+inquilino ([Operación](../../../operations.md)).
 
 ### Los tres permisos que no salen del CRUD
 

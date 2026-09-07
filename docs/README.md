@@ -1,45 +1,64 @@
 # Documentación de Snake API Commander
 
-Este directorio describe el backend y el control plane que existen en esta rama. El cliente web
-del operador vive en `commander-web/` y hoy corre contra un mock, sin tocar la API.
+Esta carpeta es la fuente canónica del proyecto. Describe el código de esta rama y separa lo
+implementado, los diseños futuros y la evidencia histórica.
 
-## Mapa de lectura
+## Lectura inicial
 
-| Necesidad | Documento |
-|---|---|
-| entender negocio, entidades y cardinalidades | [Modelo de Commander](commander-model.md) |
-| entender routing, packages, overlays y aislamiento | [Arquitectura](architecture.md) |
-| entender la propuesta comercial de Kilkana | [Negocio](business.md) |
-| tocar migraciones, modelos o relaciones | [Base de datos](database.md) y [Kilkana](database/kilkana/README.md) |
-| seguir un alta, request, cuota o baja | [Flujos](flows.md) |
-| preparar dominios propios, TLS y una migración SEO | [Dominios propios](domains.md) |
-| diseñar o implementar el SPA de Commander | [Diseño funcional del SPA](design/commander-spa.md) |
-| ejecutar, probar, migrar o desplegar | [Operación](operations.md) |
-| saber qué simula la demo y por qué no envejece | [La demo](demo.md) |
+1. [Modelo de Commander](commander-model.md): vocabulario y relaciones de negocio.
+2. [Arquitectura](architecture.md): cómo se resuelve y aísla una petición tenant.
+3. El documento específico de la tarea.
+
+## Mapa por necesidad
+
+| Necesidad | Documento | Estado |
+|---|---|---|
+| routing, packages, overlays y aislamiento | [Arquitectura](architecture.md) | implementado |
+| cuentas, clientes, aplicaciones, planes e instancias | [Modelo de Commander](commander-model.md) | implementado |
+| conexiones, tablas y relaciones | [Base de datos](database.md) | implementado |
+| provisioning, estados, cuotas y baja | [Flujos](flows.md) | implementado |
+| Docker, comandos, migraciones y deploy | [Operación](operations.md) | implementado |
+| Octane, FrankenPHP, capacidad y benchmarks | [Rendimiento](performance.md) | implementado y medido |
+| producto editorial Kilkana | [Kilkana](products/kilkana/README.md) | implementado |
+| tablas y reglas editoriales | [Modelo de datos Kilkana](products/kilkana/database/README.md) | implementado |
+| dataset local | [Demo de Kilkana](products/kilkana/demo.md) | implementado |
+| pantallas de Commander | [Diseño del SPA](design/commander-spa.md) | prototipo con mock |
+| dominios propios | [Diseño de dominios](design/custom-domains.md) | no implementado |
+| resultados anteriores | [Historial de rendimiento](history/performance-2026.md) | evidencia histórica |
 
 ## Modelo mental
 
-- Commander guarda cuentas, clientes, aplicaciones, instancias, contratos, billing, cuotas y
+- Commander guarda cuentas, clientes, aplicaciones, instancias, contratos, cuotas, facturas y
   observabilidad en la base `commander`.
-- Cuenta es el pagador; cliente es el tenant/subdominio; aplicación es el producto; instancia es
-  el par único cliente-aplicación.
-- Cada instancia `ready` tiene una base `{cliente}_{package}` con usuarios, tokens y datos de
-  negocio aislados.
-- El host identifica al cliente y el primer segmento tras `/api/v1` a la aplicación:
-  `{cliente}.commander.test/api/v1/{aplicación}` en local. El dominio pertenece a la plataforma;
-  Kilkana es un package seleccionado por `/kilkana`, independiente de la URL pública del periódico.
-- La aplicación se descubre desde `src/packages/<Paquete>`; un overlay opcional en
-  `src/packages/<Cliente>/<Paquete>` contiene solo diferencias.
-- Un plan pertenece a una aplicación. Un contrato pertenece a cuenta+aplicación y sus ítems
-  asignan un plan operativo a cada instancia.
-- Una cuenta normal tiene un cliente; una cuenta de grupo puede tener varias cabeceras sin
-  compartir sus bases ni usuarios, aunque el contrato puede sumar una cuota común.
+- Cuenta es el pagador; cliente es el tenant; aplicación es el producto; instancia es el par
+  cliente-aplicación.
+- Cada instancia `ready` tiene una base `{cliente}_{producto}` con usuarios, tokens y datos
+  propios.
+- El `Host` identifica al cliente y el segmento tras `/api/v1` identifica la aplicación.
+- El dominio local de API tenant es `{cliente}.commander.test`; Kilkana se selecciona con
+  `/kilkana`.
+- El código común vive en `src/packages/<Paquete>`; un overlay opcional contiene solo diferencias.
+- Una cuenta de grupo puede compartir contrato y cuota agregada, pero nunca bases, usuarios ni
+  tokens.
 
-## Prioridad si algo discrepa
+## Estado documental
 
-1. Migraciones, rutas, modelos y servicios ejecutables.
-2. Tests que fijan el contrato.
-3. Esta documentación.
-4. Comentarios históricos y documentos externos.
+Cada documento distingue uno de estos estados:
 
-Los Markdown del proyecto viven aquí, salvo el `README.md` de entrada y `AGENTS.md`.
+- **implementado**: debe corresponder al código y a los tests actuales;
+- **diseño no implementado**: decisión preparada, sin presentarla como capacidad disponible;
+- **evidencia histórica**: mediciones fechadas que explican una decisión vigente.
+
+No se mantiene una copia manual exhaustiva de rutas. La referencia generada es OpenAPI en
+`/api/v1/docs.json`; los Markdown explican semántica, invariantes y operación.
+
+## Si algo discrepa
+
+1. Código ejecutable: migraciones, rutas, modelos y servicios.
+2. Tests que fijan contratos.
+3. Documentación marcada como implementada.
+4. Diseños futuros.
+5. Evidencia y comentarios históricos.
+
+Salvo el README de entrada, `AGENTS.md` y archivos propios de herramientas, los Markdown del
+proyecto viven bajo `docs/`.

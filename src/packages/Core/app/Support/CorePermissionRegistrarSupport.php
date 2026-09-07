@@ -59,6 +59,9 @@ class CorePermissionRegistrarSupport extends PermissionRegistrar
             }
         }
 
-        return $known['hydrated']->map(fn ($permission) => clone $permission);
+        // Eloquent clone is shallow: the cached roles and their collection must not escape.
+        return $known['hydrated']->map(fn ($permission) => (clone $permission)->setRelation(
+            'roles', $permission->roles->map(fn ($role) => clone $role),
+        ));
     }
 }

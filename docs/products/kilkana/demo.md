@@ -1,5 +1,7 @@
 # La demo: El Diario, de Alzira
 
+> Estado: implementado. Dataset local reproducible de Kilkana.
+
 `demo.kilkana.test` es el periódico con el que se enseña el producto, y por eso el seeder no
 produce «datos de prueba»: produce un diario comarcal que tiene que aguantar la mirada de quien va
 a comprarlo. Lo siembra `SnkKilkanaDatabaseSeeder` sobre el perfil `data/profiles/eldiario.json`
@@ -120,4 +122,4 @@ docker compose exec -T -e KILKANA_SEED_DEMO=1 provisioner php artisan core:seed 
 identidad y los permisos, dice «demo: KILKANA_SEED_DEMO no está puesta» y no toca ni una pieza.
 
 Resembrar repone lo que trae el snapshot y no quita lo editado encima. Para volver a poner el
-reloj a hoy, refrescar la base primero ([`operations.md`](operations.md)).
+reloj a hoy, refrescar la base primero ([Operación](../../operations.md)).

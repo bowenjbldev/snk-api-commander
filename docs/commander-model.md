@@ -1,5 +1,8 @@
 # Modelo de negocio y datos de Commander
 
+> Estado: implementado. Este documento define el vocabulario del control plane; no describe datos
+> editoriales de los tenants.
+
 ## Propósito
 
 Commander es el control plane privado que registra qué se vende, a quién se vende y qué
@@ -301,8 +304,8 @@ usage/platform
 
 ## Decisiones y límites deliberados
 
-- No hay frontend en este repositorio; Docker conserva únicamente un perfil opt-in vacío para un
-  cliente futuro creado desde cero.
+- Commander Web existe como SPA React/TypeScript/Carbon y cubre las pantallas del operador sobre
+  un mock determinista. La conexión al backend real sigue pendiente.
 - No hay proveedor de pagos, SSO tenant, autoservicio público ni prorrateo.
 - Las cuotas operativas siguen siendo por instancia; una suscripción puede añadir una cuota
   compartida que suma la misma métrica de sus cabeceras activas.

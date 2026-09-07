@@ -1,21 +1,25 @@
-# Diseño funcional del SPA de Commander
+# Diseño funcional de Commander Web
+
+> Estado: prototipo implementado sobre mock. El SPA existe en `commander-web/` con React 19,
+> TypeScript y Carbon; todavía no consume la API Laravel real.
 
 ## Estado y propósito
 
-Este documento es la especificación canónica del futuro cliente web privado de Commander. Define
+Este documento es la especificación funcional del cliente web privado de Commander. Define
 qué debe poder hacer el operador, cómo se organiza la información y qué datos consume cada vista.
-Es deliberadamente agnóstico de framework, librería de componentes y sistema de diseño.
+La implementación actual usa React, React Router y Carbon Design System. Su adaptador
+`src/services/api/commanderApi.ts` encapsula un mock determinista en memoria; sustituir ese
+adaptador por HTTP es el trabajo pendiente.
 
-El cliente web todavía no existe. Docker conserva únicamente el perfil opt-in `commander-web`.
-Esta guía no convierte una capacidad futura en una API disponible: cuando una pantalla necesita
-backend nuevo se marca de forma explícita.
+El perfil Docker `commander-web` es opt-in. Que una pantalla exista en el prototipo no convierte
+una capacidad futura del backend en disponible: cuando necesita API nueva se marca explícitamente.
 
 Antes de implementar el cliente deben leerse también:
 
 - [Modelo de Commander](../commander-model.md), para la semántica de las entidades;
 - [Flujos](../flows.md), para provisioning, estado, cuotas y baja;
 - [Base de datos](../database.md), para relaciones y retención;
-- [Dominios propios](../domains.md), para la capacidad multi-host futura.
+- [Dominios propios](custom-domains.md), para la capacidad multi-host futura.
 
 ## Alcance
 
@@ -432,7 +436,7 @@ conserva la ficha histórica y el SPA consulta cada cinco segundos hasta deprovi
 ### Dominios propios
 
 Esta sección es futura y no aparece en la navegación funcional hasta existir API. Su contrato de
-negocio es [Dominios propios](../domains.md).
+negocio es [Dominios propios](custom-domains.md).
 
 La tabla global mostrará hostname, instancia, cliente, aplicación, tipo principal/alias, propiedad,
 DNS, TLS, health check, último chequeo y último error. La ficha permitirá verificar, reintentar,
@@ -692,7 +696,7 @@ medido, no como requisito previo del primer SPA.
 3. La ficha separa propiedad, DNS, TLS y health check.
 4. Fallar el dominio propio conserva visible el fallback técnico.
 
-## Criterio de finalización del futuro SPA
+## Criterio de finalización de la integración
 
 El cliente se considera funcional cuando:
 
@@ -703,5 +707,5 @@ El cliente se considera funcional cuando:
 - tests cubren login, permisos, tablas, formularios, provisioning, acciones destructivas y errores;
 - las capacidades futuras permanecen claramente separadas de las disponibles.
 
-El framework, la librería de componentes y la herramienta de gráficas se eligen al comenzar la
-implementación. Ninguna decisión de este documento exige una tecnología concreta.
+La integración se considera terminada cuando el adaptador HTTP sustituya al mock sin cambiar los
+contratos de las páginas y las comprobaciones anteriores pasen contra la API real.

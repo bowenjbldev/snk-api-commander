@@ -268,9 +268,16 @@ es larga.
 
 **«Sin cuerpo» y «sin relaciones» son ahora columnas y no buenas intenciones.** Las dos consultas
 llevan una lista blanca en el `select` (`FILA_PUBLICA` en `SnkKilkanaPublicService`), y tiene que
-ir ahí y no como argumento de `get()`: el `$withCount` que declara `SnkKilkanaPostModel` fija
-`kilkana_posts.*` en cuanto se construye la consulta, así que un `get(['id','title'])` se ignora
-**en silencio**. Hasta que se escribió así, el listado traía el cuerpo entero de cada pieza para
+ir ahí y no como argumento de `get()`.
+
+**Y esa fue la trampa.** `SnkKilkanaPostModel` declaraba `$withCount = ['comments']`, siempre
+encendido, y `withAggregate` fija `kilkana_posts.*` en cuanto se construye la consulta: un
+`get(['id','title'])` se ignoraba **en silencio**. Ya no existe — la subconsulta viajaba en toda
+consulta de piezas del sistema para un valor que ni la fila del listado publica ni el panel
+parsea, y quien lo necesite lo pide con su propio `withCount('comments')`. La lista blanca en el
+`select` se queda igualmente, que es lo correcto con trampa o sin ella.
+
+Hasta que se escribió así, el listado traía el cuerpo entero de cada pieza para
 esconderlo al serializar, y el sitemap traía el archivo publicado completo con sus cuatro
 relaciones para devolver dos campos por fila. La calle no ve `body_blocks`, `created_by`,
 `updated_by`, `deleted_by`, `deleted_at`, `canonical_url` ni `featured`.

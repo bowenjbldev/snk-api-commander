@@ -1,5 +1,7 @@
 # Flujos
 
+> Estado: implementado.
+
 ## Request tenant
 
 ```text
@@ -26,6 +28,9 @@ Resultados de resolución:
 
 El resolutor consume el parámetro wildcard `{client}` para que no llegue como argumento al
 controller. Sanctum y Spatie consultan después la base tenant activa.
+El kill-switch usa el estado de esa misma fila recién resuelta, sin una segunda consulta ni
+caché de estado en HTTP. La resolución no se memoriza entre peticiones: cambios confirmados de
+credenciales, provisioning, cliente o aplicación se comprueban en la siguiente resolución.
 
 ## Sincronización de aplicaciones
 

@@ -1,54 +1,66 @@
 # Snake API Commander
 
-Backend Laravel 13 y control plane API para una plataforma SaaS multi-tenant. Un único
-despliegue sirve todos los clientes, pero cada instancia de producto tiene su propia base de
-datos.
-
-El direccionamiento es estable:
+Backend Laravel 13 y control plane de una plataforma SaaS multi-tenant. Un único despliegue sirve
+todos los clientes y cada instancia de producto conserva su propia base de datos.
 
 ```text
-https://{cliente}.{TENANT_BASE_DOMAIN}/api/v1/{paquete}/...
-        └ cliente                         └ producto
+https://{cliente}.{TENANT_BASE_DOMAIN}/api/v1/{producto}/...
+        └ tenant                              └ package
 ```
 
-Por ejemplo, `https://elmundo.commander.test/api/v1/kilkana/public/posts` usa la instancia de
-Kilkana de El Mundo y la base `elmundo_kilkana`.
+Por ejemplo:
 
-`TENANT_BASE_DOMAIN` es el dominio de la plataforma (`commander.test` en local), común a todos
-los productos. Kilkana es un package y se selecciona en la ruta. El mismo cliente puede usar
-`elmundo.commander.test/api/v1/otro-producto` con otra base independiente. La URL pública del
-periódico y `APP_URL` no determinan el dominio de routing de la API.
+```text
+https://diario-norte.commander.test/api/v1/kilkana/public/posts
+```
 
-El código común de un producto vive en `src/packages/<Paquete>`; una personalización opcional
-vive en `src/packages/<Cliente>/<Paquete>`. Si el cliente no tiene personalización se usa el
-producto compartido. Si no existe ninguna implementación, Commander rechaza el alta.
+`commander.test` es el dominio local de la API tenant. Kilkana es un producto seleccionado por
+la ruta; `kilkana.test` puede ser el dominio público de un frontend, pero no gobierna la
+resolución de la API.
+
+## Arquitectura en una mirada
+
+```text
+commander
+├── cuentas, clientes, aplicaciones, contratos y observabilidad
+└── operador Commander y sus tokens
+
+diario_norte_kilkana
+├── usuarios y tokens de Diario Norte
+└── datos editoriales de Kilkana
+```
+
+El producto compartido vive en `src/packages/<Paquete>`. Una personalización opcional vive en
+`src/packages/<Cliente>/<Paquete>` y contiene únicamente diferencias.
 
 ## Documentación
 
-La documentación canónica está en [`docs/`](docs/README.md):
+Empieza por [el índice de documentación](docs/README.md). Los documentos principales son:
 
 | Documento | Contenido |
 |---|---|
-| [Modelo de Commander](docs/commander-model.md) | Negocio, entidades, cardinalidades, contratos, cuotas y ejemplos simple/Grupo. |
-| [Arquitectura](docs/architecture.md) | Componentes, descubrimiento de paquetes, resolución de tenants, overlays y límites de seguridad. |
-| [Negocio](docs/business.md) | Kilkana como SaaS, planes objetivo y diferencias entre la visión comercial y lo implementado. |
-| [Base de datos](docs/database.md) | Topología, tablas Core/Commander y mapa del esquema Kilkana. |
-| [Flujos](docs/flows.md) | Request tenant, provisioning, fallback, de-provisioning, cuotas y despliegues. |
-| [Operación](docs/operations.md) | Puesta en marcha, Docker, migraciones, seeders, scheduler y validación. |
+| [Arquitectura](docs/architecture.md) | routing, packages, overlays, aislamiento y procesos |
+| [Modelo de Commander](docs/commander-model.md) | cuentas, clientes, aplicaciones, contratos e instancias |
+| [Base de datos](docs/database.md) | conexiones, tablas Commander y topología tenant |
+| [Flujos](docs/flows.md) | resolución, provisioning, cuotas, estados y baja |
+| [Operación](docs/operations.md) | Docker, comandos, migraciones y deploy |
+| [Rendimiento](docs/performance.md) | Octane, FrankenPHP, capacidad y benchmarks |
+| [Kilkana](docs/products/kilkana/README.md) | producto editorial y modelo de datos |
+| [Diseños](docs/design/) | SPA Commander y dominios propios |
 
-Los agentes deben empezar por [`AGENTS.md`](AGENTS.md).
+Los agentes deben empezar por [AGENTS.md](AGENTS.md).
 
 ## Estructura
 
 ```text
 docs/                      documentación canónica
-src/
-├── packages/Core/         infraestructura compartida
-├── packages/Commander/    control plane y API del operador
-├── packages/Kilkana/      producto Kilkana compartido
-└── packages/<Cliente>/    overlays o productos exclusivos
-scripts/                   utilidades de TLS y DNS local
-docker-compose.yml         app, scheduler, provisioner, nginx, MariaDB y Commander
+src/packages/Core/         infraestructura multi-tenant
+src/packages/Commander/    control plane
+src/packages/Kilkana/      producto editorial compartido
+src/packages/<Cliente>/    overlays o productos exclusivos
+commander-web/             SPA React/Carbon, todavía conectado a un mock
+scripts/                   operación, seguridad y benchmarks
+docker-compose.yml         servicios locales
 ```
 
 ## Arranque local
@@ -61,17 +73,21 @@ docker compose up -d
 docker compose exec -T app php artisan core:seed --force
 ```
 
-La API del control plane queda en `https://commander.<BASE_DOMAIN>/api/v1`, los tenants en
-`https://{cliente}.<TENANT_BASE_DOMAIN>` y el health check en
-`https://api.<BASE_DOMAIN>/api/v1/`. En el entorno local por defecto, el operador sembrado es
-`admin@snake.com` / `secret1234`; no uses ese secreto en producción.
+URLs locales:
 
-## Comprobaciones principales
+- Commander: `https://commander.snakepc.test/api/v1`;
+- tenants: `https://{cliente}.commander.test/api/v1/{producto}`;
+- health: `https://api.snakepc.test/api/v1/`;
+- OpenAPI: `https://api.snakepc.test/api/v1/docs.json`.
+
+## Comprobaciones
 
 ```bash
 docker compose exec -T app php artisan test
-cd src && vendor/bin/pint --test && composer audit
+cd src
+vendor/bin/pint --test
+composer audit
 ```
 
 Consulta [Operación](docs/operations.md) antes de migrar tenants, provisionar manualmente o
-preparar un despliegue de producción.
+preparar un despliegue.

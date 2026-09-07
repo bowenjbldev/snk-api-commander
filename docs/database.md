@@ -1,5 +1,7 @@
 # Base de datos
 
+> Estado: implementado.
+
 ## Topología
 
 La plataforma usa una base de control y una base por instancia; no una tabla compartida con
@@ -165,15 +167,16 @@ van después de la PK. Una migración aplicada se evoluciona con otra forward mi
 
 ## Kilkana
 
-El índice del esquema editorial está en [database/kilkana/README.md](database/kilkana/README.md):
+El índice del esquema editorial está en
+[products/kilkana/database/README.md](products/kilkana/database/README.md):
 
-1. [cuentas y permisos](database/kilkana/01-cuentas-y-permisos.md);
-2. [firmas](database/kilkana/02-firmas.md);
-3. [secciones](database/kilkana/03-secciones.md);
-4. [artículos](database/kilkana/04-articulos.md);
-5. [medios](database/kilkana/05-medios.md);
-6. [comentarios y suscriptores](database/kilkana/06-comentarios-y-suscriptores.md);
-7. [composición y ajustes](database/kilkana/07-composicion-y-ajustes.md).
+1. [cuentas y permisos](products/kilkana/database/01-cuentas-y-permisos.md);
+2. [firmas](products/kilkana/database/02-firmas.md);
+3. [secciones](products/kilkana/database/03-secciones.md);
+4. [artículos](products/kilkana/database/04-articulos.md);
+5. [medios](products/kilkana/database/05-medios.md);
+6. [comentarios y suscriptores](products/kilkana/database/06-comentarios-y-suscriptores.md);
+7. [composición y ajustes](products/kilkana/database/07-composicion-y-ajustes.md).
 
 La autenticación sigue siendo local a cada base. `editorial_seats` lee los roles locales y
 `reads_month` agrega `kilkana_post_views.engaged` localmente; no existe un agregado de usuarios o
