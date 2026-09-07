@@ -10,6 +10,7 @@ use Dedoc\Scramble\Attributes\QueryParameter;
 use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Packages\Core\Http\Resources\CoreUserResource;
 use Packages\Core\Models\CoreUserModel;
 
 #[Group('Users')]
@@ -21,6 +22,8 @@ class CoreUsersController extends CoreBaseApiController
     protected string $storePermission   = 'create users';
     protected string $updatePermission  = 'update users';
     protected string $destroyPermission = 'delete users';
+    protected ?string $resourceClass = CoreUserResource::class;
+
     protected array $allowedIncludes = [
         'roles',
     ];
@@ -88,7 +91,7 @@ class CoreUsersController extends CoreBaseApiController
         $user = CoreUserModel::create($data);
         $user->assignRole($role);
 
-        return response()->json($user->load('roles'), 201);
+        return response()->json(new CoreUserResource($user->load('roles')), 201);
     }
 
     #[Endpoint(
@@ -154,7 +157,7 @@ class CoreUsersController extends CoreBaseApiController
             $record->syncRoles([$role]);
         }
 
-        return response()->json($record->fresh());
+        return response()->json(new CoreUserResource($record->fresh()));
     }
 
     #[Endpoint(

@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Packages\Core\Http\Resources\CoreUserResource;
 use Packages\Core\Models\CoreUserModel;
 
 #[Group('Auth')]
@@ -100,8 +101,10 @@ class CoreAuthController extends Controller
             $user->setAttribute('role_names', $user->roles()->pluck('name'));
         }
 
+        // Un Resource con el modelo a null se serializa como null, así que la forma de la
+        // respuesta no depende de si hay sesión.
         return response()->json([
-            'user' => $user,
+            'user' => new CoreUserResource($user),
         ]);
     }
 }
