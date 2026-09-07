@@ -7,6 +7,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Kilkana\Enums\SnkKilkanaCategoryStatusEnum;
+use Packages\Kilkana\Http\Resources\SnkKilkanaCategoryResource;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 
@@ -41,6 +42,8 @@ class SnkKilkanaCategoriesController extends CoreBaseApiController
      * Va en `newQuery()` y no en el modelo porque **solo lo quiere quien lista**: pedir una
      * seccion para editarla no necesita contar sus piezas.
      */
+    protected ?string $resourceClass = SnkKilkanaCategoryResource::class;
+
     protected function newQuery()
     {
         return parent::newQuery()->asCatalogue();

@@ -269,12 +269,15 @@ class SnkKilkanaPublicService
 
     public function categories()
     {
+        // La madre se incluye porque la calle rotula «Local · Deportes»; `status` y `position`
+        // no se seleccionan porque son de la redacción, y que la sección responda ya dice que
+        // es alcanzable.
         return SnkKilkanaCategoryModel::query()
             ->inMenu()
+            ->with('parent:id,slug,name')
             ->orderBy('position')
             ->orderBy('id')
-            ->get()
-            ->makeHidden(['status', 'position']);
+            ->get(['id', 'slug', 'name', 'noindex', 'parent_id']);
     }
 
     /**
@@ -289,11 +292,15 @@ class SnkKilkanaPublicService
      */
     public function category(string $slug): SnkKilkanaCategoryModel|string|null
     {
-        $category = SnkKilkanaCategoryModel::query()->reachable()->where('slug', $slug)->first();
+        $category = SnkKilkanaCategoryModel::query()
+            ->reachable()
+            ->with('parent:id,slug,name')
+            ->where('slug', $slug)
+            ->first(['id', 'slug', 'name', 'noindex', 'parent_id']);
         if ($category) {
             // Igual que el catálogo: que responda ya dice que es alcanzable, y el estado con el
             // que lo es —del menú o retirada de él— es cosa de la redacción.
-            return $category->makeHidden(['status', 'position']);
+            return $category;
         }
 
         $retirada = SnkKilkanaCategorySlugModel::query()->where('path', $slug)->first();

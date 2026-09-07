@@ -13,6 +13,8 @@ class SnkKilkanaTagResource extends JsonResource
             'id' => $this->whenHas('id'),
             'name' => $this->whenHas('name'),
             'slug' => $this->whenHas('slug'),
+            'posts_count' => $this->whenCounted('posts'),
+            'last_used_at' => $this->whenHas('last_used_at'),
         ];
     }
 }

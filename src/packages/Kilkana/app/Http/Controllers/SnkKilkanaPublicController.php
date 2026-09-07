@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Packages\Kilkana\Http\Resources\SnkKilkanaCategoryResource;
 use Packages\Kilkana\Http\Resources\SnkKilkanaPostResource;
 use Packages\Kilkana\Models\SnkKilkanaNewsletterEventModel;
 use Packages\Kilkana\Models\SnkKilkanaNewsletterIssueModel;
@@ -64,7 +65,7 @@ class SnkKilkanaPublicController extends Controller
 
     public function categories(): JsonResponse
     {
-        return response()->json($this->public->categories());
+        return response()->json(SnkKilkanaCategoryResource::collection($this->public->categories()));
     }
 
     /**
@@ -95,7 +96,7 @@ class SnkKilkanaPublicController extends Controller
         }
 
         return $category
-            ? response()->json($category)
+            ? response()->json(new SnkKilkanaCategoryResource($category))
             : response()->json(['error' => 'Not found'], 404);
     }
 

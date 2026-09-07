@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
+use Packages\Kilkana\Http\Resources\SnkKilkanaTagResource;
 use Packages\Kilkana\Models\SnkKilkanaTagModel;
 use Packages\Kilkana\Services\SnkKilkanaActivityService;
 
@@ -51,6 +52,8 @@ class SnkKilkanaTagsController extends CoreBaseApiController
      * Va en `newQuery()` y no en el modelo porque solo lo quiere quien LISTA: pedir una
      * etiqueta para renombrarla no necesita recorrer su pivote.
      */
+    protected ?string $resourceClass = SnkKilkanaTagResource::class;
+
     protected function newQuery()
     {
         return parent::newQuery()->asCatalogue();

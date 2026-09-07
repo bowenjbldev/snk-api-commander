@@ -3,7 +3,10 @@
 namespace Packages\Kilkana\Services;
 
 use Packages\Core\Support\CorePaginationSupport;
+use Packages\Kilkana\Http\Resources\SnkKilkanaAuthorResource;
+use Packages\Kilkana\Http\Resources\SnkKilkanaCategoryResource;
 use Packages\Kilkana\Http\Resources\SnkKilkanaPostResource;
+use Packages\Kilkana\Http\Resources\SnkKilkanaTagResource;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaGateResultModel;
@@ -63,11 +66,12 @@ class SnkKilkanaPanelService
         $clases = $this->papelera->kindsFor(auth()->user());
 
         return [
-            // El mismo scope que sirve `GET categories`, `authors` y `tags`: la lista se arma
-            // en el modelo justo para que las dos puertas no puedan enseñar columnas distintas.
-            'categories' => $this->conPermiso('index categories', fn () => SnkKilkanaCategoryModel::query()->asCatalogue()->get()),
-            'authors' => $this->conPermiso('index authors', fn () => SnkKilkanaAuthorModel::query()->asCatalogue()->get()),
-            'tags' => $this->conPermiso('index tags', fn () => SnkKilkanaTagModel::query()->asCatalogue()->get()),
+            // El mismo scope y **el mismo Resource** que sirven `GET categories`, `authors` y
+            // `tags`: el scope arma la consulta y el Resource la forma, justo para que las dos
+            // puertas no puedan enseñar columnas distintas.
+            'categories' => $this->conPermiso('index categories', fn () => SnkKilkanaCategoryResource::collection(SnkKilkanaCategoryModel::query()->asCatalogue()->get())),
+            'authors' => $this->conPermiso('index authors', fn () => SnkKilkanaAuthorResource::collection(SnkKilkanaAuthorModel::query()->asCatalogue()->get())),
+            'tags' => $this->conPermiso('index tags', fn () => SnkKilkanaTagResource::collection(SnkKilkanaTagModel::query()->asCatalogue()->get())),
             'comments' => $this->cifra('index comments', fn () => [
                 'counts' => $this->comentarios->countsByStatus(),
                 'oldest_pending_at' => $this->comentarios->oldestPendingAt(),

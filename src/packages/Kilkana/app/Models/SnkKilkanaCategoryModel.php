@@ -29,9 +29,13 @@ class SnkKilkanaCategoryModel extends Model
      *
      * El eager load termina solo: la madre de una raíz es null.
      */
-    protected $with = ['parent'];
-
-    protected $hidden = ['parent'];
+    /*
+     * La madre **no se carga sola**. Estaba en `$with` para que dos accesores anexados
+     * —`parent_slug` y `parent_name`— pudieran leerla, y con eso viajaba una consulta y una
+     * relación escondida en cada sitio donde aparece una sección: también anidada dentro de
+     * cada pieza de un listado, que es donde nadie la pinta. Los dos campos los declara ahora
+     * `SnkKilkanaCategoryResource` y salen si la madre se ha incluido.
+     */
 
     protected $casts = [
         'noindex' => 'boolean',
@@ -111,8 +115,6 @@ class SnkKilkanaCategoryModel extends Model
             array_filter(SnkKilkanaCategoryStatusEnum::cases(), $filtro)
         ));
     }
-
-    protected $appends = ['parent_slug', 'parent_name'];
 
     public function getParentSlugAttribute(): ?string
     {

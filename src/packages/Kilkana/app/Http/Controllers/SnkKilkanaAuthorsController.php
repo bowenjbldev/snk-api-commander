@@ -7,6 +7,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Kilkana\Enums\SnkKilkanaAuthorKindEnum;
+use Packages\Kilkana\Http\Resources\SnkKilkanaAuthorResource;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 
@@ -56,6 +57,8 @@ class SnkKilkanaAuthorsController extends CoreBaseApiController
      * Va en `newQuery()` y no en el modelo porque **solo lo quiere quien lista**: pedir una
      * firma para editarla no necesita contar sus piezas.
      */
+    protected ?string $resourceClass = SnkKilkanaAuthorResource::class;
+
     protected function newQuery()
     {
         return parent::newQuery()->asCatalogue();

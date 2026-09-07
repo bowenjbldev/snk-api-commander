@@ -1683,7 +1683,9 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         $creditos = ['Óscar Tomás', 'Agencia EFE', 'Redacción'];
         $estantes = [];
 
-        foreach (SnkKilkanaMediaModel::query()->with('coveredPosts.category')->get() as $media) {
+        // La madre va en la carga: se leía abajo y la traía el `$with` del modelo de sección,
+        // que ya no existe — una relación cargada en toda consulta para dos sitios que la usan.
+        foreach (SnkKilkanaMediaModel::query()->with('coveredPosts.category.parent')->get() as $media) {
             $cambios = [];
 
             if (! $media->credit) {
