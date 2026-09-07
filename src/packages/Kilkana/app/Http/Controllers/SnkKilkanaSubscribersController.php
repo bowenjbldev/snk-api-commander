@@ -10,6 +10,7 @@ use Illuminate\Support\Carbon;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Kilkana\Enums\SnkKilkanaConsentSourceEnum;
 use Packages\Kilkana\Enums\SnkKilkanaSubscriberStatusEnum;
+use Packages\Kilkana\Http\Resources\SnkKilkanaSubscriberResource;
 use Packages\Kilkana\Models\SnkKilkanaSubscriberModel;
 use Packages\Kilkana\Services\SnkKilkanaActivityService;
 
@@ -69,7 +70,7 @@ class SnkKilkanaSubscribersController extends CoreBaseApiController
         $pagina = $this->newQuery()->orderByDesc('id')->paginate($this->perPage());
 
         return response()->json([
-            'data' => $pagina->getCollection(),
+            'data' => SnkKilkanaSubscriberResource::collection($pagina->getCollection()),
             'meta' => $this->paginationMeta($pagina),
         ]);
     }

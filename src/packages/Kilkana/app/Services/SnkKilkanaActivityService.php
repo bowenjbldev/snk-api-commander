@@ -7,6 +7,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Enums\SnkKilkanaPostStatusEnum;
+use Packages\Kilkana\Http\Resources\SnkKilkanaActivityResource;
 use Packages\Kilkana\Models\SnkKilkanaActivityModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaLayoutModel;
@@ -50,28 +51,6 @@ class SnkKilkanaActivityService
     }
 
     /**
-     * Una línea del registro tal como la lee el panel.
-     *
-     * @return array<string, mixed>
-     */
-    public function row(SnkKilkanaActivityModel $a): array
-    {
-        return [
-            'id' => (string) $a->id,
-            'who' => $a->actor_name,
-            'role' => $a->actor_role,
-            'system' => $a->user_id === null && $a->actor_name === SnkKilkanaActivityModel::SYSTEM,
-            'kind' => $a->kind,
-            'verb' => $a->verb,
-            'what' => $a->what,
-            'before' => $a->before,
-            'after' => $a->after,
-            'href' => $a->href,
-            'at' => $a->created_at->toIso8601String(),
-        ];
-    }
-
-    /**
      * El adelanto de la campana: solo filas y hasta cuándo miró esta cuenta.
      *
      * La gente y las cifras de la pantalla del registro son cinco consultas más que el armazón
@@ -85,7 +64,7 @@ class SnkKilkanaActivityService
         $visto = auth()->user()?->getAttribute('activity_seen_at');
 
         return [
-            'data' => ($desde ?? $this->visible())->limit(min($count, self::COUNT_MAX))->get()->map($this->row(...))->values(),
+            'data' => ($desde ?? $this->visible())->limit(min($count, self::COUNT_MAX))->get()->pipe(SnkKilkanaActivityResource::collection(...)),
             // Hasta cuándo miró esta cuenta: lo posterior es lo que la campana marca.
             'seen_at' => $visto ? Carbon::parse($visto)->toIso8601String() : null,
         ];

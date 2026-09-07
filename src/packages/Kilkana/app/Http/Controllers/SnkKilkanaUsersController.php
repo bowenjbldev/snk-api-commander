@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Packages\Core\Http\Controllers\CoreUsersController;
 use Packages\Core\Models\CoreUserModel;
+use Packages\Kilkana\Http\Resources\SnkKilkanaUserResource;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Services\SnkKilkanaAccountLinkService;
@@ -71,12 +72,11 @@ class SnkKilkanaUsersController extends CoreUsersController
             ->selectRaw('kilkana_authors.user_id as user_id, count(*) as total')
             ->pluck('total', 'user_id');
 
-        $users->each(function (CoreUserModel $user) use ($piezas) {
-            $this->decorate($user);
-            $user->setAttribute('posts_count', (int) $piezas->get($user->getKey(), 0));
-        });
+        // El recuento se cuelga de la fila: viene de una consulta agrupada para toda la lista,
+        // no de un `withCount` por cuenta, porque cruza `kilkana_authors` por el camino.
+        $users->each(fn (CoreUserModel $user) => $user->setAttribute('posts_count', (int) $piezas->get($user->getKey(), 0)));
 
-        return response()->json($users);
+        return response()->json(SnkKilkanaUserResource::collection($users));
     }
 
     /**
@@ -117,10 +117,9 @@ class SnkKilkanaUsersController extends CoreUsersController
         }
 
         $user->load('roles:id,name');
-        $this->decorate($user);
         $this->registro->log('seat', 'invited', "{$data['email']} as ".ucfirst($data['role']), '/roles');
 
-        return $this->flagPendingByline(response()->json($user, 201), (int) $user->getKey());
+        return $this->flagPendingByline(response()->json(new SnkKilkanaUserResource($user), 201), (int) $user->getKey());
     }
 
     /** El mismo enlace otra vez, solo mientras la cuenta siga invitada. */
@@ -187,7 +186,7 @@ class SnkKilkanaUsersController extends CoreUsersController
         $user->tokens()->delete();
         $this->registro->log('seat', 'suspended', $user->full_name ?: $user->name, '/roles');
 
-        return response()->json($this->decorate($user->load('roles:id,name')));
+        return response()->json(new SnkKilkanaUserResource($user->load('roles:id,name')));
     }
 
     /** Y se deshace: la cuenta vuelve a entrar con su contraseña de siempre. */
@@ -205,7 +204,7 @@ class SnkKilkanaUsersController extends CoreUsersController
         $user->forceFill(['suspended_at' => null])->save();
         $this->registro->log('seat', 'restored the seat of', $user->full_name ?: $user->name, '/roles');
 
-        return response()->json($this->decorate($user->load('roles:id,name')));
+        return response()->json(new SnkKilkanaUserResource($user->load('roles:id,name')));
     }
 
     /** Alta con rol de escritura = alta con firma. Ver `ensureByline`. */
@@ -287,19 +286,6 @@ class SnkKilkanaUsersController extends CoreUsersController
         return (int) $id === (int) auth()->id()
             ? response()->json(['error' => $motivo], 409)
             : null;
-    }
-
-    /** El papel plano y el estado, que es lo que el listado y cada acción devuelven. */
-    private function decorate(CoreUserModel $user): CoreUserModel
-    {
-        $user->setAttribute('role', $user->roles->first()?->name);
-        $user->setAttribute('state', match (true) {
-            $user->suspended_at !== null => 'suspended',
-            $user->invited_at !== null => 'invited',
-            default => 'active',
-        });
-
-        return $user;
     }
 
     /** Manda el enlace y dice cuándo, o dice que no pudo. */

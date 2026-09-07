@@ -70,33 +70,6 @@ class SnkKilkanaThemeModel extends Model
     }
 
     /**
-     * Lo que sale a la API: la ficha del catálogo con su tema dentro.
-     *
-     * El `spec` viaja entero y no por partes. Quien pinta recibe el tema y lo emite; que la
-     * galería enseñe exactamente lo que se va a llevar puesto es la mitad de para qué existe
-     * una galería.
-     */
-    public function payload(): array
-    {
-        return [
-            'id' => $this->id,
-            'slug' => $this->slug,
-            'name' => $this->name,
-            'tagline' => $this->tagline,
-            'description' => $this->description,
-            'status' => $this->status?->value,
-            'featured' => (bool) $this->featured,
-            'position' => $this->position,
-            'popularity' => $this->popularity,
-            'version' => $this->version,
-            'thumbnail_path' => $this->thumbnail_path,
-            'screenshots' => $this->screenshots ?? [],
-            'demo_url' => $this->demo_url,
-            'spec' => (object) ($this->spec ?? []),
-        ];
-    }
-
-    /**
      * Cuatro órdenes, y ninguno se deriva de los otros.
      *
      * `featured` es la parrilla curada —lo que quieres enseñar primero—, `recent` la de

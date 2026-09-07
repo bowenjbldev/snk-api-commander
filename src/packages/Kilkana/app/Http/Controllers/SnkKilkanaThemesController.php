@@ -6,6 +6,7 @@ use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
+use Packages\Kilkana\Http\Resources\SnkKilkanaThemeResource;
 use Packages\Kilkana\Models\SnkKilkanaThemeCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaThemeModel;
 use Packages\Kilkana\Services\SnkKilkanaThemeWearService;
@@ -61,14 +62,9 @@ class SnkKilkanaThemesController extends CoreBaseApiController
             )
             ->when($filtros['q'] ?? null, fn ($q, $termino) => $q->search($termino))
             ->sorted($filtros['sort'] ?? null)
-            ->get()
-            ->map(fn (SnkKilkanaThemeModel $tema) => [
-                ...$tema->payload(),
-                'published_at' => $tema->published_at?->toIso8601String(),
-                'categories' => $tema->categories->map(fn ($c) => ['slug' => $c->slug, 'name' => $c->name])->values(),
-            ]);
+            ->get();
 
-        return response()->json(['themes' => $catalogo]);
+        return response()->json(['themes' => SnkKilkanaThemeResource::collection($catalogo)]);
     }
 
     /** El vocabulario con el que se filtra. Se lee; no se crea desde aquí. */

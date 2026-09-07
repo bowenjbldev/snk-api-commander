@@ -9,6 +9,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Core\Support\CorePackageSelectorSupport;
+use Packages\Kilkana\Http\Resources\SnkKilkanaNewsletterIssueResource;
 use Packages\Kilkana\Models\SnkKilkanaNewsletterIssueModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Services\SnkKilkanaNewsletterService;
@@ -50,7 +51,12 @@ class SnkKilkanaNewsletterController extends CoreBaseApiController
         $cifras = $this->newsletter->countsFor($issues->modelKeys());
 
         return response()->json([
-            'data' => $issues->map(fn (SnkKilkanaNewsletterIssueModel $i, int $p) => $this->row($i, $piezas[$p], $cifras[(int) $i->getKey()]))->values(),
+            'data' => SnkKilkanaNewsletterIssueResource::collection($issues->each(
+                function (SnkKilkanaNewsletterIssueModel $i, int $p) use ($piezas, $cifras) {
+                    $i->setAttribute('pieces', $piezas[$p]);
+                    $i->setAttribute('stats', $cifras[(int) $i->getKey()]);
+                },
+            )),
             'list' => $this->newsletter->listStats(),
             // Lo que se puede elegir para un número: las veinte publicadas más recientes.
             'candidates' => $this->titulos($this->newsletter->recent(20)),
@@ -65,7 +71,7 @@ class SnkKilkanaNewsletterController extends CoreBaseApiController
             return $response;
         }
 
-        return response()->json($this->row($this->newsletter->create(auth()->id() ? (int) auth()->id() : null)), 201);
+        return response()->json(new SnkKilkanaNewsletterIssueResource($this->conCifras($this->newsletter->create(auth()->id() ? (int) auth()->id() : null))), 201);
     }
 
     /** Asunto y preheader, y solo en un borrador: lo que hay en las bandejas no cambia. */
@@ -92,7 +98,7 @@ class SnkKilkanaNewsletterController extends CoreBaseApiController
         ]);
         $issue->fill($data)->save();
 
-        return response()->json($this->row($issue->fresh()));
+        return response()->json(new SnkKilkanaNewsletterIssueResource($this->conCifras($issue->fresh())));
     }
 
     /** Sale ahora o no sale. Una vez, y a los confirmados de este momento. */
@@ -111,7 +117,7 @@ class SnkKilkanaNewsletterController extends CoreBaseApiController
         $client = (string) CorePackageSelectorSupport::subdomainFromHost($request->getHost());
         $recipients = $this->newsletter->send($issue, DB::connection()->getDatabaseName(), $client);
 
-        return response()->json(['recipients' => $recipients, 'issue' => $this->row($issue->fresh())]);
+        return response()->json(['recipients' => $recipients, 'issue' => new SnkKilkanaNewsletterIssueResource($this->conCifras($issue->fresh()))]);
     }
 
     public function test(Request $request, $id = null): JsonResponse
@@ -132,30 +138,21 @@ class SnkKilkanaNewsletterController extends CoreBaseApiController
             return response()->json(['error' => 'Test could not be sent'], 502);
         }
 
-        return response()->json($this->row($issue->fresh()));
+        return response()->json(new SnkKilkanaNewsletterIssueResource($this->conCifras($issue->fresh())));
     }
 
     /**
-     * @param  ?Collection<int, SnkKilkanaPostModel>  $piezas  ya resueltas por el listado
-     * @param  ?array{opens: int, clicks: int, unsubs: int}  $cifras  ya resueltas por el listado
-     * @return array<string, mixed>
+     * Las piezas y las cifras de UN número, para las cuatro puertas que devuelven uno solo.
+     *
+     * El listado no pasa por aquí: las pide en una tanda para todos, que es lo que evita seis
+     * consultas por fila. Aquí son dos, y es una fila.
      */
-    private function row(SnkKilkanaNewsletterIssueModel $issue, ?Collection $piezas = null, ?array $cifras = null): array
+    private function conCifras(SnkKilkanaNewsletterIssueModel $issue): SnkKilkanaNewsletterIssueModel
     {
-        return [
-            'id' => (string) $issue->getKey(),
-            'subject' => $issue->subject,
-            'preheader' => $issue->preheader,
-            'status' => $issue->status,
-            'sent_at' => $issue->sent_at?->toIso8601String(),
-            'scheduled_at' => $issue->scheduled_at?->toIso8601String(),
-            'post_ids' => array_map(fn ($id) => (string) $id, is_array($issue->post_ids) ? $issue->post_ids : []),
-            'recipients' => (int) $issue->recipients_count,
-            'test_sent_to' => $issue->test_sent_to,
-            'test_sent_at' => $issue->test_sent_at?->toIso8601String(),
-            'pieces' => $this->titulos($piezas ?? $this->newsletter->pieces($issue)),
-            ...$cifras ?? $this->newsletter->counts($issue),
-        ];
+        $issue->setAttribute('pieces', $this->newsletter->pieces($issue));
+        $issue->setAttribute('stats', $this->newsletter->counts($issue));
+
+        return $issue;
     }
 
     /**

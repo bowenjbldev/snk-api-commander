@@ -7,6 +7,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
+use Packages\Kilkana\Http\Resources\SnkKilkanaGateResultResource;
 use Packages\Kilkana\Models\SnkKilkanaGateResultModel;
 use Packages\Kilkana\Services\SnkKilkanaActivityService;
 
@@ -43,12 +44,7 @@ class SnkKilkanaGateController extends CoreBaseApiController
         $failing = $filas->filter(fn (SnkKilkanaGateResultModel $r) => $r->failing())->count();
 
         return response()->json([
-            'data' => $filas->map(fn (SnkKilkanaGateResultModel $r) => [
-                'url' => $r->url,
-                'kind' => $r->kind,
-                'passing' => $r->checked_at === null ? null : $r->passing,
-                'checked_at' => $r->checked_at?->toIso8601String(),
-            ])->values(),
+            'data' => SnkKilkanaGateResultResource::collection($filas),
             'failing' => $failing,
             'last_run_at' => $filas->max('checked_at')?->toIso8601String(),
         ]);

@@ -6,6 +6,7 @@ use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
+use Packages\Kilkana\Http\Resources\SnkKilkanaPostNoteResource;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Models\SnkKilkanaPostNoteModel;
 
@@ -34,11 +35,11 @@ class SnkKilkanaPostNotesController extends CoreBaseApiController
             return response()->json(['error' => 'Record not found'], 404);
         }
 
-        return response()->json(SnkKilkanaPostNoteModel::query()
+        return response()->json(SnkKilkanaPostNoteResource::collection(SnkKilkanaPostNoteModel::query()
             ->where('post_id', $postId)
             ->with('user:id,name')
             ->orderByDesc('created_at')
-            ->get());
+            ->get()));
     }
 
     public function add(Request $request, $postId): JsonResponse
@@ -61,7 +62,7 @@ class SnkKilkanaPostNotesController extends CoreBaseApiController
             'body' => $data['body'],
         ]);
 
-        return response()->json($nota->load('user:id,name'), 201);
+        return response()->json(new SnkKilkanaPostNoteResource($nota->load('user:id,name')), 201);
     }
 
     /** Resolver o reabrir: lo único que cambia de una nota después de escrita. */
@@ -77,6 +78,6 @@ class SnkKilkanaPostNotesController extends CoreBaseApiController
         $data = $request->validate(['done' => 'required|boolean']);
         $nota->update(['done' => $data['done']]);
 
-        return response()->json($nota->load('user:id,name'));
+        return response()->json(new SnkKilkanaPostNoteResource($nota->load('user:id,name')));
     }
 }

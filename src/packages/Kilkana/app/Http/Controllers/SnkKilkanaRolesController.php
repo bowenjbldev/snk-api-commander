@@ -6,6 +6,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Core\Models\CoreUserModel;
+use Packages\Kilkana\Http\Resources\SnkKilkanaRoleResource;
 use Packages\Kilkana\Services\SnkKilkanaRoleCatalogService;
 use Spatie\Permission\Models\Role;
 
@@ -42,13 +43,10 @@ class SnkKilkanaRolesController extends CoreBaseApiController
             ->with('permissions:id,name')
             ->orderBy('id')
             ->get()
-            ->map(fn (Role $rol) => [
-                'name' => $rol->name,
-                'permissions' => $rol->permissions->pluck('name')->sort()->values(),
-                'users_count' => (int) $cuentas->get($rol->id, 0),
-                'seat' => ! in_array($rol->name, SnkKilkanaRoleCatalogService::WITHOUT_SEAT, true),
-            ]);
+            // El recuento se cuelga de la fila para que el Resource lo lea como cualquier otro
+            // atributo: viene de una sola consulta agrupada, no de una por papel.
+            ->each(fn (Role $rol) => $rol->setAttribute('users_count', (int) $cuentas->get($rol->id, 0)));
 
-        return response()->json($roles);
+        return response()->json(SnkKilkanaRoleResource::collection($roles));
     }
 }

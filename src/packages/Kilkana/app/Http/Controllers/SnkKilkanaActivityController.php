@@ -6,6 +6,7 @@ use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
+use Packages\Kilkana\Http\Resources\SnkKilkanaActivityResource;
 use Packages\Kilkana\Models\SnkKilkanaActivityModel;
 use Packages\Kilkana\Services\SnkKilkanaActivityService;
 
@@ -61,8 +62,6 @@ class SnkKilkanaActivityController extends CoreBaseApiController
             ->when(isset(SnkKilkanaActivityModel::TABS[$tab]), fn (Builder $q) => $q->whereIn('kind', SnkKilkanaActivityModel::TABS[$tab]))
             ->when($who !== '', fn (Builder $q) => $q->where('actor_name', $who));
 
-        $fila = $this->registro->row(...);
-
         // Un adelanto —la campana— es solo filas: la gente y las cifras son cinco consultas
         // más que el armazón pagaría en cada carga para no pintarlas.
         if ($adelanto > 0) {
@@ -70,14 +69,14 @@ class SnkKilkanaActivityController extends CoreBaseApiController
         }
         // Un export se lleva lo filtrado entero, hasta el techo.
         if ($request->boolean('all')) {
-            return response()->json(['data' => $filtrado->limit(self::EXPORT_MAX)->get()->map($fila)->values()]);
+            return response()->json(['data' => SnkKilkanaActivityResource::collection($filtrado->limit(self::EXPORT_MAX)->get())]);
         }
 
         $page = $filtrado->paginate($this->perPage());
         $semana = now()->subDays(7);
 
         return response()->json([
-            'data' => $page->getCollection()->map($fila)->values(),
+            'data' => SnkKilkanaActivityResource::collection($page->getCollection()),
             'meta' => $this->paginationMeta($page),
             // Quién aparece, para el desplegable: todo el registro visible, no lo filtrado.
             ...$this->wants('people') ? [
