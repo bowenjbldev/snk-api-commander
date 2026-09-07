@@ -9,7 +9,9 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Packages\Core\Support\CorePaginationSupport;
 use Packages\Kilkana\Enums\SnkKilkanaMediaRightsEnum;
+use Packages\Kilkana\Http\Resources\SnkKilkanaMediaResource;
 use Packages\Kilkana\Jobs\SnkKilkanaMediaWarmJob;
 use Packages\Kilkana\Models\SnkKilkanaMediaModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
@@ -19,51 +21,14 @@ class SnkKilkanaMediaService
 {
     public function __construct(private readonly SnkKilkanaImageService $images) {}
 
-    /**
-     * Lo que una ficha publica al panel, y **nada mas**.
-     *
-     * Lista blanca y no lista negra, igual que `FILA_DEL_LISTADO` en los articulos: una
-     * columna nueva en `kilkana_media` no se publica sola el dia que alguien la anada. Aqui
-     * no era hipotetico —la fila salia entera— y lo que se colaba era `disk` y `path`, que son
-     * exactamente los dos campos con los que se borra un fichero del disco. Leerlos no borra
-     * nada; publicarlos es contarle a cualquiera con sesion como esta montado el
-     * almacenamiento del inquilino, y no hay una sola pantalla que los pinte.
-     *
-     * Fuera tambien lo editorial que el panel no ensena hoy —`caption`, `description`,
-     * `source_url`, la caducidad de derechos— y `uploaded_by`. Que entren es anadirlos aqui,
-     * que es justo el momento en el que alguien decide publicarlos.
-     */
-    public const FILA_DE_LA_BIBLIOTECA = [
-        'id', 'url', 'original_name', 'title', 'mime', 'size_bytes', 'width', 'height',
-        'duration', 'alt', 'credit', 'license', 'rights_status', 'content_hash',
-        'focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h', 'frames', 'variants', 'poster_at', 'poster_media_id',
-        'created_at', 'deleted_at', 'usage_count', 'tags', 'collections',
-    ];
-
-    public function asLibraryRow(SnkKilkanaMediaModel $media): SnkKilkanaMediaModel
-    {
-        $media->setVisible(self::FILA_DE_LA_BIBLIOTECA);
-        // De las dos taxonomias basta el par que dibuja un chip: el id para escribir y el
-        // nombre para leer. Los pivotes no pintan nada.
-        $media->tags->each->setVisible(['id', 'name']);
-        $media->collections->each->setVisible(['id', 'name']);
-
-        return $media;
-    }
-
     public function index(Request $request): array
     {
         $perPage = max(1, min((int) $request->integer('per_page', 24), 100));
         $page = $this->filtered($request)->paginate($perPage);
 
         return [
-            'data' => array_map($this->asLibraryRow(...), $page->items()),
-            'meta' => [
-                'current_page' => $page->currentPage(),
-                'last_page' => $page->lastPage(),
-                'per_page' => $page->perPage(),
-                'total' => $page->total(),
-            ],
+            'data' => SnkKilkanaMediaResource::collection($page->getCollection()),
+            'meta' => CorePaginationSupport::meta($page),
             'facets' => $this->facets(),
             'scope' => $this->scope($request),
         ];
@@ -665,8 +630,6 @@ class SnkKilkanaMediaService
      */
     public function serialize(SnkKilkanaMediaModel $media): SnkKilkanaMediaModel
     {
-        return $this->asLibraryRow(
-            $media->fresh(['tags', 'collections'])->loadCount(SnkKilkanaMediaModel::USOS)
-        );
+        return $media->fresh(['tags', 'collections'])->loadCount(SnkKilkanaMediaModel::USOS);
     }
 }

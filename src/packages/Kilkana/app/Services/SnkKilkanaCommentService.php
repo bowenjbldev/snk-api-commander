@@ -2,6 +2,7 @@
 
 namespace Packages\Kilkana\Services;
 
+use Illuminate\Database\Eloquent\Collection;
 use Packages\Kilkana\Enums\SnkKilkanaCommentStatusEnum;
 use Packages\Kilkana\Models\SnkKilkanaCommentModel;
 
@@ -22,6 +23,45 @@ class SnkKilkanaCommentService
      *
      * @return array<string, int>
      */
+    /**
+     * Cuelga de la cuenta de cada comentario cuántos ha escrito y cuántos se le han rechazado.
+     *
+     * **Una consulta para la página entera, no una por fila.** Estaba en el controlador, junto
+     * al mapeo de la fila; aquí es lo que es —una consulta— y la forma la declara
+     * `SnkKilkanaCommentResource`.
+     *
+     * @param  Collection<int, SnkKilkanaCommentModel>  $comentarios
+     * @return Collection<int, SnkKilkanaCommentModel>
+     */
+    public function withAuthorHistory(Collection $comentarios): Collection
+    {
+        $cuentas = $comentarios->pluck('user')->filter()->unique(fn ($u) => $u->getKey());
+        if ($cuentas->isEmpty()) {
+            return $comentarios;
+        }
+
+        $historial = [];
+        SnkKilkanaCommentModel::query()
+            ->whereIn('user_id', $cuentas->map->getKey()->all())
+            ->selectRaw('user_id, status, count(*) as total')
+            ->groupBy('user_id', 'status')
+            ->get()
+            ->each(function ($fila) use (&$historial) {
+                $historial[$fila->user_id] ??= ['total' => 0, 'rejected' => 0];
+                $historial[$fila->user_id]['total'] += (int) $fila->total;
+                if ($fila->status === SnkKilkanaCommentStatusEnum::Rejected) {
+                    $historial[$fila->user_id]['rejected'] += (int) $fila->total;
+                }
+            });
+
+        $cuentas->each(function ($cuenta) use ($historial) {
+            $cuenta->setAttribute('comments_total', $historial[$cuenta->getKey()]['total'] ?? 0);
+            $cuenta->setAttribute('comments_rejected', $historial[$cuenta->getKey()]['rejected'] ?? 0);
+        });
+
+        return $comentarios;
+    }
+
     public function countsByStatus(): array
     {
         $porEstado = SnkKilkanaCommentModel::query()

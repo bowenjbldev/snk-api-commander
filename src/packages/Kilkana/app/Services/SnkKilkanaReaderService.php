@@ -3,10 +3,13 @@
 namespace Packages\Kilkana\Services;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Enums\SnkKilkanaCommentStatusEnum;
 use Packages\Kilkana\Models\SnkKilkanaCommentModel;
+use Packages\Kilkana\Models\SnkKilkanaReaderReadModel;
 use Packages\Kilkana\Models\SnkKilkanaSubscriberModel;
 
 /**
@@ -39,6 +42,78 @@ class SnkKilkanaReaderService
      * Si la cuenta es SOLO lectora. Spatie admite varios roles, y quien además tiene un asiento
      * es un compañero aunque también comente: a ese no se le bloquea desde aquí. Falla cerrado.
      */
+    /**
+     * Cuelga de cada cuenta lo que la pantalla de lectores enseña de ella: comentarios,
+     * lecturas del mes y su estado en el boletín.
+     *
+     * **Tres consultas para toda la página, no tres por fila.** Es la mitad de lo que hacía
+     * `asRows()` en el controlador; la otra mitad —la forma de la fila— la declara
+     * `SnkKilkanaReaderResource`. Estaban pegadas en un método de 63 líneas, y por eso ni una
+     * de las dos se podía probar sin la otra.
+     *
+     * Va como atributos y no como un array aparte para que el Resource las lea con `whenHas()`,
+     * igual que lee un `withCount`: para él no hay diferencia entre un agregado de la consulta
+     * y uno calculado en dos pasos.
+     *
+     * @param  Collection<int, CoreUserModel>  $users
+     * @return Collection<int, CoreUserModel>
+     */
+    public function withActivity(Collection $users): Collection
+    {
+        $ids = $users->modelKeys();
+        if ($ids === []) {
+            return $users;
+        }
+
+        $comentarios = [];
+        $ultimo = [];
+        SnkKilkanaCommentModel::query()
+            ->whereIn('user_id', $ids)
+            ->selectRaw('user_id, status, count(*) as total, max(created_at) as last_at')
+            ->groupBy('user_id', 'status')
+            ->get()
+            ->each(function ($fila) use (&$comentarios, &$ultimo) {
+                $comentarios[$fila->user_id] ??= ['total' => 0, 'rejected' => 0];
+                $comentarios[$fila->user_id]['total'] += (int) $fila->total;
+                if ($fila->status === SnkKilkanaCommentStatusEnum::Rejected) {
+                    $comentarios[$fila->user_id]['rejected'] += (int) $fila->total;
+                }
+                $ultimo[$fila->user_id] = max($ultimo[$fila->user_id] ?? '', (string) $fila->last_at);
+            });
+
+        $lecturas = SnkKilkanaReaderReadModel::query()
+            ->whereIn('user_id', $ids)
+            ->inMonth()
+            ->selectRaw('user_id, count(*) as total, max(read_at) as last_at')
+            ->groupBy('user_id')
+            ->get()
+            ->keyBy('user_id');
+
+        $boletin = SnkKilkanaSubscriberModel::query()
+            ->whereIn('email', $users->pluck('email'))
+            ->get(['email', 'status', 'consent_source', 'consent_at'])
+            ->keyBy('email');
+
+        return $users->each(function (CoreUserModel $user) use ($comentarios, $ultimo, $lecturas, $boletin) {
+            $id = $user->getKey();
+            $lectura = $lecturas->get($id);
+
+            $user->setAttribute('comments_total', $comentarios[$id]['total'] ?? 0);
+            $user->setAttribute('comments_rejected', $comentarios[$id]['rejected'] ?? 0);
+            $user->setAttribute('reads_total', (int) ($lectura?->total ?? 0));
+            $user->setAttribute('newsletter', $boletin->get($user->email));
+
+            // Como fechas y no como cadenas: hoy las tres llegan de un agregado en
+            // `Y-m-d H:i:s`, pero el día que una venga en ISO la `T` ordena por delante del
+            // espacio y ganaría la más vieja.
+            $user->setAttribute('last_seen_at', collect([
+                $user->getAttribute('last_token_at'),
+                $ultimo[$id] ?? null,
+                $lectura?->last_at,
+            ])->filter()->map(fn ($v) => Carbon::parse($v))->max());
+        });
+    }
+
     public function isReader(?CoreUserModel $user): bool
     {
         $roles = $user?->roles->pluck('name') ?? collect();

@@ -4,16 +4,14 @@ namespace Packages\Kilkana\Http\Controllers;
 
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Carbon;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Enums\SnkKilkanaCommentStatusEnum;
 use Packages\Kilkana\Enums\SnkKilkanaSubscriberStatusEnum;
+use Packages\Kilkana\Http\Resources\SnkKilkanaReaderResource;
 use Packages\Kilkana\Models\SnkKilkanaCommentModel;
-use Packages\Kilkana\Models\SnkKilkanaReaderReadModel;
 use Packages\Kilkana\Models\SnkKilkanaSubscriberModel;
 use Packages\Kilkana\Services\SnkKilkanaReaderService;
 
@@ -87,14 +85,14 @@ class SnkKilkanaReadersController extends CoreBaseApiController
         if ($request->boolean('all')) {
             $rows = $query->limit(self::EXPORT_MAX)->get();
 
-            return response()->json(['data' => $this->asRows($rows)]);
+            return response()->json(['data' => SnkKilkanaReaderResource::collection($this->readers->withActivity($rows))]);
         }
 
         $page = $query->paginate($this->perPage());
         $cifras = $this->wants('counts') ? $this->counts() : null;
 
         return response()->json([
-            'data' => $this->asRows($page->getCollection()),
+            'data' => SnkKilkanaReaderResource::collection($this->readers->withActivity($page->getCollection())),
             'meta' => $this->paginationMeta($page),
             // Las dos comparten dos consultas, así que se calculan en este orden y la banda
             // reutiliza lo que las pestañas ya contaron. Ver `stats()`.
@@ -219,76 +217,5 @@ class SnkKilkanaReadersController extends CoreBaseApiController
                 ->count('user_id'),
             'blocked' => $counts['blocked'] ?? $this->readers()->whereNotNull('suspended_at')->count(),
         ];
-    }
-
-    /**
-     * Las filas tal como las lee el panel, con lo que hace falta para la tabla y la ficha en
-     * cuatro consultas para la página entera y no cuatro por fila: comentarios y rechazados,
-     * lecturas medidas del mes, el boletín por correo y la última vez que se la vio.
-     *
-     * @return list<array<string, mixed>>
-     */
-    private function asRows(Collection $users): array
-    {
-        $ids = $users->modelKeys();
-        $historial = [];
-        $ultimo = [];
-        if ($ids !== []) {
-            SnkKilkanaCommentModel::query()
-                ->whereIn('user_id', $ids)
-                ->selectRaw('user_id, status, count(*) as total, max(created_at) as last_at')
-                ->groupBy('user_id', 'status')
-                ->get()
-                ->each(function ($fila) use (&$historial, &$ultimo) {
-                    $historial[$fila->user_id] ??= ['total' => 0, 'rejected' => 0];
-                    $historial[$fila->user_id]['total'] += (int) $fila->total;
-                    if ($fila->status === SnkKilkanaCommentStatusEnum::Rejected) {
-                        $historial[$fila->user_id]['rejected'] += (int) $fila->total;
-                    }
-                    $ultimo[$fila->user_id] = max($ultimo[$fila->user_id] ?? '', (string) $fila->last_at);
-                });
-        }
-        $lecturas = $ids === [] ? collect() : SnkKilkanaReaderReadModel::query()
-            ->whereIn('user_id', $ids)
-            ->inMonth()
-            ->selectRaw('user_id, count(*) as total, max(read_at) as last_at')
-            ->groupBy('user_id')
-            ->get()
-            ->keyBy('user_id');
-        $boletin = $users->isEmpty() ? collect() : SnkKilkanaSubscriberModel::query()
-            ->whereIn('email', $users->pluck('email'))
-            ->get(['email', 'status', 'consent_source', 'consent_at'])
-            ->keyBy('email');
-
-        return $users->map(function (CoreUserModel $user) use ($historial, $ultimo, $lecturas, $boletin) {
-            $id = $user->getKey();
-            $suscripcion = $boletin->get($user->email);
-            $lectura = $lecturas->get($id);
-            // Como fechas y no como cadenas: hoy las tres llegan de un agregado en `Y-m-d H:i:s`,
-            // pero el dia que una venga en ISO la `T` ordena por delante del espacio y ganaria
-            // la mas vieja.
-            $visto = collect([
-                $user->getAttribute('last_token_at'),
-                $ultimo[$id] ?? null,
-                $lectura?->last_at,
-            ])->filter()->map(fn ($v) => Carbon::parse($v))->max();
-
-            return [
-                'id' => (string) $id,
-                'name' => $user->full_name ?: $user->name,
-                'email' => $user->email,
-                'since' => $user->created_at?->toIso8601String(),
-                'comments' => $historial[$id]['total'] ?? 0,
-                'rejected' => $historial[$id]['rejected'] ?? 0,
-                'reads' => (int) ($lectura?->total ?? 0),
-                'newsletter' => $suscripcion === null ? null : [
-                    'status' => $suscripcion->status->value,
-                    'consent_source' => $suscripcion->consent_source?->value,
-                    'consent_at' => $suscripcion->consent_at?->toIso8601String(),
-                ],
-                'last_seen_at' => $visto?->toIso8601String(),
-                'blocked' => $user->suspended_at !== null,
-            ];
-        })->values()->all();
     }
 }

@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Kilkana\Enums\SnkKilkanaMediaRightsEnum;
+use Packages\Kilkana\Http\Resources\SnkKilkanaMediaResource;
 use Packages\Kilkana\Models\SnkKilkanaMediaModel;
 use Packages\Kilkana\Services\SnkKilkanaImageService;
 use Packages\Kilkana\Services\SnkKilkanaMediaService;
@@ -75,7 +76,7 @@ class SnkKilkanaMediaController extends CoreBaseApiController
         }
 
         return response()->json([
-            ...$this->media->serialize($media)->toArray(),
+            ...(new SnkKilkanaMediaResource($this->media->serialize($media)))->toArray(request()),
             'uses' => $this->media->uses($media),
         ]);
     }
@@ -126,7 +127,7 @@ class SnkKilkanaMediaController extends CoreBaseApiController
             'collection_ids.*' => 'integer|exists:kilkana_media_collections,id',
         ]);
 
-        return response()->json($this->media->update($media, $data));
+        return response()->json(new SnkKilkanaMediaResource($this->media->update($media, $data)));
     }
 
     public function destroy($id = null): JsonResponse
@@ -156,7 +157,7 @@ class SnkKilkanaMediaController extends CoreBaseApiController
             return response()->json(['error' => 'Record not found'], 404);
         }
 
-        return response()->json($this->media->restore($media));
+        return response()->json(new SnkKilkanaMediaResource($this->media->restore($media)));
     }
 
     /** Borrado permanente: elimina el fichero del disco (si es propio) y la fila. */
@@ -230,8 +231,8 @@ class SnkKilkanaMediaController extends CoreBaseApiController
         $result = $this->media->upload($data, (int) auth()->id());
 
         return $result['duplicate']
-            ? response()->json(['error' => 'Duplicate', 'media' => $result['media']], 409)
-            : response()->json($result['media'], 201);
+            ? response()->json(['error' => 'Duplicate', 'media' => new SnkKilkanaMediaResource($result['media'])], 409)
+            : response()->json(new SnkKilkanaMediaResource($result['media']), 201);
     }
 
     /** Reemplaza el binario conservando los metadatos editoriales y el id. */
@@ -280,7 +281,7 @@ class SnkKilkanaMediaController extends CoreBaseApiController
 
         return $row === null
             ? response()->json(['error' => 'That file cannot be the poster'], 422)
-            : response()->json($row);
+            : response()->json(new SnkKilkanaMediaResource($row));
     }
 
     public function replace(Request $request, $id): JsonResponse

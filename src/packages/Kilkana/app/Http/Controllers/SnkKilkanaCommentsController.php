@@ -6,10 +6,10 @@ use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Enums\SnkKilkanaCommentStatusEnum;
+use Packages\Kilkana\Http\Resources\SnkKilkanaCommentResource;
 use Packages\Kilkana\Models\SnkKilkanaCommentModel;
 use Packages\Kilkana\Services\SnkKilkanaActivityService;
 use Packages\Kilkana\Services\SnkKilkanaCommentService;
@@ -105,11 +105,10 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
             ->orderByDesc('id')
             ->paginate($this->perPage());
 
-        $historial = $this->accountHistory($page->getCollection());
-        $page->getCollection()->each(fn (SnkKilkanaCommentModel $c) => $this->asRow($c, $historial));
+        $this->comments->withAuthorHistory($page->getCollection());
 
         return response()->json([
-            'data' => $page->items(),
+            'data' => SnkKilkanaCommentResource::collection($page->getCollection()),
             'meta' => $this->paginationMeta($page),
             ...$this->wants('counts') ? [
                 'counts' => $this->comments->countsByStatus(),
@@ -208,56 +207,5 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
         }
 
         return response()->json(['blocked' => (string) $autor->getKey(), 'rejected' => $this->lectores->block($autor)]);
-    }
-
-    /**
-     * Cuantos ha escrito y cuantos se le han rechazado, por cuenta, en dos consultas para la
-     * pagina entera y no dos por fila.
-     *
-     * @return array<int, array{total: int, rejected: int}>
-     */
-    private function accountHistory(Collection $comentarios): array
-    {
-        $ids = $comentarios->pluck('user_id')->filter()->unique()->values();
-        if ($ids->isEmpty()) {
-            return [];
-        }
-
-        $historial = [];
-        SnkKilkanaCommentModel::query()
-            ->whereIn('user_id', $ids)
-            ->selectRaw('user_id, status, count(*) as total')
-            ->groupBy('user_id', 'status')
-            ->get()
-            ->each(function ($fila) use (&$historial) {
-                $historial[$fila->user_id] ??= ['total' => 0, 'rejected' => 0];
-                $historial[$fila->user_id]['total'] += (int) $fila->total;
-                if ($fila->status === SnkKilkanaCommentStatusEnum::Rejected) {
-                    $historial[$fila->user_id]['rejected'] += (int) $fila->total;
-                }
-            });
-
-        return $historial;
-    }
-
-    /** La fila tal como la lee el panel: la cuenta, la pieza y el padre ya resueltos. */
-    private function asRow(SnkKilkanaCommentModel $c, array $historial): void
-    {
-        $user = $c->user;
-        $c->setAttribute('author', $user === null ? null : [
-            'id' => (string) $user->getKey(),
-            'name' => $user->full_name ?: $user->name,
-            'email' => $user->email,
-            'since' => $user->created_at?->toIso8601String(),
-            'total' => $historial[$user->getKey()]['total'] ?? 0,
-            'rejected' => $historial[$user->getKey()]['rejected'] ?? 0,
-            'blocked' => $user->suspended_at !== null,
-        ]);
-        $c->setAttribute('on', $c->post === null ? null : ['id' => (string) $c->post->getKey(), 'title' => $c->post->title]);
-        $c->setAttribute('reply_to', $c->parent === null ? null : [
-            'author' => $c->parent->user?->full_name ?: ($c->parent->user?->name ?? null),
-            'body' => $c->parent->body,
-        ]);
-        $c->unsetRelation('user')->unsetRelation('post')->unsetRelation('parent');
     }
 }

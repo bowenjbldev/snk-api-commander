@@ -7,6 +7,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Packages\Core\Models\CoreUserModel;
+use Packages\Kilkana\Http\Resources\SnkKilkanaMediaResource;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaMediaCollectionModel;
@@ -48,19 +49,32 @@ class KilkanaMediaLibraryTest extends TestCase
     {
         $foto = $this->foto();
 
-        $fila = $this->media->serialize($foto)->toArray();
+        $fila = json_decode(json_encode(new SnkKilkanaMediaResource($this->media->serialize($foto))), true);
 
-        // Por conjunto y no por orden: el orden del JSON lo pone la tabla —`toArray()` recorre
-        // los atributos cargados—, no la lista blanca, que se escribe agrupada para leerse.
-        $esperadas = SnkKilkanaMediaService::FILA_DE_LA_BIBLIOTECA;
+        // Por conjunto y no por orden: el orden del JSON lo pone el Resource, que se escribe
+        // agrupado para leerse, y esta lista se escribe agrupada por lo que significa cada cosa.
+        $esperadas = [
+            'id', 'url', 'original_name', 'title', 'mime', 'size_bytes', 'width', 'height',
+            'duration', 'alt', 'caption', 'credit', 'license', 'rights_status', 'content_hash',
+            'focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h', 'frames', 'variants',
+            'poster_at', 'poster_media_id', 'created_at', 'deleted_at', 'usage_count',
+            'tags', 'collections',
+        ];
         $publicadas = array_keys($fila);
         sort($esperadas);
         sort($publicadas);
 
-        $this->assertSame($esperadas, $publicadas, 'la ficha publica claves que la lista blanca no nombra');
-        // Los dos con los que se borra un fichero: estan en la fila y no salen de ella.
+        $this->assertSame($esperadas, $publicadas, 'la ficha publica claves que esta lista no nombra');
+
+        // `caption` sale, y antes no: la lista blanca de la mediateca lo escondia mientras la
+        // de la calle lo publicaba, asi que el pie de una foto lo veia un lector y no quien la
+        // edita. Dos listas para el mismo dato es como se llega a eso.
+        //
+        // Los que no salen son los que llevan al fichero, y esos no dependen de la puerta.
         $this->assertSame('public', $foto->disk);
-        $this->assertArrayNotHasKey('path', $fila);
+        foreach (['disk', 'path', 'url_hash', 'uploaded_by', 'description', 'source_url', 'rights_expires_at'] as $dentro) {
+            $this->assertArrayNotHasKey($dentro, $fila, "«{$dentro}» no lo pinta ninguna pantalla del panel");
+        }
     }
 
     /**
