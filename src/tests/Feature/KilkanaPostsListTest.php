@@ -6,6 +6,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaPostsController;
+use Packages\Kilkana\Http\Resources\SnkKilkanaPostResource;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaMediaModel;
@@ -464,13 +465,17 @@ class KilkanaPostsListTest extends TestCase
         $firma = $this->author('Marta Beneyto');
         $foto = SnkKilkanaMediaModel::create(['url' => 'https://ejemplo.test/foto.jpg', 'url_hash' => sha1('https://ejemplo.test/foto.jpg')]);
 
+        // Con las cuatro relaciones pedidas, que es cuando un N+1 puede existir: sin pedirlas
+        // el listado no carga ninguna y la prueba sería cierta sin demostrar nada. Y por el
+        // Resource, que es por donde sale en producción — la mitad de los N+1 de Eloquent no
+        // los dispara la consulta sino un accesor al serializar.
         $serializar = function () {
-            $page = $this->posts->filter($this->posts->query(1, true), [])->paginate(25);
-            $page->getCollection()->each(function ($post) {
-                $post->makeHidden('body_blocks');
-                $post->coverMedia?->makeHidden('usage_count');
-            });
-            json_encode($page->items());
+            $page = $this->posts->filter(
+                $this->posts->query(1, true)->with(['category', 'author', 'tags', 'coverMedia']),
+                [],
+            )->paginate(25);
+
+            json_encode(SnkKilkanaPostResource::collection($page->getCollection()));
         };
 
         for ($n = 0; $n < 3; $n++) {
@@ -561,8 +566,8 @@ class KilkanaPostsListTest extends TestCase
 
         $this->assertSame([
             'id', 'title', 'excerpt', 'slug', 'status', 'content_tier',
-            'publish_at', 'cover_media_id', 'views_total', 'category', 'author', 'tags', 'cover',
-        ], array_keys($fila), '`cover` viaja porque el modelo carga `coverMedia` en su `$with`.');
+            'publish_at', 'cover_media_id', 'views_total', 'category', 'author', 'tags',
+        ], array_keys($fila));
 
         $this->assertSame($foto->id, $fila['cover_media_id'], 'La portada es su columna, no un objeto.');
         // Y sale sin pedirla: no es una columna, así que `?fields=` no la nombra —le antepondría
@@ -585,18 +590,14 @@ class KilkanaPostsListTest extends TestCase
     }
 
     /**
-     * `?fields=` recorta columnas; las relaciones **todavía no**, y aquí queda escrito por qué.
+     * Lo que no se pide no viaja: **ni columnas ni relaciones**.
      *
-     * El modelo declara `protected $with = ['category', 'author', 'coverMedia', 'tags']`, así que
-     * las carga aunque nadie las pida y `whenLoaded()` las ve puestas. Quitarlo es el paso
-     * siguiente y no cabe aquí: de ese `$with` dependen el editor —`GET posts/{id}` devuelve la
-     * pieza con sus relaciones sin pedirlas— y el accesor `cover`, que hace `$this->coverMedia`
-     * y con `preventLazyLoading()` encendido reventaría en cuanto no estuviera cargada.
-     *
-     * Mientras tanto: las columnas sí obedecen, que es la mitad que este paso trae. Cuando
-     * `$with` se vaya, esta prueba pasa a exigir lo contrario.
+     * El modelo declaraba `$with = ['category', 'author', 'coverMedia', 'tags']`, así que las
+     * cargaba en toda consulta de piezas aunque la pantalla no pintara ninguna —y con ellas, la
+     * cuenta de usos de cada portada, que son tres `COUNT` por foto—. Era la última pieza de la
+     * forma de salida que decidía el modelo en vez de quien pregunta.
      */
-    public function test_las_columnas_obedecen_aunque_las_relaciones_todavia_viajen_solas(): void
+    public function test_lo_que_no_se_pide_no_viaja(): void
     {
         $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
         $marta->assignRole('director');
@@ -606,11 +607,8 @@ class KilkanaPostsListTest extends TestCase
         request()->query->replace(['fields' => 'id,title']);
         $fila = app(SnkKilkanaPostsController::class)->index()->getData(true)['data'][0];
 
-        foreach (['excerpt', 'slug', 'status', 'publish_at', 'cover_media_id'] as $noPedida) {
-            $this->assertArrayNotHasKey($noPedida, $fila, "`{$noPedida}` no se pidió: no viaja.");
-        }
+        $this->assertSame(['id', 'title', 'views_total'], array_keys($fila), 'Y `views_total` porque la suma se cuelga siempre.');
         $this->assertSame('Una', $fila['title']);
-        $this->assertArrayHasKey('category', $fila, 'Las relaciones sí, mientras el modelo las declare en `$with`.');
     }
 
     /**
@@ -622,10 +620,20 @@ class KilkanaPostsListTest extends TestCase
         $firma = $this->author('Marta Beneyto');
         $pieza = $this->makePost('Una pieza', $local, $firma, 'draft');
 
-        $json = json_decode(json_encode($this->posts->find($pieza->id, 1, true)), true);
+        $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
+        $marta->assignRole('director');
+        $this->actingAs($marta, 'sanctum');
+        request()->query->replace(['include' => 'category,author,tags,coverMedia']);
 
+        $json = app(SnkKilkanaPostsController::class)->show($pieza->id)->getData(true);
+
+        // Sin `?fields=`, la ficha trae la pieza entera: es la puerta del editor y ahí se
+        // escribe. `url_path` sale porque `url_date` está, que es lo que sustituye al `$appends`.
         foreach (['body_blocks', 'seo_title', 'url_path', 'og_title', 'noindex'] as $campo) {
             $this->assertArrayHasKey($campo, $json, "el editor necesita «{$campo}»");
+        }
+        foreach (['category', 'author', 'tags'] as $relacion) {
+            $this->assertArrayHasKey($relacion, $json, "el editor pide «{$relacion}» y tiene que llegar");
         }
     }
 

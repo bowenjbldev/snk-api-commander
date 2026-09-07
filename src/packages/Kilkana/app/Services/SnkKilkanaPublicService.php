@@ -541,7 +541,7 @@ class SnkKilkanaPublicService
     private function article(Builder $query): ?SnkKilkanaPostModel
     {
         $post = $query
-            ->with([self::AUTHOR_PUBLIC, 'ogImage'])
+            ->with([self::AUTHOR_PUBLIC, 'ogImage', 'category', 'tags', 'coverMedia'])
             ->withSum('views as views_total', 'engaged')
             // Los aprobados, con el alias definitivo: es lo que la calle puede ver.
             ->withCount(['comments as comments_count' => fn ($c) => $c->approved()])

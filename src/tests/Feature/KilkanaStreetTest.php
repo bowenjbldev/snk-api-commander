@@ -152,20 +152,24 @@ class KilkanaStreetTest extends TestCase
     public function test_el_listado_publico_no_trae_el_cuerpo_ni_suma_lo_que_nadie_pinta(): void
     {
         $this->piezas(['a']);
+        // Lo que pide el frontend: sin `?fields=` la puerta sirve su techo, y las cuatro
+        // relaciones se incluyen por su nombre.
+        request()->query->replace(['include' => 'category,author,tags,coverMedia']);
 
         DB::flushQueryLog();
         DB::enableQueryLog();
-        $fila = app(SnkKilkanaPublicService::class)->posts(['per_page' => 5])->first()->toArray();
+        $pieza = app(SnkKilkanaPublicService::class)->posts(['per_page' => 5])->first();
         $sql = DB::getQueryLog()[0]['query'];
         DB::disableQueryLog();
+        $fila = json_decode(json_encode(new SnkKilkanaPostResource($pieza)), true);
 
         $this->assertStringNotContainsString('body_blocks', $sql, 'El listado se trae el cuerpo entero de cada pieza.');
         $this->assertStringNotContainsString('views_day', $sql);
         $this->assertStringNotContainsString('views_week', $sql);
         $this->assertStringContainsString('views_total', $sql);
 
-        // Lo que la calle lee de una pieza. La lista está escrita a mano: si alguien recorta la
-        // proyección de más, esto se pone rojo antes de que el periódico pierda una portada.
+        // Lo que la calle lee de una pieza. La lista está escrita a mano: si alguien recorta el
+        // techo de más, esto se pone rojo antes de que el periódico pierda una portada.
         foreach (['id', 'title', 'excerpt', 'slug', 'status', 'content_tier', 'publish_at', 'unpublish_at',
             'updated_at', 'url_path', 'views_total', 'comments_count', 'cover', 'category', 'author', 'tags',
             'noindex', 'seo_title', 'seo_description', 'og_title', 'og_description', 'og_image_id'] as $campo) {
@@ -271,16 +275,14 @@ class KilkanaStreetTest extends TestCase
         $minima = $fila('id,title,url_date,slug');
 
         $this->assertSame(
-            ['id', 'title', 'slug', 'views_total', 'url_path', 'category', 'author', 'tags', 'cover', 'comments_count'],
+            ['id', 'title', 'slug', 'views_total', 'url_path', 'comments_count'],
             array_keys($minima),
+            'Ni una relación: el modelo dejó de cargarlas solo y aquí no se ha incluido ninguna.',
         );
         $this->assertNotNull($minima['url_path'], 'El derivado sale con la columna de la que depende.');
 
-        // De esas diez, cuatro son las columnas pedidas y `url_path` el derivado que sale con
-        // `url_date`. Las otras cinco no las elige quien llama **todavía**: `views_total` y
-        // `comments_count` son agregados que esta puerta cuelga siempre, y las tres relaciones
-        // más la portada viajan porque el modelo las declara en su `$with`. Eso último se va en
-        // el paso siguiente, y entonces esta lista se queda en cinco.
+        // Cuatro columnas pedidas, `url_path` como derivado de `url_date`, y los dos agregados
+        // que esta puerta cuelga siempre. Nada más.
         foreach (['excerpt', 'seo_title', 'og_title', 'publish_at', 'noindex'] as $noPedida) {
             $this->assertArrayNotHasKey($noPedida, $minima, "`{$noPedida}` no se pidió: no viaja.");
         }

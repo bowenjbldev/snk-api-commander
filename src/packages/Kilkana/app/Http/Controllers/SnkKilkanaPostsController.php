@@ -54,10 +54,19 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         return $this->posts->query((int) auth()->id(), $this->canEditOthers());
     }
 
-    /** Una pieza ajena no existe: 404, no 403 — el id es correlativo y un 403 confirmaría cuántas hay. */
+    /**
+     * Una pieza ajena no existe: 404, no 403 — el id es correlativo y un 403 confirmaría cuántas hay.
+     *
+     * Con `$applyWith` va por `queryBuilder()`, que arranca de `newQuery()` —o sea, ya acotado
+     * por propiedad— y encima aplica lo que la query pida. Es lo que hace que `?include=` y
+     * `?fields=` lleguen también a la ficha, y no solo al listado. Sin él, la ficha del editor
+     * salía sin relaciones en cuanto el modelo dejó de cargarlas solo.
+     */
     protected function findModel($id, bool $applyWith = false): ?Model
     {
-        return $this->posts->find($id, (int) auth()->id(), $this->canEditOthers());
+        return $applyWith
+            ? $this->queryBuilder()->find($id)
+            : $this->posts->find($id, (int) auth()->id(), $this->canEditOthers());
     }
 
     private function canEditOthers(): bool

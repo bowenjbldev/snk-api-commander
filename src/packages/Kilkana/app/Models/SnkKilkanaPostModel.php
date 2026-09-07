@@ -26,11 +26,18 @@ class SnkKilkanaPostModel extends Model
 
     protected $guarded = [];
 
-    protected $with = ['category', 'author', 'coverMedia', 'tags'];
-
-    protected $hidden = ['category_id', 'author_id', 'cover_media_id', 'coverMedia'];
-
-    protected $appends = ['cover', 'url_path'];
+    /*
+     * **Aquí no se declara qué relaciones se cargan ni qué campos salen.** Lo decide quien
+     * pregunta, con `?include=` y `?fields=`, dentro del techo de su puerta.
+     *
+     * Había un `$with` con las cuatro relaciones, un `$hidden` con las tres foráneas y un
+     * `$appends` con `cover` y `url_path`. Los tres son globales por modelo, y la misma pieza la
+     * leen un anónimo, la tabla del panel y el editor: un solo juego de reglas para tres
+     * preguntas distintas es lo que obligó a inventar tres listas blancas encima para volver a
+     * recortar. El `$with` además cargaba cuatro relaciones en consultas que no pintan ninguna.
+     *
+     * Lo que sale lo declara `SnkKilkanaPostResource`; lo que se carga, la query.
+     */
 
     /**
      * El `config` de un bloque es un OBJETO, tambien cuando esta vacio.
@@ -200,12 +207,6 @@ class SnkKilkanaPostModel extends Model
         }
 
         return [['id' => 'paywall-auto', 'type' => 'paywall', 'config' => []]];
-    }
-
-    /** La portada serializada como `cover` (objeto media o null). */
-    public function getCoverAttribute(): ?SnkKilkanaMediaModel
-    {
-        return $this->coverMedia;
     }
 
     /**
