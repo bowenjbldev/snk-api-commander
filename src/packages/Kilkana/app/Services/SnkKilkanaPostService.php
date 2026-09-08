@@ -358,7 +358,7 @@ class SnkKilkanaPostService
     /** Una accion masiva es UNA decision de quien la pulsa: no puede aplicarse a medias. */
     public function bulk(array $ids, string $action, int $userId, bool $canEditOthers, array $tags = []): int
     {
-        return DB::transaction(function () use ($ids, $action, $userId, $canEditOthers, $tags) {
+        $movidas = DB::transaction(function () use ($ids, $action, $userId, $canEditOthers, $tags) {
             $query = $this->scopeToOwner(SnkKilkanaPostModel::query(), $userId, $canEditOthers)
                 ->whereIn('id', $ids);
 
@@ -411,6 +411,24 @@ class SnkKilkanaPostService
 
             return $count;
         });
+
+        // Una escritura en tanda que no deja rastro no se puede reconstruir después. Si mañana
+        // alguien jura que publicó veinte, esto es lo único que hay dónde mirar, y **la
+        // diferencia entre lo pedido y lo movido es justo el dato que interesa**: lo que no se
+        // movió es lo que no era suyo o ya estaba así.
+        //
+        // Va aquí y no en el controlador porque aquí está todo lo que se apunta —quién, qué, en
+        // cuántas— sin tener que preguntárselo a la petición.
+        Log::info('kilkana: acción en tanda sobre artículos', [
+            'action' => $action,
+            'user_id' => $userId,
+            'asked' => count($ids),
+            'moved' => $movidas,
+            'ids' => $ids,
+            'tags' => $tags,
+        ]);
+
+        return $movidas;
     }
 
     /**
@@ -436,6 +454,73 @@ class SnkKilkanaPostService
         $vacia = $wanted === null || trim($wanted) === '';
 
         return $vacia || Carbon::parse($wanted)->isFuture() ? now()->toDateTimeString() : null;
+    }
+
+    /**
+     * ¿Escribe esta petición desde una versión que ya no es la actual?
+     *
+     * Quien manda `expected_updated_at` dice desde qué versión escribe. Se comparan **instantes,
+     * no cadenas**: la versión llega en la variante ISO que el cliente recibió, y un cambio de
+     * serializador no puede convertir todos los guardados en un 409.
+     *
+     * Lo ilegible cuenta como desfasado, no como ausente: quien manda basura en ese campo no
+     * puede acabar pisando lo que otro escribió.
+     *
+     * Estático y aquí, y no en el controlador, porque es la regla «desde qué versión escribes» y
+     * allí no había forma de probarla sin montar una petición.
+     */
+    public static function staleFor(SnkKilkanaPostModel $post, mixed $expected): bool
+    {
+        if (! is_string($expected) || $expected === '') {
+            return false;
+        }
+
+        try {
+            return $post->updated_at === null || ! Carbon::parse($expected)->equalTo($post->updated_at);
+        } catch (\Throwable) {
+            return true;
+        }
+    }
+
+    /**
+     * Qué significa una edición parcial que publica: rellena desde la fila lo que no viene.
+     *
+     * Lo que `required_if` tiene que mirar es el estado RESULTANTE, y una edición es parcial por
+     * definición: publicar una pieza es `PUT {status:"published"}` y nada más. Validando solo el
+     * cuerpo, la regla exige una entradilla que la fila **ya tiene** y devuelve un 422 que no
+     * significa nada — y obliga al panel a reenviar campos que no está editando, que es
+     * exactamente como se pisa lo que otro acaba de escribir.
+     *
+     * Solo rellena lo que falta: mandar la entradilla vacía a propósito sigue siendo un 422.
+     *
+     * Y sella la fecha, porque **publicar es AHORA**. Un borrador no tiene `publish_at` —se sella
+     * al salir a la calle—, así que el relleno no tenía nada con que rellenar y `required_if`
+     * rechazaba: desde el editor **no se podía publicar una pieza**. Pisa además una fecha futura
+     * por lo mismo que el lote: publicar a mano una programada la saca ahora, y dejarle la
+     * prevista la ordenaría mañana en la portada, el sitemap y el feed. `scheduled` no entra —una
+     * programada sin fecha es un error de verdad, no una que haya que inventar—, y de eso se
+     * ocupa `stampFor()`.
+     *
+     * @param  array<string, mixed>  $entrada
+     * @return array<string, mixed>
+     */
+    public static function publishDefaults(SnkKilkanaPostModel $post, array $entrada): array
+    {
+        if (! in_array($entrada['status'] ?? null, SnkKilkanaPostStatusEnum::publishing(), true)) {
+            return $entrada;
+        }
+
+        $entrada += array_filter([
+            'excerpt' => $post->excerpt,
+            'publish_at' => $post->publish_at?->toDateTimeString(),
+        ], fn ($v) => $v !== null);
+
+        $sello = self::stampFor(
+            (string) $entrada['status'],
+            isset($entrada['publish_at']) ? (string) $entrada['publish_at'] : null,
+        );
+
+        return $sello === null ? $entrada : [...$entrada, 'publish_at' => $sello];
     }
 
     /**
