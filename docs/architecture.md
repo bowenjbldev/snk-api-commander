@@ -73,14 +73,31 @@ lo que no se declara no se aplica.
 `newQuery()` sigue siendo el gancho por el que un recurso acota lo suyo —por propiedad, por
 permiso— antes de que nadie pida nada. Quien llama elige dentro de eso, nunca fuera.
 
-Dos piezas no son del paquete:
+Tres piezas no son del paquete:
 
 - `summary` pide agregados de la colección; los del paquete van por relación.
-- El techo de lo legible y el mapa de accesor a columnas viven en el modelo. `PUBLIC_FIELDS` dice
-  qué ve un anónimo y es más estrecho que `$hidden`, que es lo que no se ve nunca. `COLUMNS_FOR`
-  dice de qué columnas depende un campo calculado: sin él, pedir `url_path` devuelve nulo.
+- El techo de `?fields=` es de la puerta, no del modelo: `SnkKilkanaPostService::FIELDS` para el
+  panel, `SnkKilkanaPublicService::FIELDS` para la calle. En una puerta anónima el techo es
+  **además el valor por defecto**, porque el paquete no recorta cuando nadie se lo pide.
+- `per_page` y el sobre de la paginación: el paquete no pagina.
 
-Un valor desconocido cae al defecto y nunca produce 422.
+Un valor desconocido cae al defecto y nunca produce 422. La excepción es `?fields=`, que no tiene
+bandera para ignorarlo: un campo no declarado lanza.
+
+## Forma de salida
+
+La declara un `JsonResource` por recurso, en `Http/Resources/` del paquete. Cada campo va con
+`whenHas()` —`array_key_exists()` sobre lo cargado—, así que **lo que la consulta no seleccionó
+sale ausente, no nulo**: quien lee distingue «no lo pedí» de «está vacío».
+
+El modelo no declara la forma. `$with`, `$appends` y el `$hidden` de presentación son globales por
+modelo, y la misma fila la leen un anónimo, el listado del panel y el editor: un solo juego de
+reglas para tres preguntas obliga a poner listas blancas encima. `$hidden` de secretos sí se
+queda, como red de los caminos que todavía serializan el modelo directo.
+
+Un Resource no consulta la base: la precarga y los agregados los hace el servicio en una tanda para
+toda la página y los cuelga de la fila. Lo que compone un documento en vez de serializar un modelo
+—el plan, los ajustes, la composición, la papelera— no lleva Resource.
 
 ## Packages y overlays
 

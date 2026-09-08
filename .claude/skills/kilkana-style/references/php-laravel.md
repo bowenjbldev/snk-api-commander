@@ -25,16 +25,23 @@ src/packages/<Paquete>/
 ├── config/  database/{migrations,seeders}  resources/views  routes/api.php
 ```
 
-**Carpetas que no existen y no se crean**: `Resources/` (JsonResource), `Policies/`, `Actions/`,
-`DTOs/`, `Repositories/`, `Observers/`, `Events/`. `Jobs/` solo en Commander. Y los tests **no**
-viven en el paquete: van en `src/tests/{Unit,Feature}`.
+**`Http/Resources/` sí existe, y es donde se declara la forma de salida.** Un `JsonResource` por
+recurso, con el prefijo N2: `SnkKilkanaPostResource`, `CoreUserResource`. Ver «La salida la
+declara un Resource» más abajo.
+
+**Carpetas que no existen y no se crean**: `Policies/`, `Actions/`, `DTOs/`, `Repositories/`,
+`Observers/`, `Events/`. `Jobs/` solo en Commander. Y los tests **no** viven en el paquete: van en
+`src/tests/{Unit,Feature}`.
 
 **Lo que sí se apoya en un paquete**: la query string la resuelve `spatie/laravel-query-builder`,
 con sus nombres por defecto. Ver «La query la resuelve…» más abajo. La regla es no reinventar lo
 que el gremio ya tiene resuelto, y no ponerle encima un vocabulario propio.
 
-**No hay FormRequests. Cero.** El andamiaje existe en el base controller (`$storeRequestClass`,
-`buildFormRequest()`) y nadie lo usa. Un endpoint nuevo no estrena uno.
+**No hay FormRequests. Cero.** Se valida con `$validationRulesStore` / `$validationRulesUpdate`,
+que el CRUD del base aplica y que heredan treinta controladores. Hubo un andamiaje para
+FormRequests que nadie usaba —y que además estaba roto: lanzaba `ValidationException`, que el
+manejador envuelve en `{message, errors}`, donde este CRUD devuelve el objeto de errores **pelado**—
+y se retiró. Añadir uno ahora sería una segunda forma de validar conviviendo con la primera.
 
 ### El overlay
 
@@ -226,27 +233,42 @@ en blanco.
   colección** —las pestañas, la banda—, y los agregados del paquete van por relación
   (`include=commentsCount`). No viajan si no se piden: cuentan la tabla entera y no la página,
   así que una llamada que solo quiere filas no los paga.
-- **El techo de lo que se puede leer**, que vive en el modelo: `PUBLIC_FIELDS` dice qué ve un
-  anónimo, y es más estrecho que `$hidden`, que es lo que no se ve nunca en ningún contexto. La
-  misma fila la leen la calle, el listado del panel y el editor, y el conjunto seguro es distinto
-  en cada uno.
-- **El mapa accesor → columnas**, también en el modelo (`COLUMNS_FOR`). El paquete no sabe que
-  `url_path` se compone de `url_date` y `slug`: sin el mapa, pedirlo devuelve `null` sin decir
-  por qué.
+- **El techo de `?fields=`, que es de la puerta y no del modelo.** `SnkKilkanaPostService::FIELDS`
+  para el panel, `SnkKilkanaPublicService::FIELDS` para la calle: la misma fila la leen un anónimo,
+  el listado y el editor, y el conjunto seguro es distinto en cada uno. En una puerta anónima el
+  techo es **además el valor por defecto**: sin `?fields=` el paquete no recorta, y eso llegó a
+  servir `body_blocks` —el artículo entero con su muro dentro— a quien pidiera `/public/posts` a
+  secas.
+- **`per_page` y el sobre de la paginación**, en `CoreBaseApiController::perPage()` y
+  `CorePaginationSupport::meta()`. El paquete no pagina.
 
-**Dos trampas ya pagadas.** Las cuatro `allowed*` son **variádicas**: pasarles un array da un
-500, van con `...`. Y un `$withCount` en el modelo fija `select tabla.*` vía `withAggregate`
-**antes** de que llegue ninguna columna, así que anula cualquier proyección en silencio — un
-`select()` explícito sí manda.
+**Cinco trampas ya pagadas**, todas silenciosas:
+
+1. Las cuatro `allowed*` son **variádicas**: pasarles un array da un 500, van con `...`.
+2. **`allowedFields()` va antes que `allowedIncludes()`.** Declarar una inclusión resuelve ahí
+   mismo los campos de esa relación, y sin la lista puesta lanza `UnknownIncludedFieldsQuery`.
+3. **Los agregados van después de recortar.** `withCount`/`withSum` pasan por `withAggregate()`,
+   que pone `select tabla.*` y cuelga su subconsulta encima; el `select()` de `?fields=`
+   **reemplaza** esa lista. Aplicarlos antes es escribirlos para que los borren. Por lo mismo, un
+   alias de agregado —`views_total`— **no puede pedirse con `?fields=`**: el paquete le
+   antepondría la tabla y la columna no existe.
+4. **Una relación `belongsTo` sin su clave foránea llega nula, y no avisa.** Quien incluye
+   `category` pide también `category_id`. Si la relación la declara el propio modelo en su `$with`
+   —la cuenta de una firma— la llave es obligatoria en cualquier proyección sobre ella.
+5. **`?fields=` no tiene bandera para ignorar lo desconocido.** Un filtro, un orden o una
+   inclusión que no estén declarados se ignoran; un campo que no esté, lanza. Ahí la lista blanca
+   del recurso es la única puerta.
 
 ### Formato de respuesta
 
-No hay envoltura `data` genérica.
+No hay envoltura `data` genérica. Los Resources se devuelven dentro de `response()->json()`, que
+serializa por `jsonSerialize()` y **no aplica el `$wrap`** — devolver el Resource directamente sí
+lo aplicaría, y diecinueve endpoints que hoy salen pelados dejarían de estarlo.
 
 | Caso | Cuerpo |
 |---|---|
-| `show`/`store`/`update` | el modelo pelado, `201` en el alta |
-| `index` sin paginar | el array pelado |
+| `show`/`store`/`update` | **un Resource**, `201` en el alta — sin envoltura `data` |
+| `index` sin paginar | el array pelado de Resources |
 | `index` paginado | `{data, meta:{current_page, per_page, total, last_page}}`, más `counts`/`stats` **solo si se piden** con `?summary=` |
 | `destroy` | `{"id": 12}` |
 | `bulk` | `{"ok": true, "count": 3}` |
@@ -295,12 +317,18 @@ class SnkKilkanaPostModel extends Model
 
     protected $guarded = [];
 
-    protected $with = ['category', 'author', 'coverMedia', 'tags'];
-
-    protected $hidden = ['category_id', 'author_id', 'cover_media_id', 'coverMedia'];
-
-    protected $appends = ['cover', 'url_path'];
+    // Ni `$with`, ni `$appends`, ni `$hidden` de presentación: los tres son globales por
+    // modelo, y la misma pieza la leen un anónimo, la tabla del panel y el editor.
 ```
+
+- **El modelo no declara qué se carga ni qué sale.** `$with` cargaba cuatro relaciones en toda
+  consulta de piezas, las pintara alguien o no; `$appends` publicaba dos accesores que dependían de
+  columnas que un recorte podía no traer; y un `$hidden` de presentación obliga a poner listas
+  blancas encima para volver a recortar por puerta. Lo que se carga lo pide `?include=`, lo que se
+  recorta `?fields=`, y lo que sale lo declara el Resource.
+- **`$hidden` de secretos sí se queda**: `password`, `remember_token`, las credenciales de base de
+  una instancia. Un Resource se declara puerta a puerta y quedan caminos que serializan el modelo
+  directo; `$hidden` es la red de esos.
 
 - **`$guarded = []` universal**, nunca `$fillable`. Es seguro **solo mientras el controlador
   declare reglas**: controlador nuevo sobre un modelo así = reglas declaradas, o la ruta no debería
@@ -406,23 +434,47 @@ public function create(array $data, int $userId): SnkKilkanaPostModel
 Y cuando **no** la lleva, también se dice por qué: `publishDue()` va sin transacción a propósito,
 porque envolver el lote impediría salir a las demás piezas ese minuto.
 
-**La salida es una lista blanca en constante pública**, no una lista de ocultos:
+### La salida la declara un Resource
+
+Un `JsonResource` por recurso, y **cada campo con `whenHas()`**, que es
+`array_key_exists()` sobre los atributos cargados: lo que la consulta no seleccionó sale
+**ausente**, no `null`. Esa diferencia es el contrato — quien lee distingue «no lo pedí» de «está
+vacío», que con un `setVisible()` no podía.
 
 ```php
-public const FILA_DEL_LISTADO = [
-    'id', 'title', 'excerpt', 'slug', 'status', 'content_tier',
-    'publish_at', 'views_total', 'cover', 'category', 'author', 'tags',
-];
-
-public function asListRow(SnkKilkanaPostModel $post): void
+class SnkKilkanaPostResource extends JsonResource
 {
-    $post->setVisible(self::FILA_DEL_LISTADO);
-    $post->category?->setVisible(['id', 'name']);
-    $post->tags->each->setVisible(['id', 'name']);
+    public function toArray(Request $request): array
+    {
+        return [
+            'id' => $this->whenHas('id'),
+            'title' => $this->whenHas('title'),
+            'cover_media_id' => $this->whenHas('cover_media_id'),
+            // Derivado: no se pide por su nombre —no es una columna, y `?fields=` le
+            // antepondría la tabla— y sale cuando la suya está.
+            'url_path' => $this->whenHas('url_date', fn () => $this->resource->url_path),
+            'category' => new SnkKilkanaCategoryResource($this->whenLoaded('category')),
+            'tags' => SnkKilkanaTagResource::collection($this->whenLoaded('tags')),
+            'comments_count' => $this->whenCounted('comments'),
+        ];
+    }
 }
 ```
 
-Se aplica con first-class callable: `$page->getCollection()->each($this->posts->asListRow(...))`.
+El controlador lo declara con `protected ?string $resourceClass = …::class;` y el CRUD del base
+envuelve `index()` y `show()`. Donde la respuesta se compone a mano —un listado con su `meta` y
+sus cifras— se usa `Resource::collection($coleccion)` dentro del array.
+
+**Un Resource no consulta la base.** La precarga y los agregados van en el servicio, que los pide
+en una tanda para toda la página y los cuelga de la fila con `setAttribute()`; el Resource los lee
+con `whenHas()` sin saber de dónde vienen. Lo caro se condiciona a haberse cargado y no a la
+puerta: `usage_count` son tres `COUNT(*)` por foto, y solo sale donde alguien hizo `loadCount()`.
+
+**Lo que NO pasa a Resource**: lo que compone un documento en vez de serializar un modelo —el plan
+con sus medidores, los ajustes, la composición de portada— y la papelera, que arma una fila
+uniforme a partir de dos tipos de modelo distintos. Envolverlos no quitaría ninguna lista de
+campos; partiría la que hay.
+
 Con una lista de ocultos, cada columna nueva sale al JSON el día que se añade y nadie lo decide.
 
 **Si la regla la necesitan dos puertas, es un método estático del servicio**, no una copia en cada
@@ -494,7 +546,7 @@ return new class extends Migration
 | Inyección | Promovida siempre: `__construct(private readonly SnkKilkanaPostService $posts)` |
 | Tipos de retorno | Sí en casi todo. Excepción viva: `$id` sin tipar en firmas de controlador y `newQuery()` sin retorno. |
 | Arrow fns | Muy usadas, con **el parámetro tipado dentro** de la closure. |
-| First-class callable | `$this->posts->asListRow(...)` |
+| First-class callable | `$page->pipe(SnkKilkanaPostResource::collection(...))` |
 | Spread | `[...$this->columnsFrom($data, ...), 'created_by' => $userId]` |
 | Negación | `! $post` **con espacio** (Pint, preset laravel). |
 | Herramienta | `laravel/pint` sin `pint.json`. No hay PHPStan ni Rector. |
@@ -577,3 +629,11 @@ $this->artisan('migrate', ['--database' => 'tenant', '--path' => 'packages/Kilka
   seeder de Kilkana, y con otra contraseña.
 - El binario de la base es **`mariadb`**, no `mysql`.
 - Config de paquete se lee con doble nombre: `config('kilkana.kilkana.seed_demo', false)`.
+- **`preventAccessingMissingAttributes()` está encendido fuera de producción.** Leer una columna
+  que la consulta no seleccionó revienta en vez de devolver `null`. Lo que puede no estar se lee
+  del array crudo: `$modelo->getAttributes()['x'] ?? null`. Pasa más de lo que parece — un modelo
+  recién creado solo lleva lo que se le pasó a `create()`, y `actingAs()` conserva ese objeto.
+- **Un `try/catch` que protege algo accesorio puede esconder un fallo evitable.** El registro de
+  actividad leía una columna que podía faltar, lanzaba, y su `catch` con `report()` se lo tragaba:
+  la acción seguía y **la línea de auditoría no se escribía**. El arreglo va en la lectura, no en
+  el `catch` — que está bien puesto.

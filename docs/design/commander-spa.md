@@ -181,7 +181,7 @@ navegador se etiqueta como snapshot de los datos cargados, no como ledger nuevo.
 
 Columnas: nombre, estado, correo, correo de facturación, NIF, condiciones de pago, número de
 clientes, número de contratos y actualización. Carga relaciones mediante
-`with=clients,subscriptions,invoices`.
+`include=clients,subscriptions,invoices`.
 
 Filtros: estado, país y presencia de contratos. Búsqueda: nombre, correo, correo de facturación y
 NIF.
@@ -518,7 +518,7 @@ auditoría operativa, no un sistema genérico de tareas.
 Tabla con nombre completo, correo, nombre corto, rol, empresa, teléfono y alta. Las páginas de
 crear/editar gestionan esos campos y contraseña.
 
-`GET /users?with=roles` carga el rol. Como hoy solo se siembra `admin` y no existe endpoint de
+`GET /users?include=roles` carga el rol. Como hoy solo se siembra `admin` y no existe endpoint de
 roles, el formulario usa ese valor fijo; no inventa un selector ni permisos configurables.
 
 El borrado exige confirmación y no permite al operador eliminarse a sí mismo desde la sesión

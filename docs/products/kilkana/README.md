@@ -129,10 +129,17 @@ Los listados usan un vocabulario acotado:
 | agregados opcionales | `summary` |
 
 Son los nombres por defecto de `spatie/laravel-query-builder`, que resuelve la query. `summary`
-es el único propio: el paquete agrega por relación y esas son cifras sobre la colección entera.
+y `per_page` son los propios: el paquete agrega por relación —y esas son cifras sobre la colección
+entera— y no pagina.
 
-Los aliases de `sort` no exponen nombres de columnas. Un filtro desconocido cae al
-comportamiento por defecto en vez de construir SQL arbitrario.
+Los aliases de `sort` no exponen nombres de columnas. Un filtro, un orden o una inclusión
+desconocidos caen al comportamiento por defecto en vez de construir SQL arbitrario. **`fields` es
+la excepción**: un campo que el recurso no declara devuelve 400, porque ahí la lista blanca es lo
+único que separa lo que se puede leer de lo que no.
+
+Quien llama elige las columnas, y **lo que no pide no viaja**: un campo ausente es ausente, no
+nulo. Incluir una relación significa pedir también su clave foránea, o el emparejamiento se queda
+sin ella. En la puerta pública, sin `fields` se sirve el techo del recurso y no la fila entera.
 
 Los agregados no viajan solos. `counts` y `stats` cuentan la tabla entera y no la página, así que
 una llamada que solo quiere filas no los paga: cuatro del panel pedían el listado editorial para

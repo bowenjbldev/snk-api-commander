@@ -105,7 +105,7 @@ porque un proceso hijo no obedece a `max_execution_time`.
 El atributo `variants` (añadido) es lo que un consumidor necesita para pedir cualquiera sin
 calcular: `base`, `widths`, `formats` y, por proporción, las medidas de la ventana. Viaja en la
 fila de la biblioteca y en la portada y las fotos del cuerpo de `public/*`; la portada pública sale
-solo con lo que se pinta (`MEDIA_PUBLIC`), sin `path`, `disk` ni huellas.
+solo con lo que se pinta —lo declara `SnkKilkanaMediaResource`—, sin `path`, `disk` ni huellas.
 
 `SnkKilkanaMediaWarmJob` calienta por la cola `og` a 1280 y `card` a 640 y 960 al subir,
 reemplazar o reencuadrar; `kilkana:purge-variants` barre cada madrugada las carpetas cuya huella

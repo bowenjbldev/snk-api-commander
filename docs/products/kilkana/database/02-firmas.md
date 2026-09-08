@@ -169,7 +169,7 @@ necesita tres cosas que no son columnas.
 | `last_published_at` | `withMax` sobre las **publicadas**        | Un borrador de hoy no es actividad de la firma.                                                               |
 | `seat`              | Subconsulta sobre `users.email`, o `null` | Es con lo que el panel cruza a la pantalla de asientos; el nombre no vale, dos cuentas pueden llamarse igual. |
 
-Y el retrato solo llega resuelto con `?with=avatarMedia`: sin él es un id opaco, y quien pinta no
+Y el retrato solo llega resuelto con `?include=avatarMedia`: sin él es un id opaco, y quien pinta no
 puede distinguir «tiene foto» de «no la tiene».
 
 **`seat` es una subconsulta del listado y no un accesor del modelo, y esa diferencia es lo que lo
