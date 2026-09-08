@@ -179,7 +179,7 @@ se va a pintar y nadie lo sabría.
 | `tenant_tagline`            | varchar(255)     | sí                        | Su lema.                                                                                                                                                                               |
 | `tenant_city`               | varchar(255)     | sí                        | Su ciudad.                                                                                                                                                                             |
 | `tenant_url`                | varchar(255)     | sí                        | Su dirección pública. Validada `url:http,https`.                                                                                                                                       |
-| `onboarded`                 | boolean          | no · def. `false`         | Si ya pasó la puesta en marcha inicial.                                                                                                                                                |
+| `launched_at`               | timestamp        | sí                        | Cuándo abrió al público. Nula, la calle sirve la página de «pronto» y el panel manda a la puesta en marcha. Se sella con `PUT settings {launched: true}` una vez y no se deshace.      |
 | `lang`                      | varchar(8)       | no · def. `es-ES`         | El idioma de la hoja: `lang`, `hreflang`, `inLanguage` y el formato de fecha. Lista cerrada en `SnkKilkanaSettingModel::LANGS` (`es-ES`, `ca-ES`, `gl-ES`, `eu-ES`, `pt-PT`, `en-GB`). |
 | `tz`                        | varchar(64)      | no · def. `Europe/Madrid` | La zona horaria de la redacción: la hora de pared del panel y el sello del JSON-LD. Validada `timezone:all`.                                                                           |
 | `search_visible`            | boolean          | no · def. `true`          | Si la calle se deja indexar. Apagada, `robots.txt` cierra y toda hoja sale `noindex`: el periódico sigue abierto por su dirección, fuera de los buscadores hasta el lanzamiento.       |
@@ -238,7 +238,7 @@ sitio.
 ### Por qué columnas y no una bolsa JSON
 
 Una bolsa cobra el precio de la flexibilidad sin darla: quien escribe ya enumera cada clave que
-acepta, así que nunca hay claves arbitrarias. A cambio se pierden los tipos —`onboarded`
+acepta, así que nunca hay claves arbitrarias. A cambio se pierden los tipos —`search_visible`
 guardado como lo que caiga— y hay que fusionar a mano para que un guardado parcial no borre lo
 que no viene, con un caso especial para `tenant` que alguien tiene que acordarse de replicar en
 el siguiente ajuste anidado. El día que se olvide, guardar la ciudad borra el nombre en

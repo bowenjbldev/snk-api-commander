@@ -66,10 +66,9 @@ class SnkKilkanaSettingModel extends Model
      * El mismo valor por defecto que la columna, pero del lado de PHP.
      *
      * Lo pone la base, así que la fila recién creada por `firstOrCreate` no lo conocería y
-     * `onboarded` saldría nulo en la respuesta del primer guardado.
+     * `search_visible` saldría nulo en la respuesta del primer guardado.
      */
     protected $attributes = [
-        'onboarded' => false,
         'lang' => self::DEFAULT_LANG,
         'tz' => self::DEFAULT_TZ,
         'search_visible' => true,
@@ -90,7 +89,7 @@ class SnkKilkanaSettingModel extends Model
     protected function casts(): array
     {
         return [
-            'onboarded' => 'boolean',
+            'launched_at' => 'datetime',
             'search_visible' => 'boolean',
             'theme_spec' => 'array',
             'theme_overrides' => 'array',

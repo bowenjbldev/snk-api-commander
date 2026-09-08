@@ -610,6 +610,8 @@ class SnkKilkanaPublicService
             'lang' => $ajustes?->lang ?? SnkKilkanaSettingModel::DEFAULT_LANG,
             'tz' => $ajustes?->tz ?? SnkKilkanaSettingModel::DEFAULT_TZ,
             'search_visible' => $ajustes === null || (bool) $ajustes->search_visible,
+            // Nulo mientras no haya abierto: la calle sirve entonces la página de «pronto».
+            'launched_at' => $ajustes?->launched_at?->toIso8601String(),
             'legal' => SnkKilkanaSettingService::group($ajustes?->legal, SnkKilkanaSettingModel::LEGAL),
             'social' => SnkKilkanaSettingService::group($ajustes?->social, SnkKilkanaSettingModel::SOCIAL),
             // La variante resuelta: `base_slug` para buscar en código lo que no baja a la base

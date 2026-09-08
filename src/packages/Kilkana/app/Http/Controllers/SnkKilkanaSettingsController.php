@@ -12,7 +12,7 @@ use Packages\Kilkana\Services\SnkKilkanaSettingService;
 
 /**
  * Ajustes del workspace (singleton): el tema que viste el periódico y lo que ha movido encima,
- * su identidad (tenant) y el flag de onboarding. Se acepta y se expone con `tenant` anidado, y
+ * su identidad (tenant) y la fecha en que abrió al público. Se acepta y se expone con `tenant` anidado, y
  * el guardado es parcial: lo que no viene se queda donde estaba.
  *
  * **Aquí vive el vestido entero.** `theme_id` es una clave foránea, así que la base rechaza
@@ -49,7 +49,8 @@ class SnkKilkanaSettingsController extends Controller
             // enlace y sale en cada correo, así que `javascript:` aquí es un agujero, igual
             // que lo era en la web de una firma.
             'tenant.url' => 'nullable|url:http,https|max:255',
-            'onboarded' => 'nullable|boolean',
+            // Solo hacia delante: `true` sella `launched_at` si no lo estaba, y `false` no hace nada.
+            'launched' => 'sometimes|boolean',
             'lang' => ['sometimes', 'string', Rule::in(SnkKilkanaSettingModel::LANGS)],
             'tz' => 'sometimes|string|timezone:all',
             'search_visible' => 'sometimes|boolean',

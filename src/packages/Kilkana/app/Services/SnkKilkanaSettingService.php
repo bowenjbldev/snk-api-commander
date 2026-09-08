@@ -11,7 +11,7 @@ use Packages\Kilkana\Models\SnkKilkanaThemeModel;
  *
  * Fue una bolsa JSON, y la bolsa cobraba el precio de la flexibilidad sin darla: el
  * controlador ya enumera cada clave que acepta, así que nunca hubo claves arbitrarias. A
- * cambio se perdían los tipos —`onboarded` guardado como lo que fuera— y había que fusionar a
+ * cambio se perdían los tipos —`search_visible` guardado como lo que fuera— y había que fusionar a
  * mano, con un caso especial para `tenant` que alguien tenía que acordarse de replicar en el
  * siguiente ajuste anidado. El día que se olvidara, una actualización parcial habría borrado
  * las claves hermanas en silencio.
@@ -60,6 +60,11 @@ class SnkKilkanaSettingService
         $fila = $this->get();
 
         $fila->fill($this->columnsFrom($data));
+        // Lanzar es un hecho, no un ajuste: se sella una vez y no se deshace desde aquí. Un
+        // periódico que quiera desaparecer de la calle tiene `search_visible`, que es otra cosa.
+        if (($data['launched'] ?? false) === true) {
+            $fila->launched_at ??= now();
+        }
         $fila->save();
 
         return $fila;
@@ -82,7 +87,7 @@ class SnkKilkanaSettingService
                 'city' => $fila->tenant_city,
                 'url' => $fila->tenant_url,
             ],
-            'onboarded' => (bool) $fila->onboarded,
+            'launched_at' => $fila->launched_at?->toIso8601String(),
             'lang' => $fila->lang,
             'tz' => $fila->tz,
             'search_visible' => (bool) $fila->search_visible,
@@ -125,7 +130,7 @@ class SnkKilkanaSettingService
      */
     private function columnsFrom(array $data): array
     {
-        $columnas = collect($data)->only(['theme_overrides', 'onboarded', 'lang', 'tz', 'search_visible', 'newsletter_reply_to'])->all();
+        $columnas = collect($data)->only(['theme_overrides', 'lang', 'tz', 'search_visible', 'newsletter_reply_to'])->all();
         foreach (['legal' => SnkKilkanaSettingModel::LEGAL, 'social' => SnkKilkanaSettingModel::SOCIAL] as $grupo => $claves) {
             if (is_array($data[$grupo] ?? null)) {
                 $columnas[$grupo] = self::group($data[$grupo], $claves);

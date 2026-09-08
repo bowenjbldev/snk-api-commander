@@ -179,7 +179,7 @@ class SnkKilkanaThemeWearTest extends TestCase
             'theme_version' => '2.0.0',
             'tenant_name' => 'The Beacon',
             'tenant_city' => 'Springfield',
-            'onboarded' => true,
+            'launched_at' => '2026-09-07T10:00:00+00:00',
         ]);
         $ajustes->setRelation('theme', $tema);
 
@@ -190,7 +190,7 @@ class SnkKilkanaThemeWearTest extends TestCase
         $this->assertSame('daily', $payload['theme']['spec']->masthead);
         $this->assertSame('folio', $payload['theme']['slug']);
         $this->assertSame(['name' => 'The Beacon', 'tagline' => null, 'city' => 'Springfield', 'url' => null], $payload['tenant']);
-        $this->assertTrue($payload['onboarded']);
+        $this->assertSame('2026-09-07T10:00:00+00:00', $payload['launched_at']);
         $this->assertArrayNotHasKey('version', $payload);
     }
 

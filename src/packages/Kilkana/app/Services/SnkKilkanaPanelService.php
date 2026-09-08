@@ -10,6 +10,8 @@ use Packages\Kilkana\Http\Resources\SnkKilkanaTagResource;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaGateResultModel;
+use Packages\Kilkana\Models\SnkKilkanaPostModel;
+use Packages\Kilkana\Models\SnkKilkanaSettingModel;
 use Packages\Kilkana\Models\SnkKilkanaTagModel;
 use Spatie\QueryBuilder\QueryBuilder;
 
@@ -48,6 +50,7 @@ class SnkKilkanaPanelService
 
     public function __construct(
         private readonly SnkKilkanaActivityService $registro,
+        private readonly SnkKilkanaBylineService $firmas,
         private readonly SnkKilkanaCommentService $comentarios,
         private readonly SnkKilkanaNewsletterService $boletin,
         private readonly SnkKilkanaPlanService $plan,
@@ -65,7 +68,16 @@ class SnkKilkanaPanelService
     {
         $clases = $this->papelera->kindsFor(auth()->user());
 
+        // La única escritura de aquí, y es la misma regla que el alta de una cuenta: quien
+        // puede escribir tiene firma. El administrador lo crea el provisioning, que no sabe de
+        // periódicos, así que su firma nace la primera vez que abre el panel.
+        $this->firmas->ensureForUser((int) auth()->id());
+
         return [
+            // Lo que la puesta en marcha necesita para saber por dónde va, y lo que decide si el
+            // panel manda a ella: la fecha de apertura, si hay tema puesto y cuántas piezas han
+            // salido. Sin permiso propio porque no descubre nada que la calle no diga.
+            'setup' => $this->setup(),
             // El mismo scope y **el mismo Resource** que sirven `GET categories`, `authors` y
             // `tags`: el scope arma la consulta y el Resource la forma, justo para que las dos
             // puertas no puedan enseñar columnas distintas.
@@ -83,6 +95,18 @@ class SnkKilkanaPanelService
             'trash' => $clases === [] ? null : ['count' => $this->papelera->count($clases)],
             'gate' => $this->cifra('index posts', fn () => ['failing' => SnkKilkanaGateResultModel::failingCount()]),
             'newsletter' => $this->cifra('index subscribers', fn () => ['drafts' => $this->boletin->drafts()]),
+        ];
+    }
+
+    /** @return array{launched_at: ?string, themed: bool, published: int} */
+    private function setup(): array
+    {
+        $ajustes = SnkKilkanaSettingModel::query()->find(1, ['launched_at', 'theme_spec']);
+
+        return [
+            'launched_at' => $ajustes?->launched_at?->toIso8601String(),
+            'themed' => $ajustes?->theme_spec !== null,
+            'published' => SnkKilkanaPostModel::query()->published()->count(),
         ];
     }
 

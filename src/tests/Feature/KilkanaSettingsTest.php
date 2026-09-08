@@ -75,6 +75,21 @@ class KilkanaSettingsTest extends TestCase
         $this->assertSame('El Diario SL', $otra['legal']['name']);
     }
 
+    /** Lanzar sella la fecha una vez; ni un segundo `true` la mueve ni un `false` la borra. */
+    public function test_lanzar_es_un_hecho_que_pasa_una_vez(): void
+    {
+        $this->assertNull($this->guardar([])->getData(true)['launched_at']);
+        $this->assertNull(app(SnkKilkanaPublicService::class)->site()['launched_at']);
+
+        $primera = $this->guardar(['launched' => true])->getData(true)['launched_at'];
+        $this->assertNotNull($primera);
+        $this->assertSame($primera, app(SnkKilkanaPublicService::class)->site()['launched_at']);
+
+        $this->travel(1)->hours();
+        $this->assertSame($primera, $this->guardar(['launched' => true])->getData(true)['launched_at']);
+        $this->assertSame($primera, $this->guardar(['launched' => false])->getData(true)['launched_at']);
+    }
+
     public function test_una_zona_o_un_idioma_inventados_no_entran(): void
     {
         try {

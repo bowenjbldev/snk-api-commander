@@ -1282,7 +1282,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             'tenant_tagline' => $tenant['tagline'] ?? null,
             'tenant_city' => $tenant['city'] ?? null,
             'tenant_url' => $this->tenantUrl(),
-            'onboarded' => (bool) ($perfil['onboarded'] ?? false),
+            // La demo nace abierta: es lo que se enseña a un comprador, no un periódico por estrenar.
+            'launched_at' => ($perfil['launched'] ?? false) ? now() : null,
         ]);
 
         // La cabecera escrita manda —el inquilino puede renombrarse desde el panel—, pero que no
