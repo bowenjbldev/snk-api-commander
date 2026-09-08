@@ -48,7 +48,7 @@ class SnkKilkanaPublicService
      * Es proyección de la consulta, no lista de salida —eso lo declara `SnkKilkanaAuthorResource`—:
      * `user_id` está porque el nombre publicado es derivado y sale de la cuenta cuando no hay alias.
      */
-    private const AUTHOR_PUBLIC = 'author:id,user_id,alias,slug,noindex';
+    private const AUTHOR_PUBLIC = 'author:id,user_id,alias,slug,noindex,avatar_media_id';
 
     /**
      * El techo de `?fields=` en la calle, y **es más estrecho que el del panel a propósito**.
@@ -75,6 +75,13 @@ class SnkKilkanaPublicService
         'category_id', 'author_id', 'cover_media_id',
         'categories.id', 'categories.name', 'categories.slug', 'categories.parent_id',
         'authors.id', 'authors.alias', 'authors.slug', 'authors.noindex', 'authors.user_id',
+        'authors.avatar_media_id',
+        // El retrato de una firma **sí** deja elegir columnas, al revés que la portada de una
+        // pieza: ahí `variants` obliga a nombrar cuatro columnas de fontanería para recibir las
+        // derivadas, y aquí es un disco de 44 px que se sirve con su `url` y ya. Anidada dentro
+        // de cada pieza de un pozo de cien, la fila entera de la foto son veintinueve campos
+        // repetidos que nadie mira.
+        'author.avatar_medias.id', 'author.avatar_medias.url',
         'tags.id', 'tags.name', 'tags.slug',
     ];
 
@@ -84,8 +91,14 @@ class SnkKilkanaPublicService
         return array_values(array_filter(self::FIELDS, fn (string $campo) => ! str_contains($campo, '.')));
     }
 
-    /** La foto no lleva `fields`: su forma la declara `SnkKilkanaMediaResource`. Ver allí. */
-    public const INCLUDES = ['category', 'author', 'tags', 'coverMedia'];
+    /**
+     * Las fotos no llevan `fields`: su forma la declara `SnkKilkanaMediaResource`. Ver allí.
+     *
+     * `author.avatarMedia` es anidada y opcional: la tira de opinión de una portada dibuja el
+     * retrato de quien firma, y sin él una banda de opinión es indistinguible de una fila de
+     * titulares. El resto de listados no la piden y no la pagan.
+     */
+    public const INCLUDES = ['category', 'author', 'tags', 'coverMedia', 'author.avatarMedia'];
 
     public function posts(array $filters)
     {
