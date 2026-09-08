@@ -11,6 +11,7 @@ use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Kilkana\Http\Resources\SnkKilkanaTagResource;
 use Packages\Kilkana\Models\SnkKilkanaTagModel;
 use Packages\Kilkana\Services\SnkKilkanaActivityService;
+use Spatie\QueryBuilder\QueryBuilder;
 
 #[Group('Tags')]
 class SnkKilkanaTagsController extends CoreBaseApiController
@@ -49,14 +50,17 @@ class SnkKilkanaTagsController extends CoreBaseApiController
      * del vocabulario, es una intencion. `posts_count` cuenta todo lo que la lleva, incluidos
      * borradores, porque para fundir importa cuantas piezas hay que mover, no cuantas se ven.
      *
-     * Va en `newQuery()` y no en el modelo porque solo lo quiere quien LISTA: pedir una
-     * etiqueta para renombrarla no necesita recorrer su pivote.
+     * Va en `decorate()` y no en el modelo porque solo lo quiere quien LISTA: pedir una
+     * etiqueta para renombrarla no necesita recorrer su pivote. Y detrás de `?fields=`, porque
+     * el recorte hace `select()` y se llevaría las dos cifras.
      */
     protected ?string $resourceClass = SnkKilkanaTagResource::class;
 
-    protected function newQuery()
+    protected array $allowedFields = ['id', 'name', 'slug'];
+
+    protected function decorate(QueryBuilder $query): QueryBuilder
     {
-        return parent::newQuery()->asCatalogue();
+        return $query->asCatalogue();
     }
 
     /**

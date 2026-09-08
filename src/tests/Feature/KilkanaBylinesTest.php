@@ -10,6 +10,7 @@ use Packages\Kilkana\Http\Controllers\SnkKilkanaAuthorsController;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
+use Spatie\QueryBuilder\Exceptions\InvalidFieldQuery;
 use Tests\TestCase;
 
 /**
@@ -126,6 +127,36 @@ class KilkanaBylinesTest extends TestCase
         $this->assertSame('ramon.clavel@eldiario.example', $fila['seat']);
     }
 
+    /**
+     * `?fields=` recorta la fila y **no** se lleva lo que el catálogo cuelga.
+     *
+     * El asiento es un `addSelect` y los otros dos son agregados; spatie hace `select()`, así
+     * que puestos antes del recorte desaparecían. Y no se piden por su nombre: no son columnas.
+     */
+    public function test_pedir_campos_recorta_la_fila_y_conserva_el_asiento(): void
+    {
+        $this->byline('Ramón Clavel');
+        $this->app['request']->query->set('fields', 'slug');
+
+        $fila = $this->index()[0];
+
+        $this->assertEqualsCanonicalizing(
+            // `id` no se pidió y viaja: la precarga de las URLs retiradas lo necesita. `name` es
+            // el apendado del modelo, y `user_id` se selecciona para la cuenta pero no sale.
+            ['id', 'slug', 'name', 'seat', 'posts_count', 'last_published_at', 'retired_slugs'],
+            array_keys($fila),
+        );
+        $this->assertSame('ramon.clavel@eldiario.example', $fila['seat']);
+    }
+
+    public function test_un_campo_fuera_del_techo_no_se_sirve(): void
+    {
+        $this->app['request']->query->set('fields', 'user_id,created_by');
+
+        $this->expectException(InvalidFieldQuery::class);
+        $this->index();
+    }
+
     /** El listado tal como sale por la API, sin pasar por HTTP: lo que se prueba es la consulta. */
     private function index(): array
     {
@@ -133,7 +164,7 @@ class KilkanaBylinesTest extends TestCase
         {
             public function listado(): array
             {
-                return $this->newQuery()->get()->toArray();
+                return $this->queryBuilder()->get()->toArray();
             }
         };
 

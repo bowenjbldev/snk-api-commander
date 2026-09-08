@@ -203,6 +203,25 @@ class KilkanaMediaLibraryTest extends TestCase
         $this->assertSame(['all' => 2, 'image' => 2, 'video' => 0, 'audio' => 0], $video['scope']);
     }
 
+    /**
+     * La mediateca recorta con `?fields=` y **sigue pintándose**: `variants` y `usage_count` no
+     * son columnas y salen igual, porque el servicio los cuelga después del recorte y añade por
+     * su cuenta las cuatro de fontanería de las que se calculan las derivadas.
+     */
+    public function test_pedir_campos_recorta_la_ficha_y_conserva_lo_que_pinta(): void
+    {
+        $this->foto();
+
+        $pagina = $this->media->index(Request::create('/media', 'GET', ['fields' => 'id,url,width,height']));
+        $fila = json_decode(json_encode($pagina['data']), true)[0];
+
+        $this->assertEqualsCanonicalizing(
+            ['id', 'url', 'width', 'height', 'variants', 'usage_count', 'tags', 'collections'],
+            array_keys($fila),
+        );
+        $this->assertSame(0, $fila['usage_count']);
+    }
+
     private function foto(string $nombre = 'foto.jpg'): SnkKilkanaMediaModel
     {
         return SnkKilkanaMediaModel::firstOrCreate(['content_hash' => hash('sha256', $nombre)], [

@@ -247,11 +247,12 @@ en blanco.
 1. Las cuatro `allowed*` son **variádicas**: pasarles un array da un 500, van con `...`.
 2. **`allowedFields()` va antes que `allowedIncludes()`.** Declarar una inclusión resuelve ahí
    mismo los campos de esa relación, y sin la lista puesta lanza `UnknownIncludedFieldsQuery`.
-3. **Los agregados van después de recortar.** `withCount`/`withSum` pasan por `withAggregate()`,
-   que pone `select tabla.*` y cuelga su subconsulta encima; el `select()` de `?fields=`
-   **reemplaza** esa lista. Aplicarlos antes es escribirlos para que los borren. Por lo mismo, un
-   alias de agregado —`views_total`— **no puede pedirse con `?fields=`**: el paquete le
-   antepondría la tabla y la columna no existe.
+3. **Los agregados van después de recortar: en `decorate()`, nunca en `newQuery()`.**
+   `allowedFields()` hace `select()` —no `addSelect()`— en el momento de declararse, y borra
+   cualquier `withCount`, `withMax` o `addSelect` con subconsulta que hubiera antes. Un
+   `newQuery()->asCatalogue()` funcionaba mientras nadie mandó `?fields=`. Por lo mismo, un alias
+   de agregado —`views_total`, `seat`, `posts_count`— **no puede pedirse con `?fields=`**: el
+   paquete le antepondría la tabla y la columna no existe. Llega solo.
 4. **Una relación `belongsTo` sin su clave foránea llega nula, y no avisa.** Quien incluye
    `category` pide también `category_id`. Si la relación la declara el propio modelo en su `$with`
    —la cuenta de una firma— la llave es obligatoria en cualquier proyección sobre ella.

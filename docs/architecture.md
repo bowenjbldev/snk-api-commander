@@ -73,11 +73,17 @@ lo que no se declara no se aplica.
 `newQuery()` sigue siendo el gancho por el que un recurso acota lo suyo —por propiedad, por
 permiso— antes de que nadie pida nada. Quien llama elige dentro de eso, nunca fuera.
 
+`decorate()` es el otro gancho, y va **después**: agregados y precargas —un `withCount`, una
+subconsulta con `addSelect`— se cuelgan ahí porque `allowedFields()` hace `select()` y borra
+todo lo seleccionado antes. Lo que se cuelga no es una columna: no se pide por su nombre y sale
+siempre que el recurso lo calcule (`seat`, `posts_count`, `variants`, `views_total`).
+
 Tres piezas no son del paquete:
 
 - `summary` pide agregados de la colección; los del paquete van por relación.
 - El techo de `?fields=` es de la puerta, no del modelo: `SnkKilkanaPostService::FIELDS` para el
-  panel, `SnkKilkanaPublicService::FIELDS` para la calle. En una puerta anónima el techo es
+  panel, `SnkKilkanaPublicService::FIELDS` para la calle, `SnkKilkanaMediaService::FIELDS` para
+  la mediateca y el `$allowedFields` de cada catálogo. En una puerta anónima el techo es
   **además el valor por defecto**, porque el paquete no recorta cuando nadie se lo pide.
 - `per_page` y el sobre de la paginación: el paquete no pagina.
 

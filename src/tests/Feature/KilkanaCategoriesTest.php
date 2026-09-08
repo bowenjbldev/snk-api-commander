@@ -226,6 +226,18 @@ class KilkanaCategoriesTest extends TestCase
         $this->assertSame(['tecnologia'], array_column($filas[0]['retired_slugs'], 'path'));
     }
 
+    /** `?fields=` recorta la fila; los agregados y las URLs retiradas salen igual, colgados después. */
+    public function test_pedir_campos_recorta_la_fila_y_conserva_los_agregados(): void
+    {
+        $this->category('Local', 'local', 'live');
+        $this->app['request']->query->set('fields', 'slug');
+
+        $fila = $this->index()[0];
+
+        $this->assertEqualsCanonicalizing(['id', 'slug', 'posts_count', 'last_published_at', 'retired_slugs'], array_keys($fila));
+        $this->assertSame(0, $fila['posts_count']);
+    }
+
     /** El listado tal como sale por la API, sin pasar por HTTP: lo que se prueba es la consulta. */
     private function index(): array
     {
@@ -233,7 +245,7 @@ class KilkanaCategoriesTest extends TestCase
         {
             public function listado(): array
             {
-                return $this->newQuery()->get()->toArray();
+                return $this->queryBuilder()->get()->toArray();
             }
         };
 

@@ -16,10 +16,33 @@ use Packages\Kilkana\Jobs\SnkKilkanaMediaWarmJob;
 use Packages\Kilkana\Models\SnkKilkanaMediaModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use RuntimeException;
+use Spatie\QueryBuilder\QueryBuilder;
 
 class SnkKilkanaMediaService
 {
     public function __construct(private readonly SnkKilkanaImageService $images) {}
+
+    /**
+     * El techo de `?fields=`: las columnas que la Resource declara, y ni una de fontanería.
+     *
+     * `usage_count`, `variants`, `tags` y `collections` no están: no son columnas, las cuelga
+     * `filtered()` después de recortar y salen solas. Las cuatro de las que se calcula `variants`
+     * tampoco, y eso es a propósito: quien pide `url,width,height` quiere una foto que se pueda
+     * pintar, y las derivadas son parte de eso, no una columna que haya que saber nombrar.
+     */
+    public const FIELDS = [
+        'id', 'url', 'original_name', 'title', 'mime', 'size_bytes', 'width', 'height', 'duration',
+        'alt', 'caption', 'credit', 'license', 'rights_status', 'content_hash',
+        'focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h', 'frames',
+        'poster_at', 'poster_media_id', 'created_at', 'deleted_at',
+    ];
+
+    /**
+     * Lo que se selecciona aunque nadie lo pida: la clave, que la precarga de las taxonomías
+     * necesita para emparejar, y de lo que se calcula `variants`
+     * (`SnkKilkanaImageService::payload()`).
+     */
+    private const PLUMBING = ['id', 'master_path', 'master_width', 'master_height', 'variants_key'];
 
     public function index(Request $request): array
     {
@@ -363,11 +386,18 @@ class SnkKilkanaMediaService
         return $size ? [$size[0], $size[1]] : [$data['width'] ?? null, $data['height'] ?? null];
     }
 
-    private function filtered(Request $request): Builder
+    private function filtered(Request $request): QueryBuilder
     {
-        $query = SnkKilkanaMediaModel::query()
+        // El recorte primero y los agregados después: `allowedFields()` hace `select()`, así
+        // que un `withCount` puesto antes desaparece en cuanto alguien pide campos.
+        $query = QueryBuilder::for(SnkKilkanaMediaModel::query(), $request)
+            ->allowedFields(...self::FIELDS)
             ->with(['tags', 'collections'])
             ->withCount(SnkKilkanaMediaModel::USOS);
+
+        if ($request->filled('fields')) {
+            $query->addSelect(self::PLUMBING);
+        }
 
         $status = $request->string('status')->toString();
         if ($status === 'trash') {
@@ -436,7 +466,7 @@ class SnkKilkanaMediaService
         };
     }
 
-    private function whereKind(Builder $query, string $kind): void
+    private function whereKind(Builder|QueryBuilder $query, string $kind): void
     {
         match ($kind) {
             'image' => $query->where('mime', 'like', 'image/%'),
@@ -503,7 +533,9 @@ class SnkKilkanaMediaService
     private function scope(Request $request): array
     {
         $sinTipo = $request->duplicate(Arr::except($request->query->all(), ['kind']));
-        $familias = $this->porFamilia($this->filtered($sinTipo));
+        // El Eloquent de debajo, sin el envoltorio de spatie: `whereIn` sabe anidar un `Builder`,
+        // no un `QueryBuilder`, y la subconsulta reescribe el `select` de todos modos.
+        $familias = $this->porFamilia($this->filtered($sinTipo)->getEloquentBuilder());
 
         return [
             'all' => $this->filtered($sinTipo)->count(),

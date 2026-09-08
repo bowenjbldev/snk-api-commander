@@ -155,6 +155,18 @@ class KilkanaTagsTest extends TestCase
         return new SnkKilkanaTagsController;
     }
 
+    /** `?fields=` recorta la fila y las dos cifras siguen saliendo: se cuelgan después del recorte. */
+    public function test_pedir_campos_recorta_la_fila_y_conserva_las_cifras(): void
+    {
+        $this->pieza('Pleno', '2026-07-01 08:00:00')->tags()->attach(SnkKilkanaTagModel::create(['name' => 'movilidad']));
+        $this->app['request']->query->set('fields', 'name');
+
+        $fila = $this->listado()[0];
+
+        $this->assertEqualsCanonicalizing(['id', 'name', 'posts_count', 'last_used_at'], array_keys($fila));
+        $this->assertSame(1, $fila['posts_count']);
+    }
+
     /** @return array<int, array<string, mixed>> */
     private function listado(): array
     {
@@ -163,7 +175,7 @@ class KilkanaTagsTest extends TestCase
             /** @return array<int, array<string, mixed>> */
             public function filas(): array
             {
-                return $this->newQuery()->get()->toArray();
+                return $this->queryBuilder()->get()->toArray();
             }
         };
 

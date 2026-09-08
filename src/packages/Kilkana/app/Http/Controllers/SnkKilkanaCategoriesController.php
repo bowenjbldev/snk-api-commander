@@ -10,6 +10,7 @@ use Packages\Kilkana\Enums\SnkKilkanaCategoryStatusEnum;
 use Packages\Kilkana\Http\Resources\SnkKilkanaCategoryResource;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
+use Spatie\QueryBuilder\QueryBuilder;
 
 #[Group('Categories')]
 class SnkKilkanaCategoriesController extends CoreBaseApiController
@@ -39,14 +40,17 @@ class SnkKilkanaCategoriesController extends CoreBaseApiController
      * `position` nace a cero en todas y sin segundo criterio el orden seria el que quisiera la
      * base.
      *
-     * Va en `newQuery()` y no en el modelo porque **solo lo quiere quien lista**: pedir una
-     * seccion para editarla no necesita contar sus piezas.
+     * Va en `decorate()` y no en el modelo porque **solo lo quiere quien lista**: pedir una
+     * seccion para editarla no necesita contar sus piezas. Y detrás de `?fields=`, porque el
+     * recorte hace `select()` y se llevaría los dos agregados.
      */
     protected ?string $resourceClass = SnkKilkanaCategoryResource::class;
 
-    protected function newQuery()
+    protected array $allowedFields = ['id', 'name', 'slug', 'status', 'position', 'parent_id', 'noindex', 'updated_at'];
+
+    protected function decorate(QueryBuilder $query): QueryBuilder
     {
-        return parent::newQuery()->asCatalogue();
+        return $query->asCatalogue();
     }
 
     protected string $indexPermission = 'index categories';

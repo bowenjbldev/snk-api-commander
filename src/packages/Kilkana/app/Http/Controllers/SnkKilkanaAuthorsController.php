@@ -10,6 +10,7 @@ use Packages\Kilkana\Enums\SnkKilkanaAuthorKindEnum;
 use Packages\Kilkana\Http\Resources\SnkKilkanaAuthorResource;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
+use Spatie\QueryBuilder\QueryBuilder;
 
 #[Group('Authors')]
 class SnkKilkanaAuthorsController extends CoreBaseApiController
@@ -54,14 +55,30 @@ class SnkKilkanaAuthorsController extends CoreBaseApiController
      * sin sesion. Aqui solo existe para quien lista firmas en el panel, y ningun serializador
      * futuro tiene que acordarse de esconderlo.
      *
-     * Va en `newQuery()` y no en el modelo porque **solo lo quiere quien lista**: pedir una
-     * firma para editarla no necesita contar sus piezas.
+     * Va en `decorate()` y no en el modelo porque **solo lo quiere quien lista**: pedir una
+     * firma para editarla no necesita contar sus piezas. Y en `decorate()` y no en `newQuery()`
+     * porque `?fields=` hace `select()`: puesto antes, el asiento y los recuentos se perderían.
      */
     protected ?string $resourceClass = SnkKilkanaAuthorResource::class;
 
-    protected function newQuery()
+    protected array $allowedFields = [
+        'id', 'slug', 'alias', 'kind', 'job_title', 'bio', 'website', 'public_email', 'socials',
+        'noindex', 'redirect_to', 'user_id',
+        // La foránea del retrato: sin ella `?include=avatarMedia` llega nulo. Y de la foto, el
+        // prefijo es la relación en plural snake, no la tabla.
+        'avatar_media_id', 'avatar_medias.id', 'avatar_medias.url',
+    ];
+
+    protected function decorate(QueryBuilder $query): QueryBuilder
     {
-        return parent::newQuery()->asCatalogue();
+        // La cuenta va siempre cargada —`$with` del modelo, porque el nombre publicado sale de
+        // ella— y sin su llave no se carga: con el modo estricto revienta. Quien recorta no
+        // tiene por qué saberlo, y la clave no sale: `$hidden` la tapa igual que siempre.
+        if ($query->getEloquentBuilder()->getQuery()->columns !== null) {
+            $query->addSelect('kilkana_authors.user_id');
+        }
+
+        return $query->asCatalogue();
     }
 
     /**

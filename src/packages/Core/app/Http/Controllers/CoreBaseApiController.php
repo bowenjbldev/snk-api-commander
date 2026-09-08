@@ -115,11 +115,35 @@ abstract class CoreBaseApiController extends Controller
         //   está puesta el paquete lanza `UnknownIncludedFieldsQuery`.
         // - **Las cuatro son variádicas**: pasarles el array entero, y no desempaquetado,
         //   las revienta.
-        return QueryBuilder::for($query ?? $this->newQuery())
+        $builder = QueryBuilder::for($query ?? $this->newQuery())
             ->allowedFields(...$this->allowedFields)
             ->allowedIncludes(...$this->allowedIncludes)
             ->allowedSorts(...$this->allowedSorts)
             ->allowedFilters(...$this->allowedFilters);
+
+        // La clave viaja siempre que haya recorte: un `hasMany` precargado la lee para
+        // emparejar, y sin ella no es que llegue vacío, es que lanza. Nadie pierde nada por
+        // recibir el id de la fila que pidió.
+        $eloquent = $builder->getEloquentBuilder();
+        if ($eloquent->getQuery()->columns !== null) {
+            $builder->addSelect($eloquent->getModel()->getQualifiedKeyName());
+        }
+
+        return $this->decorate($builder);
+    }
+
+    /**
+     * Lo que este recurso cuelga de cada fila DESPUÉS de que `?fields=` haya recortado.
+     *
+     * Agregados y precargas —un `withCount`, un `withMax`, un `addSelect` con subconsulta— van
+     * aquí y no en `newQuery()`, porque `allowedFields()` hace `select()` y no `addSelect()`:
+     * todo lo seleccionado antes desaparece en cuanto alguien pide campos. Es la trampa de
+     * `views_total` en posts, generalizada. Lo que se cuelga aquí no se pide por su nombre —no
+     * es una columna— y sale siempre que el recurso lo calcule.
+     */
+    protected function decorate(QueryBuilder $query): QueryBuilder
+    {
+        return $query;
     }
 
     /**
