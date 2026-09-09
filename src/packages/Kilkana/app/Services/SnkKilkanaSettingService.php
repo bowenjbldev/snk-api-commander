@@ -2,9 +2,14 @@
 
 namespace Packages\Kilkana\Services;
 
+use Illuminate\Support\Facades\DB;
+use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
+use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Models\SnkKilkanaPostSlugModel;
 use Packages\Kilkana\Models\SnkKilkanaSettingModel;
+use Packages\Kilkana\Models\SnkKilkanaTagModel;
 use Packages\Kilkana\Models\SnkKilkanaThemeModel;
+use RuntimeException;
 
 /**
  * Los ajustes del periódico: una sola fila, con columnas de verdad.
@@ -68,6 +73,42 @@ class SnkKilkanaSettingService
         $fila->save();
 
         return $fila;
+    }
+
+    /**
+     * La puesta en marcha, a cero: el archivo, las secciones y las etiquetas se van, y la fecha
+     * de lanzar se borra. Es lo que hace falta para recorrer el onboarding otra vez.
+     *
+     * Es la única puerta que deshace `launched_at`, y por eso no vive en `update()`: allí lanzar
+     * es un hecho. Las firmas y las cuentas se quedan —son gente, no contenido— y el tema
+     * también: lo pone el seeder, no el onboarding.
+     *
+     * ponytail: es un atajo de desarrollo y en producción no existe (403 en el controlador);
+     * el día que un periódico real quiera borrarse entero, eso es un flujo con confirmación.
+     *
+     * @throws RuntimeException en producción
+     */
+    public function resetSetup(): SnkKilkanaSettingModel
+    {
+        if (app()->environment('production')) {
+            throw new RuntimeException('La puesta en marcha no se reinicia en producción.');
+        }
+
+        return DB::transaction(function () {
+            // Lo que cuelga de una pieza —revisiones, notas, comentarios, lecturas, pivotes—
+            // cae en cascada por la clave foránea. Sin papelera: se va del todo.
+            SnkKilkanaPostModel::withTrashed()->forceDelete();
+            // Hijas antes que madres: `parent_id` es RESTRICT.
+            SnkKilkanaCategoryModel::query()->whereNotNull('parent_id')->delete();
+            SnkKilkanaCategoryModel::query()->delete();
+            SnkKilkanaTagModel::query()->delete();
+
+            $fila = $this->get();
+            $fila->launched_at = null;
+            $fila->save();
+
+            return $fila;
+        });
     }
 
     public function payload(SnkKilkanaSettingModel $fila): array

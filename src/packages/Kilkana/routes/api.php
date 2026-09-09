@@ -220,4 +220,6 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
 
     Route::get('settings', [SnkKilkanaSettingsController::class, 'show'])->middleware('can:show settings');
     Route::put('settings', [SnkKilkanaSettingsController::class, 'update'])->middleware('can:update settings');
+    // La puesta en marcha a cero: archivo, secciones y etiquetas fuera. Atajo de desarrollo; en producción, 403.
+    Route::delete('setup', [SnkKilkanaSettingsController::class, 'reset'])->middleware('can:update settings');
 });

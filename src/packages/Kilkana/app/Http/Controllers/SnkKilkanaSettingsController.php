@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Packages\Kilkana\Models\SnkKilkanaSettingModel;
 use Packages\Kilkana\Services\SnkKilkanaSettingService;
+use RuntimeException;
 
 /**
  * Ajustes del workspace (singleton): el tema que viste el periódico y lo que ha movido encima,
@@ -65,5 +66,17 @@ class SnkKilkanaSettingsController extends Controller
         ]);
 
         return response()->json($this->settings->payload($this->settings->update($data)) + $this->settings->facts());
+    }
+
+    /** Volver a empezar la puesta en marcha: archivo, secciones y etiquetas fuera. No en producción. */
+    public function reset(): JsonResponse
+    {
+        try {
+            $fila = $this->settings->resetSetup();
+        } catch (RuntimeException $e) {
+            return response()->json(['error' => $e->getMessage()], 403);
+        }
+
+        return response()->json($this->settings->payload($fila) + $this->settings->facts());
     }
 }

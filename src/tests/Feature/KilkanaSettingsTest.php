@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaSettingsController;
+use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
+use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
+use Packages\Kilkana\Models\SnkKilkanaPostModel;
+use Packages\Kilkana\Models\SnkKilkanaTagModel;
 use Packages\Kilkana\Services\SnkKilkanaPublicService;
 use Packages\Kilkana\Services\SnkKilkanaRoleCatalogService;
 use Tests\TestCase;
@@ -104,6 +108,29 @@ class KilkanaSettingsTest extends TestCase
         } catch (ValidationException $e) {
             $this->assertSame(['lang', 'social.x'], array_keys($e->errors()));
         }
+    }
+
+    /** Reiniciar se lleva el archivo, las secciones y las etiquetas, y deja a la gente. */
+    public function test_la_puesta_en_marcha_se_reinicia_entera_y_deja_a_la_gente(): void
+    {
+        $local = SnkKilkanaCategoryModel::create(['name' => 'Local', 'slug' => 'local', 'status' => 'live', 'position' => 0]);
+        SnkKilkanaCategoryModel::create(['name' => 'Barrios', 'slug' => 'barrios', 'status' => 'live', 'position' => 1, 'parent_id' => $local->id]);
+        $firma = SnkKilkanaAuthorModel::create(['alias' => 'Ada Prat']);
+        $pieza = SnkKilkanaPostModel::create([
+            'title' => 'Pleno', 'excerpt' => 'Entradilla.', 'slug' => 'pleno', 'status' => 'draft',
+            'category_id' => $local->id, 'author_id' => $firma->id, 'created_by' => 1, 'updated_by' => 1,
+        ]);
+        $pieza->tags()->attach(SnkKilkanaTagModel::create(['name' => 'movilidad']));
+        $this->guardar(['launched' => true]);
+
+        $respuesta = app(SnkKilkanaSettingsController::class)->reset();
+
+        $this->assertSame(200, $respuesta->getStatusCode());
+        $this->assertNull($respuesta->getData(true)['launched_at']);
+        $this->assertSame(0, SnkKilkanaPostModel::withTrashed()->count());
+        $this->assertSame(0, SnkKilkanaCategoryModel::count());
+        $this->assertSame(0, SnkKilkanaTagModel::count());
+        $this->assertSame(1, SnkKilkanaAuthorModel::count(), 'Las firmas son gente, no contenido.');
     }
 
     private function guardar(array $cuerpo)
