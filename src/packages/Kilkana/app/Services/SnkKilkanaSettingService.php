@@ -80,8 +80,8 @@ class SnkKilkanaSettingService
      * de lanzar se borra. Es lo que hace falta para recorrer el onboarding otra vez.
      *
      * Es la única puerta que deshace `launched_at`, y por eso no vive en `update()`: allí lanzar
-     * es un hecho. Las firmas y las cuentas se quedan —son gente, no contenido— y el tema
-     * también: lo pone el seeder, no el onboarding.
+     * es un hecho. Las firmas y las cuentas se quedan —son gente, no contenido—; el tema se
+     * quita, porque elegirlo es el primer paso del onboarding.
      *
      * ponytail: es un atajo de desarrollo y en producción no existe (403 en el controlador);
      * el día que un periódico real quiera borrarse entero, eso es un flujo con confirmación.
@@ -103,9 +103,15 @@ class SnkKilkanaSettingService
             SnkKilkanaCategoryModel::query()->delete();
             SnkKilkanaTagModel::query()->delete();
 
+            // Desvestido también: elegir tema es el primer paso, y reiniciar es volver a él.
             $fila = $this->get();
-            $fila->launched_at = null;
-            $fila->save();
+            $fila->forceFill([
+                'launched_at' => null,
+                'theme_id' => null,
+                'theme_spec' => null,
+                'theme_version' => null,
+                'theme_overrides' => null,
+            ])->save();
 
             return $fila;
         });

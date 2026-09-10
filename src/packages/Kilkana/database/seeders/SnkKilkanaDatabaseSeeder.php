@@ -1270,12 +1270,12 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         $tenant = $perfil['tenant'] ?? [];
 
         // El fichero guarda el SLUG del tema, nunca su id: un id de una base no significa nada
-        // en otra, y un perfil tiene que poder sembrarse en cualquiera.
-        $catalogo = SnkKilkanaThemeModel::query()->published();
-        $tema = (isset($perfil['theme'])
-            ? (clone $catalogo)->where('slug', $perfil['theme'])->first()
-            : null)
-            ?? (clone $catalogo)->orderByDesc('featured')->orderBy('position')->first();
+        // en otra, y un perfil tiene que poder sembrarse en cualquiera. Sin `theme` en el perfil
+        // el periódico nace desnudo: elegirlo es el primer paso de la puesta en marcha, y un
+        // tema puesto de oficio es un paso que nadie dio.
+        $tema = isset($perfil['theme'])
+            ? SnkKilkanaThemeModel::query()->published()->where('slug', $perfil['theme'])->first()
+            : null;
 
         $fila = SnkKilkanaSettingModel::firstOrCreate(['id' => 1], [
             'tenant_name' => $tenant['name'] ?? null,

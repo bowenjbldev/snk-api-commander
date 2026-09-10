@@ -98,14 +98,18 @@ class SnkKilkanaPanelService
         ];
     }
 
-    /** @return array{launched_at: ?string, themed: bool, published: int} */
+    /** @return array{launched_at: ?string, theme: ?string, published: int} */
     private function setup(): array
     {
-        $ajustes = SnkKilkanaSettingModel::query()->find(1, ['launched_at', 'theme_spec']);
+        $ajustes = SnkKilkanaSettingModel::query()
+            ->with('theme:id,slug')
+            ->find(1, ['launched_at', 'theme_id', 'theme_spec']);
 
         return [
             'launched_at' => $ajustes?->launched_at?->toIso8601String(),
-            'themed' => $ajustes?->theme_spec !== null,
+            // El slug del tema puesto, y nulo mientras vaya desnudo: es lo que Themes marca
+            // como «live» y lo que da por hecho el primer paso.
+            'theme' => $ajustes?->theme_spec !== null ? $ajustes->theme?->slug : null,
             'published' => SnkKilkanaPostModel::query()->published()->count(),
         ];
     }
