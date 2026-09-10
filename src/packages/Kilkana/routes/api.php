@@ -199,6 +199,9 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     // ninguno de los tres catálogos— sin armazón desde el que irse a su pantalla.
     Route::get('panel/bootstrap', [SnkKilkanaPanelController::class, 'bootstrap']);
     Route::get('panel/dashboard', [SnkKilkanaPanelController::class, 'dashboard'])->middleware('can:index posts');
+    // El idioma del panel es de quien mira, no del periodico: sin permiso, porque cada cuenta
+    // solo puede tocar el suyo.
+    Route::put('panel/locale', [SnkKilkanaPanelController::class, 'locale']);
 
     // El registro de la redacción: lo lee quien ve el sumario de la redacción —los cinco de
     // dentro; un colaborador externo ve lo suyo y ya—, y los movimientos de cuentas solo quien

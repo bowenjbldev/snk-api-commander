@@ -48,6 +48,16 @@ class SnkKilkanaPanelService
 
     public const MOST_READ = 6;
 
+    /**
+     * Los idiomas en los que esta rotulado el panel.
+     *
+     * No es `SnkKilkanaSettingModel::LANGS`, y la diferencia importa: aquella es la lista de lo
+     * que la calle sabe SERVIR —el idioma en el que se publica, con su `hreflang` y su formato de
+     * fecha— y esta es la lista de lo que el panel esta TRADUCIDO. Un diario en gallego lo edita
+     * hoy alguien con el panel en castellano o en ingles, y son dos hechos independientes.
+     */
+    public const PANEL_LOCALES = ['en', 'es'];
+
     public function __construct(
         private readonly SnkKilkanaActivityService $registro,
         private readonly SnkKilkanaBylineService $firmas,
@@ -78,6 +88,12 @@ class SnkKilkanaPanelService
             // panel manda a ella: la fecha de apertura, si hay tema puesto y cuántas piezas han
             // salido. Sin permiso propio porque no descubre nada que la calle no diga.
             'setup' => $this->setup(),
+            // Quien mira: por ahora solo en que idioma quiere el panel. Nulo es «lo que diga el
+            // navegador», que es con lo que nace toda cuenta. Se lee de la fila y no del modelo
+            // autenticado: ese modelo puede no traer la columna —el de `actingAs` en las pruebas
+            // no la trae, y el modo estricto lo convierte en excepcion—, y de la fila sale siempre
+            // lo que hay guardado.
+            'account' => ['locale' => auth()->user()?->newQuery()->whereKey(auth()->id())->value('panel_locale')],
             // El mismo scope y **el mismo Resource** que sirven `GET categories`, `authors` y
             // `tags`: el scope arma la consulta y el Resource la forma, justo para que las dos
             // puertas no puedan enseñar columnas distintas.
