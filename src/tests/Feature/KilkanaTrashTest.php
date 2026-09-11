@@ -65,7 +65,7 @@ class KilkanaTrashTest extends TestCase
         $this->assertSame('draft', $vuelta->status->value, 'Vuelve como borrador, no publicada.');
         $this->assertSame($ruta, $vuelta->url_path, 'Con la misma URL.');
         $this->assertNull($vuelta->deleted_by);
-        $this->assertSame(['deleted', 'restored from the trash'], SnkKilkanaActivityModel::query()->where('kind', '<>', 'category')->where('kind', '<>', 'edit')->orderBy('id')->pluck('verb')->all());
+        $this->assertSame(['deleted', 'restored_from_trash'], SnkKilkanaActivityModel::query()->where('kind', '<>', 'category')->where('kind', '<>', 'edit')->orderBy('id')->pluck('verb')->all());
     }
 
     public function test_un_medio_tirado_dice_que_piezas_lo_llevan_y_purgar_se_lo_lleva(): void

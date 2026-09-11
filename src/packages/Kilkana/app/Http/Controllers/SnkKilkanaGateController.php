@@ -85,9 +85,9 @@ class SnkKilkanaGateController extends CoreBaseApiController
         $failing = $filas->filter(fn (SnkKilkanaGateResultModel $r) => $r->failing())->count();
         $auditadas = $filas->whereNotNull('checked_at')->count();
         if ($failing > 0) {
-            $this->registro->log('gate', 'blocked the deploy:', "{$failing} of {$auditadas} routes fail", '/output-gate');
+            $this->registro->log('gate', 'deploy_blocked', '', '/output-gate', ['params' => ['failing' => $failing, 'total' => $auditadas]]);
         } else {
-            $this->registro->log('gate', 'passed the output gate on', "{$auditadas} routes", '/output-gate');
+            $this->registro->log('gate', 'gate_passed', '', '/output-gate', ['params' => ['total' => $auditadas]]);
         }
 
         return $this->index();

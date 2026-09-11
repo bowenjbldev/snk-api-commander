@@ -51,7 +51,7 @@ class KilkanaGateTest extends TestCase
         $this->assertNull($primera['data'][2]['passing']);
         $this->assertNull($primera['data'][2]['checked_at']);
         $this->assertNotNull($primera['last_run_at']);
-        $this->assertSame('blocked the deploy:', SnkKilkanaActivityModel::query()->where('kind', 'gate')->value('verb'));
+        $this->assertSame('deploy_blocked', SnkKilkanaActivityModel::query()->where('kind', 'gate')->value('verb'));
 
         $segunda = $this->gate()->store($this->pasada([
             ['url' => '/', 'kind' => 'front page', 'passing' => $nueve],

@@ -168,14 +168,17 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
         $count = $this->comments->bulk($data['ids'], $data['action']);
         if ($count > 0) {
             $verbo = match ($data['action']) {
-                'approve' => 'approved',
-                'reject' => 'rejected',
-                'spam' => 'marked as spam',
-                'pending' => 'reopened',
-                default => 'deleted',
+                'approve' => 'comments_approved',
+                'reject' => 'comments_rejected',
+                'spam' => 'comments_spammed',
+                'pending' => 'comments_reopened',
+                default => 'comments_deleted',
             };
-            $cuantos = $count === 1 ? '1 comment' : "{$count} comments";
-            $this->registro->log('comment', "{$verbo} {$cuantos} on", $piezas->count() === 1 ? (string) $piezas->first() : "{$piezas->count()} posts", '/comments');
+            // Sobre una pieza se nombra; sobre varias se cuentan, y la frase la pone el panel.
+            $una = $piezas->count() === 1;
+            $this->registro->log('comment', $verbo, $una ? (string) $piezas->first() : '', '/comments', [
+                'params' => $una ? ['count' => $count] : ['count' => $count, 'posts' => $piezas->count()],
+            ]);
         }
 
         return response()->json(['ok' => true, 'count' => $count]);

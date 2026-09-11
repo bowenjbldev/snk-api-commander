@@ -171,7 +171,7 @@ class SnkKilkanaSubscribersController extends CoreBaseApiController
             $importadas += count($nuevas);
         }
 
-        app(SnkKilkanaActivityService::class)->log('newsletter', 'imported subscribers', "{$importadas} addresses", '/newsletter');
+        app(SnkKilkanaActivityService::class)->log('newsletter', 'subscribers_imported', '', '/newsletter', ['params' => ['count' => $importadas]]);
 
         return response()->json([
             'imported' => $importadas,

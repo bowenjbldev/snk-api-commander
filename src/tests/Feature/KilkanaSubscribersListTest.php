@@ -59,7 +59,7 @@ class KilkanaSubscribersListTest extends TestCase
         $this->assertSame('2025-03-01 10:00:00', $ana->consent_at->toDateTimeString());
         $this->assertSame('pending', SnkKilkanaSubscriberModel::query()->where('email', 'pepe@lectores.example')->value('status')->value);
         $this->assertSame('unsubscribed', SnkKilkanaSubscriberModel::query()->where('email', 'baja@lectores.example')->value('status')->value, 'Una baja no vuelve por venir en la lista.');
-        $this->assertSame(1, DB::table('kilkana_activity')->where('verb', 'imported subscribers')->count());
+        $this->assertSame(1, DB::table('kilkana_activity')->where('verb', 'subscribers_imported')->count());
     }
 
     public function test_sin_cabecera_vale_y_sin_consentimiento_declarado_no_entra_nada(): void

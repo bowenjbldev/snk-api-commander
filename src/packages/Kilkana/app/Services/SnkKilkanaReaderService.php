@@ -131,7 +131,7 @@ class SnkKilkanaReaderService
     {
         $user->forceFill(['suspended_at' => $user->suspended_at ?? now()])->save();
         $user->tokens()->delete();
-        $this->registro->log('comment', 'blocked the reader', $user->full_name ?: $user->name, '/readers');
+        $this->registro->log('comment', 'reader_blocked', $user->full_name ?: $user->name, '/readers');
 
         return SnkKilkanaCommentModel::query()
             ->where('user_id', $user->getKey())
@@ -158,13 +158,13 @@ class SnkKilkanaReaderService
             'password' => Str::random(40),
         ])->save();
         SnkKilkanaSubscriberModel::query()->where('email', $email)->delete();
-        $this->registro->log('comment', 'removed the reader account', 'a reader', '/readers');
+        $this->registro->log('comment', 'reader_removed', '', '/readers');
     }
 
     /** Vuelve a abrirla. Lo rechazado se queda rechazado: eso ya fue una decisión. */
     public function unblock(CoreUserModel $user): void
     {
         $user->forceFill(['suspended_at' => null])->save();
-        $this->registro->log('comment', 'unblocked the reader', $user->full_name ?: $user->name, '/readers');
+        $this->registro->log('comment', 'reader_unblocked', $user->full_name ?: $user->name, '/readers');
     }
 }

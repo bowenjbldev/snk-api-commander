@@ -84,7 +84,7 @@ class SnkKilkanaTrashService
                 }
                 $post->forceFill(['deleted_by' => null])->restore();
             });
-            $this->registro->log('restore', 'restored from the trash', $post->title, '/posts');
+            $this->registro->log('restore', 'restored_from_trash', $post->title, '/posts');
 
             return true;
         }
@@ -94,7 +94,7 @@ class SnkKilkanaTrashService
             return false;
         }
         $this->registro->quiet(fn () => $medio->forceFill(['deleted_by' => null])->restore());
-        $this->registro->log('restore', 'restored from the trash', $medio->title ?: ($medio->original_name ?: 'a file'), '/media');
+        $this->registro->log('restore', 'restored_from_trash', $medio->title ?: ($medio->original_name ?: ''), '/media');
 
         return true;
     }

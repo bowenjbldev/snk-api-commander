@@ -26,6 +26,7 @@ class SnkKilkanaActivityResource extends JsonResource
             'kind' => $this->whenHas('kind'),
             'verb' => $this->whenHas('verb'),
             'what' => $this->whenHas('what'),
+            'params' => $this->whenHas('params'),
             'before' => $this->whenHas('before'),
             'after' => $this->whenHas('after'),
             'href' => $this->whenHas('href'),

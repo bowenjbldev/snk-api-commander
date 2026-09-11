@@ -117,7 +117,7 @@ class SnkKilkanaUsersController extends CoreUsersController
         }
 
         $user->load('roles:id,name');
-        $this->registro->log('seat', 'invited', "{$data['email']} as ".ucfirst($data['role']), '/roles');
+        $this->registro->log('seat', 'seat_invited', $data['email'], '/roles', ['params' => ['role' => $data['role']]]);
 
         return $this->flagPendingByline(response()->json(new SnkKilkanaUserResource($user), 201), (int) $user->getKey());
     }
@@ -184,7 +184,7 @@ class SnkKilkanaUsersController extends CoreUsersController
 
         $user->forceFill(['suspended_at' => now()])->save();
         $user->tokens()->delete();
-        $this->registro->log('seat', 'suspended', $user->full_name ?: $user->name, '/roles');
+        $this->registro->log('seat', 'seat_suspended', $user->full_name ?: $user->name, '/roles');
 
         return response()->json(new SnkKilkanaUserResource($user->load('roles:id,name')));
     }
@@ -202,7 +202,7 @@ class SnkKilkanaUsersController extends CoreUsersController
         }
 
         $user->forceFill(['suspended_at' => null])->save();
-        $this->registro->log('seat', 'restored the seat of', $user->full_name ?: $user->name, '/roles');
+        $this->registro->log('seat', 'seat_restored', $user->full_name ?: $user->name, '/roles');
 
         return response()->json(new SnkKilkanaUserResource($user->load('roles:id,name')));
     }

@@ -464,7 +464,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         // Callado: restaurar guarda la pieza, y «editó» no es lo que pasó. El servicio es
         // singleton, así que el `quiet()` y el `log()` de después hablan del mismo.
         $restaurada = $this->registro->quiet(fn () => $this->posts->restore($post, $revision, (int) auth()->id()));
-        $this->registro->log('restore', 'restored an earlier version of', $post->title, '/posts');
+        $this->registro->log('restore', 'version_restored', $post->title, '/posts');
 
         return response()->json($restaurada);
     }

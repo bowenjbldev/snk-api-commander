@@ -146,7 +146,7 @@ class KilkanaPostsWriteTest extends TestCase
 
         $this->assertSame(200, $vuelta->getStatusCode(), $vuelta->getContent());
         $this->assertSame('Titular viejo', $pieza->fresh()->title, 'Restaurar devuelve el titular de esa versión.');
-        $this->assertSame(1, DB::table('kilkana_activity')->where('verb', 'restored an earlier version of')->count());
+        $this->assertSame(1, DB::table('kilkana_activity')->where('verb', 'version_restored')->count());
     }
 
     private function controlador(): SnkKilkanaPostsController

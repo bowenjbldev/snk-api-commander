@@ -341,18 +341,20 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             if ($cuando->greaterThan(now())) {
                 continue;
             }
-            $sobre = (int) $dia->piezas === 1 ? (string) $titulos->get($dia->pieza) : "{$dia->piezas} posts";
-            $apunta('comment', ((int) $dia->total === 1 ? 'approved 1 comment on' : "approved {$dia->total} comments on"), $sobre, '/comments', $cuando, $moderacion);
+            $una = (int) $dia->piezas === 1;
+            $apunta('comment', 'comments_approved', $una ? (string) $titulos->get($dia->pieza) : '', '/comments', $cuando, $moderacion, [
+                'params' => $una ? ['count' => (int) $dia->total] : ['count' => (int) $dia->total, 'posts' => (int) $dia->piezas],
+            ]);
         }
 
         // Lo que pasa de vez en cuando, con la fecha atada a hoy para que no envejezca.
         $hoy = now();
-        $apunta('theme', 'applied the theme', 'Folio', '/themes', $hoy->copy()->subDays(41)->setTime(11, 20), $direccion, ['before' => 'Chronicle', 'after' => 'Folio']);
-        $apunta('category', 'renamed the category', 'Pueblos → Municipios', '/categories', $hoy->copy()->subDays(23)->setTime(9, 48), $direccion, ['before' => 'Pueblos', 'after' => 'Municipios']);
-        $apunta('tag', 'merged the tags', 'movilidad-urbana into movilidad', '/tags', $hoy->copy()->subDays(12)->setTime(16, 5), $direccion, ['before' => 'movilidad-urbana', 'after' => 'movilidad']);
-        $apunta('front', 'changed the front page of', 'Home', '/front', $hoy->copy()->subDays(1)->setTime(8, 2), $direccion);
-        $apunta('seat', 'invited', 'paula.roig@eldiario.example as Editor', '/roles', $hoy->copy()->subDays(6)->setTime(12, 31), $direccion);
-        $apunta('comment', 'blocked the reader', 'u9902', '/readers', $hoy->copy()->subDays(3)->setTime(18, 44), $moderacion);
+        $apunta('theme', 'theme_applied', 'Folio', '/themes', $hoy->copy()->subDays(41)->setTime(11, 20), $direccion, ['before' => 'Chronicle', 'after' => 'Folio']);
+        $apunta('category', 'category_renamed', 'Pueblos → Municipios', '/categories', $hoy->copy()->subDays(23)->setTime(9, 48), $direccion, ['before' => 'Pueblos', 'after' => 'Municipios']);
+        $apunta('tag', 'tags_merged', 'movilidad', '/tags', $hoy->copy()->subDays(12)->setTime(16, 5), $direccion, ['before' => 'movilidad-urbana', 'after' => 'movilidad']);
+        $apunta('front', 'front_changed', '', '/front', $hoy->copy()->subDays(1)->setTime(8, 2), $direccion, ['params' => ['layout' => 'front']]);
+        $apunta('seat', 'seat_invited', 'paula.roig@eldiario.example', '/roles', $hoy->copy()->subDays(6)->setTime(12, 31), $direccion, ['params' => ['role' => 'editor']]);
+        $apunta('comment', 'reader_blocked', 'u9902', '/readers', $hoy->copy()->subDays(3)->setTime(18, 44), $moderacion);
     }
 
     /**

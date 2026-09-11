@@ -170,7 +170,7 @@ class SnkKilkanaNewsletterService
             SnkKilkanaNewsletterSendJob::dispatch($database, $client, (int) $issue->getKey(), $tanda->values()->all());
         }
 
-        $this->registro->log('newsletter', 'sent the newsletter issue', $issue->subject, '/newsletter');
+        $this->registro->log('newsletter', 'issue_sent', $issue->subject, '/newsletter');
 
         return $ids->count();
     }

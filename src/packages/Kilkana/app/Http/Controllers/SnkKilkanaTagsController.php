@@ -102,7 +102,7 @@ class SnkKilkanaTagsController extends CoreBaseApiController
             $hasta->posts()->syncWithoutDetaching($piezas);
             $desde->delete();
         }));
-        $registro->log('tag', 'merged the tags', "{$desde->name} into {$hasta->name}", '/tags', ['before' => $desde->name, 'after' => $hasta->name]);
+        $registro->log('tag', 'tags_merged', $hasta->name, '/tags', ['before' => $desde->name, 'after' => $hasta->name]);
 
         return response()->json(['id' => (string) $hasta->id, 'moved' => count($piezas)]);
     }
