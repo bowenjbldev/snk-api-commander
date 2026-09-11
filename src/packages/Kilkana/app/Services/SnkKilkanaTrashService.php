@@ -55,7 +55,8 @@ class SnkKilkanaTrashService
             $medios = SnkKilkanaMediaModel::onlyTrashed()->orderByDesc('deleted_at')->get();
             foreach ($medios as $medio) {
                 $filas[] = [
-                    ...$this->common('media', $medio->getKey(), $medio->title ?: ($medio->original_name ?: 'a file'), $medio->deleted_at, $medio->deleted_by),
+                    // Sin título ni nombre va vacío: el rótulo lo pone el panel en su idioma.
+                    ...$this->common('media', $medio->getKey(), $medio->title ?: ($medio->original_name ?: ''), $medio->deleted_at, $medio->deleted_by),
                     'path' => $medio->width && $medio->height ? "{$medio->width} × {$medio->height}" : null,
                     'reach' => (int) $medio->size_bytes,
                     'excerpt' => null,
