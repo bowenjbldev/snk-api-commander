@@ -263,4 +263,5 @@ Si falla, queda `failed` con `last_error` para inspección y retry.
 5. desde el provisioner ejecuta `core:migrate --all-tenants --force`;
 6. el comando hace preflight completo antes del primer DDL.
 
-No se combina `--all-tenants` con fresh, rollback, seed, client o package.
+No se combina `--all-tenants` con rollback, client o package, ni siembra sin `--fresh`. `--all-tenants
+--fresh` rehace todos los periódicos y es solo de local: en producción se rechaza.

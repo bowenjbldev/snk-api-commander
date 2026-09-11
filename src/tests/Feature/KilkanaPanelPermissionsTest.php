@@ -83,7 +83,7 @@ class KilkanaPanelPermissionsTest extends TestCase
     /**
      * Reaplicar el reparto REPARA, que es de lo que vive `kilkana:sync-permissions`.
      *
-     * Un despliegue no vuelve a sembrar —`core:migrate --all-tenants` rechaza `--seed`—, así
+     * Un despliegue no vuelve a sembrar —`core:migrate --all-tenants` solo siembra con `--fresh`—, así
      * que un permiso nuevo no llega solo a un periódico que ya existía. El comando reaplica
      * este catálogo sobre cada inquilino, y lo que lo hace seguro es que sea idempotente y
      * que un rol al que le falte algo vuelva entero.

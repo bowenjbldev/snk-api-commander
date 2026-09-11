@@ -117,6 +117,26 @@ class CoreProductionSafetyTest extends TestCase
         $this->artisan('core:migrate --all-tenants --force')->assertExitCode(1);
     }
 
+    /**
+     * Rehacer todos los periódicos es de local: sin `--fresh` no siembra —un despliegue no
+     * vuelve a sembrar— y en producción no hay combinación que lo abra.
+     */
+    public function test_rebuilding_every_tenant_is_local_only_and_seeding_needs_fresh(): void
+    {
+        $this->artisan('core:migrate --all-tenants --seed --force')->assertExitCode(1);
+        $this->artisan('core:migrate --all-tenants --fresh --client=demo --force')->assertExitCode(1);
+        // Sin instancias listas no hay nada que rehacer: pasa las puertas y termina bien.
+        $this->artisan('core:migrate --all-tenants --fresh --seed --force')->assertExitCode(0);
+
+        $env = $this->app['env'];
+        $this->app['env'] = 'production';
+        try {
+            $this->artisan('core:migrate --all-tenants --fresh --force')->assertExitCode(1);
+        } finally {
+            $this->app['env'] = $env;
+        }
+    }
+
     public function test_tenant_seeding_never_copies_the_commander_admin(): void
     {
         DB::purge('tenant');

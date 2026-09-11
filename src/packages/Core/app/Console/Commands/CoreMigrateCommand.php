@@ -15,14 +15,18 @@ use Packages\Core\Support\CorePackageSelectorSupport;
  *   - CON --client + --package -> TENANT: Core + package compartido + overlay opcional;
  *     BD derivada snake(client)_snake(package).
  * El provisioning usa core:migrate --client=acme --package=Shop; el deploy usa core:migrate.
+ *
+ * `--all-tenants --fresh [--seed]` vacía y rehace la base de cada periódico: es para empezar de
+ * cero en local, y en producción no hay flag que lo abra. Sin `--fresh` no siembra, porque un
+ * despliegue no vuelve a sembrar.
  */
 class CoreMigrateCommand extends Command
 {
     protected $signature = 'core:migrate
         {--client= : Cliente (slug) del TENANT. Requiere --package. Deriva la BD snake(client)_snake(package).}
         {--package= : Package de negocio del TENANT (StudlyCase). Requiere --client.}
-        {--all-tenants : Migrate every provisioned tenant after a deploy.}
-        {--seed : Run seeders after migrating}
+        {--all-tenants : Migrate every provisioned tenant after a deploy. With --fresh (never in production), rebuild them all.}
+        {--seed : Run seeders after migrating. With --all-tenants, only together with --fresh.}
         {--fresh : Drop all tables and re-run all migrations}
         {--rollback : Rollback the last batch of migrations}
         {--step= : Number of migrations to rollback}
@@ -37,8 +41,16 @@ class CoreMigrateCommand extends Command
         $allTenants = (bool) $this->option('all-tenants');
 
         if ($allTenants) {
-            if ($client !== null || $package !== null || $this->option('seed') || $this->option('fresh') || $this->option('rollback')) {
-                $this->fail('--all-tenants no se combina con --client, --package, --seed, --fresh ni --rollback.');
+            if ($client !== null || $package !== null || $this->option('rollback')) {
+                $this->fail('--all-tenants no se combina con --client, --package ni --rollback.');
+            }
+            if ($this->option('seed') && ! $this->option('fresh')) {
+                $this->fail('--all-tenants solo siembra con --fresh: un despliegue no vuelve a sembrar.');
+            }
+            // Vaciar todos los periódicos de una vez es de desarrollo: un deploy con el flag de
+            // más no puede borrar la redacción de nadie.
+            if ($this->option('fresh') && app()->isProduction()) {
+                $this->fail('--all-tenants --fresh vacía todos los periódicos y no se usa en producción.');
             }
 
             return $this->migrateAllTenants();
@@ -135,12 +147,13 @@ class CoreMigrateCommand extends Command
             }
         }
 
+        $fresh = (bool) $this->option('fresh');
         foreach ($instances as $instance) {
             $client = $instance->client->slug;
             $package = $instance->application->package_name;
             $this->configureTenant($instance->database);
-            $this->info("Migrating tenant [{$client}/{$package}]...");
-            $status = Artisan::call('migrate', [
+            $this->info(($fresh ? 'Rebuilding' : 'Migrating')." tenant [{$client}/{$package}]...");
+            $status = Artisan::call($fresh ? 'migrate:fresh' : 'migrate', [
                 '--path' => $this->tenantMigrationPaths($discovery, $client, $package),
                 '--realpath' => true,
                 '--database' => 'tenant',
@@ -149,6 +162,18 @@ class CoreMigrateCommand extends Command
 
             if ($status !== self::SUCCESS) {
                 return $status;
+            }
+
+            if ($this->option('seed')) {
+                $status = Artisan::call('core:seed', [
+                    '--client' => $client,
+                    '--package' => $package,
+                    '--force' => (bool) $this->option('force'),
+                ], $this->output);
+
+                if ($status !== self::SUCCESS) {
+                    return $status;
+                }
             }
         }
 

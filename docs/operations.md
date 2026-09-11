@@ -150,8 +150,19 @@ docker compose exec -T provisioner php artisan kilkana:sync-permissions
 ```
 
 El preflight valida todas las instancias antes del primer DDL. `--all-tenants` no se combina con
-client, package, seed, fresh ni rollback. Las migraciones no sincronizan catálogos replicados:
-temas y permisos son comandos separados.
+client, package ni rollback, y solo siembra con `--fresh`. Las migraciones no sincronizan
+catálogos replicados: temas y permisos son comandos separados.
+
+### Todos los periódicos desde cero (local)
+
+```bash
+docker compose exec -T -e KILKANA_SEED_DEMO=1 provisioner \
+  php artisan core:migrate --all-tenants --fresh --seed --force
+```
+
+Vacía la base de cada periódico listo, la rehace y la siembra: el registro de actividad, las
+piezas y las cuentas vuelven a nacer. Sin `KILKANA_SEED_DEMO=1` se siembra el catálogo pero no
+las cuentas conocidas ni el contenido editorial. En producción se rechaza.
 
 ### Fresh local
 
