@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaActivityController;
@@ -68,6 +69,7 @@ class KilkanaPanelCompositeTest extends TestCase
         $this->assertSame($this->de(SnkKilkanaTrashController::class, ['counts' => '1']), $panel['trash']);
         $this->assertSame($this->de(SnkKilkanaGateController::class, ['counts' => '1']), $panel['gate']);
         $this->assertSame($this->de(SnkKilkanaNewsletterController::class, ['counts' => '1']), $panel['newsletter']);
+        $this->assertSame(Arr::only($this->piezas('summary=counts'), ['counts', 'counts_all']), $panel['posts']);
 
         // Y trae algo: una comparación entre dos vacíos pasaría igual.
         $this->assertCount(1, $panel['categories']);
@@ -75,6 +77,7 @@ class KilkanaPanelCompositeTest extends TestCase
         $this->assertSame(1, $panel['gate']['failing']);
         $this->assertSame(1, $panel['newsletter']['drafts']);
         $this->assertSame(1, $panel['trash']['count']);
+        $this->assertSame(3, array_sum($panel['posts']['counts']), 'La tirada no cuenta.');
         $this->assertNotSame([], $panel['activity']['data']);
     }
 

@@ -70,7 +70,7 @@ class SnkKilkanaPanelService
     ) {}
 
     /**
-     * Lo que el armazón necesita para pintarse: los tres catálogos y las seis cifras del raíl.
+     * Lo que el armazón necesita para pintarse: los tres catálogos y las cifras del raíl.
      *
      * @return array<string, mixed>
      */
@@ -100,6 +100,17 @@ class SnkKilkanaPanelService
             'categories' => $this->conPermiso('index categories', fn () => SnkKilkanaCategoryResource::collection(SnkKilkanaCategoryModel::query()->asCatalogue()->get())),
             'authors' => $this->conPermiso('index authors', fn () => SnkKilkanaAuthorResource::collection(SnkKilkanaAuthorModel::query()->asCatalogue()->get())),
             'tags' => $this->conPermiso('index tags', fn () => SnkKilkanaTagResource::collection(SnkKilkanaTagModel::query()->asCatalogue()->get())),
+            // Las cifras de las pestañas de Piezas, con la forma que les da `GET posts?summary=counts`:
+            // el raíl cuenta lo mismo que la pestaña «Todas», acotado a lo que ve quien mira.
+            'posts' => $this->cifra('index posts', function () {
+                $counts = $this->piezas->countsByStatus(
+                    (int) auth()->id(),
+                    auth()->user()?->can('edit others posts') === true,
+                    auth()->user()?->can('view others posts') === true,
+                );
+
+                return ['counts' => $counts['scoped'], 'counts_all' => $counts['all']];
+            }),
             'comments' => $this->cifra('index comments', fn () => [
                 'counts' => $this->comentarios->countsByStatus(),
                 'oldest_pending_at' => $this->comentarios->oldestPendingAt(),
