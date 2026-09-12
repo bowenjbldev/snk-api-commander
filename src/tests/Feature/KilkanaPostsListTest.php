@@ -21,7 +21,7 @@ use Tests\TestCase;
  *
  * Se prueba el servicio y no la ruta HTTP a propósito: montar una petición autenticada
  * contra un inquilino exige un arnés —instancia en Commander, base migrada, resolución
- * por host y token de Sanctum en la base del periódico— que la suite todavía no tiene.
+ * por host y token de Sanctum en la base del periódico— que la suite no tiene.
  * Lo que aquí se fija es lo que de verdad puede romperse en silencio: el filtrado, el
  * orden estable del que depende paginar, y que las cifras de las pestañas cuenten el
  * archivo entero y no la página.
@@ -53,7 +53,7 @@ class KilkanaPostsListTest extends TestCase
     /**
      * Un enlace con `?page=999` enseña la última página, no una tabla vacía.
      *
-     * Es lo que hace que un enlace viejo siga significando algo. Sin esto la respuesta venía
+     * Es lo que hace que un enlace viejo siga significando algo. Sin esto la respuesta viene
      * con `data` vacío y un `meta` diciendo que hay siete piezas, que es una contradicción que
      * el panel pinta como «no hay nada».
      */
@@ -109,9 +109,9 @@ class KilkanaPostsListTest extends TestCase
     /**
      * El orden va en un parámetro, y el `-` delante es descendente.
      *
-     * Eran dos —`sort` y `dir`—, y ninguno decía por sí solo cómo iba a salir la lista: `sort=title`
-     * sin `dir` salía descendente, que es lo contrario de lo que cualquiera espera de un
-     * alfabético. Ahora sin signo es ascendente, como en JSON:API.
+     * Con dos —`sort` y `dir`— ninguno diría por sí solo cómo va a salir la lista: `sort=title`
+     * sin `dir` saldría descendente, que es lo contrario de lo que cualquiera espera de un
+     * alfabético. Sin signo es ascendente, como en JSON:API.
      */
     public function test_sort_is_one_parameter_and_a_minus_means_descending(): void
     {
@@ -147,7 +147,7 @@ class KilkanaPostsListTest extends TestCase
      *
      * Cuentan el archivo entero y no la página, así que no son parte de esta respuesta: son
      * otra pregunta que se contesta en el mismo viaje. Tres pantallas del panel piden este
-     * listado solo para enseñar «lo último publicado» y pagaban el recuento sin usarlo.
+     * listado solo para enseñar «lo último publicado», y no tienen por qué pagar el recuento.
      */
     public function test_counts_are_sent_only_when_requested(): void
     {
@@ -281,7 +281,7 @@ class KilkanaPostsListTest extends TestCase
      * Quien escribe desde fuera no ve el sumario de la redacción.
      *
      * `counts_all` publica cuánto hay sin publicar y en qué fase, y eso es actividad editorial
-     * ajena. Choca con la regla que el listado ya aplica tres métodos más arriba —una pieza
+     * ajena. Choca con la regla que el listado ya aplica —una pieza
      * ajena no existe: 404, no 403, porque un 403 confirmaría cuántas hay—, así que el
      * recuento tiene que respetarla igual.
      *
@@ -332,7 +332,7 @@ class KilkanaPostsListTest extends TestCase
      * El lote no saca a la calle lo que no está terminado.
      *
      * `required_if` vive en el controlador y solo mira la petición, y una petición de lote son
-     * ids: sin esta comprobación, marcar los borradores y pulsar «Publicar» publicaba también
+     * ids: sin esta comprobación, marcar los borradores y pulsar «Publicar» publica también
      * el que no tiene entradilla. El resto SÍ están listos, así que el lote no falla entero:
      * se salta el incompleto y el recuento lo dice.
      */
@@ -357,7 +357,7 @@ class KilkanaPostsListTest extends TestCase
 
     /**
      * El cron tampoco. A `scheduled` se llega por el lote, que no valida contenido, así que
-     * sin esto la pieza incompleta salía a la calle a las seis de la mañana sin que nadie la
+     * sin esto la pieza incompleta sale a la calle a las seis de la mañana sin que nadie la
      * viera. Se queda programada, que es un estado del que se sale escribiéndola.
      */
     public function test_the_cron_does_not_publish_a_scheduled_post_without_an_excerpt(): void
@@ -379,9 +379,9 @@ class KilkanaPostsListTest extends TestCase
      *
      * Nula es «todavía no escrita» y `''` es «escrita y en blanco», pero para publicar dan
      * igual: las dos dejan la pieza sin entradilla en la calle. Con `whereNotNull` en el cron
-     * y `null || ''` en el lote, una pieza en blanco salía por una puerta y no por la otra — y
+     * y `null || ''` en el lote, una pieza en blanco saldría por una puerta y no por la otra — y
      * el `down()` de la migración convierte las nulas en vacías, así que un rollback y su
-     * reaplicación cambiaban quién se publica.
+     * reaplicación cambiarían quién se publica.
      */
     public function test_a_blank_excerpt_counts_the_same_as_a_missing_one(): void
     {
@@ -450,13 +450,12 @@ class KilkanaPostsListTest extends TestCase
     /**
      * El listado no puede crecer en consultas al crecer en filas.
      *
-     * Es la unica forma de que un N+1 no vuelva sin que nadie lo note: en produccion se paga
-     * en milisegundos y en una demo de veinticinco filas no se ve. Medido antes de cerrarlo,
-     * el listado hacia **61 consultas** para veinticinco filas —`usage_count` de la portada
-     * son tres `COUNT(*)` por medio distinto, y `$appends` los calcula al vuelo cuando nadie
-     * hizo `withCount`—; ahora hace siete y no depende de cuantas filas se pidan.
+     * Es la única forma de que un N+1 no entre sin que nadie lo note: en producción se paga
+     * en milisegundos y en una demo de veinticinco filas no se ve. Un accesor que calcula al
+     * vuelo `usage_count` de la portada son tres `COUNT(*)` por medio distinto cuando nadie hizo
+     * `withCount`, y con veinticinco filas lleva el listado a decenas de consultas.
      *
-     * Se cuentan sobre el JSON serializado a proposito: la mitad de los N+1 de Eloquent no
+     * Se cuentan sobre el JSON serializado a propósito: la mitad de los N+1 de Eloquent no
      * los dispara la consulta, los dispara un accesor al serializar.
      */
     public function test_the_list_does_not_run_a_query_per_row(): void
@@ -506,10 +505,10 @@ class KilkanaPostsListTest extends TestCase
     /**
      * Y no calcula lo que nadie pinta.
      *
-     * `views_day` y `views_week` eran dos subconsultas correlacionadas por fila que ningun
-     * consumidor leia. Ordenar por lecturas pasaba de 5,9 a 18,6 ms de SQL solo por ellas,
+     * `views_day` y `views_week` son dos subconsultas correlacionadas por fila que ningún
+     * consumidor lee. Solo por ellas, ordenar por lecturas pasa de 5,9 a 18,6 ms de SQL,
      * porque ordenar por el alias de una correlacionada obliga a calcularla para TODAS las
-     * filas. Las ventanas siguen donde se usan, en el servicio publico.
+     * filas. Las ventanas viven donde se usan, en el servicio público.
      */
     public function test_the_list_only_sums_the_audience_it_shows(): void
     {
@@ -590,10 +589,10 @@ class KilkanaPostsListTest extends TestCase
     /**
      * Lo que no se pide no viaja: **ni columnas ni relaciones**.
      *
-     * El modelo declaraba `$with = ['category', 'author', 'coverMedia', 'tags']`, así que las
-     * cargaba en toda consulta de piezas aunque la pantalla no pintara ninguna —y con ellas, la
-     * cuenta de usos de cada portada, que son tres `COUNT` por foto—. Era la última pieza de la
-     * forma de salida que decidía el modelo en vez de quien pregunta.
+     * Un `$with = ['category', 'author', 'coverMedia', 'tags']` en el modelo las cargaría en toda
+     * consulta de piezas aunque la pantalla no pintara ninguna —y con ellas, la cuenta de usos de
+     * cada portada, que son tres `COUNT` por foto—. La forma de salida la decide quien pregunta,
+     * no el modelo.
      */
     public function test_what_is_not_requested_is_not_sent(): void
     {
@@ -638,10 +637,9 @@ class KilkanaPostsListTest extends TestCase
     /**
      * Publicar es AHORA, y por eso la fecha no se le pide a nadie.
      *
-     * Un borrador no tiene `publish_at` —se sella al salir a la calle—, asi que `required_if`
-     * la exigia y **desde el editor no se podia publicar una pieza**: el 422 hablaba de una
-     * fecha que el panel no tiene donde pedir. La accion en tanda ya sellaba; lo que faltaba
-     * era que las dos puertas se comportaran igual.
+     * Un borrador no tiene `publish_at` —se sella al salir a la calle—, así que si `required_if`
+     * la exige **desde el editor no se puede publicar una pieza**: el 422 habla de una fecha que
+     * el panel no tiene dónde pedir. El guardado y la acción en tanda sellan igual.
      */
     public function test_publishing_stamps_the_date_when_missing_or_in_the_future(): void
     {
@@ -652,13 +650,13 @@ class KilkanaPostsListTest extends TestCase
         $this->assertNotNull(SnkKilkanaPostService::stampFor('published', null));
         $this->assertNotNull(SnkKilkanaPostService::stampFor('published', ''));
 
-        // Programada para manana y publicada a mano: sale AHORA, no manana. Dejarle la fecha
-        // prevista la ordenaria manana en la portada, el sitemap y el feed.
+        // Programada para mañana y publicada a mano: sale AHORA, no mañana. Dejarle la fecha
+        // prevista la ordenaría mañana en la portada, el sitemap y el feed.
         $stamp = SnkKilkanaPostService::stampFor('published', $tomorrow);
         $this->assertNotNull($stamp);
         $this->assertTrue(Carbon::parse($stamp)->lessThan(Carbon::parse($tomorrow)));
 
-        // Una fecha pasada es una decision editorial y se respeta.
+        // Una fecha pasada es una decisión editorial y se respeta.
         $this->assertNull(SnkKilkanaPostService::stampFor('published', $yesterday));
 
         // Y `scheduled` no se inventa: una programada sin fecha es un error de verdad.

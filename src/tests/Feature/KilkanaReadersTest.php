@@ -192,7 +192,7 @@ class KilkanaReadersTest extends TestCase
 
         $this->assertSame(4, $counts - $withoutSummary, 'Una consulta por pestaña.');
         $this->assertSame(4, $band - $withoutSummary, 'Y cuatro cifras en la banda.');
-        $this->assertSame(6, $together - $withoutSummary, 'Pero juntas, seis: dos de las ocho eran la misma consulta.');
+        $this->assertSame(6, $together - $withoutSummary, 'Pero juntas, seis: dos de las ocho son la misma consulta.');
         $this->assertArrayNotHasKey('counts', $this->readers(['summary' => ''])->index()->getData(true), 'Y sin pedirlas no llegan.');
     }
 

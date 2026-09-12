@@ -105,9 +105,9 @@ class SnkKilkanaActivityService
             $actor = array_key_exists('user', $extra) ? $extra['user'] : auth()->user();
             // Del array crudo: quien actúa puede llegar como un modelo que no trajo todas sus
             // columnas —una sesión de prueba conserva el que se creó, y una consulta recortada
-            // no selecciona lo que no pinta—. Pedirlas por su nombre lanzaba, el `catch` de
-            // abajo se lo tragaba con un `report()`, y la línea del registro **desaparecía sin
-            // que nada fallara**: justo lo que la auditoría no puede hacer.
+            // no selecciona lo que no pinta—. Pedirlas por su nombre lanza, el `catch` de abajo
+            // se lo traga con un `report()`, y la línea del registro **desaparece sin que nada
+            // falle**: justo lo que la auditoría no puede hacer.
             $actorAttributes = $actor?->getAttributes() ?? [];
 
             SnkKilkanaActivityModel::create([
@@ -131,11 +131,12 @@ class SnkKilkanaActivityService
     }
 
     /**
-     * Las frases que el registro guardaba antes de guardar claves, con la clave que les toca.
+     * Las frases con las que están escritas las filas anteriores a las claves, con la clave que
+     * les toca.
      *
-     * Solo sirven para reescribir las filas viejas —la migración `store_activity_verbs_as_keys`—
-     * y para probar esa reescritura: nada nuevo se escribe ya así. Mientras quede una base sin
-     * migrar, esta tabla no se borra.
+     * Solo sirven para reescribir esas filas —la migración `store_activity_verbs_as_keys`— y para
+     * probar esa reescritura: nada se escribe así. Mientras quede una base sin migrar, esta
+     * tabla no se borra.
      */
     public const LEGACY = [
         'created a draft' => 'draft_created',
@@ -174,7 +175,7 @@ class SnkKilkanaActivityService
         'passed the output gate on' => 'gate_passed',
     ];
 
-    /** Los lotes de moderación llevaban la cifra dentro de la frase: «approved 3 comments on». */
+    /** En esas filas, los lotes de moderación llevan la cifra dentro de la frase: «approved 3 comments on». */
     private const LEGACY_BULK = [
         'approved' => 'comments_approved',
         'rejected' => 'comments_rejected',
@@ -185,7 +186,7 @@ class SnkKilkanaActivityService
 
     /**
      * Una fila escrita con frases, pasada a claves: el verbo, lo que queda de `what` y los
-     * `params` que la frase llevaba dentro. Nulo si el verbo no es una frase de antes, que es lo
+     * `params` que la frase lleva dentro. Nulo si el verbo no es una de esas frases, que es lo
      * que hace idempotente la migración.
      *
      * @return array{verb: string, what: string, params: ?array<string, int|string>}|null
@@ -205,7 +206,7 @@ class SnkKilkanaActivityService
         } else {
             return null;
         }
-        // Los rellenos que el registro escribía cuando no había nombre.
+        // Los rellenos que ocupan `what` en esas filas cuando no hay nombre.
         if (in_array($what, ['a file', 'a reader', 'a theme', 'the site'], true)) {
             $what = '';
         }

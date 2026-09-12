@@ -16,12 +16,12 @@ use Packages\Kilkana\Services\SnkKilkanaRoleCatalogService;
 use Tests\TestCase;
 
 /**
- * La seccion retirada del menu, y lo que el listado del panel necesita saber de cada una.
+ * La sección retirada del menú, y lo que el listado del panel necesita saber de cada una.
  *
- * `hidden` no es un tercer sinonimo de «no publicada»: es el unico estado con el que una
- * redaccion deja de ofrecer una seccion **sin romper lo que ya esta enlazado**. De ahi que
- * cada prueba de aqui mire una de las dos mitades — sigue abriendose, ya no se anuncia — y
- * que las dos esten separadas: juntarlas es exactamente el error que `draft` cometia.
+ * `hidden` no es un tercer sinónimo de «no publicada»: es el único estado con el que una
+ * redacción deja de ofrecer una sección **sin romper lo que ya está enlazado**. De ahí que
+ * cada prueba de aquí mire una de las dos mitades — sigue abriéndose, deja de anunciarse — y
+ * que las dos estén separadas: juntarlas es exactamente lo que hace `draft`.
  */
 class KilkanaCategoriesTest extends TestCase
 {
@@ -60,8 +60,8 @@ class KilkanaCategoriesTest extends TestCase
     /**
      * Las dos formas de dejar de ofrecer una sección con archivo, y solo una es legítima.
      *
-     * `draft` no admite piezas publicadas —sus URLs dejarían de responder—, y ese muro ya
-     * existía; lo que faltaba era la salida que no rompe nada.
+     * `draft` no admite piezas publicadas —sus URLs dejarían de responder—; `hidden` es la
+     * salida que no rompe nada.
      */
     public function test_a_section_with_published_posts_can_be_hidden_but_not_moved_back_to_draft(): void
     {
@@ -105,11 +105,11 @@ class KilkanaCategoriesTest extends TestCase
     }
 
     /**
-     * El muro mira el arbol entero y no solo lo que cuelga directo.
+     * El muro mira el árbol entero y no solo lo que cuelga directo.
      *
-     * Una madre sin piezas propias y con una hija publicando pasaba a preparacion sin que nada
-     * la parara: la hija seguia alcanzable, sus piezas publicas, y la pagina de la madre
-     * respondia 404. Se llega ahi en cuatro pasos desde el panel.
+     * Sin eso, una madre sin piezas propias y con una hija publicando pasa a preparación sin que
+     * nada la pare: la hija sigue alcanzable, sus piezas públicas, y la página de la madre
+     * responde 404. Se llega ahí en cuatro pasos desde el panel.
      */
     public function test_a_parent_cannot_go_back_to_draft_while_a_subsection_has_published_posts(): void
     {
@@ -168,7 +168,7 @@ class KilkanaCategoriesTest extends TestCase
         $section = $this->category('Agenda', 'agenda', 'draft');
 
         $this->expectException(ValidationException::class);
-        // `guardTree` no lo caza: su consulta devuelve null igual que la de una raiz.
+        // `guardTree` no lo caza: su consulta devuelve null igual que la de una raíz.
         $section->update(['parent_id' => 9999]);
     }
 
@@ -191,7 +191,7 @@ class KilkanaCategoriesTest extends TestCase
     /**
      * Lo que el listado del panel no puede calcular por su cuenta.
      *
-     * Las tres columnas cuestan una subconsulta por fila; la alternativa era traerse el
+     * Las tres columnas cuestan una subconsulta por fila; la alternativa es traerse el
      * archivo entero al cliente y contarlo allí. `last_published_at` mira solo lo publicado:
      * un borrador de hoy no es actividad de la sección.
      */

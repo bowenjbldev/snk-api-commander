@@ -10,12 +10,12 @@ use Packages\Kilkana\Models\SnkKilkanaSettingModel;
 use Tests\TestCase;
 
 /**
- * Quien elige el periodico que se siembra es la BASE, no quien lanza el comando.
+ * Quien elige el periódico que se siembra es la BASE, no quien lanza el comando.
  *
- * El interruptor de entorno dice si esta instalacion admite datos de demo; el perfil dice de que
- * periodico son. Con solo el primero, `core:seed --client=otro` con la variable puesta vuelca el
- * archivo de un periodico dentro de la base de otro — y eso ya paso: 523 piezas de El Diario
- * dentro de dos bases que no eran suyas.
+ * El interruptor de entorno dice si esta instalación admite datos de demo; el perfil dice de qué
+ * periódico son. Con solo el primero, `core:seed --client=otro` con la variable puesta vuelca el
+ * archivo de un periódico dentro de la base de otro: cientos de piezas de El Diario en bases que
+ * no son suyas.
  */
 class KilkanaSeedProfileTest extends TestCase
 {
@@ -35,8 +35,8 @@ class KilkanaSeedProfileTest extends TestCase
     }
 
     /**
-     * Un periodico declarado sin datos de demo se queda con su cabecera y sin archivo ajeno. Si su
-     * perfil pide `accounts`, trae las dos cuentas conocidas para poder entrar, y ninguna mas.
+     * Un periódico declarado sin datos de demo se queda con su cabecera y sin archivo ajeno. Si su
+     * perfil pide `accounts`, trae las dos cuentas conocidas para poder entrar, y ninguna más.
      */
     public function test_the_profile_overrides_the_environment_switch(): void
     {
@@ -45,9 +45,9 @@ class KilkanaSeedProfileTest extends TestCase
         $settings = SnkKilkanaSettingModel::query()->find(1);
 
         $this->assertSame('Diario Norte', $settings?->tenant_name);
-        $this->assertSame(0, SnkKilkanaPostModel::query()->count(), 'El archivo de otro no entra aqui.');
+        $this->assertSame(0, SnkKilkanaPostModel::query()->count(), 'El archivo de otro no entra aquí.');
         // Las cuentas las abre `accounts` y no el archivo: el administrador local y el lector de
-        // demo, sin la redaccion de otro periodico.
+        // demo, sin la redacción de otro periódico.
         $this->assertEqualsCanonicalizing(
             ['admin@snake.com', 'reader@snk.test'],
             CoreUserModel::query()->pluck('email')->all(),
@@ -68,9 +68,9 @@ class KilkanaSeedProfileTest extends TestCase
     /**
      * Un nombre de base que Core no valida no tumba la siembra.
      *
-     * `seedPermissions` compone con el la clave de la cache de permisos, y `permissionCacheKey`
-     * rechaza lo que no sea un identificador de inquilino. Un guion basta: la siembra entera
-     * moria con `Unsafe tenant database identifier` antes de escribir una fila.
+     * `seedPermissions` compone con él la clave de la caché de permisos, y `permissionCacheKey`
+     * rechaza lo que no sea un identificador de inquilino. Un guion basta: sin esta guarda, la
+     * siembra entera muere con `Unsafe tenant database identifier` antes de escribir una fila.
      */
     public function test_an_invalid_database_name_does_not_break_seeding(): void
     {
@@ -79,7 +79,7 @@ class KilkanaSeedProfileTest extends TestCase
         $this->assertSame(0, SnkKilkanaPostModel::query()->count());
     }
 
-    /** El catalogo no puede tener dos perfiles peleandose por el mismo cliente. */
+    /** El catálogo no puede tener dos perfiles peleándose por el mismo cliente. */
     public function test_no_client_appears_in_two_profiles(): void
     {
         $seen = [];
@@ -87,7 +87,7 @@ class KilkanaSeedProfileTest extends TestCase
         foreach (glob(base_path('packages/Kilkana/database/seeders/data/profiles/*.json')) as $path) {
             $profile = json_decode((string) file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
 
-            $this->assertIsArray($profile['clients'] ?? null, basename($path).' declara de quien es.');
+            $this->assertIsArray($profile['clients'] ?? null, basename($path).' declara de quién es.');
             $this->assertIsBool($profile['demo'] ?? null, basename($path).' dice si trae datos de demo.');
             if (array_key_exists('accounts', $profile)) {
                 $this->assertIsBool($profile['accounts'], basename($path).' dice si trae cuentas.');
@@ -99,15 +99,15 @@ class KilkanaSeedProfileTest extends TestCase
             }
         }
 
-        $this->assertNotSame([], $seen, 'El catalogo de perfiles no puede estar vacio.');
+        $this->assertNotSame([], $seen, 'El catálogo de perfiles no puede estar vacío.');
     }
 
     /**
-     * Siembra como si la conexion apuntase a esa base.
+     * Siembra como si la conexión apuntase a esa base.
      *
-     * El nombre se cambia SIN `DB::purge`: la conexion sigue siendo la sqlite en memoria que
-     * monto `setUp`, y lo unico que cambia es de que cliente se cree el seeder que esta
-     * sembrando. Purgarla aqui por simetria haria que la prueba intentase abrir un fichero
+     * El nombre se cambia SIN `DB::purge`: la conexión sigue siendo la sqlite en memoria que
+     * montó `setUp`, y lo único que cambia es de qué cliente se cree el seeder que está
+     * sembrando. Purgarla aquí por simetría haría que la prueba intentase abrir un fichero
      * sqlite llamado `diario_norte_kilkana`.
      */
     private function seedAs(string $database): void

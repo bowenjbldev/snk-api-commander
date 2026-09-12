@@ -19,7 +19,7 @@ return [
         // de un tema (1920 a lo sumo) y menos que una cámara.
         'master' => (int) env('KILKANA_MEDIA_MASTER', 2560),
         // El 160 es para las miniaturas del panel —la fila de la tabla pinta 26 px, el
-        // selector de cartel 160—, que con 320 de suelo bajaban doce veces más de lo que pintan.
+        // selector de cartel 160—: con 320 de suelo bajarían doce veces más de lo que pintan.
         'widths' => [160, 320, 640, 960, 1280, 1920],
         'quality' => ['avif' => 55, 'webp' => 80, 'jpeg' => 82, 'master' => 90],
     ],

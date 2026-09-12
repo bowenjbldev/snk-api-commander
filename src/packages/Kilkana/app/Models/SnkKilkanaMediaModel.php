@@ -33,8 +33,8 @@ class SnkKilkanaMediaModel extends Model
         'focal_x' => 'float',
         'focal_y' => 'float',
         // Como el punto, y por lo mismo: un `decimal` de MariaDB llega al JSON como cadena
-        // —«0.0000»—, y al otro lado un `x * ancho` con una cadena da concatenacion, no
-        // aritmetica. Las dos mitades del encuadre tienen que llegar del mismo tipo.
+        // —«0.0000»—, y al otro lado un `x * ancho` con una cadena da concatenación, no
+        // aritmética. Las dos mitades del encuadre tienen que llegar del mismo tipo.
         'crop_x' => 'float',
         'crop_y' => 'float',
         'crop_w' => 'float',
@@ -78,17 +78,16 @@ class SnkKilkanaMediaModel extends Model
         return $this->belongsToMany(SnkKilkanaMediaCollectionModel::class, 'kilkana_media_collection_media', 'media_id', 'media_collection_id');
     }
 
-    /** Posts que usan esta pieza como portada — base del usage_count y del filtro "sin usar". */
     /**
-     * Las TRES formas de estar en uso. Aqui se declaran todas, y de aqui salen el contador y
-     * la vista «sin usar»: si manana aparece una cuarta clave foranea hacia un medio, entra
+     * Las TRES formas de estar en uso. Aquí se declaran todas, y de aquí salen el contador y
+     * la vista «sin usar»: si mañana aparece una cuarta clave foránea hacia un medio, entra
      * en esta lista y las dos cosas se enteran solas.
      *
-     * Se contaba solo la portada, y las otras dos existian igual. Consecuencia: la imagen
-     * social de un articulo publicado y el retrato de una firma salian como «sin usar» con
-     * el contador a cero — la biblioteca ofrecia para limpiar justo las fotos que si estaban
-     * publicadas. Las FK son SET NULL, asi que borrarlas no rompia la base: hacia algo peor,
-     * dejaba al articulo sin imagen social y al periodista sin cara, sin un solo error.
+     * Contar solo la portada deja la imagen social de un artículo publicado y el retrato de
+     * una firma como «sin usar», con el contador a cero: la biblioteca ofrecería para limpiar
+     * justo las fotos que sí están publicadas. Las FK son SET NULL, así que borrarlas no rompe
+     * la base: hace algo peor, deja al artículo sin imagen social y al periodista sin cara, sin
+     * un solo error.
      */
     public const USES = ['coveredPosts', 'socialPosts', 'avatarAuthors'];
 
@@ -120,13 +119,13 @@ class SnkKilkanaMediaModel extends Model
         return $query;
     }
 
-    /** Los `*_count` si el controlador los cargo (withCount); si no, se cuentan al vuelo. */
     /** Lo que hace falta para pedir cualquier derivada; `null` mientras no haya máster. */
     public function getVariantsAttribute(): ?array
     {
         return SnkKilkanaImageService::payload($this);
     }
 
+    /** Los `*_count` si el controlador los cargó (withCount); si no, se cuentan al vuelo. */
     public function getUsageCountAttribute(): int
     {
         $total = 0;

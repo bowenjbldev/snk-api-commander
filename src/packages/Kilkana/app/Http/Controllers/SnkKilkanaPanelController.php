@@ -40,10 +40,10 @@ class SnkKilkanaPanelController extends Controller
     }
 
     /**
-     * En que idioma quiere el panel quien esta dentro.
+     * En qué idioma quiere el panel quien está dentro.
      *
-     * Sin permiso: cada cuenta cambia el suyo y solo el suyo, asi que la sesion ya es toda la
-     * autorizacion que hace falta. `null` lo devuelve a «lo que diga el navegador», que no es lo
+     * Sin permiso: cada cuenta cambia el suyo y solo el suyo, así que la sesión ya es toda la
+     * autorización que hace falta. `null` lo devuelve a «lo que diga el navegador», que no es lo
      * mismo que elegir el idioma por defecto.
      */
     public function locale(Request $request): JsonResponse

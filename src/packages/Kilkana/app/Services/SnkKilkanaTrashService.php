@@ -156,11 +156,6 @@ class SnkKilkanaTrashService
     }
 
     /**
-     * Cuántas cosas hay en la papelera, para el raíl.
-     *
-     * @param  list<string>  $kinds
-     */
-    /**
      * Qué clases puede ver quien pregunta: cada una entra con el permiso de borrarla. Vive
      * aquí porque la preguntan dos puertas —la pantalla de la papelera y el raíl del panel— y
      * es la regla que decide si alguien ve algo o recibe un 403.
@@ -179,6 +174,11 @@ class SnkKilkanaTrashService
         ));
     }
 
+    /**
+     * Cuántas cosas hay en la papelera, para el raíl.
+     *
+     * @param  list<string>  $kinds
+     */
     public function count(array $kinds): int
     {
         $n = 0;

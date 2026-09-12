@@ -16,8 +16,8 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\TestCase;
 
 /**
- * El override de config global por package vive en el RESOLUTOR (cliente-primero): el subdominio es
- * el cliente y el slug del package va en el path. Fusiona {slug} y {cliente}.{slug}.
+ * La sobrescritura de la config global por paquete vive en el RESOLUTOR (cliente primero): el
+ * subdominio es el cliente y el slug del paquete va en la ruta. Fusiona {slug} y {cliente}.{slug}.
  */
 class CorePackageConfigOverrideTest extends TestCase
 {
@@ -45,7 +45,7 @@ class CorePackageConfigOverrideTest extends TestCase
         ]);
     }
 
-    /** Corre el resolutor para (host, slug) y captura la config global vista dentro del request. */
+    /** Corre el resolutor para (host, slug) y captura la config global vista dentro de la petición. */
     private function captureFor(string $host, string $slug): array
     {
         $request = Request::create("https://{$host}/api/v1/{$slug}/x", 'GET');

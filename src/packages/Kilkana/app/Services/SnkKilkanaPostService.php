@@ -20,17 +20,8 @@ use Spatie\QueryBuilder\QueryBuilder;
 class SnkKilkanaPostService
 {
     /**
-     * El listado editorial, con la audiencia que el panel enseña.
-     *
-     * **Una suma y no tres.** Aqui hubo tambien `views_day` y `views_week`, y no las pintaba
-     * nadie: eran dos subconsultas correlacionadas por fila, calculadas y tiradas en cada
-     * peticion del listado. Medido en 522 piezas y 12 212 filas de audiencia, ordenar por
-     * lecturas pasaba de 5,9 a 18,6 ms de SQL solo por ellas — porque ordenar por el alias de
-     * una correlacionada obliga a calcularla para TODAS las filas, no para las veinticinco que
-     * se devuelven. La calle tenia las suyas y **tampoco las pintaba nadie**: se quitaron
-     * despues, asi que hoy ningun listado suma mas de una ventana.
-     *
-     * `engaged`, no `opens`: la API de audiencia cuenta lecturas reales.
+     * El listado editorial, acotado a lo suyo para quien no puede editar lo ajeno. La audiencia
+     * la cuelga `withAudience()`.
      */
     public function query(int $userId, bool $canEditOthers): Builder
     {
@@ -43,12 +34,16 @@ class SnkKilkanaPostService
      * `withSum()` pasa por `withAggregate()`, que si la consulta no tiene columnas le pone
      * `select tabla.*` y encima cuelga la subconsulta. El `select()` con el que
      * `?fields=` recorta **reemplaza** esa lista, así que aplicar la suma primero es
-     * escribirla para que la borren: `views_total` desaparecía sin error y la audiencia se
-     * leía como cero. Es la misma trampa que ya costó el `$withCount` global del modelo.
+     * escribirla para que la borren: `views_total` desaparece sin error y la audiencia se lee
+     * como cero.
      *
      * Con ventana la suma cuenta solo esos días; sin ella, el archivo entero. Es UNA suma y no
-     * dos, porque el panel enseña una cifra: mandar las dos y elegir en el cliente sería pagar
-     * la subconsulta que no se pinta.
+     * varias, porque el panel enseña una cifra: cada ventana más es una subconsulta correlacionada
+     * por fila, y ordenar por el alias de una correlacionada obliga a calcularla para TODAS las
+     * filas, no para las veinticinco que se devuelven. Medido en 522 piezas y 12 212 filas de
+     * audiencia, dos ventanas que nadie pinta llevan ordenar por lecturas de 5,9 a 18,6 ms de SQL.
+     *
+     * `engaged`, no `opens`: la API de audiencia cuenta lecturas reales.
      *
      * @template T of Builder|\Spatie\QueryBuilder\QueryBuilder
      *
@@ -78,10 +73,9 @@ class SnkKilkanaPostService
     /**
      * Por qué columna ordena cada clave de la vista, y **por tanto el vocabulario de `sort`**.
      *
-     * Público y una sola lista: el controlador tenía las claves (`['date','title','reads']`)
-     * para validar la query y esto tenía el mapa para ordenar. Eran la misma lista escrita dos
-     * veces con distinta forma, y un orden nuevo había que darlo de alta en los dos sitios o
-     * quedaba aceptado y sin efecto. `reads` es el alias del `withSum`.
+     * Público y una sola lista: el controlador valida la query contra sus claves y aquí se ordena
+     * con sus valores. Con dos listas, un orden dado de alta solo en una queda aceptado y sin
+     * efecto. `reads` es el alias del `withSum`.
      */
     public const SORTS = [
         'date' => 'publish_at',
@@ -163,8 +157,7 @@ class SnkKilkanaPostService
      *
      * Los valores llegan ya saneados por el controlador, que es quien conoce la URL.
      * Aquí solo se traducen a cláusulas.
-     */
-    /**
+     *
      * @template T of Builder|QueryBuilder
      *
      * @param  T  $query
@@ -199,10 +192,10 @@ class SnkKilkanaPostService
     /**
      * Una página del archivo: filtrada, ordenada, acotada y con las filas ya recortadas.
      *
-     * Existe porque **esto se escribía dos veces**: el listado editorial y las cuatro colas del
-     * tablero repetían `filter()->paginate()->each(asListRow)`, y la segunda copia la escribí yo
-     * al componer `panel/bootstrap`. Un orden nuevo o un recorte distinto en una de las dos las
-     * separaba en silencio, que es justo lo que `KilkanaPanelCompositeTest` vigila comparándolas.
+     * Existe porque **lo sirven dos puertas**: el listado editorial y las cuatro colas del
+     * tablero. Con `filter()->paginate()` copiado en cada una, un orden nuevo o un recorte
+     * distinto en una de las dos las separa en silencio, que es justo lo que
+     * `KilkanaPanelCompositeTest` vigila comparándolas.
      *
      * **Una página fuera de rango enseña la última**, no una tabla vacía: es lo que hace que un
      * enlace guardado con `?page=999` siga significando algo cuando el archivo ha encogido. La
@@ -248,34 +241,34 @@ class SnkKilkanaPostService
     }
 
     /**
-     * Cuantas piezas hay de cada estado, **sin ningun filtro puesto y en las dos escalas**.
+     * Cuántas piezas hay de cada estado, **sin ningún filtro puesto y en las dos escalas**.
      *
      * Es lo que sostiene que «Draft 35» siga diciendo 35 mientras se miran los publicados: la
-     * pestana cuenta el archivo, no la pagina. Las claves salen del enum, asi que un estado
-     * nuevo aparece aqui sin tocar nada.
+     * pestaña cuenta el archivo, no la página. Las claves salen del enum, así que un estado
+     * más aparece aquí sin tocar nada.
      *
      * Devuelve `scoped` —lo que ve quien mira, que es **siempre** lo mismo que le devuelve el
-     * listado— y `all` —el periodico entero—. El tablero las ensena juntas: «34 of 467» dice a
+     * listado— y `all` —el periódico entero—. El tablero las enseña juntas: «34 of 467» dice a
      * la vez lo que ha publicado quien mira y lo que hay en la casa, y sin la segunda cifra ese
-     * 34 aparece al lado de una seccion con 40 y se lee como una contradiccion.
+     * 34 aparece al lado de una sección con 40 y se lee como una contradicción.
      *
      * **Son dos permisos y no uno.** `edit others posts` contesta «puedes cambiar la pieza de
      * otro» y acota el listado; `view others posts` contesta «puedes saber que existe» y es lo
-     * unico que abre la segunda escala. Fundirlos obliga a elegir entre dejar la contradiccion
-     * puesta para media redaccion o publicarle el sumario a quien escribe desde fuera.
+     * único que abre la segunda escala. Fundirlos obliga a elegir entre dejar la contradicción
+     * puesta para media redacción o publicarle el sumario a quien escribe desde fuera.
      *
      * @return array{scoped: array<string, int>, all: array<string, int>}
      */
     public function countsByStatus(int $userId, bool $canEditOthers, bool $canViewOthers): array
     {
         // El `SUM` **solo cuando hace falta**: con `edit others posts` las dos escalas son la
-        // misma y calcularlo seria calcular algo para tirarlo. Y no es gratis — `created_by` no
-        // esta en `(status, publish_at)`, asi que sin el indice `(status, created_by)` la suma
-        // saca la consulta del indice cubridor y la manda a barrer la tabla con temporal y
+        // misma y calcularlo sería calcular algo para tirarlo. Y no es gratis — `created_by` no
+        // está en `(status, publish_at)`, así que sin el índice `(status, created_by)` la suma
+        // saca la consulta del índice cubridor y la manda a barrer la tabla con temporal y
         // filesort.
         //
-        // Filtrar por autor en vez de sumar **no ahorra nada** y esta medido: `GROUP BY status`
-        // recorre el indice entero en los dos casos —mismas 457 filas, `Using index` en los
+        // Filtrar por autor en vez de sumar **no ahorra nada** y está medido: `GROUP BY status`
+        // recorre el índice entero en los dos casos —mismas 457 filas, `Using index` en los
         // dos—, porque `status` es la columna que manda y `created_by` solo se comprueba al
         // pasar. La segunda escala se descarta abajo, que es donde importa.
         $rows = SnkKilkanaPostModel::query()
@@ -283,9 +276,8 @@ class SnkKilkanaPostService
             ->selectRaw('count(*) as total')
             ->when(! $canEditOthers, fn ($q) => $q->selectRaw('sum(created_by = ?) as own', [$userId]))
             ->groupBy('status')
-            // `toBase()` y no `get()`: hidratar modelos para un agregado arrastra la carga
-            // ansiosa que el modelo declara, y eso es una segunda consulta —de etiquetas, con
-            // `post_id in (0)`— para unas filas que no son piezas sino recuentos.
+            // `toBase()` y no `get()`: estas filas son recuentos y no piezas, y hidratarlas como
+            // modelos solo abre la puerta a cargas y accesores que no les corresponden.
             ->toBase()
             ->get()
             ->keyBy('status');
@@ -299,8 +291,8 @@ class SnkKilkanaPostService
 
             $scoped[$status->value] = $own;
             // Sin `view others posts` la segunda escala **no se calla, se iguala**: el panel
-            // deduce que hay una sola escala de que las dos cifras coincidan, asi que omitirla
-            // le dejaria la barra sin saber que dibujar.
+            // deduce que hay una sola escala de que las dos cifras coincidan, así que omitirla
+            // le dejaría la barra sin saber qué dibujar.
             $all[$status->value] = $canViewOthers ? $total : $own;
         }
 
@@ -308,11 +300,11 @@ class SnkKilkanaPostService
     }
 
     /**
-     * Guardar un articulo son VARIAS escrituras, y o entran todas o no entra ninguna.
+     * Guardar un artículo son VARIAS escrituras, y o entran todas o no entra ninguna.
      *
      * Un alta toca el post, puede dar de alta el medio de portada y da de alta las etiquetas
-     * que no existan mas su pivote. Sin transaccion, un fallo a mitad deja el desecho puesto y
-     * el cliente recibe un error: cree que no ha pasado nada y si ha pasado.
+     * que no existan más su pivote. Sin transacción, un fallo a mitad deja el desecho puesto y
+     * el cliente recibe un error: cree que no ha pasado nada y sí ha pasado.
      */
     public function create(array $data, int $userId): SnkKilkanaPostModel
     {
@@ -329,11 +321,11 @@ class SnkKilkanaPostService
     }
 
     /**
-     * Cinco escrituras: la revision, el post, las etiquetas y las dos del historial de URLs.
+     * Cinco escrituras: la revisión, el post, las etiquetas y las dos del historial de URLs.
      *
-     * Este es el que lo hizo evidente. Un fallo en las etiquetas dejaba el post guardado y la
-     * revision registrada mientras la respuesta era un 500 — o sea, el historial anotaba una
-     * edicion que se anuncio como fallida, y la URL vieja podia quedar sin su redireccion.
+     * Sin transacción, un fallo en las etiquetas deja el post guardado y la revisión registrada
+     * mientras la respuesta es un 500 — o sea, el historial anota una edición que se anunció
+     * como fallida, y la URL vieja puede quedar sin su redirección.
      */
     public function update(SnkKilkanaPostModel $post, array $data, int $userId): SnkKilkanaPostModel
     {
@@ -355,7 +347,7 @@ class SnkKilkanaPostService
         });
     }
 
-    /** Una accion masiva es UNA decision de quien la pulsa: no puede aplicarse a medias. */
+    /** Una acción masiva es UNA decisión de quien la pulsa: no puede aplicarse a medias. */
     public function bulk(array $ids, string $action, int $userId, bool $canEditOthers, array $tags = []): int
     {
         $moved = DB::transaction(function () use ($ids, $action, $userId, $canEditOthers, $tags) {
@@ -377,18 +369,18 @@ class SnkKilkanaPostService
                 return $this->retag($query->get(), $action === 'tag', $tags, $userId);
             }
 
-            // El mapa vive en el enum: el controlador lo usa para decidir el permiso y aqui se
-            // usa para escribir, y dos copias es como una acepta lo que la otra no sabe mover.
+            // El mapa vive en el enum: el controlador lo usa para decidir el permiso y aquí se
+            // usa para escribir, y con dos copias una acepta lo que la otra no sabe mover.
             $target = SnkKilkanaPostStatusEnum::fromBulkAction($action);
             if ($target === null) {
                 return 0;
             }
 
             // Sacar a la calle exige lo mismo por el lote que por el editor. `required_if`
-            // solo mira la peticion, y una peticion de lote son ids: marcar veinte borradores
-            // y pulsar «Publicar» publicaba veinte piezas sin entradilla. Las que no estan
-            // listas se quedan como estan y el recuento lo dice, en vez de fallar el lote
-            // entero por una — el resto SI estaban listas.
+            // solo mira la petición, y una petición de lote son ids: sin esto, marcar veinte
+            // borradores y pulsar «Publicar» publica veinte piezas sin entradilla. Las que no
+            // están listas se quedan como están y el recuento lo dice, en vez de fallar el lote
+            // entero por una — el resto SÍ están listas.
             $needsExcerpt = in_array($target->value, SnkKilkanaPostStatusEnum::publishing(), true);
 
             $count = 0;
@@ -399,7 +391,7 @@ class SnkKilkanaPostService
 
                 $post->status = $target;
                 // Publicar a mano una pieza programada la saca AHORA: dejarle la fecha prevista
-                // la ordenaria manana en la portada, el sitemap y el feed.
+                // la ordenaría mañana en la portada, el sitemap y el feed.
                 if ($target === SnkKilkanaPostStatusEnum::Published
                     && ($post->publish_at === null || $post->publish_at->isFuture())) {
                     $post->publish_at = now();
@@ -432,14 +424,14 @@ class SnkKilkanaPostService
     }
 
     /**
-     * Que fecha lleva una pieza que sale a la calle, dado lo que ya tiene y lo que se pide.
+     * Qué fecha lleva una pieza que sale a la calle, dado lo que ya tiene y lo que se pide.
      *
      * **Publicar es AHORA**, y por eso la fecha no se le pide a nadie: un borrador no tiene
-     * `publish_at` —se sella al salir— asi que exigirsela al panel es exigirle un dato que no
-     * tiene donde pedir, y era por lo que desde el editor **no se podia publicar una pieza**.
+     * `publish_at` —se sella al salir— así que exigírsela al panel es exigirle un dato que no
+     * tiene dónde pedir, y desde el editor **no se podría publicar una pieza**.
      *
      * Y pisa una fecha futura: publicar a mano una programada la saca ahora, y dejarle la
-     * prevista la ordenaria manana en la portada, el sitemap y el feed.
+     * prevista la ordenaría mañana en la portada, el sitemap y el feed.
      *
      * `scheduled` no entra: una programada sin fecha es un error de verdad, no una que haya
      * que inventar. Devuelve `null` cuando no hay nada que sellar, y quien llama deja lo que
@@ -467,7 +459,7 @@ class SnkKilkanaPostService
      * puede acabar pisando lo que otro escribió.
      *
      * Estático y aquí, y no en el controlador, porque es la regla «desde qué versión escribes» y
-     * allí no había forma de probarla sin montar una petición.
+     * allí no hay forma de probarla sin montar una petición.
      */
     public static function staleFor(SnkKilkanaPostModel $post, mixed $expected): bool
     {
@@ -493,13 +485,9 @@ class SnkKilkanaPostService
      *
      * Solo rellena lo que falta: mandar la entradilla vacía a propósito sigue siendo un 422.
      *
-     * Y sella la fecha, porque **publicar es AHORA**. Un borrador no tiene `publish_at` —se sella
-     * al salir a la calle—, así que el relleno no tenía nada con que rellenar y `required_if`
-     * rechazaba: desde el editor **no se podía publicar una pieza**. Pisa además una fecha futura
-     * por lo mismo que el lote: publicar a mano una programada la saca ahora, y dejarle la
-     * prevista la ordenaría mañana en la portada, el sitemap y el feed. `scheduled` no entra —una
-     * programada sin fecha es un error de verdad, no una que haya que inventar—, y de eso se
-     * ocupa `stampFor()`.
+     * Y sella la fecha con `stampFor()`, porque **publicar es AHORA**: un borrador no tiene
+     * `publish_at`, así que el relleno no tendría con qué rellenar y `required_if` rechazaría la
+     * publicación. Por qué pisa una fecha futura y por qué `scheduled` no entra lo dice allí.
      *
      * @param  array<string, mixed>  $input
      * @return array<string, mixed>
@@ -524,15 +512,15 @@ class SnkKilkanaPostService
     }
 
     /**
-     * Anade o quita etiquetas en tanda.
+     * Añade o quita etiquetas en tanda.
      *
      * Por NOMBRE y no por id: es lo que escribe el resto del API (`firstOrCreateByName`) y lo
-     * unico que significa algo fuera de esta base. Anadir CREA la etiqueta que no exista, que
+     * único que significa algo fuera de esta base. Añadir CREA la etiqueta que no exista, que
      * es como se etiqueta de verdad — la cobertura empieza antes de que nadie abra el
      * vocabulario a darla de alta.
      *
-     * `syncWithoutDetaching` y no `sync`: anadir «sequia» a veinte piezas no puede quitarles
-     * las que ya tenian. Quitar solo desengancha, nunca borra la fila del vocabulario: una
+     * `syncWithoutDetaching` y no `sync`: añadir una etiqueta a veinte piezas no puede quitarles
+     * las que ya tienen. Quitar solo desengancha, nunca borra la fila del vocabulario: una
      * etiqueta sin usos sigue existiendo, y es la pantalla de Etiquetas la que decide si se va.
      *
      * `updated_by` se sella igual que en un cambio de estado: etiquetar es editar.
@@ -564,15 +552,14 @@ class SnkKilkanaPostService
     /**
      * Publica lo programado cuya hora ya pasó. Lo llama el programador, por tenant.
      *
-     * Publicar es SOLO cambiar de estado: la fecha ya esta puesta y es la prevista. Cuando la
-     * fecha prevista y la de publicacion eran dos columnas, aqui habia que copiar una en otra
-     * y vaciar la primera, y ese traspaso llego a publicar piezas con la fecha en que se
-     * redactaron —descolocando portada, sitemap y feed—. Sin dos columnas no hay traspaso que
-     * equivocar.
+     * Publicar es SOLO cambiar de estado: la fecha ya está puesta y es la prevista. La fecha
+     * prevista y la de publicación son una sola columna, así que no hay traspaso de una a otra
+     * que pueda publicar una pieza con la fecha en que se redactó y descolocar portada, sitemap
+     * y feed.
      *
-     * SIN transaccion, y a proposito: si una pieza falla, envolver el lote impediria salir a
-     * las demas ese minuto. Publicar una a una hace que las buenas salgan y la rota lo vuelva
-     * a intentar dentro de sesenta segundos, que es lo que un periodico quiere de un cron.
+     * SIN transacción, y a propósito: si una pieza falla, envolver el lote impediría salir a
+     * las demás ese minuto. Publicar una a una hace que las buenas salgan y la rota lo vuelva
+     * a intentar dentro de sesenta segundos, que es lo que un periódico quiere de un cron.
      */
     public function publishDue(): int
     {
@@ -582,11 +569,11 @@ class SnkKilkanaPostService
             ->where('publish_at', '<=', now())
             ->get();
 
-        // Y con entradilla. `required_if` vive en el controlador, asi que solo mira la
-        // peticion: a `scheduled` se puede llegar por el lote, que no valida contenido, y
-        // entonces este cron sacaria a la calle una pieza sin entradilla a las seis de la
-        // manana sin que nadie lo viera. Se queda programada, que es un estado del que se
-        // puede salir escribiendola.
+        // Y con entradilla. `required_if` vive en el controlador, así que solo mira la
+        // petición: a `scheduled` se puede llegar por el lote, que no valida contenido, y
+        // entonces este cron sacaría a la calle una pieza sin entradilla a las seis de la
+        // mañana sin que nadie lo viera. Se queda programada, que es un estado del que se
+        // puede salir escribiéndola.
         [$ready, $parked] = $due->partition->hasExcerpt();
 
         foreach ($ready as $post) {
@@ -594,8 +581,8 @@ class SnkKilkanaPostService
         }
 
         // Y se dice. Una pieza que no sale a su hora no rompe nada: simplemente no ocurre, y
-        // quien la programo la ve «Programada» a mediodia sin entender por que. Esta linea es
-        // la unica pista que va a existir de por que.
+        // quien la programó la ve «Programada» a mediodía sin entender por qué. Esta línea es
+        // la única pista que va a existir de por qué.
         if ($parked->isNotEmpty()) {
             Log::warning('kilkana: scheduled posts without an excerpt were not published', [
                 'count' => $parked->count(),
@@ -644,7 +631,7 @@ class SnkKilkanaPostService
             ->first();
     }
 
-    /** Restaurar tambien deja rastro antes de pisar: la instantanea y el post van juntas. */
+    /** Restaurar también deja rastro antes de pisar: la instantánea y el post van juntos. */
     public function restore(
         SnkKilkanaPostModel $post,
         SnkKilkanaPostRevisionModel $revision,
@@ -658,9 +645,9 @@ class SnkKilkanaPostService
             ]);
 
             // Restaurar también mueve la URL: la versión recuperada trae su titular y por
-            // tanto su slug. Sin esta contabilidad se PERDÍA la dirección que la pieza tuvo
+            // tanto su slug. Sin esta contabilidad se PIERDE la dirección que la pieza tuvo
             // entre el renombrado y la restauración —404 seco para quien la compartiera— y la
-            // recuperada quedaba marcada como retirada, o sea redirigiendo hacia sí misma.
+            // recuperada queda marcada como retirada, o sea redirigiendo hacia sí misma.
             $previousPath = $post->url_path;
 
             $columns = collect($revision->payload)
@@ -682,10 +669,9 @@ class SnkKilkanaPostService
      * que se mueve sin dejar redirección es un enlace roto en cada sitio donde estuviera
      * compartida.
      *
-     * El borrado va acotado **por artículo**: sin eso, adoptar una URL que otro había dejado
-     * borraba la redirección de aquel y sus lectores acababan en esta pieza. Que el modelo ya
-     * no deje adoptarla no quita el cinturón — si el dato viejo trae una fila así, esto no la
-     * toca.
+     * El borrado va acotado **por artículo**: sin eso, adoptar una URL que otro dejó borraría la
+     * redirección de aquel y sus lectores acabarían en esta pieza. El modelo ya impide adoptarla;
+     * esto es el cinturón, y si una fila así llega a la base, no la toca.
      */
     private function shiftUrlHistory(SnkKilkanaPostModel $post, ?string $previousPath): void
     {
@@ -708,7 +694,7 @@ class SnkKilkanaPostService
 
     /**
      * La portada llega como `cover_media_id` ya validado contra la mediateca y pasa tal cual:
-     * el editor elige entre lo que hay, y un id que no existe se rechaza antes de llegar aqui.
+     * el editor elige entre lo que hay, y un id que no existe se rechaza antes de llegar aquí.
      */
     private function columnsFrom(array $data): array
     {

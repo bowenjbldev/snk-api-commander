@@ -80,7 +80,7 @@ class CoreMigrateCommand extends Command
         $args = [
             '--path' => $paths,
             '--realpath' => true,
-            '--database' => $connection, // nombre de CONEXION para artisan migrate
+            '--database' => $connection, // nombre de CONEXIÓN para artisan migrate
             '--force' => (bool) $this->option('force'),
         ];
 

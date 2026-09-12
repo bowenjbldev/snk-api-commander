@@ -15,7 +15,7 @@ use Packages\Kilkana\Services\SnkKilkanaActivityService;
  *
  * Se sirve del más reciente al más antiguo dentro de los últimos noventa días, y por páginas
  * porque la tabla solo crece: un diario con diez redactores escribe aquí cientos de líneas al
- * día. Para acotar están la pestaña y la persona; `count` recorta por arriba para el buzón del
+ * día. Para acotar están la pestaña y la persona; `bell` recorta por arriba para la campana del
  * armazón, y con él solo viajan filas; `all` se lleva lo filtrado entero hasta un techo, que es
  * lo que pide un export. Todo lo que aquí se cuenta está acotado a esos noventa días por
  * `recent()`: una cuenta sin cota envejecería con la tabla.

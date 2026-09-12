@@ -83,7 +83,7 @@ final class CorePackageDiscoverySupport
             }
             // Solo Core puede escribir claves globales de Laravel (auth, cors, scramble...).
             // Con TODOS los packages cargados a la vez, permitir overrides globales desde
-            // packages de negocio causaria colisiones no deterministas (gana el ultimo).
+            // packages de negocio causaría colisiones no deterministas (gana el último).
             // Sus configs van SIEMPRE namespaced (acme.shop.sanctum, acme.shop.scramble...).
             $key = ($moduleKey === 'core' && $this->shouldUseGlobalConfigKey($fileKey))
                 ? $fileKey
@@ -290,7 +290,7 @@ final class CorePackageDiscoverySupport
     private function filterByLoadableModule(array $paths, bool $allowCore): array
     {
         // Siempre centralizado: se cargan todos los packages. Solo se excluye Core cuando el
-        // llamante lo pide (su provider/recursos se registran explicitamente, no por descubrimiento).
+        // llamante lo pide (su provider/recursos se registran explícitamente, no por descubrimiento).
         if ($allowCore) {
             return array_values($paths);
         }

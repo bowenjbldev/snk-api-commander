@@ -13,7 +13,7 @@ use Packages\Commander\Models\CommanderSettingModel;
  * (`commander_settings.settings`) pero la API las expone/acepta PLANAS: show()/update() despliegan y
  * mergean con los defaults. default_grace_hours se siembra desde core.quotas.grace_hours y se guarda,
  * pero el cálculo de grace_until lee esa config y no esta preferencia. La
- * ruta va bajo auth:sanctum, asi que solo un operador autenticado llega aqui.
+ * ruta va bajo auth:sanctum, así que solo un operador autenticado llega aquí.
  */
 #[Group('Settings')]
 class CommanderSettingsController extends Controller

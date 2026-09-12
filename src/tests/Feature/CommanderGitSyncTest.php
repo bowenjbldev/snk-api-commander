@@ -15,9 +15,10 @@ use Packages\Commander\Support\CommanderGitCommitData;
 use Tests\CommanderTestCase;
 
 /**
- * Pipeline de git insights: el servicio toma commits del package que implementa cada aplicación
- * y los baja a raw + rollup diario. Se testea con un source FAKE (sin git/red); el parseo real de
- * `git log --numstat` se cubre aparte sobre CommanderLocalGitSource::parseLog (puro).
+ * La sincronización de git insights: el servicio toma los commits del paquete que implementa cada
+ * aplicación y los guarda en bruto y en un acumulado diario. Se prueba con una fuente FALSA (sin
+ * git ni red); el parseo real de `git log --numstat` se cubre aparte sobre
+ * `CommanderLocalGitSource::parseLog`, que es puro.
  */
 class CommanderGitSyncTest extends CommanderTestCase
 {
@@ -47,7 +48,7 @@ class CommanderGitSyncTest extends CommanderTestCase
         );
     }
 
-    /** Source fake: devuelve los commits solo en la primera pasada (cursor null); luego nada. */
+    /** Fuente falsa: devuelve los commits solo en la primera pasada (cursor null); luego nada. */
     private function fakeSource(array $commits): CommanderPackageGitSource
     {
         return new class($commits) implements CommanderPackageGitSource

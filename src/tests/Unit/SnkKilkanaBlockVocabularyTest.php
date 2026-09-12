@@ -11,13 +11,13 @@ use PHPUnit\Framework\TestCase;
  * El vocabulario del cuerpo, escrito una vez a mano para que no pueda moverse solo.
  *
  * Los diez tipos son el contrato entre este backend y el editor de `kilkana.app`, y viven
- * duplicados a la fuerza: PHP no puede leer un tipo de TypeScript. La duplicacion es
+ * duplicados a la fuerza: PHP no puede leer un tipo de TypeScript. La duplicación es
  * asumida; divergir no lo es, y por eso hay una prueba a cada lado con la MISMA lista
  * escrita a mano. La gemela es `src/lib/data/article.test.ts` en el frontend.
  *
- * Si esta prueba se pone roja, el arreglo no es cambiar la lista de aqui: es mirar el otro
- * lado y decidir a la vez. Los dos vocabularios estuvieron separados —siete tipos aqui,
- * diez alli— y el sintoma fue que el editor no podia guardar nada con un intertitulo.
+ * Si esta prueba se pone roja, el arreglo no es cambiar la lista de aquí: es mirar el otro
+ * lado y decidir a la vez. Con los dos vocabularios separados —un tipo que el editor compone y
+ * este lado no conoce— el editor no puede guardar nada que lo lleve, un intertítulo por ejemplo.
  */
 class SnkKilkanaBlockVocabularyTest extends TestCase
 {
@@ -39,22 +39,22 @@ class SnkKilkanaBlockVocabularyTest extends TestCase
 
     public function test_publish_and_schedule_are_the_statuses_that_put_a_post_on_the_street(): void
     {
-        // De aqui sale el `required_if` de la entradilla y la fecha: un borrador nace sin
-        // ellas, y publicarlo asi es publicar media pieza.
+        // De aquí sale el `required_if` de la entradilla y la fecha: un borrador nace sin
+        // ellas, y publicarlo así es publicar media pieza.
         $this->assertSame(['scheduled', 'published'], SnkKilkanaPostStatusEnum::publishing());
     }
 
     /**
      * La FORMA de un bloque, escrita a mano desde este lado.
      *
-     * Los diez nombres ya estan arriba, pero los nombres nunca fueron el problema: `type`
-     * contra `kind` y anidado contra plano si. Una lista de nombres identica pasa en verde
+     * Los diez nombres ya están arriba, pero los nombres no son el problema: `type`
+     * contra `kind` y anidado contra plano sí. Una lista de nombres idéntica pasa en verde
      * mientras el editor pierde los pies de foto al guardar, porque el campo viaja con otra
      * clave. La gemela es `src/lib/piece.server.test.ts` en el frontend, que hace la ida y
      * vuelta con esta misma tabla.
      *
-     * `media_id` es el unico campo que cambia de nombre entre los dos lados, y a proposito:
-     * aqui es la PK de `kilkana_media` y alli todavia es el id de la mediateca de la fixture.
+     * `media_id` es el único campo que cambia de nombre entre los dos lados, y a propósito:
+     * aquí es la PK de `kilkana_media` y allí todavía es el id de la mediateca de la fixture.
      */
     public function test_a_block_shape_is_id_type_and_config(): void
     {
@@ -71,9 +71,9 @@ class SnkKilkanaBlockVocabularyTest extends TestCase
             'related' => [],
         ];
 
-        // Y lo que el seeder produce de verdad tiene que caber en ese contrato: es el unico
-        // sitio de este repositorio que compone cuerpos, asi que si el contrato se mueve sin
-        // que se mueva el, la demo entera se guarda con la forma vieja.
+        // Y lo que el seeder produce de verdad tiene que caber en ese contrato: es el único
+        // sitio de este repositorio que compone cuerpos, así que si el contrato se mueve sin
+        // que se mueva él, la demo entera se guarda con la forma vieja.
         $post = [
             'cat' => 'local',
             'slug' => 'una-pieza-cualquiera',
@@ -111,7 +111,7 @@ class SnkKilkanaBlockVocabularyTest extends TestCase
             'draft' => 'draft',
             'review' => 'review',
             'scheduled' => 'scheduled',
-            // Borrar no mueve de estado, asi que no tiene ninguno que devolver.
+            // Borrar no mueve de estado, así que no tiene ninguno que devolver.
             'delete' => null,
         ], $map);
     }

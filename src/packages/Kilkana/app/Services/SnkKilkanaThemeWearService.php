@@ -21,7 +21,7 @@ class SnkKilkanaThemeWearService
     /**
      * Deja al periódico vestido con este tema y devuelve sus ajustes.
      *
-     * **Los retoques se vacían.** Eran del tema anterior: arrastrarlos pintaría el acento de uno
+     * **Los retoques se vacían.** Son del tema anterior: arrastrarlos pintaría el acento de uno
      * sobre otro y nadie sabría de dónde salió. Volver a vestir el mismo tema es la vía para
      * recuperar el spec de fábrica, y por eso no es idempotente en los retoques.
      */

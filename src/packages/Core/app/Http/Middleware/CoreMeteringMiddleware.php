@@ -12,11 +12,11 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Registra cada request en commander_request_logs DESPUES de atenderla (terminable). En un
- * worker persistente el INSERT correria antes de cerrar la respuesta, asi que las filas pasan
+ * Registra cada request en commander_request_logs DESPUÉS de atenderla (terminable). En un
+ * worker persistente el INSERT correría antes de cerrar la respuesta, así que las filas pasan
  * por CoreMeteringBufferSupport y se escriben en lote.
- * Va el primero del grupo 'api' para registrar tambien los 429 del throttle
- * y los 402 del kill-switch. Un fallo aqui JAMAS rompe el request.
+ * Va el primero del grupo 'api' para registrar también los 429 del throttle
+ * y los 402 del kill-switch. Un fallo aquí JAMÁS rompe el request.
  */
 class CoreMeteringMiddleware
 {
@@ -25,8 +25,8 @@ class CoreMeteringMiddleware
         // Fallback de inicio si el SAPI no informa REQUEST_TIME_FLOAT.
         $request->attributes->set('core_metering_start', microtime(true));
 
-        // En un worker persistente el pico de memoria es el historico del proceso, no el de la
-        // peticion: sin esto memory_kb valdria lo mismo para ocho peticiones seguidas.
+        // En un worker persistente el pico de memoria es el histórico del proceso, no el de la
+        // petición: sin esto memory_kb valdría lo mismo para ocho peticiones seguidas.
         memory_reset_peak_usage();
 
         // La instancia activa ya la fijó el resolutor (que va antes). Se captura aquí,
@@ -62,8 +62,8 @@ class CoreMeteringMiddleware
                 return;
             }
 
-            // REQUEST_TIME_FLOAT es por peticion en todo SAPI, incluido un worker persistente,
-            // donde una constante de arranque seria el uptime del proceso.
+            // REQUEST_TIME_FLOAT es por petición en todo SAPI, incluido un worker persistente,
+            // donde una constante de arranque sería el uptime del proceso.
             $start = (float) $request->server(
                 'REQUEST_TIME_FLOAT',
                 $request->attributes->get('core_metering_start', microtime(true)),
@@ -73,8 +73,8 @@ class CoreMeteringMiddleware
 
             $now = now('UTC');
 
-            // Solo quien la peticion ya autentico dentro del inquilino: aqui la conexion ya volvio
-            // a commander, y resolver el guard ahora buscaria el token en la base de control.
+            // Solo quien la petición ya autenticó dentro del inquilino: aquí la conexión ya volvió
+            // a commander, y resolver el guard en este punto buscaría el token en la base de control.
             $user = auth()->hasUser() ? auth()->user() : null;
 
             app(CoreMeteringBufferSupport::class)->add([
@@ -93,8 +93,8 @@ class CoreMeteringMiddleware
                 'ip' => $request->ip(),
                 'request_bytes' => (int) $request->header('Content-Length', '0') ?: strlen($request->getContent()),
                 'response_bytes' => $this->responseBytes($response),
-                // Uso real del heap y no paginas reservadas: en un worker persistente las paginas
-                // ya estan cogidas del arranque y no distinguen una peticion ligera de una pesada.
+                // Uso real del heap y no páginas reservadas: en un worker persistente las páginas
+                // ya están cogidas del arranque y no distinguen una petición ligera de una pesada.
                 'memory_kb' => (int) (memory_get_peak_usage() / 1024),
             ]);
         } catch (\Throwable $e) {

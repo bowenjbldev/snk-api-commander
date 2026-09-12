@@ -29,8 +29,8 @@ final class CorePackageSelectorSupport
     /**
      * La clave con la que se cachean los permisos de UNA base.
      *
-     * Existe como funcion y no como una concatenacion suelta porque es una invariante de
-     * seguridad, no un detalle: la cache de permisos de Spatie es global al proceso, y dos
+     * Existe como función y no como una concatenación suelta porque es una invariante de
+     * seguridad, no un detalle: la caché de permisos de Spatie es global al proceso, y dos
      * inquilinos que compartieran clave compartirian permisos. Que la clave lleve el nombre de
      * la base es lo que hace imposible ese cruce, y por eso se escribe —y se comprueba— en un
      * solo sitio. El identificador se valida antes: una base con un nombre raro no puede

@@ -6,13 +6,13 @@ use Packages\Kilkana\Services\SnkKilkanaThemeSpecValidator;
 use Tests\TestCase;
 
 /**
- * La puerta de entrada del catalogo.
+ * La puerta de entrada del catálogo.
  *
- * Estos casos son los que permiten producir temas deprisa sin que el catalogo se llene de temas
- * inservibles: un gris elegante que no llega al contraste minimo se ve bien en una captura y
- * arruina la accesibilidad del periodico que lo instale.
+ * Estos casos son los que permiten producir temas deprisa sin que el catálogo se llene de temas
+ * inservibles: un gris elegante que no llega al contraste mínimo se ve bien en una captura y
+ * arruina la accesibilidad del periódico que lo instale.
  *
- * Dos clases de fallo se paran solo aqui, porque ninguna revienta al pintar: una rejilla cuyos
+ * Dos clases de fallo se paran solo aquí, porque ninguna revienta al pintar: una rejilla cuyos
  * `span` no cuadran y una plantilla que se pasa del presupuesto de rendimiento.
  */
 class SnkKilkanaThemeSpecValidatorTest extends TestCase
@@ -22,7 +22,7 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
         return new SnkKilkanaThemeSpecValidator;
     }
 
-    /** Los diez peldanos de la escala, obligatorios los diez. */
+    /** Los diez peldaños de la escala, obligatorios los diez. */
     private function steps(): array
     {
         $base = ['weight' => 700, 'tracking' => '-0.01em', 'leading' => 1.2];
@@ -52,7 +52,7 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
         return $header === null ? $row : [...$row, 'header' => ['text' => $header]];
     }
 
-    /** Un tema valido de referencia; cada caso lo estropea por un sitio distinto. */
+    /** Un tema válido de referencia; cada caso lo estropea por un sitio distinto. */
     private function spec(array $changes = []): array
     {
         $spec = [
@@ -97,12 +97,12 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
     }
 
     /**
-     * Un spec de otra version no se interpreta: se para en seco y se dice.
+     * Un spec de otra versión no se interpreta: se para en seco y se dice.
      *
-     * Es el fallo mas caro de los que hay aqui, porque no revienta. Un tema v1 leido como v2 no
-     * tiene `grid` ni `type` ni `media`, asi que **se ve mal** en el periodico de alguien, y eso
-     * es peor que no publicarse. Ademas se devuelve SOLO ese error: los cuarenta que vendrian
-     * detras son ruido sobre el mismo hecho.
+     * Es el fallo más caro de los que hay aquí, porque no revienta. Un tema v1 leído como v2 no
+     * tiene `grid` ni `type` ni `media`, así que **se ve mal** en el periódico de alguien, y eso
+     * es peor que no publicarse. Además se devuelve SOLO ese error: los cuarenta que vendrían
+     * detrás son ruido sobre el mismo hecho.
      */
     public function test_it_refuses_a_spec_from_another_version_and_says_only_that(): void
     {
@@ -128,7 +128,7 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
      * El caso que justifica todo el validador.
      *
      * Un gris claro sobre blanco es exactamente lo que sale cuando se pide «sobrio»: pasa
-     * desapercibido en la revision y deja el periodico por debajo de AA.
+     * desapercibido en la revisión y deja el periódico por debajo de AA.
      */
     public function test_it_refuses_a_theme_below_the_aa_contrast_ratio(): void
     {
@@ -136,7 +136,7 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
 
         $this->assertCount(1, $errors);
         $this->assertStringContainsString('contrast textSoft on surface', $errors[0]);
-        $this->assertStringContainsString('#dddddd', $errors[0], 'el error tiene que decir QUE color');
+        $this->assertStringContainsString('#dddddd', $errors[0], 'el error tiene que decir QUÉ color');
     }
 
     public function test_it_refuses_an_accent_that_cannot_be_read(): void
@@ -155,7 +155,7 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
         $this->assertStringContainsString('masthead', $this->validator()->validate($spec)[0]);
     }
 
-    /** Un color que falta no puede pasar por bueno solo porque los demas esten. */
+    /** Un color que falta no puede pasar por bueno solo porque los demás estén. */
     public function test_it_refuses_a_missing_colour(): void
     {
         $spec = $this->spec();
@@ -179,14 +179,14 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
             $breakSpec($spec);
 
             $errors = $this->validator()->validate($spec);
-            $this->assertNotSame([], $errors, "{$what} deberia haber fallado");
+            $this->assertNotSame([], $errors, "{$what} debería haber fallado");
         }
     }
 
     /**
-     * Una apertura mas pequena que su tarjeta es siempre un error de tecleo.
+     * Una apertura más pequeña que su tarjeta es siempre un error de tecleo.
      *
-     * El Chapuzas las tiene IGUALES a proposito y eso vale; menor no lo hace nadie, y no se ve
+     * El Chapuzas las tiene IGUALES a propósito y eso vale; menor no lo hace nadie, y no se ve
      * hasta abrir la portada.
      */
     public function test_it_refuses_a_lead_smaller_than_its_card(): void
@@ -197,7 +197,7 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
         $this->assertStringContainsString('smaller than the card', implode(' ', $this->validator()->validate($spec)));
     }
 
-    /** Los cinco recortes con nombre son lo que declara la altura de una foto: de ahi sale el CLS. */
+    /** Los cinco recortes con nombre son lo que declara la altura de una foto: de ahí sale el CLS. */
     public function test_it_refuses_a_missing_named_crop(): void
     {
         $spec = $this->spec();
@@ -207,7 +207,7 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
     }
 
     /**
-     * `columns` y `tracks` son excluyentes: con las dos no se sabe cual manda al repartir.
+     * `columns` y `tracks` son excluyentes: con las dos no se sabe cuál manda al repartir.
      */
     public function test_it_refuses_a_grid_that_declares_columns_and_tracks(): void
     {
@@ -217,7 +217,7 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
         $this->assertStringContainsString('exactly one', implode(' ', $this->validator()->validate($spec)));
     }
 
-    /** Una fila que no llena la rejilla deja un hueco que nadie pidio, y no se ve hasta pintarla. */
+    /** Una fila que no llena la rejilla deja un hueco que nadie pidió, y no se ve hasta pintarla. */
     public function test_it_refuses_a_row_whose_spans_do_not_fill_the_grid(): void
     {
         $spec = $this->spec();
@@ -240,9 +240,9 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
     /**
      * Un bloque desconocido es un tema mal hecho, no un dato viejo.
      *
-     * El normalizador del editor descarta lo que no reconoce, y ahi esta bien: protege de
-     * composiciones guardadas hace meses. En el catalogo lo correcto es lo contrario, porque
-     * un bloque que no existe significa que esa banda no se va a pintar y nadie lo sabria.
+     * El normalizador del editor descarta lo que no reconoce, y ahí está bien: protege de
+     * composiciones guardadas hace meses. En el catálogo lo correcto es lo contrario, porque
+     * un bloque que no existe significa que esa banda no se va a pintar y nadie lo sabría.
      */
     public function test_it_refuses_an_unknown_block_type(): void
     {
@@ -259,7 +259,7 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
      * Los cinco bloques compuestos tienen que entrar: `lead-briefs`, `brief-list`, `four-up`,
      * `mosaic` y `topic-strip`.
      *
-     * La banda va la tercera y no la segunda a proposito: `lead-briefs` mas `four-up` mas
+     * La banda va la tercera y no la segunda a propósito: `lead-briefs` más `four-up` más
      * `mosaic` son diez fotos, y sobre el pliegue eso es justo lo que el presupuesto para.
      */
     public function test_it_accepts_the_blocks_added_in_v2(): void
@@ -283,11 +283,11 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
     }
 
     /**
-     * El presupuesto: un tema es un dato y se publica sin desplegar nada, asi que es el sitio
-     * exacto por donde un periodico se vuelve lento sin que nadie lo revise.
+     * El presupuesto: un tema es un dato y se publica sin desplegar nada, así que es el sitio
+     * exacto por donde un periódico se vuelve lento sin que nadie lo revise.
      *
      * Diecisiete bandas de cuatro tarjetas son 68 fotos: caben las bandas y caben los bloques,
-     * y lo que se pasa es el peso de la pagina.
+     * y lo que se pasa es el peso de la página.
      */
     public function test_it_refuses_a_template_over_the_photo_budget(): void
     {
@@ -302,7 +302,7 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
 
     /**
      * Lo que compite con el LCP es lo que cargue por encima del pliegue, y el pliegue son las
-     * dos primeras bandas. Aqui las fotos totales caben y lo que se pasa es donde estan.
+     * dos primeras bandas. Aquí las fotos totales caben y lo que se pasa es dónde están.
      */
     public function test_it_refuses_too_many_photos_above_the_fold(): void
     {
@@ -318,7 +318,7 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
         $this->assertStringContainsString('LCP', $errors[0]);
     }
 
-    /** `photo: false` es lo que hace que una edicion de teletipo no cuente fotos. */
+    /** `photo: false` es lo que hace que una edición de teletipo no cuente fotos. */
     public function test_a_block_with_photos_switched_off_does_not_spend_budget(): void
     {
         $spec = $this->spec();

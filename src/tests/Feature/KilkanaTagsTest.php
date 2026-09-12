@@ -17,9 +17,9 @@ use Tests\TestCase;
 /**
  * De un vocabulario no se mira la lista de palabras, se mira su FORMA.
  *
- * Y la forma son las cuentas: cuales cargan con el archivo, cuales son cola y cuando se uso
- * cada una por ultima vez. Sin ellas la pantalla de etiquetas es una lista alfabetica, y
- * fundir —su unica operacion de verdad— se decide a ciegas.
+ * Y la forma son las cuentas: cuáles cargan con el archivo, cuáles son cola y cuándo se usó
+ * cada una por última vez. Sin ellas la pantalla de etiquetas es una lista alfabética, y
+ * fundir —su única operación de verdad— se decide a ciegas.
  */
 class KilkanaTagsTest extends TestCase
 {
@@ -35,9 +35,9 @@ class KilkanaTagsTest extends TestCase
             ])->run();
         }
 
-        // Las claves foraneas, encendidas SOLO en esta conexion: sqlite las trae apagadas y la
-        // del banco no declara `foreign_key_constraints`, asi que sin esto la cascada que
-        // sostiene `detached` no se puede afirmar. Va despues de migrar —es por conexion, no por
+        // Las claves foráneas, encendidas SOLO en esta conexión: sqlite las trae apagadas y la
+        // del banco no declara `foreign_key_constraints`, así que sin esto la cascada que
+        // sostiene `detached` no se puede afirmar. Va después de migrar —es por conexión, no por
         // tabla— y no toca al resto de la suite.
         DB::statement('PRAGMA foreign_keys = ON');
 
@@ -53,7 +53,7 @@ class KilkanaTagsTest extends TestCase
         $this->makePost('Pleno de julio', '2026-07-01 08:00:00')->tags()->attach($mobility);
         $this->makePost('Carril bici', '2026-07-09 10:00:00')->tags()->attach($mobility);
         // Un borrador CUENTA como uso —hay que moverlo al fundir— pero no fecha el vocabulario:
-        // una intencion de hoy no es que el tema siga vivo.
+        // una intención de hoy no es que el tema siga vivo.
         $this->makePost('Sin publicar', '2026-08-30 09:00:00', 'draft')->tags()->attach($mobility);
 
         $rows = collect($this->tagRows())->keyBy('name');
@@ -90,11 +90,11 @@ class KilkanaTagsTest extends TestCase
     }
 
     /**
-     * Borrar no pregunta, asi que la respuesta es lo unico que dice cuanto se ha llevado.
+     * Borrar no pregunta, así que la respuesta es lo único que dice cuánto se ha llevado.
      *
-     * Y el pivote cae detras, que es de lo que esa cifra se fia: `kilkana_post_tag.tag_id` es
-     * `cascadeOnDelete`, y aqui se puede afirmar porque el `setUp` enciende las claves foraneas
-     * de esta conexion.
+     * Y el pivote cae detrás, que es de lo que esa cifra se fía: `kilkana_post_tag.tag_id` es
+     * `cascadeOnDelete`, y aquí se puede afirmar porque el `setUp` enciende las claves foráneas
+     * de esta conexión.
      */
     public function test_deleting_reports_how_many_posts_were_untagged(): void
     {
@@ -108,7 +108,7 @@ class KilkanaTagsTest extends TestCase
         $this->assertSame(0, DB::table('kilkana_post_tag')->count(), 'El pivote se va con ella.');
     }
 
-    /** Fundir una etiqueta consigo misma la borraria sin mover nada: se rechaza antes. */
+    /** Fundir una etiqueta consigo misma la borraría sin mover nada: se rechaza antes. */
     public function test_a_tag_cannot_be_merged_into_itself(): void
     {
         $one = SnkKilkanaTagModel::create(['name' => 'movilidad']);
@@ -118,15 +118,15 @@ class KilkanaTagsTest extends TestCase
         try {
             $this->asDirector()->merge(Request::create('/', 'POST', ['into' => $one->id]), $one->id);
         } finally {
-            $this->assertNotNull(SnkKilkanaTagModel::query()->find($one->id), 'Y sigue ahi.');
+            $this->assertNotNull(SnkKilkanaTagModel::query()->find($one->id), 'Y sigue ahí.');
         }
     }
 
     /**
-     * Fundir recorta el vocabulario, asi que pide el permiso de borrar.
+     * Fundir recorta el vocabulario, así que pide el permiso de borrar.
      *
-     * Un redactor puede crear etiquetas —las teclea al escribir— y ahi se acaba: dejarle fundir
-     * seria dejarle borrar una etiqueta del periodico por la puerta de al lado.
+     * Un redactor puede crear etiquetas —las teclea al escribir— y ahí se acaba: dejarle fundir
+     * sería dejarle borrar una etiqueta del periódico por la puerta de al lado.
      */
     public function test_whoever_cannot_delete_cannot_merge(): void
     {

@@ -21,13 +21,12 @@ class SnkKilkanaLayoutService
     /**
      * Guarda si nadie se ha adelantado, y si se adelantó devuelve conflicto.
      *
-     * La comprobación de version y la escritura van bajo el MISMO bloqueo de fila. Comprobar
+     * La comprobación de `version` y la escritura van bajo el MISMO bloqueo de fila. Comprobar
      * fuera de la transacción no sirve de nada: dos personas guardando la portada a la vez
-     * leían la version 3, las dos pasaban la comprobación y las dos escribían la 4 — la
-     * segunda pisaba a la primera, las dos recibían 200, y quien perdió su trabajo no se
-     * enteraba. Medido: de seis guardados simultáneos declarando la misma version, DOS
-     * respondían 200. Con el bloqueo, el segundo espera, relee la version ya incrementada y
-     * se lleva su 409.
+     * leen la versión 3, las dos pasan la comprobación y las dos escriben la 4 — la segunda
+     * pisa a la primera, las dos reciben 200, y quien pierde su trabajo no se entera. Medido
+     * sin el bloqueo: de seis guardados simultáneos declarando la misma versión, DOS responden
+     * 200. Con el bloqueo, el segundo espera, relee la versión ya incrementada y se lleva su 409.
      *
      * `get()` va antes y fuera a propósito: crea la fila si es la primera vez, y no se puede
      * bloquear una fila que todavía no existe.
@@ -45,9 +44,9 @@ class SnkKilkanaLayoutService
                 return ['row' => $row, 'conflict' => true];
             }
 
-            // La instantanea y el guardado son lo mismo: una portada guardada sin su copia de
+            // La instantánea y el guardado son lo mismo: una portada guardada sin su copia de
             // seguridad deja el historial con un salto, y es justo el historial lo que permite
-            // deshacer una composicion que rompio la portada.
+            // deshacer una composición que rompe la portada.
             $this->snapshot($row, $userId);
             $row->schema = $schema;
             $row->version = $row->version + 1;
@@ -68,7 +67,7 @@ class SnkKilkanaLayoutService
             ->get();
     }
 
-    /** Restaurar también bloquea: sube la version, así que compite con un guardado normal. */
+    /** Restaurar también bloquea: sube la `version`, así que compite con un guardado normal. */
     public function restore(string $layout, $revisionId, ?int $userId): ?SnkKilkanaLayoutModel
     {
         return DB::transaction(function () use ($layout, $revisionId, $userId) {

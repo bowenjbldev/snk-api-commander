@@ -93,7 +93,7 @@ class SnkKilkanaMediaTaxonomiesController
      *
      * El pivote se va por CASCADE sin preguntar. Que la respuesta lo cuente es lo que
      * distingue «he borrado una etiqueta que no usaba nadie» de «acabo de desetiquetar
-     * cincuenta fotos», que desde fuera se veían igual.
+     * cincuenta fotos», que sin la cifra se verían igual desde fuera.
      */
     public function destroy(string $taxonomy, $id): JsonResponse
     {

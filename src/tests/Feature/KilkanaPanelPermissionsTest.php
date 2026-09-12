@@ -12,8 +12,8 @@ use Tests\TestCase;
  * Quién abre el panel del periódico, comprobado sobre el reparto de roles y no sobre una lista
  * escrita al lado.
  *
- * `index posts` es la puerta de todo lo que el panel lee, y desde que existe `GET plan` también
- * la de la facturación. La ruta declara su `can:` —eso lo fija `KilkanaPlanTest`— pero **una
+ * `index posts` es la puerta de todo lo que el panel lee, también la de la facturación
+ * (`GET plan`). La ruta declara su `can:` —eso lo fija `KilkanaPlanTest`— pero **una
  * declaración no dice quién pasa**: el día que alguien le dé ese permiso a `reader` en el
  * seeder, la ruta seguiría declarándolo igual y los lectores del periódico leerían el plan.
  *
@@ -53,7 +53,7 @@ class KilkanaPanelPermissionsTest extends TestCase
     /**
      * El sumario de la redacción es de quien está en la sala, y eso lo decide el rol.
      *
-     * Son **dos preguntas y hasta hoy un solo permiso**: `edit others posts` contesta «puedes
+     * Son **dos preguntas y dos permisos**: `edit others posts` contesta «puedes
      * cambiar la pieza de otro» y `view others posts` contesta «puedes saber que existe». Un
      * redactor y un moderador tienen la segunda sin la primera, que es justo el reparto que un
      * permiso único no sabe expresar.
@@ -113,7 +113,7 @@ class KilkanaPanelPermissionsTest extends TestCase
         $this->assertSame(['create comments'], $reader->permissions->pluck('name')->all());
     }
 
-    /** Un redactor escribe y manda a revision. Publicar es de la mesa: es lo que separa los dos papeles. */
+    /** Un redactor escribe y manda a revisión. Publicar es de la mesa: es lo que separa los dos papeles. */
     public function test_a_writer_cannot_publish(): void
     {
         $this->assertFalse(Role::findByName('redactor', 'sanctum')->hasPermissionTo('publish posts'));

@@ -15,11 +15,11 @@ use Spatie\QueryBuilder\QueryBuilder;
 #[Group('Authors')]
 class SnkKilkanaAuthorsController extends CoreBaseApiController
 {
-    /** `rule()` es una llamada, y una propiedad no se puede inicializar con eso: va aqui. */
+    /** `rule()` es una llamada, y una propiedad no se puede inicializar con eso: va aquí. */
     public function __construct()
     {
         foreach (['validationRulesStore', 'validationRulesUpdate'] as $property) {
-            // Que clase de firma es. Nace `contributor`, que es el alta mas comun.
+            // Qué clase de firma es. Nace `contributor`, que es el alta más común.
             $this->{$property}['kind'] = 'sometimes|'.SnkKilkanaAuthorKindEnum::rule();
         }
     }
@@ -36,29 +36,10 @@ class SnkKilkanaAuthorsController extends CoreBaseApiController
 
     protected string $destroyPermission = 'delete authors';
 
-    /** La foto de la firma vive en la biblioteca: `?with=avatarMedia` la resuelve a URL para que
+    /** La foto de la firma vive en la biblioteca: `?include=avatarMedia` la resuelve a URL para que
      *  el consumidor no reciba solo un id opaco. */
     protected array $allowedIncludes = ['avatarMedia'];
 
-    /**
-     * Cada firma sale con cuanto ha publicado, cuando fue la ultima y con que asiento cruza.
-     *
-     * Tres subconsultas por fila y once filas, no un recuento por peticion: el panel enseña
-     * «Marta Beneyto · 34 · 26 Aug» y sin esto la unica forma de saberlo era cruzar el archivo
-     * entero en el cliente. `last_published_at` mira solo lo publicado —un borrador de hoy no
-     * es actividad de la firma— y las URLs retiradas viajan porque la ficha enseña su 301.
-     *
-     * **`seat` es una subconsulta y no un accesor del modelo, y esa diferencia es lo que lo
-     * mantiene dentro del panel.** Es el correo con el que se ENTRA, asi que anexado al modelo
-     * viajaba en cada firma que serializa cualquiera —y la portada publica y la pagina de cada
-     * articulo anidan la firma entera—: el correo de acceso de la redaccion salia a la calle
-     * sin sesion. Aqui solo existe para quien lista firmas en el panel, y ningun serializador
-     * futuro tiene que acordarse de esconderlo.
-     *
-     * Va en `decorate()` y no en el modelo porque **solo lo quiere quien lista**: pedir una
-     * firma para editarla no necesita contar sus piezas. Y en `decorate()` y no en `newQuery()`
-     * porque `?fields=` hace `select()`: puesto antes, el asiento y los recuentos se perderían.
-     */
     protected ?string $resourceClass = SnkKilkanaAuthorResource::class;
 
     protected array $allowedFields = [
@@ -69,6 +50,25 @@ class SnkKilkanaAuthorsController extends CoreBaseApiController
         'avatar_media_id', 'avatar_medias.id', 'avatar_medias.url',
     ];
 
+    /**
+     * Cada firma sale con cuánto ha publicado, cuándo fue la última y con qué asiento cruza.
+     *
+     * Tres subconsultas por fila sobre un catálogo corto, y no un recuento por petición: el
+     * panel enseña «Marta Beneyto · 34 · 26 Aug», y sin esto la única forma de saberlo es cruzar
+     * el archivo entero en el cliente. `last_published_at` mira solo lo publicado —un borrador
+     * de hoy no es actividad de la firma— y las URLs retiradas viajan porque la ficha enseña su 301.
+     *
+     * **`seat` es una subconsulta y no un accesor del modelo, y esa diferencia es lo que lo
+     * mantiene dentro del panel.** Es el correo con el que se ENTRA, así que anexado al modelo
+     * viajaría en cada firma que serializa cualquiera —y la portada pública y la página de cada
+     * artículo anidan la firma entera—: el correo de acceso de la redacción saldría a la calle
+     * sin sesión. Aquí solo existe para quien lista firmas en el panel, y ningún serializador
+     * tiene que acordarse de esconderlo.
+     *
+     * Va en `decorate()` y no en el modelo porque **solo lo quiere quien lista**: pedir una
+     * firma para editarla no necesita contar sus piezas. Y en `decorate()` y no en `newQuery()`
+     * porque `?fields=` hace `select()`: puesto antes, el asiento y los recuentos se perderían.
+     */
     protected function decorate(QueryBuilder $query): QueryBuilder
     {
         // La cuenta va siempre cargada —`$with` del modelo, porque el nombre publicado sale de
@@ -85,9 +85,9 @@ class SnkKilkanaAuthorsController extends CoreBaseApiController
      * Borrar una firma dice QUÉ lo impide, en vez de reventar con el SQL a la vista.
      *
      * `kilkana_posts.author_id` es RESTRICT —la hemeroteca no puede quedarse sin autor— y al
-     * saltar devolvía un 500 con el nombre de la tabla y de la restricción dentro. Quien lo
-     * recibía no distinguía «esta firma tiene artículos» de «el servidor se ha roto», y de
-     * paso se publicaba el esquema.
+     * saltar devolvería un 500 con el nombre de la tabla y de la restricción dentro. Quien lo
+     * recibiera no distinguiría «esta firma tiene artículos» de «el servidor se ha roto», y de
+     * paso se publicaría el esquema.
      *
      * Se cuenta antes para poder decir cuántos son: retirar una firma es una decisión
      * editorial, y quien la toma necesita saber el tamaño de lo que va a mover.
@@ -112,7 +112,7 @@ class SnkKilkanaAuthorsController extends CoreBaseApiController
     }
 
     protected array $validationRulesStore = [
-        // El contacto de la pagina de autor, que **no es el correo de la cuenta**: aquel es
+        // El contacto de la página de autor, que **no es el correo de la cuenta**: aquel es
         // con el que se entra al panel y este es con el que se escribe a quien firma.
         'public_email' => 'nullable|email|max:255',
         // El nombre NO se manda: se publica el de la cuenta. `alias` solo cuando firma con
@@ -130,13 +130,13 @@ class SnkKilkanaAuthorsController extends CoreBaseApiController
         'noindex' => 'sometimes|boolean',
         'avatar_media_id' => 'nullable|integer|exists:kilkana_media,id',
         // Las dos acaban en un `href` de la ficha pública, así que el esquema se acota aquí:
-        // sin esto pasaba `javascript:` y `data:text/html,<script>…`, y el endpoint público
-        // los servía tal cual.
+        // sin esto pasan `javascript:` y `data:text/html,<script>…`, y el endpoint público
+        // los serviría tal cual.
         'website' => 'nullable|url:http,https|max:2048',
         'socials' => 'nullable|array',
         'socials.*' => 'url:http,https|max:2048',
         // La cuenta que firma, **cuando la hay**: una agencia publica sin entrar al panel, y
-        // exigirla obligaba a inventar una cuenta de servicio por agencia solo para satisfacer
+        // exigirla obligaría a inventar una cuenta de servicio por agencia solo para satisfacer
         // la clave foránea. Sigue siendo 1:1 con el resto de firmas cuando se manda.
         'user_id' => 'nullable|integer|exists:users,id|unique:kilkana_authors,user_id',
     ];
@@ -146,7 +146,7 @@ class SnkKilkanaAuthorsController extends CoreBaseApiController
         'alias' => 'nullable|string|max:255',
         'job_title' => 'nullable|string|max:255',
         // Aquí NO puede ser nulo: la columna es NOT NULL y el derivador solo corre al crear,
-        // así que un `slug: null` en un update era un 500. Una firma publicada tiene URL
+        // así que un `slug: null` en un update sería un 500. Una firma publicada tiene URL
         // siempre; se puede cambiar, no vaciar.
         'slug' => 'sometimes|required|string|max:255|unique:kilkana_authors,slug,{id}',
         'bio' => 'nullable|string',

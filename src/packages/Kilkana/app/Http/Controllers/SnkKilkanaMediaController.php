@@ -15,7 +15,7 @@ use Packages\Kilkana\Services\SnkKilkanaMediaService;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
- * Biblioteca de medios estilo WordPress: subida al disco del tenant con dedup por
+ * Biblioteca de medios estilo WordPress: subida al disco del inquilino con dedup por
  * hash de contenido, metadatos editoriales y de derechos, taxonomías (tags +
  * colecciones) y papelera (soft delete). El index sirve {data, meta, facets, scope}: la
  * lista paginada y filtrada, los contadores globales del archivo y los de lo que se está
@@ -41,8 +41,8 @@ class SnkKilkanaMediaController extends CoreBaseApiController
     /** Mimes aceptados por el contrato de subida y reemplazo. */
     private const MIMES = 'jpeg,jpg,png,webp,avif,gif,mp4,webm,mp3,m4a,wav,ogg,pdf';
 
-    // Sin parámetro: la firma la fija CoreBaseApiController::index(). La request se
-    // toma del helper, como hace la propia base en parseWithParam().
+    // Sin parámetro: la firma la fija `CoreBaseApiController::index()`. La petición se toma
+    // del helper `request()`, como hace la propia base.
     public function index(): JsonResponse
     {
         if ($response = $this->requirePermission($this->indexPermission)) {
@@ -55,13 +55,13 @@ class SnkKilkanaMediaController extends CoreBaseApiController
     /**
      * La ficha, con **quien la usa por su nombre**.
      *
-     * El listado ya trae `usage_count`, que es un numero; el inspector del panel ensena la
+     * El listado ya trae `usage_count`, que es un número; el inspector del panel enseña la
      * lista —«Used in», con los titulares—, y ese dato es justo por el que se entra a una
      * ficha antes de borrarla. Un contador a 3 no dice si esos 3 son borradores viejos o la
      * portada de hoy.
      *
-     * Va en `show` y no en el listado a proposito: son tres consultas por fila, y multiplicarlas
-     * por las veinticinco de una pagina para pintar un numero que ya viene contado es pagar
+     * Va en `show` y no en el listado a propósito: son tres consultas por fila, y multiplicarlas
+     * por las veinticinco de una página para pintar un número que ya viene contado es pagar
      * setenta y cinco consultas por nada.
      */
     public function show($id = null): JsonResponse
@@ -104,15 +104,15 @@ class SnkKilkanaMediaController extends CoreBaseApiController
             'rights_expires_at' => 'sometimes|nullable|date',
             'focal_x' => 'sometimes|numeric|between:0,1',
             'focal_y' => 'sometimes|numeric|between:0,1',
-            // El marco: de donde salen las derivadas, en fracciones del original. Ancho y
-            // alto empiezan en 0.0001 y no en 0 — un marco de area cero no acota nada, es un
+            // El marco: de dónde salen las derivadas, en fracciones del original. Ancho y
+            // alto empiezan en 0.0001 y no en 0 — un marco de área cero no acota nada, es un
             // recorte que deja la foto en nada y no hay forma de deshacerlo desde el panel.
             'crop_x' => 'sometimes|numeric|between:0,1',
             'crop_y' => 'sometimes|numeric|between:0,1',
             'crop_w' => 'sometimes|numeric|between:0.0001,1',
             'crop_h' => 'sometimes|numeric|between:0.0001,1',
             // El encuadre propio de una proporción, en fracciones del master; las claves que no
-            // sean una proporción de la fabrica se descartan en el servicio.
+            // sean una proporción de la fábrica se descartan en el servicio.
             'frames' => 'sometimes|nullable|array',
             'frames.*' => 'array',
             'frames.*.x' => 'required|numeric|between:0,1',
@@ -120,7 +120,7 @@ class SnkKilkanaMediaController extends CoreBaseApiController
             'frames.*.w' => 'required|numeric|between:0.0001,1',
             'frames.*.h' => 'required|numeric|between:0.0001,1',
             // `exists` y no solo `integer`: el sync mete la fila en el pivote, así que un id
-            // inventado chocaba contra la clave foránea y salía como 500.
+            // inventado chocaría contra la clave foránea y saldría como un 500.
             'tag_ids' => 'sometimes|array',
             'tag_ids.*' => 'integer|exists:kilkana_media_tags,id',
             'collection_ids' => 'sometimes|array',
@@ -181,13 +181,13 @@ class SnkKilkanaMediaController extends CoreBaseApiController
     {
         $data = $request->validate([
             'ids' => 'required|array|min:1',
-            // Sin `exists` no reventaba nada, pero la respuesta mentía: contaba los ids
-            // pedidos, no los tocados, así que un id inventado devolvía «hecho» sin hacerlo.
+            // Sin `exists` no revienta nada, pero la respuesta miente: cuenta los ids pedidos,
+            // no los tocados, así que un id inventado devolvería «hecho» sin hacerlo.
             // La regla no filtra por borrado lógico, así que `restore` sigue funcionando.
             'ids.*' => 'integer|exists:kilkana_media,id',
             'action' => 'required|in:trash,restore,tag,untag,collect,uncollect',
             // `exists` y no solo `integer`: el sync mete la fila en el pivote, así que un id
-            // inventado chocaba contra la clave foránea y salía como 500.
+            // inventado chocaría contra la clave foránea y saldría como un 500.
             'tag_ids' => 'sometimes|array',
             'tag_ids.*' => 'integer|exists:kilkana_media_tags,id',
             'collection_ids' => 'sometimes|array',
@@ -210,10 +210,10 @@ class SnkKilkanaMediaController extends CoreBaseApiController
     }
 
     /**
-     * Sube un fichero al disco del tenant (carpeta por BD del par cliente-paquete).
+     * Sube un fichero al disco del inquilino (carpeta por BD del par cliente-paquete).
      * Dedup por hash de contenido: un fichero idéntico ya subido devuelve 409.
      * Las dimensiones/duración las manda el cliente (metadatos nativos del navegador);
-     * para imágenes se prefiere getimagesize del servidor si está disponible.
+     * para imágenes se prefiere el `getimagesize()` del servidor si está disponible.
      */
     public function upload(Request $request): JsonResponse
     {
@@ -235,7 +235,6 @@ class SnkKilkanaMediaController extends CoreBaseApiController
             : response()->json(new SnkKilkanaMediaResource($result['media']), 201);
     }
 
-    /** Reemplaza el binario conservando los metadatos editoriales y el id. */
     /** La miniatura de un segundo del vídeo, para elegir la portada. */
     public function frame($id, int $at): BinaryFileResponse|JsonResponse
     {
@@ -284,6 +283,7 @@ class SnkKilkanaMediaController extends CoreBaseApiController
             : response()->json(new SnkKilkanaMediaResource($row));
     }
 
+    /** Reemplaza el binario conservando los metadatos editoriales y el id. */
     public function replace(Request $request, $id): JsonResponse
     {
         if ($response = $this->requirePermission($this->updatePermission)) {

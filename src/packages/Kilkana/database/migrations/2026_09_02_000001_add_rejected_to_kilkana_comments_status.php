@@ -9,12 +9,12 @@ use Packages\Kilkana\Enums\SnkKilkanaCommentStatusEnum;
 /**
  * Un comentario puede quedar RECHAZADO, que no es spam ni es borrarlo.
  *
- * Con tres estados, descartar un comentario leido solo se podia hacer llamandolo basura o
- * borrandolo: lo primero ensucia lo que sirve para reconocer el spam siguiente, y lo segundo
- * se lleva el historial de la cuenta, que es lo que separa un mal dia de una cuenta vigilada.
+ * Con tres estados, descartar un comentario leído solo se puede hacer llamándolo basura o
+ * borrándolo: lo primero ensucia lo que sirve para reconocer el spam siguiente, y lo segundo
+ * se lleva el historial de la cuenta, que es lo que separa un mal día de una cuenta vigilada.
  *
- * La columna es un `enum` de MariaDB, asi que admitir un valor mas es alterar el tipo. En
- * una base recien creada esto no cambia nada: la migracion original deriva los valores del
+ * La columna es un `enum` de MariaDB, así que admitir un valor más es alterar el tipo. En
+ * una base recién creada esto no cambia nada: la migración original deriva los valores del
  * mismo enum de PHP, que ya lo trae.
  */
 return new class extends Migration
@@ -29,8 +29,8 @@ return new class extends Migration
     }
 
     /**
-     * Revertir se niega si queda alguno rechazado: convertirlos a spam o a pendiente seria
-     * decidir por la moderacion, y el DDL de MariaDB no es transaccional.
+     * Revertir se niega si queda alguno rechazado: convertirlos a spam o a pendiente sería
+     * decidir por la moderación, y el DDL de MariaDB no es transaccional.
      */
     public function down(): void
     {

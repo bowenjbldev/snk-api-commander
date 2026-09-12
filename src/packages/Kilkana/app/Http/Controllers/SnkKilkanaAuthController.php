@@ -42,14 +42,6 @@ class SnkKilkanaAuthController extends CoreAuthController
     }
 
     /**
-     * Canjea el enlace de correo por una contraseña: la primera de una cuenta invitada o una
-     * nueva para quien la perdió.
-     *
-     * Contra el modelo del paquete y no con `Password::reset()`: el broker canjearía sobre el
-     * modelo de la aplicación y el hash lo pone el mutador de `CoreUserModel`. Poner contraseña
-     * cierra la invitación y tira las sesiones que hubiera: es el gesto de recuperar la cuenta.
-     */
-    /**
      * Un lector se da de alta solo, desde la calle.
      *
      * Nace con el papel `reader` —comentar y nada más— y con sesión abierta: la respuesta es la
@@ -117,6 +109,14 @@ class SnkKilkanaAuthController extends CoreAuthController
         return response()->json(['ok' => true], 202);
     }
 
+    /**
+     * Canjea el enlace de correo por una contraseña: la primera de una cuenta invitada o una
+     * nueva para quien la perdió.
+     *
+     * Contra el modelo del paquete y no con `Password::reset()`: el broker canjearía sobre el
+     * modelo de la aplicación y el hash lo pone el mutador de `CoreUserModel`. Poner contraseña
+     * cierra la invitación y tira las sesiones que hubiera: es el gesto de recuperar la cuenta.
+     */
     public function resetPassword(Request $request): JsonResponse
     {
         $data = $request->validate([

@@ -35,7 +35,7 @@ use Illuminate\Support\Facades\Schema;
  * caro para un índice y aun así sale a cuenta: el sitemap lo piden los buscadores, solos y sin
  * que nadie mire la pantalla.
  *
- * **Lo que NO se crea, y estaba en el plan: `(category_id, status, publish_at)`.** Parecía el
+ * **Lo que NO se crea: `(category_id, status, publish_at)`.** Parecía el
  * gemelo del de la firma y la medida dice lo contrario. La sección no llega como constante
  * —el filtro acepta la sección o cualquiera de sus hijas, así que es un conjunto—, y con el
  * índice delante MariaDB deja de guiarse por `(status, publish_at)`: pasa a recorrer

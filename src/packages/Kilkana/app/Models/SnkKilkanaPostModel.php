@@ -15,9 +15,7 @@ use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Enums\SnkKilkanaContentTierEnum;
 use Packages\Kilkana\Enums\SnkKilkanaPostStatusEnum;
 
-// Post normalizado: categoría/autor/portada por FK y tags por pivot. El JSON expone las
-// relaciones anidadas (category, author, cover, tags); las FKs crudas y la relación interna
-// coverMedia quedan ocultas.
+// Post normalizado: categoría, autor y portada por FK, y etiquetas por pivote.
 class SnkKilkanaPostModel extends Model
 {
     use SoftDeletes;
@@ -30,26 +28,24 @@ class SnkKilkanaPostModel extends Model
      * **Aquí no se declara qué relaciones se cargan ni qué campos salen.** Lo decide quien
      * pregunta, con `?include=` y `?fields=`, dentro del techo de su puerta.
      *
-     * Había un `$with` con las cuatro relaciones, un `$hidden` con las tres foráneas y un
-     * `$appends` con `cover` y `url_path`. Los tres son globales por modelo, y la misma pieza la
-     * leen un anónimo, la tabla del panel y el editor: un solo juego de reglas para tres
-     * preguntas distintas es lo que obligó a inventar tres listas blancas encima para volver a
-     * recortar. El `$with` además cargaba cuatro relaciones en consultas que no pintan ninguna.
+     * Ni `$with`, ni `$hidden`, ni `$appends`: los tres son globales por modelo, y la misma
+     * pieza la leen un anónimo, la tabla del panel y el editor. Un solo juego de reglas para tres
+     * preguntas distintas obliga a inventar una lista blanca por puerta para volver a recortar,
+     * y un `$with` carga relaciones en consultas que no pintan ninguna.
      *
      * Lo que sale lo declara `SnkKilkanaPostResource`; lo que se carga, la query.
      */
 
     /**
-     * El `config` de un bloque es un OBJETO, tambien cuando esta vacio.
+     * El `config` de un bloque es un OBJETO, también cuando está vacío.
      *
-     * En PHP no hay diferencia entre una lista vacia y un mapa vacio —los dos son `[]`—, asi
-     * que `json_encode` guardaba `"config": []` en cuanto un bloque no tenia nada dentro: un
-     * separador, un muro, unos relacionados. Y `[]` no es un objeto: el editor rechazaba la
-     * pieza entera al abrirla y devolvia un 502. Con el seeder poniendo muros en ciento
-     * treinta y nueve piezas, eran ciento treinta y nueve piezas que no se podian abrir.
+     * En PHP no hay diferencia entre una lista vacía y un mapa vacío —los dos son `[]`—, así
+     * que `json_encode` guarda `"config": []` en cuanto un bloque no tiene nada dentro: un
+     * separador, un muro, unos relacionados. Y `[]` no es un objeto: el editor rechaza la pieza
+     * entera al abrirla y devuelve un 502.
      *
      * Se fuerza al ESCRIBIR y en el modelo, que es por donde pasan los tres caminos —el
-     * controlador, el seeder y una restauracion de revision—. En el cast, no en cada uno.
+     * controlador, el seeder y una restauración de revisión—. En el cast, no en cada uno.
      */
     protected function bodyBlocks(): Attribute
     {
@@ -69,10 +65,10 @@ class SnkKilkanaPostModel extends Model
     protected function casts(): array
     {
         return [
-            // `body_blocks` NO va aqui: lo gobierna el accesor de arriba, que ademas fuerza
-            // `config` a objeto. Un cast `array` aqui ganaria y el problema volveria.
-            // Enum respaldado: sale al JSON como su cadena, así que el contrato de la API
-            // no cambia — lo que cambia es que dentro ya no se compara con literales.
+            // `body_blocks` NO va aquí: lo gobierna el accesor de arriba, que además fuerza
+            // `config` a objeto. Un cast `array` aquí ganaría y dejaría de forzarlo.
+            // Enum respaldado: sale al JSON como su cadena, así que el contrato de la API es
+            // el de la columna, y dentro se compara con casos y no con literales.
             'status' => SnkKilkanaPostStatusEnum::class,
             'featured' => 'boolean',
             'noindex' => 'boolean',
@@ -105,10 +101,8 @@ class SnkKilkanaPostModel extends Model
     /**
      * Imagen para redes, cuando la portada no sirve.
      *
-     * NO va en `$with` a propósito, al revés que la portada: la portada se pinta en cada
-     * tarjeta de cada listado y esta solo hace falta al montar la cabecera de UN artículo.
-     * Cargarla siempre serían cincuenta consultas de más por listado para un dato que casi
-     * nadie mira. Quien la necesite la pide.
+     * Solo hace falta al montar la cabecera de UN artículo, no en cada tarjeta de un listado:
+     * quien la necesite la pide.
      */
     public function ogImage(): BelongsTo
     {
@@ -137,9 +131,9 @@ class SnkKilkanaPostModel extends Model
     }
 
     /**
-     * Lo que ve un lector anónimo. Un solo sitio decide qué significa «publicado»: estaba
-     * repetido en cada consulta pública y en el seeder, y una condición copiada seis veces
-     * es una que algún día se queda corta en una sola de ellas.
+     * Lo que ve un lector anónimo. Un solo sitio decide qué significa «publicado»: lo preguntan
+     * las consultas públicas y el seeder, y una condición copiada en cada una es una que algún
+     * día se queda corta en una sola de ellas.
      */
     public function scopePublished(Builder $query): Builder
     {
@@ -162,11 +156,10 @@ class SnkKilkanaPostModel extends Model
     /**
      * ¿Tiene entradilla escrita? Es lo que hace falta para SALIR, no para existir.
      *
-     * Los dos lectores van pegados a propósito: la comprueban dos puertas —el lote y el cron—
-     * y llegaron a leerla distinto, con `whereNotNull` en una y `null || ''` en la otra. El
-     * resultado era que una pieza con la entradilla EN BLANCO salía a la calle por el cron y
-     * no por el lote, y esa diferencia solo se ve poniendo las dos consultas una al lado de
-     * la otra.
+     * Los dos lectores van pegados a propósito: la comprueban dos puertas —el lote y el cron—,
+     * y leída distinto en cada una —`whereNotNull` en una, `null || ''` en la otra— una pieza
+     * con la entradilla EN BLANCO sale a la calle por el cron y no por el lote, una diferencia
+     * que solo se ve poniendo las dos consultas una al lado de la otra.
      *
      * Vacía cuenta como no escrita, que es lo contrario de lo que significan las dos en la
      * columna: nula es «todavía no escrita» y `''` es «escrita y en blanco». Para publicar
@@ -233,10 +226,10 @@ class SnkKilkanaPostModel extends Model
      * `kilkana_post_slugs.path`, que guarda la ruta ENTERA: 200 + los 11 de la fecha = 211,
      * lejos de sus 255.
      *
-     * Antes no había tope y la columna eran 255. Como `title` valida hasta 500, un titular
-     * largo derivaba un slug que no cabía y el alta moría con un `1406 Data too long` —y
-     * renombrar un artículo de slug largo hacía lo mismo sobre `path`, dejando la redirección
-     * sin grabar—. El tope al derivar es lo que cierra las dos.
+     * Sin tope, y con `title` validando hasta 500, un titular largo derivaría un slug que no
+     * cabe y el alta moriría con un `1406 Data too long` —y renombrar un artículo de slug largo
+     * haría lo mismo sobre `path`, dejando la redirección sin grabar—. El tope al derivar es lo
+     * que cierra las dos.
      */
     public const SLUG_MAX = 200;
 
@@ -249,10 +242,10 @@ class SnkKilkanaPostModel extends Model
     /**
      * Una ruta está ocupada si la tiene otro artículo **o si la conserva el historial de otro**.
      *
-     * La segunda mitad es la que faltaba, y es la que importa: una URL retirada sigue
-     * redirigiendo, así que no está libre. Sin esta comprobación, un artículo podía adoptar la
-     * URL que otro acababa de dejar y el guardado **borraba la redirección del primero** —sus
-     * lectores pasaban a aterrizar en la pieza equivocada, con un 200 y sin aviso—.
+     * La segunda mitad es la que importa: una URL retirada sigue redirigiendo, así que no está
+     * libre. Sin esta comprobación, un artículo podría adoptar la URL que otro acaba de dejar y
+     * el guardado **borraría la redirección del primero** —sus lectores aterrizarían en la
+     * pieza equivocada, con un 200 y sin aviso—.
      *
      * `$ignoreId` deja fuera al propio artículo, para que revertir un renombrado siga siendo
      * posible: su propia URL vieja no puede bloquearle.
@@ -301,7 +294,7 @@ class SnkKilkanaPostModel extends Model
 
             // No sale a la calle una pieza cuya mesa todavía no existe para el lector.
             //
-            // Sin esto, publicar en una sección en preparación dejaba el artículo en portada
+            // Sin esto, publicar en una sección en preparación deja el artículo en portada
             // con un kicker enlazando a una página que no se puede abrir. Se comprueba solo
             // cuando cambia algo que importa —el estado o la sección—, no en cada guardado.
             if ($post->status->requiresPublishPermission()
@@ -327,7 +320,7 @@ class SnkKilkanaPostModel extends Model
             }
 
             // Se SELLA al publicar y solo la primera vez. Después, corregir `publish_at`
-            // —para arreglar la hora de un cierre, por ejemplo— ya no mueve la URL.
+            // —para arreglar la hora de un cierre, por ejemplo— no mueve la URL.
             $justStamped = false;
             if ($post->status === SnkKilkanaPostStatusEnum::Published && ! $post->url_date) {
                 // La cadena, no el atributo: el cast lo devuelve como Carbon en cuanto se lee.
@@ -338,9 +331,9 @@ class SnkKilkanaPostModel extends Model
             }
 
             // Mover la URL de una pieza YA sellada es un acto deliberado, y se comprueba.
-            // Antes no lo comprobaba nadie: hacia un slug ocupado reventaba con un 1062 —un
-            // 500 con el SQL dentro— y hacia uno que estuviera en el historial de otro
-            // artículo borraba su redirección. Aquí se para con un 422 que se explica, igual
+            // Sin comprobarlo, hacia un slug ocupado revienta con un 1062 —un 500 con el SQL
+            // dentro— y hacia uno que esté en el historial de otro artículo borra su
+            // redirección. Aquí se para con un 422 que se explica, igual
             // que al elegir a mano la URL de una firma o de una etiqueta.
             if (! $justStamped && $post->url_date && ($post->isDirty('slug') || $post->isDirty('url_date'))) {
                 $date = $post->url_date instanceof \DateTimeInterface

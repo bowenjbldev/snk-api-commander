@@ -197,7 +197,7 @@ class KilkanaPlanTest extends CommanderTestCase
      * Lo que ninguna de las dos cubre es que el middleware **se ejecute**: eso pide una petición
      * autenticada contra un inquilino —instancia en Commander, base migrada, resolución por host y
      * token de Sanctum en la base del periódico— y la suite no tiene ese arnés. Ningún test toca
-     * hoy una ruta protegida de `api/v1/kilkana`, no solo esta.
+     * una ruta protegida de `api/v1/kilkana`, no solo esta.
      */
     public function test_the_plan_route_sits_behind_the_panel_permission(): void
     {

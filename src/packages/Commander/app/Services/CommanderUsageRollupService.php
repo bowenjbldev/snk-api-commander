@@ -7,13 +7,13 @@ use Packages\Commander\Models\CommanderRequestLogModel;
 use Packages\Commander\Models\CommanderUsageRollupModel;
 
 /**
- * Agrega commander_request_logs en buckets cerrados (UTC) de hora o dia.
- * Idempotente: unique key (period, period_start, route, method, status_class)
- * + upsert; el ultimo bucket procesado se recalcula en cada pasada para
- * absorber escrituras tardias del terminate().
+ * Agrega commander_request_logs en buckets cerrados (UTC) de hora o día.
+ * Idempotente: unique key (instance_id, period, period_start, route, method, status_class)
+ * + upsert; el último bucket procesado se recalcula en cada pasada para
+ * absorber escrituras tardías del terminate().
  *
- * El dia se calcula SIEMPRE desde la tabla cruda (los p95 no componen desde
- * los buckets de hora), por eso la retencion debe ser >= 2 dias.
+ * El día se calcula SIEMPRE desde la tabla cruda (los p95 no componen desde
+ * los buckets de hora), por eso la retención debe ser >= 2 días.
  */
 class CommanderUsageRollupService
 {
@@ -68,7 +68,7 @@ class CommanderUsageRollupService
 
     private function windowStart(string $period): ?CarbonImmutable
     {
-        // Reprocesa desde el ultimo bucket agregado (upsert lo hace seguro)
+        // Reprocesa desde el último bucket agregado (upsert lo hace seguro)
         $last = CommanderUsageRollupModel::query()->where('period', $period)->max('period_start');
 
         if ($last !== null) {

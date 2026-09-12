@@ -33,7 +33,7 @@ Route::middleware(['api'])->group(function () {
         Route::apiResource('applications', CommanderApplicationsController::class)->only(['index', 'show', 'update']);
         Route::apiResource('plans', CommanderPlansController::class);
 
-        // Alta atomica de cuenta/cliente/contrato/instancia; el worker hace el DDL.
+        // Alta atómica de cuenta/cliente/contrato/instancia; el worker hace el DDL.
         Route::post('provisioning', [CommanderProvisioningController::class, 'store']);
 
         Route::apiResource('subscriptions', CommanderSubscriptionsController::class);

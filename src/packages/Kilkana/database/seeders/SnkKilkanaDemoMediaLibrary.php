@@ -16,7 +16,7 @@ use Packages\Kilkana\Services\SnkKilkanaImageService;
  * de relleno. Una fila con esa dirección y nada más no es un fichero: no tiene ancho, ni alto,
  * ni peso, ni `content_hash`, así que la mediateca no puede deduplicar, ni filtrar por
  * orientación, ni decir cuánto ocupa; y el lector paga DNS, TLS y una cookie de tercero por
- * cada foto —que es lo que dejaba la nota de buenas prácticas del artículo en 96—.
+ * cada foto, y eso deja la nota de buenas prácticas del artículo en 96.
  *
  * Aquí las sesenta fotos de `data/media/` entran por el mismo camino que una subida real:
  * se copian al disco `public` bajo la base del inquilino, la fila guarda `disk`, `path`,
@@ -24,15 +24,15 @@ use Packages\Kilkana\Services\SnkKilkanaImageService;
  * ruta relativa `/storage/…` que devuelve el servicio de medios.
  *
  * **Miden 1920 × 1080**, y no es capricho: la escalera de derivadas se corta en el ancho del
- * máster, así que con originales de 800 la apertura de una portada de 1032 se servía a 640 y
+ * máster, así que con originales de 800 la apertura de una portada de 1032 se serviría a 640 y
  * estirada. Son fotos de Unsplash servidas por Lorem Picsum a ese tamaño; `sources.json`
  * guarda autor y página de Unsplash de cada una, y de ahí sale `source_url`.
  *
- * **Sesenta ficheros para ciento setenta y seis direcciones**: la foto se elige por
- * `crc32` de la dirección original, así que dos piezas que compartían foto la siguen
- * compartiendo y una re-siembra reparte igual. Cada foto acaba en unos ocho titulares, más
- * de los tres que buscaba el reparto de la fixture; es lo que hay en el disco, y repetir es
- * preferible a inventarse variedad recortando la misma imagen.
+ * **Sesenta ficheros para ciento setenta y seis direcciones**: la foto se asigna por la
+ * dirección original —`assign()`, con `crc32` para la que no esté repartida—, así que dos piezas
+ * con la misma dirección comparten foto y una re-siembra reparte igual. Cada foto acaba en unos
+ * ocho titulares, más de los tres del reparto de la fixture; es lo que hay en el disco, y
+ * repetir es preferible a inventarse variedad recortando la misma imagen.
  *
  * **El nombre del fichero no se aleatoriza**, al contrario que en una subida: el destino es
  * `media/{base}/unsplash-7.jpg`, así que volver a sembrar no renumera la biblioteca ni deja
@@ -44,9 +44,9 @@ final class SnkKilkanaDemoMediaLibrary
     private const LICENSE = 'Unsplash License';
 
     /**
-     * Las fotos disponibles, en el orden que da el sistema de ficheros.
+     * Las fotos disponibles, ordenadas por ruta.
      *
-     * El orden es arbitrario pero estable, y con eso basta: lo único que tiene que cumplir
+     * El orden no significa nada pero es estable, y con eso basta: lo único que tiene que cumplir
      * es que el mismo índice dé siempre la misma foto.
      *
      * @var list<string>
@@ -87,7 +87,7 @@ final class SnkKilkanaDemoMediaLibrary
      * Mete en la biblioteca **todas** las fotos del disco, las reclame alguien o no.
      *
      * Va antes del reparto para que los identificadores sigan el orden del directorio: con
-     * las filas creándose a medida que una pieza las pide, el id de una foto dependía de en
+     * las filas creándose a medida que una pieza las pide, el id de una foto dependería de en
      * qué orden estuvieran los artículos en el snapshot.
      *
      * @return int cuántas hay en la biblioteca al terminar
@@ -132,12 +132,12 @@ final class SnkKilkanaDemoMediaLibrary
     /**
      * Reparte las direcciones del snapshot entre los ficheros por CARGA, en orden estable.
      *
-     * Con `crc32` a secas el reparto era el de un hash: un fichero acababa en veinticuatro
-     * piezas y cuatro no salían nunca. Por turno de direcciones tampoco basta, porque una
+     * Con `crc32` a secas el reparto sería el de un hash: un fichero acabaría en veinticuatro
+     * piezas y cuatro no saldrían nunca. Por turno de direcciones tampoco basta, porque una
      * dirección la comparten hasta ocho piezas. Así que cada dirección, de la más compartida a
      * la menos, va al fichero que menos piezas lleva: ninguno se queda sin estrenar y el más
-     * cargado queda cerca de la media. Una dirección que no esté en la lista sigue cayendo al
-     * hash, que es lo que mantiene estable a quien no pase por aquí.
+     * cargado queda cerca de la media. Una dirección que no esté en la lista cae al hash, que
+     * es lo que mantiene estable a quien no pase por aquí.
      *
      * @param  string[]  $urls  una entrada por pieza, con repeticiones
      */

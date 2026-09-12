@@ -18,9 +18,9 @@ use Tests\TestCase;
 /**
  * La demo no envejece.
  *
- * El snapshot esta escrito en fechas fijas, y una demo que abre en septiembre con su ultima
- * pieza de junio parece un periodico cerrado. Lo que se fija aqui es que el archivo se pone al
- * dia, que ponerlo al dia no duplica nada al resembrar, y que lo que cuelga de las piezas
+ * El snapshot está escrito en fechas fijas, y una demo que abre en septiembre con su última
+ * pieza de junio parece un periódico cerrado. Lo que se fija aquí es que el archivo se pone al
+ * día, que ponerlo al día no duplica nada al resembrar, y que lo que cuelga de las piezas
  * —comentarios, lecturas— se mueve con ellas.
  */
 class KilkanaDemoClockTest extends TestCase
@@ -37,7 +37,7 @@ class KilkanaDemoClockTest extends TestCase
             ])->run();
         }
 
-        // Claves foraneas encendidas: borrar una pieza tiene que arrastrar sus comentarios,
+        // Claves foráneas encendidas: borrar una pieza tiene que arrastrar sus comentarios,
         // como en MariaDB; sqlite las trae apagadas.
         DB::statement('PRAGMA foreign_keys = ON');
 
@@ -55,8 +55,8 @@ class KilkanaDemoClockTest extends TestCase
         $this->assertTrue($last->publish_at->lessThanOrEqualTo(now()), 'Publicada, no programada.');
 
         // Los comentarios de primer nivel son exactamente los que el seeder reparte: uno por
-        // (pieza, posicion). Si dos lectores o dos frases colapsaran en la misma clave, el
-        // `firstOrCreate` se comeria uno en silencio y esta cuenta lo diria.
+        // (pieza, posición). Si dos lectores o dos frases colapsaran en la misma clave, el
+        // `firstOrCreate` se comería uno en silencio y esta cuenta lo diría.
         // Con la papelera dentro: una pieza tirada conserva sus comentarios.
         $expected = SnkKilkanaPostModel::withTrashed()->published()->pluck('slug')
             ->sum(fn (string $slug) => SnkKilkanaDatabaseSeeder::commentsFor($slug));
@@ -65,10 +65,10 @@ class KilkanaDemoClockTest extends TestCase
         // Con la papelera: borrar desde el panel es tirar, y la pieza tirada sigue en la base.
         $posts = SnkKilkanaPostModel::withTrashed()->count();
         // De primer nivel: una respuesta al comentario de la pieza de hoy puede nacer en la
-        // siembra de dentro de tres dias, porque entonces ya hay hueco para contestar.
+        // siembra de dentro de tres días, porque entonces ya hay hueco para contestar.
         $comments = SnkKilkanaCommentModel::query()->whereNull('parent_id')->count();
 
-        // Y sin la pieza ancla de hoy: quien ensena la papelera borra la ultima, no la primera.
+        // Y sin la pieza ancla de hoy: quien enseña la papelera borra la última, no la primera.
         $last->delete();
         $this->travel(3)->days();
         (new SnkKilkanaDatabaseSeeder)->run();
@@ -86,13 +86,13 @@ class KilkanaDemoClockTest extends TestCase
             ->join('kilkana_posts', 'kilkana_posts.id', '=', 'kilkana_comments.post_id')
             ->whereColumn('kilkana_comments.created_at', '<', 'kilkana_posts.publish_at')
             ->count();
-        $this->assertSame(0, $beforePost, 'Nadie comenta lo que aun no se ha publicado.');
+        $this->assertSame(0, $beforePost, 'Nadie comenta lo que aún no se ha publicado.');
 
         $stalePending = SnkKilkanaCommentModel::query()
             ->where('status', SnkKilkanaCommentStatusEnum::Pending)
             ->where('created_at', '<', now()->subDays(21))
             ->count();
-        $this->assertSame(0, $stalePending, 'La cola es de las ultimas tres semanas.');
+        $this->assertSame(0, $stalePending, 'La cola es de las últimas tres semanas.');
 
         // Ningún comentario lleva el sello exacto de su pieza: ni los de hoy.
         $sameSecond = SnkKilkanaCommentModel::query()
@@ -110,7 +110,7 @@ class KilkanaDemoClockTest extends TestCase
 
         $this->assertGreaterThan(0, SnkKilkanaPostViewModel::query()->where('date', now()->toDateString())->sum('engaged'), 'Hoy se lee.');
 
-        // El spam lo firman las cuentas de usar y tirar, y tres de ellas ya estan bloqueadas.
+        // El spam lo firman las cuentas de usar y tirar, y tres de ellas ya están bloqueadas.
         $spamAuthors = SnkKilkanaCommentModel::query()
             ->where('status', SnkKilkanaCommentStatusEnum::Spam)
             ->join('users', 'users.id', '=', 'kilkana_comments.user_id')
@@ -119,27 +119,27 @@ class KilkanaDemoClockTest extends TestCase
         $this->assertTrue($spamAuthors->every(fn ($name) => $name === null), 'Un vecino con nombre no firma publicidad.');
         $this->assertSame(3, CoreUserModel::query()->whereNotNull('suspended_at')->count());
 
-        // Las lecturas medidas: de este mes, sobre piezas con muro, y despues de que existan.
+        // Las lecturas medidas: de este mes, sobre piezas con muro, y después de que existan.
         $reads = SnkKilkanaReaderReadModel::query()
             ->join('kilkana_posts', 'kilkana_posts.id', '=', 'kilkana_reader_reads.post_id')
             ->get(['kilkana_reader_reads.period', 'kilkana_reader_reads.read_at', 'kilkana_posts.publish_at', 'kilkana_posts.content_tier']);
         $this->assertGreaterThan(0, $reads->count());
         $this->assertSame($reads->count(), SnkKilkanaReaderReadModel::query()->inMonth()->count());
-        // Columnas de la pieza leidas desde el modelo de lecturas: llegan sin sus casts.
+        // Columnas de la pieza leídas desde el modelo de lecturas: llegan sin sus casts.
         $this->assertTrue($reads->every(fn ($l) => $l->content_tier === SnkKilkanaContentTierEnum::Metered->value));
         $this->assertTrue($reads->every(fn ($l) => $l->read_at->greaterThan(Carbon::parse($l->publish_at)) && $l->read_at->lessThan(now())));
     }
 
-    /** Lo que la tanda C reparte: revisiones, SEO, destacadas, suscriptores y fotos sin amontonar. */
+    /** Lo que la demo reparte: revisiones, SEO, destacadas, suscriptores y fotos sin amontonar. */
     public function test_the_demo_archive_has_revisions_seo_featured_posts_and_subscribers(): void
     {
         (new SnkKilkanaDatabaseSeeder)->run();
 
         // Lo que la calle enseña es lo del snapshot, con o sin historial: sembrar el historial
-        // escribe la version vieja y luego la buena, y salir entre las dos dejo una entradilla
-        // de portada a la mitad con la suite en verde.
-        // Por slug, saltando los dos que el snapshot repite en dias distintos: son piezas
-        // legitimas y aqui no hay forma de saber cual de las dos es cual sin la fecha.
+        // escribe la versión vieja y luego la buena, y salir entre las dos deja una entradilla
+        // de portada a medias sin que la suite lo note.
+        // Por slug, saltando los dos que el snapshot repite en días distintos: son piezas
+        // legítimas y aquí no hay forma de saber cuál de las dos es cuál sin la fecha.
         $published = collect(json_decode((string) file_get_contents(base_path('packages/Kilkana/database/seeders/data/posts.json')), true))
             ->where('status', 'published');
         $duplicates = $published->countBy('slug')->filter(fn (int $n) => $n > 1)->keys();
@@ -155,12 +155,12 @@ class KilkanaDemoClockTest extends TestCase
             $this->assertSame($snapshot[$post->slug]['excerpt'], $post->excerpt, $post->slug);
         }
         // Exactamente las que no se pueden comparar: los dos slugs repetidos (cuatro filas) y la
-        // mas antigua, que cambia de slug en el bloque de las dos revisiones. Un slug corrupto
-        // seria la sexta, y esta cuenta lo diria.
+        // más antigua, que cambia de slug en el bloque de las dos revisiones. Un slug corrupto
+        // sería la sexta, y esta cuenta lo diría.
         $this->assertSame($duplicates->count() * 2 + 1, $skipped);
 
         $withHistory = DB::table('kilkana_post_revisions')->distinct()->count('post_id');
-        $this->assertGreaterThanOrEqual(40, $withHistory, 'Un periodico con quinientas piezas y dos ediciones no existe.');
+        $this->assertGreaterThanOrEqual(40, $withHistory, 'Un periódico con quinientas piezas y dos ediciones no existe.');
         $this->assertSame(0, DB::table('kilkana_post_revisions')
             ->join('kilkana_posts', 'kilkana_posts.id', '=', 'kilkana_post_revisions.post_id')
             ->whereColumn('kilkana_post_revisions.created_at', '<', 'kilkana_posts.publish_at')

@@ -14,19 +14,18 @@ use RuntimeException;
 /**
  * Los ajustes del periódico: una sola fila, con columnas de verdad.
  *
- * Fue una bolsa JSON, y la bolsa cobraba el precio de la flexibilidad sin darla: el
- * controlador ya enumera cada clave que acepta, así que nunca hubo claves arbitrarias. A
- * cambio se perdían los tipos —`search_visible` guardado como lo que fuera— y había que fusionar a
- * mano, con un caso especial para `tenant` que alguien tenía que acordarse de replicar en el
- * siguiente ajuste anidado. El día que se olvidara, una actualización parcial habría borrado
- * las claves hermanas en silencio.
+ * Columnas y no una bolsa JSON: el controlador enumera cada clave que acepta, así que no hay
+ * claves arbitrarias que justifiquen la bolsa, y la bolsa cobra el precio de la flexibilidad
+ * sin darla. Con columnas se conservan los tipos —`search_visible` es un booleano— y un guardado
+ * parcial no fusiona a mano: no hay un caso especial para `tenant` que replicar en el siguiente
+ * ajuste anidado, ni una actualización parcial que borre las claves hermanas en silencio.
  *
- * El JSON que ve la app conserva `tenant` anidado. Lo que cambia es que debajo hay columnas, y
- * el mapeo plano ↔ anidado está escrito aquí en vez de deducirse.
+ * El JSON que ve la app conserva `tenant` anidado. Debajo hay columnas, y el mapeo
+ * plano ↔ anidado está escrito aquí en vez de deducirse.
  *
  * Regla de crecimiento, para lo que venga: COLUMNA si el ajuste tiene tipo o clave foránea
  * (`logo_media_id`); COLUMNA JSON DE GRUPO si es un grupo abierto (`comments`, `paywall`,
- * `integrations`), normalizada al leer. Lo que no vuelve es la bolsa única con todo dentro.
+ * `integrations`), normalizada al leer. Nunca una bolsa única con todo dentro.
  */
 class SnkKilkanaSettingService
 {
@@ -51,11 +50,10 @@ class SnkKilkanaSettingService
     /**
      * Guarda lo que llegue y deja el resto donde estaba.
      *
-     * Aquí hubo control de concurrencia optimista y se retiró: `version` era opcional en el
-     * controlador y ningún cliente la mandaba, así que la comprobación no llegaba a ejecutarse
-     * nunca y la respuesta devolvía un número que no garantizaba nada. Peor que no tenerlo,
-     * porque parecía una garantía. Estos ajustes los toca poca gente y rara vez, así que la
-     * política es last-write-wins y está dicha en voz alta.
+     * Sin control de concurrencia optimista, a propósito: una `version` opcional que ningún
+     * cliente manda no llega a comprobarse nunca, y devolver ese número parece una garantía que
+     * no existe, que es peor que no tenerla. Estos ajustes los toca poca gente y rara vez, así
+     * que la política es last-write-wins y está dicha en voz alta.
      *
      * `kilkana_layouts` SÍ conserva la suya, y allí es obligatoria: dos personas componiendo la
      * portada a la vez es el caso normal, no la excepción.
@@ -173,7 +171,7 @@ class SnkKilkanaSettingService
      * Del JSON anidado de la API a las columnas planas.
      *
      * Solo llega lo que venía: un guardado parcial toca sus campos y deja los demás donde
-     * estaban. Eso antes exigía fusionar a mano; ahora es lo que hace `fill` por su cuenta.
+     * estaban, que es lo que hace `fill` por su cuenta.
      */
     private function columnsFrom(array $data): array
     {

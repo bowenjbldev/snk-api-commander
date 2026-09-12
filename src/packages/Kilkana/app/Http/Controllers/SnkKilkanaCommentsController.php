@@ -18,13 +18,13 @@ use Packages\Kilkana\Services\SnkKilkanaReaderService;
 /**
  * Comentarios de lectores registrados. `store` lo usa cualquier usuario con
  * `create comments` (rol reader): el autor es siempre el del token y el estado
- * nace `pending`. Lo demas es moderacion: aprobar, rechazar, marcar spam, borrar
- * o cerrarle la puerta a quien lo escribio.
+ * nace `pending`. Lo demás es moderación: aprobar, rechazar, marcar spam, borrar
+ * o cerrarle la puerta a quien lo escribió.
  */
 #[Group('Comments')]
 class SnkKilkanaCommentsController extends CoreBaseApiController
 {
-    /** `rule()` es una llamada, y una propiedad no se inicializa con eso: va aqui. */
+    /** `rule()` es una llamada, y una propiedad no se inicializa con eso: va aquí. */
     public function __construct(
         private readonly SnkKilkanaCommentService $comments,
         private readonly SnkKilkanaReaderService $readers,
@@ -57,14 +57,14 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
     protected array $allowedIncludes = ['user', 'post', 'replies'];
 
     /**
-     * La cola de moderacion: filtrada, paginada y con lo que hace falta para decidir sin abrir
-     * nada mas.
+     * La cola de moderación: filtrada, paginada y con lo que hace falta para decidir sin abrir
+     * nada más.
      *
      * Cada fila lleva la pieza, el comentario al que responde —una respuesta no se puede
-     * moderar sin la frase de arriba— y la cuenta con su historial: cuantos ha escrito y
-     * cuantos se le han rechazado, que es lo que separa un comentario desafortunado de una
-     * cuenta que lleva seis. Los conteos por estado son del periodico entero: las pestañas
-     * tienen que decir cuanto queda aunque se este mirando otra.
+     * moderar sin la frase de arriba— y la cuenta con su historial: cuántos ha escrito y
+     * cuántos se le han rechazado, que es lo que separa un comentario desafortunado de una
+     * cuenta que lleva seis. Los conteos por estado son del periódico entero: las pestañas
+     * tienen que decir cuánto queda aunque se esté mirando otra.
      */
     public function index(): JsonResponse
     {
@@ -74,8 +74,8 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
 
         $request = request();
 
-        // Solo la cifra: el rail del panel pregunta cuantos esperan en cada carga del armazon,
-        // y contestarle con la pagina entera son diez consultas para un entero.
+        // Solo la cifra: el raíl del panel pregunta cuántos esperan en cada carga del armazón,
+        // y contestarle con la página entera son diez consultas para un entero.
         if ($request->boolean('counts')) {
             return response()->json([
                 'counts' => $this->comments->countsByStatus(),
@@ -123,7 +123,6 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
         ]);
     }
 
-    /** Los conteos del periodico entero, por estado y en total: las pestañas dicen cuanto queda. */
     public function store(Request $request): JsonResponse
     {
         if ($response = $this->requirePermission($this->storePermission)) {
@@ -185,13 +184,13 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
     }
 
     /**
-     * Cierra la puerta a quien escribio el comentario, y rechaza lo que tenia en la cola.
+     * Cierra la puerta a quien escribió el comentario, y rechaza lo que tenía en la cola.
      *
-     * Comentar exige cuenta, asi que bloquear es suspender esa cuenta: lo hace el servicio
+     * Comentar exige cuenta, así que bloquear es suspender esa cuenta: lo hace el servicio
      * de lectores, el mismo que usa su pantalla, y con SU permiso: bloquear a una persona
-     * no es moderar una frase, y quien modera sin `update readers` no bloquea desde aqui.
-     * Solo a un lector: a un companero no se le bloquea desde la moderacion, eso es cosa de
-     * cuentas, y una cuenta dada de baja ya no esta. Deshacerlo es de la pantalla de lectores.
+     * no es moderar una frase, y quien modera sin `update readers` no bloquea desde aquí.
+     * Solo a un lector: a un compañero no se le bloquea desde la moderación, eso es cosa de
+     * cuentas, y una cuenta dada de baja ya no está. Deshacerlo es de la pantalla de lectores.
      */
     public function blockAuthor($id = null): JsonResponse
     {

@@ -104,9 +104,9 @@ class KilkanaPanelCompositeTest extends TestCase
     /**
      * Una cifra que se rompe llega nula, como una sin permiso, y el armazón se pinta igual.
      *
-     * Las cifras llegan en la misma respuesta, así que la caída de una la tiene que parar la API.
-     * Es la que ya costó una pantalla entera en «Something went wrong»: una columna que faltaba
-     * en la cola de moderación.
+     * Las cifras llegan en la misma respuesta, así que la caída de una la tiene que parar la API:
+     * sin eso, una columna que falta en la cola de moderación tumba la pantalla entera en
+     * «Something went wrong».
      */
     public function test_a_failing_count_does_not_take_down_the_shell(): void
     {
@@ -135,7 +135,7 @@ class KilkanaPanelCompositeTest extends TestCase
         $dashboard = $this->body(app(SnkKilkanaPanelController::class)->dashboard());
 
         // Con `summary=counts`: el tablero pinta la barra de estados, así que la llamada
-        // equivalente tiene que pedir las cifras. Sin ellas el listado ya no las devuelve.
+        // equivalente tiene que pedir las cifras. Sin ellas el listado no las devuelve.
         $this->assertSame($this->posts('status=review&sort=date&per_page=5&summary=counts'), $dashboard['review']);
         $this->assertSame($this->posts('status=scheduled&sort=date&per_page=5&summary=counts'), $dashboard['scheduled']);
         $this->assertSame($this->posts('status=published&per_page=5&summary=counts'), $dashboard['published']);

@@ -8,8 +8,8 @@ use Packages\Kilkana\Enums\Concerns\SnkKilkanaEnumValuesSupport;
  * El ciclo de vida de un tema del catálogo.
  *
  * Un tema no nace a la venta: se prepara, se publica y algún día se retira. Sin esta columna
- * solo había dos situaciones —existe y se ofrece, o no existe— y eso obliga a terminar un tema
- * antes de poder sembrarlo en ninguna parte.
+ * solo habría dos situaciones —existe y se ofrece, o no existe— y eso obligaría a terminar un
+ * tema antes de poder sembrarlo en ninguna parte.
  *
  * El orden de declaración es el del ciclo de vida, así que `ORDER BY status` recorre la vida
  * del tema en vez de ordenar alfabéticamente. Añadir un estado al final es barato; insertarlo

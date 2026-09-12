@@ -38,26 +38,26 @@ class SnkKilkanaTagsController extends CoreBaseApiController
         'slug' => 'nullable|string|max:'.SnkKilkanaTagModel::SLUG_MAX.'|unique:kilkana_tags,slug,{id}',
     ];
 
+    protected ?string $resourceClass = SnkKilkanaTagResource::class;
+
+    protected array $allowedFields = ['id', 'name', 'slug'];
+
     /**
-     * Cada etiqueta sale con cuanto se usa y cuando se uso por ultima vez.
+     * Cada etiqueta sale con cuánto se usa y cuándo se usó por última vez.
      *
      * Sin las dos cifras esta pantalla no existe: lo que se mira de un vocabulario no es la
-     * lista de palabras —eso ya lo sabe quien lo escribio— sino su FORMA, y la forma son las
+     * lista de palabras —eso ya lo sabe quien lo escribió— sino su FORMA, y la forma son las
      * cuentas: cuatro etiquetas cargando con la mitad del archivo y una cola de veinte que
-     * nadie vuelve a escribir igual. Contarlas en el cliente pedia el archivo entero.
+     * nadie vuelve a escribir igual. Contarlas en el cliente pediría el archivo entero.
      *
      * `last_used_at` mira solo lo publicado, igual que en firmas: un borrador de hoy no es uso
-     * del vocabulario, es una intencion. `posts_count` cuenta todo lo que la lleva, incluidos
-     * borradores, porque para fundir importa cuantas piezas hay que mover, no cuantas se ven.
+     * del vocabulario, es una intención. `posts_count` cuenta todo lo que la lleva, incluidos
+     * borradores, porque para fundir importa cuántas piezas hay que mover, no cuántas se ven.
      *
      * Va en `decorate()` y no en el modelo porque solo lo quiere quien LISTA: pedir una
      * etiqueta para renombrarla no necesita recorrer su pivote. Y detrás de `?fields=`, porque
      * el recorte hace `select()` y se llevaría las dos cifras.
      */
-    protected ?string $resourceClass = SnkKilkanaTagResource::class;
-
-    protected array $allowedFields = ['id', 'name', 'slug'];
-
     protected function decorate(QueryBuilder $query): QueryBuilder
     {
         return $query->asCatalogue();
@@ -66,9 +66,9 @@ class SnkKilkanaTagsController extends CoreBaseApiController
     /**
      * Vuelca una etiqueta en otra: la superviviente se queda con sus piezas y la otra desaparece.
      *
-     * Es la operacion de esta pantalla, y no es «mover y luego borrar»: entre las dos mitades un
-     * fallo dejaria dos etiquetas con las mismas piezas y ninguna forma de saber cual era la
-     * buena. Por eso va en una transaccion, y por eso el pivote se sincroniza SIN desatar:
+     * Es la operación de esta pantalla, y no es «mover y luego borrar»: entre las dos mitades un
+     * fallo dejaría dos etiquetas con las mismas piezas y ninguna forma de saber cuál era la
+     * buena. Por eso va en una transacción, y por eso el pivote se sincroniza SIN desatar:
      * una pieza que llevara las dos no puede entrar dos veces.
      *
      * Pide `delete tags` y no `update tags`: al terminar hay una etiqueta menos, y quien puede
@@ -86,8 +86,8 @@ class SnkKilkanaTagsController extends CoreBaseApiController
         }
 
         // `Rule::notIn` y no `different:{$id}` interpolado: la cadena de reglas se parte por `|`,
-        // asi que un id con esa barra —y la ruta lo acepta— se leia como una regla mas y devolvia
-        // un 500 con `Validator::validateX does not exist` dentro. La regla es la misma; lo que
+        // así que un id con esa barra —y la ruta lo acepta— se leería como una regla más y
+        // devolvería un 500 con `Validator::validateX does not exist` dentro. La regla es la misma; lo que
         // cambia es que el valor viaja como valor.
         $data = $request->validate([
             'into' => ['required', 'integer', Rule::notIn([$source->id]), 'exists:kilkana_tags,id'],
@@ -108,12 +108,12 @@ class SnkKilkanaTagsController extends CoreBaseApiController
     }
 
     /**
-     * Borra y DICE a cuantas piezas ha desetiquetado.
+     * Borra y DICE a cuántas piezas ha desetiquetado.
      *
-     * El pivote se va por CASCADE sin preguntar, asi que desde fuera «he borrado una etiqueta
-     * que no usaba nadie» y «acabo de desetiquetar trescientos articulos» se veian igual. La
-     * pantalla borra sin confirmar —lo que se pierde es una palabra, no las piezas—, y esta
-     * cifra es lo unico que permite contarlo despues.
+     * El pivote se va por CASCADE sin preguntar, así que sin esta cifra «he borrado una etiqueta
+     * que no usaba nadie» y «acabo de desetiquetar trescientos artículos» se verían igual desde
+     * fuera. La pantalla borra sin confirmar —lo que se pierde es una palabra, no las piezas—, y
+     * esta cifra es lo único que permite contarlo después.
      */
     public function destroy($id = null): JsonResponse
     {

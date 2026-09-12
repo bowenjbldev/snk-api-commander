@@ -5,14 +5,14 @@ namespace Packages\Kilkana\Enums;
 use Packages\Kilkana\Enums\Concerns\SnkKilkanaEnumValuesSupport;
 
 /**
- * De donde salio el correo de un suscriptor, y la UNICA definicion de los origenes.
+ * De dónde salió el correo de un suscriptor, y la ÚNICA definición de los orígenes.
  *
- * No es burocracia: el RGPD pone la carga de la prueba en el responsable —que aqui es el
- * PERIODICO, no nosotros—, asi que una lista sin constancia de como se recogio no se puede
- * defender ante una reclamacion aunque el alta fuera legitima.
+ * No es burocracia: el RGPD pone la carga de la prueba en el responsable —que aquí es el
+ * PERIÓDICO, no nosotros—, así que una lista sin constancia de cómo se recogió no se puede
+ * defender ante una reclamación aunque el alta fuera legítima.
  *
  * Y sirve para separar el riesgo: la lista importada es la que lo trae, y sin origen todas
- * las filas parecen iguales, asi que no se puede ni acreditar ni purgar por separado.
+ * las filas parecen iguales, así que no se puede ni acreditar ni purgar por separado.
  *
  * Lo pone SIEMPRE el servidor. Un origen que elige quien llama no prueba nada.
  */
@@ -20,10 +20,10 @@ enum SnkKilkanaConsentSourceEnum: string
 {
     use SnkKilkanaEnumValuesSupport;
 
-    /** Se apunto el solo, desde el formulario publico del periodico. */
+    /** Se apuntó él solo, desde el formulario público del periódico. */
     case PublicForm = 'public_form';
 
-    /** Venia en una lista que trajo el periodico. El consentimiento se dio ANTES y fuera. */
+    /** Venía en una lista que trajo el periódico. El consentimiento se dio ANTES y fuera. */
     case Import = 'import';
 
     /** Lo dio de alta la redacción mediante el flujo administrativo. */

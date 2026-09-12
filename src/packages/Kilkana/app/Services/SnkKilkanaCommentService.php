@@ -17,18 +17,10 @@ class SnkKilkanaCommentService
     ];
 
     /**
-     * Cuántos hay de cada estado, y `all`. Vive aquí y no en el controlador porque lo
-     * preguntan dos puertas —la pantalla de moderación y el raíl del panel— y una cifra
-     * escrita dos veces acaba contando cosas distintas.
-     *
-     * @return array<string, int>
-     */
-    /**
      * Cuelga de la cuenta de cada comentario cuántos ha escrito y cuántos se le han rechazado.
      *
-     * **Una consulta para la página entera, no una por fila.** Estaba en el controlador, junto
-     * al mapeo de la fila; aquí es lo que es —una consulta— y la forma la declara
-     * `SnkKilkanaCommentResource`.
+     * **Una consulta para la página entera, no una por fila.** Vive aquí porque es una
+     * consulta; la forma de la fila la declara `SnkKilkanaCommentResource`.
      *
      * @param  Collection<int, SnkKilkanaCommentModel>  $comments
      * @return Collection<int, SnkKilkanaCommentModel>
@@ -62,6 +54,13 @@ class SnkKilkanaCommentService
         return $comments;
     }
 
+    /**
+     * Cuántos hay de cada estado, y `all`. Vive aquí y no en el controlador porque lo
+     * preguntan dos puertas —la pantalla de moderación y el raíl del panel— y una cifra
+     * escrita dos veces acaba contando cosas distintas.
+     *
+     * @return array<string, int>
+     */
     public function countsByStatus(): array
     {
         $byStatus = SnkKilkanaCommentModel::query()

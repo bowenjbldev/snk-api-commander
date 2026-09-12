@@ -10,11 +10,10 @@ use PHPUnit\Framework\TestCase;
 /**
  * El snapshot de la demo, comprobado antes de que toque una base.
  *
- * Lo que se mira aqui es que el fichero sea SEMBRABLE: que cada pieza traiga los campos que el
- * seeder resuelve, que la clave publica no colisione y que el cuerpo que se le compone encima
- * hable el vocabulario que valida el controlador. La version anterior solo contaba filas y
- * estados, y por eso paso en verde el dia que las 522 piezas se sembraron SIN CUERPO: nada
- * miraba `body_blocks` porque el snapshot nunca lo trajo.
+ * Lo que se mira aquí es que el fichero sea SEMBRABLE: que cada pieza traiga los campos que el
+ * seeder resuelve, que la clave pública no colisione y que el cuerpo que se le compone encima
+ * hable el vocabulario que valida el controlador. Contar filas y estados no basta: un snapshot
+ * cuyas piezas se siembran SIN CUERPO pasa esa cuenta en verde, porque nada mira `body_blocks`.
  */
 class SnkKilkanaSeederDataTest extends TestCase
 {
@@ -25,7 +24,7 @@ class SnkKilkanaSeederDataTest extends TestCase
         'sucesos', 'opinion', 'medio-ambiente',
     ];
 
-    /** Las firmas resolubles: plantilla mas las tres que no lo son. */
+    /** Las firmas resolubles: plantilla más las tres que no lo son. */
     private const BYLINES = [
         'Marta Beneyto', 'Ramón Clavel', 'Iván Sagredo', 'Nuria Espí', 'Lucía Ferrándiz',
         'Óscar Tomás', 'Redacción', 'Agencia EFE', 'Josep Miralles',
@@ -77,10 +76,10 @@ class SnkKilkanaSeederDataTest extends TestCase
     }
 
     /**
-     * Cada pieza apunta a una seccion y a una firma que el seeder sabe resolver.
+     * Cada pieza apunta a una sección y a una firma que el seeder sabe resolver.
      *
-     * `firstOrFail` sobre la categoria revienta la siembra entera a media tabla; una firma que
-     * no este en ningun mapa es peor porque NO revienta: `authorFor` le inventa una cuenta
+     * `firstOrFail` sobre la categoría revienta la siembra entera a media tabla; una firma que
+     * no esté en ningún mapa es peor porque NO revienta: `authorFor` le inventa una cuenta
      * `@eldiario.example` con rol de redactora, y la demo se llena de plantilla fantasma.
      */
     public function test_each_post_points_to_an_existing_section_and_byline(): void
@@ -94,9 +93,9 @@ class SnkKilkanaSeederDataTest extends TestCase
     /**
      * El slug corta en el hueco entre palabras, no en medio de una.
      *
-     * Es la mitad de la URL publica que significa algo, y es permanente: `…plan-de-movilidad-de`
-     * no se arregla despues sin dejar un 301 detras. La regla la escribe `slugify` en el
-     * frontend y esta prueba comprueba el RESULTADO, que es lo unico que comparten los dos lados.
+     * Es la mitad de la URL pública que significa algo, y es permanente: `…plan-de-movilidad-de`
+     * no se arregla después sin dejar un 301 detrás. La regla la escribe `slugify` en el
+     * frontend y esta prueba comprueba el RESULTADO, que es lo único que comparten los dos lados.
      */
     public function test_no_slug_cuts_a_word_in_half(): void
     {
@@ -104,8 +103,8 @@ class SnkKilkanaSeederDataTest extends TestCase
             $this->assertLessThanOrEqual(52, strlen($post['slug']));
             $this->assertMatchesRegularExpression('/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/', $post['slug']);
 
-            // Reconstruir el slug largo y comprobar que el corte cayo en un guion: si el
-            // caracter siguiente no lo es, se partio una palabra.
+            // Reconstruir el slug largo y comprobar que el corte cayó en un guion: si el
+            // carácter siguiente no lo es, se partió una palabra.
             $full = $this->longSlug($post['title']);
             if (strlen($full) > strlen($post['slug'])) {
                 $this->assertSame(
@@ -120,11 +119,10 @@ class SnkKilkanaSeederDataTest extends TestCase
     /**
      * La fototeca de la demo sale del disco, y el disco tiene que estar completo.
      *
-     * Esto es lo que faltaba el dia que las 176 filas de medios se sembraron con una direccion
-     * de un servicio de terceros y nada mas: sin ancho, sin alto, sin peso y sin `content_hash`,
-     * asi que la mediateca no podia deduplicar ni filtrar por orientacion, y el lector pagaba
-     * DNS, TLS y una cookie ajena por cada foto. Aqui se mira el material ANTES de sembrar:
-     * que cada JPEG este, que se pueda leer y que diga sus medidas.
+     * Una fila de medios que solo trae la dirección de un servicio de terceros llega sin ancho,
+     * sin alto, sin peso y sin `content_hash`: la mediateca no puede deduplicar ni filtrar por
+     * orientación, y el lector paga DNS, TLS y una cookie ajena por cada foto. Aquí se mira el
+     * material ANTES de sembrar: que cada JPEG esté, que se pueda leer y que diga sus medidas.
      */
     public function test_the_demo_photo_library_is_complete_and_has_dimensions(): void
     {
@@ -146,10 +144,10 @@ class SnkKilkanaSeederDataTest extends TestCase
     /**
      * Cada portada del snapshot cae en un fichero que existe, y siempre en el mismo.
      *
-     * El reparto es `crc32` de la direccion original: dos piezas que compartian foto la siguen
-     * compartiendo, y una re-siembra no renumera la biblioteca. Lo que esto impide es lo unico
-     * que puede salir mal —una direccion que no encuentre fichero— y que el reparto deje de ser
-     * determinista, que se veria como una mediateca distinta despues de cada `--fresh`.
+     * El reparto es `crc32` de la dirección original: dos piezas con la misma dirección comparten
+     * foto, y una re-siembra no renumera la biblioteca. Lo que esto impide es lo único que puede
+     * salir mal —una dirección que no encuentre fichero— y que el reparto deje de ser
+     * determinista, que se vería como una mediateca distinta después de cada `--fresh`.
      */
     public function test_each_cover_lands_on_an_existing_photo_and_always_the_same_one(): void
     {
@@ -168,7 +166,7 @@ class SnkKilkanaSeederDataTest extends TestCase
             $used[$file] = true;
         }
 
-        // Sesenta ficheros para 176 direcciones: cuatro fotos se quedan sin reclamar. Entran en
+        // Sesenta ficheros para 186 direcciones: cuatro fotos se quedan sin reclamar. Entran en
         // la biblioteca igual (`seedAll`), y son las que dan filas a las dos vistas que existen
         // para encontrar trabajo pendiente: «sin usar» y «Missing alt».
         $this->assertSame(56, count($used));
@@ -178,8 +176,8 @@ class SnkKilkanaSeederDataTest extends TestCase
     /**
      * El cuerpo que se compone encima del snapshot es sembrable y significa algo.
      *
-     * Sin esta prueba, F-2 volveria a pasar en verde: 522 piezas sin cuerpo son 522 articulos en
-     * blanco y un `content_tier` que no corta por ningun sitio.
+     * Sin esta prueba, un snapshot sin cuerpo pasa en verde: piezas sin cuerpo son artículos en
+     * blanco y un `content_tier` que no corta por ningún sitio.
      */
     public function test_the_generated_body_uses_the_contract_vocabulary(): void
     {
@@ -203,8 +201,8 @@ class SnkKilkanaSeederDataTest extends TestCase
                 $paywalls += (int) ($block['type'] === 'paywall');
             }
 
-            // Un articulo corta por un solo sitio: dos muros no son dos cortes, son un cuerpo
-            // que no se sabe donde acaba de estar abierto.
+            // Un artículo corta por un solo sitio: dos muros no son dos cortes, son un cuerpo
+            // que no se sabe dónde acaba de estar abierto.
             $this->assertLessThanOrEqual(1, $paywalls, "«{$post['slug']}» lleva dos muros");
 
             if ($post['content_tier'] === 'free') {
@@ -214,8 +212,8 @@ class SnkKilkanaSeederDataTest extends TestCase
                 $withPaywall++;
             }
 
-            // El muro tiene que dejar algo delante y algo detras, o no corta nada: sin teaser
-            // la pieza publica sale vacia, y sin resto no habia nada que cerrar.
+            // El muro tiene que dejar algo delante y algo detrás, o no corta nada: sin teaser
+            // la pieza pública sale vacía, y sin resto no hay nada que cerrar.
             $at = array_search('paywall', array_column($blocks, 'type'), true);
             if ($at !== false) {
                 $this->assertGreaterThan(0, $at, "el muro de «{$post['slug']}» no deja teaser");

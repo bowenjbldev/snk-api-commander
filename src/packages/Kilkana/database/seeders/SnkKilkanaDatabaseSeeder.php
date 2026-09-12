@@ -47,12 +47,12 @@ use Spatie\Permission\Models\Role;
  */
 class SnkKilkanaDatabaseSeeder extends Seeder
 {
-    /** El perfil resuelto, o `[]` si esta base no es de ningun periodico declarado. */
     private ?int $dayOffset = null;
 
     /** @var array<int, array<string, mixed>>|null */
     private ?array $snapshot = null;
 
+    /** El perfil resuelto, o `[]` si esta base no es de ningún periódico declarado. */
     private ?array $profile = null;
 
     /**
@@ -85,12 +85,12 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         'polideportivo' => ['name' => 'Polideportivo', 'parent' => 'deportes'],
         'cultura' => ['name' => 'Cultura'],
         'patrimonio' => ['name' => 'Patrimonio', 'parent' => 'cultura'],
-        // Retirada del menu con el archivo lleno, que es justo lo que `hidden` sabe hacer y
-        // `draft` no: sus piezas siguen abriendose por su URL.
+        // Retirada del menú con el archivo lleno, que es justo lo que `hidden` sabe hacer y
+        // `draft` no: sus piezas siguen abriéndose por su URL.
         'agenda' => ['name' => 'Agenda', 'parent' => 'cultura', 'status' => SnkKilkanaCategoryStatusEnum::Hidden],
-        // Una sección que cambió de nombre, con la ruta que dejó atrás: el catálogo la declara
-        // en vez de renombrarla al sembrar, porque el slug es su identidad aquí y renombrarla
-        // dejaba a la siembra siguiente intentando recrear una URL que ya está retirada.
+        // Una sección con la ruta que dejó atrás: el catálogo declara la retirada en vez de
+        // renombrar la sección al sembrar, porque el slug es su identidad aquí y renombrarla
+        // dejaría a la siembra siguiente intentando recrear una URL que ya está retirada.
         'sucesos-y-tribunales' => ['name' => 'Sucesos', 'retired' => ['sucesos']],
         'opinion' => ['name' => 'Opinión'],
         'medio-ambiente' => ['name' => 'Medio ambiente'],
@@ -109,19 +109,19 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     private function seedAll(): void
     {
         $this->seedPermissions();
-        // Antes que los ajustes: la fila de settings apunta a una variante con RESTRICT, así
-        // que la variante tiene que existir para que haya a qué apuntar.
+        // Antes que los ajustes: vestir el periódico copia el spec de un tema publicado, así
+        // que el catálogo tiene que existir para que haya qué copiar.
         $this->seedThemes();
         $this->seedSettings();
 
-        // Dos interruptores, y hacen falta los dos: el entorno dice si esta instalacion admite
-        // datos de demo, y el PERFIL dice si este periodico en concreto los tiene. Con uno solo,
-        // `core:seed --client=otro` con la variable puesta vuelca el archivo de un periodico
+        // Dos interruptores, y hacen falta los dos: el entorno dice si esta instalación admite
+        // datos de demo, y el PERFIL dice si este periódico en concreto los tiene. Con uno solo,
+        // `core:seed --client=otro` con la variable puesta volcaría el archivo de un periódico
         // dentro de la base de otro.
         if (! $this->demoData()) {
             // Y se dice cuál de las dos paró: una siembra que termina con éxito y sin escribir una
             // fila es indistinguible de una correcta, y la pregunta que sigue —«¿corrió con la
-            // variable?»— tiene dos respuestas posibles desde que el perfil también puede pararla.
+            // variable?»— tiene dos respuestas posibles porque el perfil también puede pararla.
             $client = $this->clientSlug() ?? 'this database';
             $this->command?->getOutput()->writeln(match (true) {
                 ! config('kilkana.kilkana.seed_demo', false) => '<comment>demo: KILKANA_SEED_DEMO is not set.</comment>',
@@ -153,7 +153,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     }
 
     /**
-     * El boletín: tres números enviados en los últimos noventa días y un borrador abierto, con
+     * El boletín: cuatro números enviados en los últimos noventa días y un borrador abierto, con
      * lo que la lista hizo con cada uno —abrió, pulsó, se fue— repartido por suscriptor y sin
      * azar. Las cifras salen de ahí y no de un literal: una de cada dos aperturas, uno de cada
      * ocho clics, y unas pocas bajas que coinciden con los que de verdad están dados de baja.
@@ -360,8 +360,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     /**
      * La lista del boletín, con los tres estados representados.
      *
-     * No estaba sembrada: la API de suscriptores devolvía una demo vacía mientras el resto tenía
-     * contenido, así que no se probaban el listado ni el filtro por estado.
+     * Sin ella la API de suscriptores devuelve una demo vacía mientras el resto tiene contenido,
+     * y no se pueden probar el listado ni el filtro por estado.
      *
      * Los tres orígenes también, y esa es la mitad que importa: la lista IMPORTADA es la que
      * trae el riesgo legal, y si todas las filas parecen iguales no se puede ni acreditar ni
@@ -432,11 +432,9 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      * La redacción, en un solo sitio: lo que va a `users` (cuenta) y lo que va a
      * `kilkana_authors` (firma) salen del mismo registro, porque son la misma persona.
      *
-     * `job_title` es el cargo PUBLICABLE y va a la firma, no a la cuenta: aquí llegó a estar
-     * la mesa («Mesa de Deportes») metida en `users.company`, que significa «Organización» y no
-     * sale al público — el dato editorial vivía en la columna del CRM.
-     * Ahora `company` dice lo que promete: el periódico para la plantilla, la organización
-     * propia de quien colabora desde fuera.
+     * `job_title` es el cargo PUBLICABLE y va a la firma, no a la cuenta. `users.company`
+     * significa «Organización» y no sale al público: dice el periódico para la plantilla y la
+     * organización propia para quien colabora desde fuera.
      *
      * Sin foto: la del periodista se sube a la biblioteca de medios y cuelga de su FIRMA
      * (`avatar_media_id`); sin ella, la UI dibuja el monograma.
@@ -444,8 +442,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     private const STAFF = [
         'Marta Beneyto' => [
             'email' => 'marta@eldiario.example',
-            // Dirige el periódico: manda en la portada y en la identidad, y su cargo lo decía
-            // mientras sus permisos eran los de una redactora.
+            // Dirige el periódico: manda en la portada y en la identidad, y su rol tiene que
+            // decir lo mismo que su cargo.
             'role' => 'director',
             'job_title' => 'Editora jefe',
             'bio' => 'Dirige El Diario desde 2021. Antes cubrió tribunales en la prensa provincial durante doce años.',
@@ -455,7 +453,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         'Ramón Clavel' => [
             'email' => 'ramon@eldiario.example',
             // Mesa de edición: publica y corrige lo de cualquiera, y no compone la portada.
-            // Es el rol que faltaba para poder probar el muro de `edit others posts`.
+            // Sin este rol no se puede probar el muro de `edit others posts`.
             'role' => 'editor',
             'job_title' => 'Jefe de Local · mesa de edición',
             'bio' => 'Cubre el pleno y el urbanismo de la comarca. Premio de periodismo local 2019.',
@@ -494,29 +492,27 @@ class SnkKilkanaDatabaseSeeder extends Seeder
 
     /**
      * El periódico de la demo. `users.company` es la ORGANIZACIÓN de cada cuenta: para la
-     * plantilla, esta; para quien colabora desde fuera, la suya. Antes aquí iba la mesa.
+     * plantilla, esta; para quien colabora desde fuera, la suya.
      */
     private const NEWSPAPER = 'El Diario';
 
     /**
      * Quien firma sin estar en plantilla.
      *
-     * Las firmas del snapshot que no salen en `STAFF` caían todas en el mismo molde:
-     * `redactor`, organización «El Diario» y correo `@eldiario.example`. Eso convierte a una
-     * agencia de noticias en una redactora del periódico con permiso para publicar, que es
+     * Una firma del snapshot que no sale en `STAFF` no cabe en el molde de la plantilla
+     * —`redactor`, organización «El Diario» y correo `@eldiario.example`—: ese molde convierte
+     * a una agencia de noticias en una redactora del periódico con permiso para publicar, que es
      * exactamente lo que la demo no tiene que enseñar — y borra la diferencia entre la
      * plantilla, quien colabora desde fuera y lo que llega por teletipo.
      *
-     * `role` a null es una CUENTA DE SERVICIO: existe para satisfacer la FK de la firma y no
-     * entra en ningún sitio. Es el mismo mecanismo que ya usa «Redacción», y por eso las tres
-     * salen de aquí.
+     * Sin `email` la firma no tiene cuenta —la colectiva y la de agencia publican y no entran—;
+     * con `email` tiene una, con el rol que diga `role`.
      *
-     * @var array<string, array{email: string, name: string, alias?: string, company: ?string, job_title: ?string, bio: ?string, role: ?string, full_name?: string}>
+     * @var array<string, array{alias?: string, email?: string, name?: string, company?: ?string, job_title: ?string, bio: ?string, public_email?: string, kind: SnkKilkanaAuthorKindEnum, role: ?string, full_name?: string}>
      */
     private const EXTERNAL_BYLINES = [
-        // Firma colectiva de la casa. La cuenta se llama como lo que es —para quien mira el
-        // listado de Usuarios— y el ALIAS es lo que sale publicado: llamarla «Redacción» a
-        // secas habría dado el mismo nombre publicado sin alias, y la columna no demostraría nada.
+        // Firma colectiva de la casa, sin cuenta: el ALIAS es lo que sale publicado y de él sale
+        // su slug.
         'Redacción' => [
             'alias' => 'Redacción',
             'job_title' => self::NEWSPAPER,
@@ -525,8 +521,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             'kind' => SnkKilkanaAuthorKindEnum::Collective,
             'role' => null,
         ],
-        // El teletipo. Su organización es la agencia, no el periódico, y sin rol: nadie de
-        // fuera escribe en este CMS, sus piezas las vuelca la redacción.
+        // El teletipo, sin cuenta: nadie de fuera escribe en este CMS, sus piezas las vuelca la
+        // mesa de edición.
         'Agencia EFE' => [
             'alias' => 'Agencia EFE',
             'job_title' => 'Agencia de noticias',
@@ -549,19 +545,6 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     ];
 
     /**
-     * Firma de demo: la CUENTA del periodista más su fila editorial.
-     *
-     * La firma es un usuario del CMS, así que la identidad es el correo. Las seis firmas de
-     * plantilla conservan el correo del fixture; las firmas externas reciben uno local y
-     * determinista para poder satisfacer la FK sin inventar una identidad pública.
-     *
-     * El rol sale de la ficha y `redactor` es el de por defecto: escribe y publica lo suyo, que
-     * es el rol de plantilla y con el que la demo enseña el acotado por `created_by`. Los otros
-     * dos que abren el panel —dirección y mesa— tienen que existir en el juego de datos o no hay
-     * forma de probar lo que los separa: publicar lo ajeno, componer la portada, tocar la
-     * identidad del periódico.
-     */
-    /**
      * `users.name` es el nombre de pila y `users.lastname` el apellido: el mapa los trae juntos
      * como se leen en la firma, y aquí se parten por el primer espacio. Un nombre completo aparte
      * —«Elena Vara Ruiz» para «Elena Vara»— aporta el segundo apellido.
@@ -575,6 +558,19 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         return ['name' => $givenName, 'lastname' => $surname];
     }
 
+    /**
+     * Firma de demo: la CUENTA del periodista más su fila editorial.
+     *
+     * La firma de plantilla es un usuario del CMS, así que la identidad es el correo: el de
+     * `STAFF`, o uno local y determinista para una firma del snapshot que no esté en el mapa.
+     * Las de `EXTERNAL_BYLINES` las resuelve `externalByline()`.
+     *
+     * El rol sale de la ficha y `redactor` es el de por defecto: escribe y publica lo suyo, que
+     * es el rol de plantilla y con el que la demo enseña el acotado por `created_by`. Los otros
+     * dos que abren el panel —dirección y mesa— tienen que existir en el juego de datos o no hay
+     * forma de probar lo que los separa: publicar lo ajeno, componer la portada, tocar la
+     * identidad del periódico.
+     */
     private function authorFor(string $name): SnkKilkanaAuthorModel
     {
         if (isset(self::EXTERNAL_BYLINES[$name])) {
@@ -598,8 +594,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             // redacción «sin verificar» sin que eso signifique nada.
             'email_verified_at' => $user->email_verified_at ?: now(),
         ], fn ($v) => $v !== null))->save();
-        // `syncRoles` y no `assignRole`: una demo sembrada antes tiene a la editora jefe como
-        // redactora, y reaplicar el catálogo tiene que corregirlo.
+        // `syncRoles` y no `assignRole`: reaplicar el catálogo corrige el rol de una cuenta que
+        // ya existía con otro.
         $user->syncRoles([$record['role'] ?? 'redactor']);
 
         // Sin alias ni cargo aquí: la firma nace publicando el nombre de la cuenta y su URL
@@ -689,11 +685,9 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     /**
      * Una firma que no es plantilla: la colectiva, la de agencia y la del columnista.
      *
-     * Es el caso que el modelo parecía no admitir. Una firma ES una cuenta (`user_id` es
-     * obligatorio y único), y «Redacción» no es una persona — pero tampoco hace falta cambiar el
-     * esquema **hasta que dejó de obligar**: una firma con `kind` colectivo o de agencia se
-     * siembra ahora SIN CUENTA, que es lo que es —publica y no entra—, y el listado de firmas
-     * enseña «No seat» de verdad en vez de una cuenta de servicio que nadie usa.
+     * Una firma con `kind` colectivo o de agencia se siembra SIN CUENTA, que es lo que es
+     * —publica y no entra—, y el listado de firmas enseña «No seat» de verdad en vez de una
+     * cuenta de servicio que nadie usa.
      *
      * Quien sí entra —un columnista con rol— conserva la suya: sin rol no es lo mismo que sin
      * cuenta, y las dos cosas hay que poder enseñarlas.
@@ -714,9 +708,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 ], fn ($v) => $v !== null)
             );
 
-            // **Y se desvincula si venía de cuando el esquema exigía cuenta.** Una base sembrada
-            // antes tiene esta firma colgando de una cuenta de servicio; el catálogo dice que no
-            // tiene ninguna, y eso es lo que hay que poder enseñar.
+            // **Y se desvincula siempre.** El catálogo dice que no tiene cuenta, y una base con
+            // la firma colgando de una cuenta de servicio tiene que volver a enseñar eso.
             $byline->fill(['kind' => $record['kind'], 'user_id' => null])->save();
 
             return $byline;
@@ -758,8 +751,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     /**
      * La cuenta de la mesa de edición: quien vuelca lo que firma alguien sin asiento.
      *
-     * Se busca por rol y no por correo porque el reparto es lo que define el oficio; si un día
-     * no hubiera mesa, `created_by` vuelve a ser nulo, que es lo que era antes de esto.
+     * Se busca por rol y no por correo porque el reparto es lo que define el oficio; si no hay
+     * mesa, `created_by` queda nulo.
      */
     private function deskUserId(): ?int
     {
@@ -870,17 +863,12 @@ class SnkKilkanaDatabaseSeeder extends Seeder
 
         // Una firma que cambió de ruta: el trait guarda la vieja y la deja redirigiendo, que es
         // lo que la ficha enseña como «301». La sección equivalente la declara el catálogo —su
-        // slug es su identidad al sembrar, así que renombrarla aquí rompía la siembra siguiente—.
+        // slug es su identidad al sembrar, así que renombrarla aquí rompería la siembra siguiente—.
         $byline = SnkKilkanaAuthorModel::query()->where('slug', 'lucia-ferrandiz')->first();
         if ($byline !== null && $byline->retiredSlugs()->count() === 0) {
             $byline->update(['slug' => 'lucia-ferrandiz-marco']);
         }
 
-        // Y dos fotos en la papelera: `kilkana_media` es la única tabla del inquilino con
-        // `deleted_at`, así que es lo único que una papelera puede tener dentro.
-        //
-        // Solo si está vacía: sin la guarda, cada siembra mandaba dos más y la papelera crecía
-        // sola —una demo resembrada tres veces enseñaba seis—.
         // Y un historial que se parezca al de una redacción: en la mitad de las doscientas
         // piezas más recientes hay una edición real, hecha con el servicio para que deje su
         // revisión. La primera versión no llevaba el antetítulo —se puso al editar— o se quedaba
@@ -896,7 +884,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             // queda hasta ahora; sin una hora de hueco no hay edición, igual que no hay
             // respuesta. **Esta guarda va ANTES de tocar la pieza**: el `forceFill` de abajo
             // escribe la versión vieja y es el `update()` del servicio quien devuelve la buena;
-            // salir entre los dos dejó la entradilla de la pieza de portada a la mitad.
+            // salir entre los dos deja la pieza con la versión vieja y sin revisión.
             $gap = min(6, (int) $post->publish_at->diffInHours(now()));
             if ($gap < 1) {
                 continue;
@@ -931,6 +919,9 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             SnkKilkanaPostRevisionModel::query()->where('post_id', $post->id)->update(['created_at' => $at]);
         }
 
+        // Y dos fotos sin uso en la papelera de la mediateca. Solo si está vacía: sin la guarda,
+        // cada siembra mandaría dos más y la papelera crecería sola —una demo resembrada tres
+        // veces enseñaría seis—.
         if (SnkKilkanaMediaModel::onlyTrashed()->doesntExist()) {
             SnkKilkanaMediaModel::query()
                 ->unused()
@@ -943,20 +934,19 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     }
 
     /**
-     * Retira las cuentas de servicio que este seeder creaba y ya no crea.
+     * Retira las cuentas de servicio de las firmas que no tienen cuenta.
      *
-     * Mientras una firma exigió cuenta, «Redacción» y «Agencia EFE» tenían una **solo para
-     * satisfacer la clave foránea**. Ya no: cuelgan de nadie, y en una base sembrada antes esas
-     * dos cuentas se quedaron sin rol y sin firma — dos cuentas de nadie en el listado de
-     * usuarios, que además pueden autenticarse aunque la puerta del panel las rechace.
+     * «Redacción» y «Agencia EFE» firman sin cuenta, y una base que aún conserva sus cuentas de
+     * servicio las tiene sin rol y sin firma — dos cuentas de nadie en el listado de usuarios,
+     * que además pueden autenticarse aunque la puerta del panel las rechace.
      *
-     * **Se borra solo lo que sigue siendo lo que era**: sin rol, sin firma y con el correo que
-     * este seeder les puso. Si alguien le dio un rol o le colgó una firma, es una cuenta en uso y
-     * no se toca — un seeder que borra cuentas de gente es peor que dos filas de más.
+     * **Se borra solo lo que sigue sin uso**: sin rol, sin firma y con el correo de cuenta de
+     * servicio. Si alguien le dio un rol o le colgó una firma, es una cuenta en uso y no se toca
+     * — un seeder que borra cuentas de gente es peor que dos filas de más.
      *
      * Las piezas que quedan apuntando a ellas con `created_by` pasan a no tener creador, por la
      * clave foránea. Es lo correcto: **a un teletipo no lo tecleó nadie en el CMS**, y el acotado
-     * por rol se comporta igual que hoy —una cuenta que nadie usa ya no era de nadie—.
+     * por rol no cambia: una cuenta que nadie usa no es de nadie.
      */
     private function retireServiceAccounts(): void
     {
@@ -1007,8 +997,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         }
         $this->seedReads($readers);
 
-        // Las voces viven en `SnkKilkanaDemoVoices`: por familia de seccion, porque la gente
-        // comenta lo que ha leido, y generales, para que dos hilos de la misma mesa no suenen
+        // Las voces viven en `SnkKilkanaDemoVoices`: por familia de sección, porque la gente
+        // comenta lo que ha leído, y generales, para que dos hilos de la misma mesa no suenen
         // igual. Dos de cada tres comentarios son de la familia; el resto, generales.
         $families = SnkKilkanaCategoryModel::query()->pluck('slug', 'id')
             ->map(fn (string $slug) => SnkKilkanaDemoBodyFactory::familyOf($slug));
@@ -1018,12 +1008,12 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         $now = now();
         foreach ($posts as $post) {
             // 0, 1, 2 o 3 comentarios por pieza, decididos por su slug y no por su posición en
-            // la lista: borrar una pieza y resembrarla corría el índice de todas las siguientes
-            // y les regeneraba los comentarios encima de los que ya tenían.
+            // la lista: borrar una pieza y resembrarla correría el índice de todas las siguientes
+            // y les regeneraría los comentarios encima de los que ya tienen.
             for ($n = 0; $n < self::commentsFor($post->slug); $n++) {
                 // Lector, frase y hora salen de tres hashes distintos y no del mismo índice:
-                // con un solo índice el mismo lector decía siempre la misma frase a la misma
-                // hora, y la cola se leía como doce comentarios repetidos treinta veces.
+                // con un solo índice el mismo lector diría siempre la misma frase a la misma
+                // hora, y la cola se leería como doce comentarios repetidos treinta veces.
                 // Por slug y no por id: una pieza nueva en medio del snapshot no toca ni un
                 // comentario de las demás, y un `migrate:fresh` que reordene ids tampoco.
                 $key = "{$post->slug}:{$n}";
@@ -1042,10 +1032,10 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 // Un comentario llega en los cuatro días que siguen a la pieza, que es cuando
                 // se lee, y nunca antes de que exista ni después de hoy. La ventana se acorta
                 // para las piezas de esta semana en vez de recortarse contra ahora: recortar
-                // apilaba los comentarios de la pieza de hoy en el mismo minuto exacto.
+                // apilaría los comentarios de la pieza de hoy en el mismo minuto exacto.
                 // Y en minutos cuando la pieza no lleva ni una hora publicada: con el suelo de
-                // una hora la ventana era de ancho cero y los comentarios de la pieza de hoy
-                // salían clavados en su sello exacto. Una pieza de hace media hora sí tiene
+                // una hora la ventana sería de ancho cero y los comentarios de la pieza de hoy
+                // saldrían clavados en su sello exacto. Una pieza de hace media hora sí tiene
                 // comentarios; lo que no tiene es dos en el mismo segundo.
                 // Siempre al menos un minuto después: `% ventana` puede dar cero, y cero es el
                 // sello exacto de la pieza. Con menos de dos minutos publicada, todavía no hay
@@ -1075,8 +1065,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                     'post_id' => $post->id,
                     'body' => $isSpam
                         ? SnkKilkanaDemoVoices::SPAM[(crc32("body:{$post->slug}") + $n) % count(SnkKilkanaDemoVoices::SPAM)]
-                        // Con su propio hash: atada al de la frase, la elección de voz iba de la
-                        // mano del estado y las generales no salían nunca en la cola.
+                        // Con su propio hash: atada al de la frase, la elección de voz iría de la
+                        // mano del estado y las generales no saldrían nunca en la cola.
                         : self::voice($families[$post->category_id] ?? 'local', crc32("voice:{$key}")),
                 ], [
                     'status' => $status,
@@ -1112,13 +1102,6 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         }
     }
 
-    /**
-     * Lectores registrados de demo con perfil completo (nombre, nombre legal, empresa,
-     * teléfono). Sin esto la moderación es una columna de «Demo Reader» repetido: no se ve
-     * si la tabla aguanta nombres largos ni correos distintos.
-     *
-     * @return array{readers: list<CoreUserModel>, spammers: list<CoreUserModel>}
-     */
     /** La frase de un comentario: de su familia dos de cada tres veces, general el resto. */
     private static function voice(string $family, int $hash): string
     {
@@ -1151,6 +1134,13 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         return crc32("count:{$slug}") % 4;
     }
 
+    /**
+     * Lectores registrados de demo con perfil completo (nombre, nombre legal, empresa,
+     * teléfono). Sin esto la moderación es una columna de «Demo Reader» repetido: no se ve
+     * si la tabla aguanta nombres largos ni correos distintos.
+     *
+     * @return array{readers: list<CoreUserModel>, spammers: list<CoreUserModel>}
+     */
     private function seedReaders(): array
     {
         $password = config('kilkana.kilkana.demo_reader_password');
@@ -1213,7 +1203,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
 
         $readers = [];
         foreach ($people as $person) {
-            // Altas repartidas en dos años y media: «member since» es lo que ordena la lista.
+            // Altas repartidas en dos años y medio: «member since» es lo que ordena la lista.
             $readers[] = $createAccount($person, 30 + crc32("since:{$person['email']}") % 900, false);
         }
         $spamAccounts = [];
@@ -1278,7 +1268,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         }
     }
 
-    /** Identidad/tema de arranque; firstOrCreate: nunca pisa lo que el tenant ya editó. */
+    /** Identidad/tema de arranque; firstOrCreate: nunca pisa lo que el inquilino ya editó. */
     private function seedSettings(): void
     {
         $profile = $this->profile();
@@ -1319,20 +1309,6 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     }
 
     /**
-     * El periódico que se siembra en ESTA base, declarado en `data/profiles/`.
-     *
-     * **El perfil no lo elige quien lanza el comando, lo elige la base.** Cada fichero declara
-     * de qué clientes es, y aquí se busca el que reclame el de esta conexión. Con una variable
-     * de entorno, `core:seed --client=otro` con la variable puesta vuelca la cabecera y el
-     * archivo de un periódico dentro de la base de otro: pasó, y fueron 523 piezas de El Diario
-     * dentro de dos bases ajenas.
-     *
-     * Sin perfil no hay identidad ni datos de demo, que es lo que le toca a un cliente real: se
-     * nombra a sí mismo al darse de alta, y nadie le siembra un archivo encima.
-     *
-     * @return array<string, mixed>
-     */
-    /**
      * Si esta base lleva datos de demo, que son DOS condiciones y hacen falta las dos.
      *
      * El entorno dice si esta instalación los admite; el perfil, si este periódico en concreto
@@ -1358,6 +1334,19 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             && (($profile['demo'] ?? false) || ($profile['accounts'] ?? false));
     }
 
+    /**
+     * El periódico que se siembra en ESTA base, declarado en `data/profiles/`.
+     *
+     * **El perfil no lo elige quien lanza el comando, lo elige la base.** Cada fichero declara
+     * de qué clientes es, y aquí se busca el que reclame el de esta conexión. Con una variable
+     * de entorno, `core:seed --client=otro` con la variable puesta volcaría la cabecera y el
+     * archivo de un periódico dentro de la base de otro.
+     *
+     * Sin perfil no hay identidad ni datos de demo, que es lo que le toca a un cliente real: se
+     * nombra a sí mismo al darse de alta, y nadie le siembra un archivo encima.
+     *
+     * @return array<string, mixed>
+     */
     private function profile(): array
     {
         if ($this->profile !== null) {
@@ -1413,8 +1402,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      *
      * **No puede venir del perfil.** Un host escrito en un fichero de datos es el de UN
      * inquilino, y el mismo fichero puede sembrar a varios: el segundo se despertaría con la
-     * dirección del primero, que es lo que firma los enlaces del boletín. Aquí llegó a haber
-     * `https://demo.kilkana.test` dentro de datos de producto.
+     * dirección del primero, que es lo que firma los enlaces del boletín.
      *
      * Si no se puede deducir, null — y `subscriptionLanding()` ya sabe qué hacer con un
      * periódico sin URL puesta.
@@ -1486,7 +1474,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         // Con cuentas de demo se crea si falta, y solo entonces. El administrador de un periódico de
         // verdad lo crea el provisioning con las credenciales que se eligen en el alta; aquí lo
         // que se cubre es el agujero de recrear la base a mano: `--fresh` vacía también `users`,
-        // así que el juego demo volvía entero pero sin ninguna cuenta con la que entrar.
+        // así que el juego de demo vuelve entero pero sin ninguna cuenta con la que entrar.
         if ($admin === null && $this->demoAccounts() && app()->environment(['local', 'testing'])) {
             $admin = CoreUserModel::create([
                 'name' => 'Admin',
@@ -1574,8 +1562,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         // del periódico. El porqué, en la propia clase.
         $photoLibrary = new SnkKilkanaDemoMediaLibrary;
         $photoLibrary->seedAll();
-        // Las direcciones del snapshot se reparten entre los ficheros por turno y no por
-        // hash: con el hash, un fichero acababa en veinticuatro piezas y otros cuatro en ninguna.
+        // Las direcciones del snapshot se reparten entre los ficheros por carga y no por
+        // hash: con el hash, un fichero acabaría en veinticuatro piezas y otros cuatro en ninguna.
         $photoLibrary->assign(array_filter(array_column($posts, 'image')));
 
         // Destacadas: las seis más leídas del último mes. Es lo que una redacción marca a mano
@@ -1592,7 +1580,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             // Por su ruta actual **o por una que dejó atrás**: el snapshot es un archivo viejo y
             // una sección puede haber cambiado de URL desde que se escribió. Es la misma
             // resolución que hace la web pública con un enlace antiguo, y sin ella una sección
-            // renombrada dejaba la siembra a medias con un `ModelNotFound`.
+            // renombrada dejaría la siembra a medias con un `ModelNotFound`.
             $category = SnkKilkanaCategoryModel::query()
                 ->where('slug', $post['cat'])
                 ->orWhereHas('retiredSlugs', fn ($retiredPath) => $retiredPath->where('path', $post['cat']))
@@ -1611,8 +1599,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             // distintos y ambos son piezas legítimas, no duplicados que haya que colapsar.
             // La pieza puede haber cambiado de URL desde que se escribió el snapshot: se busca
             // primero por la ruta que dejó atrás, igual que con las secciones. Sin esto, una
-            // pieza editada por `seedEditHistory` se intentaba recrear con su slug viejo —que
-            // ya está retirado— y la siembra siguiente reventaba a mitad.
+            // pieza editada por `seedEditHistory` se intentaría recrear con su slug viejo —que
+            // ya está retirado— y la siembra siguiente reventaría a mitad.
             $retired = $urlDate === null ? null : SnkKilkanaPostSlugModel::query()
                 ->where('path', str_replace('-', '/', $urlDate).'/'.$post['slug'])
                 ->first();
@@ -1623,7 +1611,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             // **Lo editorial no se reescribe sobre una pieza que ya existe.** El snapshot es la
             // versión con la que nació el archivo; lo que alguien —o el propio seeder, al sembrar
             // el historial de ediciones— haya escrito encima es trabajo posterior, y volver a
-            // volcarlo lo revertía: la pieza editada se quedaba con la URL nueva, su 301 y su
+            // volcarlo lo revertiría: la pieza editada se quedaría con la URL nueva, su 301 y su
             // revisión, y con el titular de antes. Un 301 que apunta a un titular que no cambió
             // es exactamente lo contrario de lo que ese fixture viene a enseñar.
             $editorial = [
@@ -1650,7 +1638,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 // Quien la escribió, que NO es lo mismo que quien la firma: el acotado por rol
                 // mira esto, no la firma. Una firma sin cuenta —una agencia, la colectiva— no
                 // puede haber tecleado nada, así que su pieza la vuelca **la mesa de edición**,
-                // que es lo que hace una redacción con un teletipo. Sin eso quedaban 149 piezas
+                // que es lo que hace una redacción con un teletipo. Sin eso quedarían 149 piezas
                 // que no son de nadie: no las abre ni quien las firma ni quien las volcó.
                 'created_by' => $author->user_id ?? $this->deskUserId(),
                 'cover_media_id' => $media?->id,
@@ -1695,7 +1683,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      * La firma de la foto y el estante donde la archiva la mesa que la usa.
      *
      * `enrichFromPosts()` rellena lo que la pieza sabe de su portada —título, alt, pie— y ahí se
-     * paraba: la mediateca quedaba con las columnas «Credit» y «Collection» vacías en las
+     * para: sin esto la mediateca queda con las columnas «Credit» y «Collection» vacías en las
      * sesenta filas. Dos columnas muertas en una tabla se leen como que la tabla no ha cargado,
      * y las dos son datos que una redacción sí tiene.
      *
@@ -1714,8 +1702,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         $credits = ['Óscar Tomás', 'Agencia EFE', 'Redacción'];
         $shelves = [];
 
-        // La madre va en la carga: se leía abajo y la traía el `$with` del modelo de sección,
-        // que ya no existe — una relación cargada en toda consulta para dos sitios que la usan.
+        // La madre va en la carga porque se lee abajo, para archivar una subsección en su mesa.
         foreach (SnkKilkanaMediaModel::query()->with('coveredPosts.category.parent')->get() as $media) {
             $changes = [];
 
@@ -1741,21 +1728,6 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     }
 
     /**
-     * Cuándo sale la pieza — y para una programada, cuándo sale **a partir de hoy**.
-     *
-     * El snapshot es estático y su calendario envejece. Las tres piezas `scheduled` se
-     * escribieron con fecha de julio, así que unos meses después están programadas para el
-     * pasado: `kilkana:publish-scheduled` corre cada minuto y las publica antes de que nadie
-     * abra el CMS. La demo se queda sin el único estado que hay que ver para creerse el
-     * programador, y re-sembrar además DUPLICA la fila —su `url_date` ya no es nulo, así que
-     * `updateOrCreate` no la reconoce y crea otra—.
-     *
-     * Se mueve solo la fecha y se conserva la hora del snapshot: un cierre a las 6:30 sigue
-     * siendo un cierre a las 6:30, que es lo que hace creíble la parrilla. El desplazamiento
-     * sale del slug, así que las tres caen en días distintos y dos siembras del mismo día dan
-     * lo mismo.
-     */
-    /**
      * El archivo se desplaza para que la pieza más reciente del snapshot sea de HOY.
      *
      * El snapshot está escrito en fechas de 2026, y una demo que se abre en septiembre con su
@@ -1769,8 +1741,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      *
      * El ancla es la pieza publicada MÁS ANTIGUA del snapshot que siga en la base, comparada
      * con SU propia fecha en el snapshot —la misma pieza en los dos lados—: así el desfase es
-     * exacto se borre lo que se borre, porque las piezas no tienen borrado en blando y quien
-     * enseña la papelera en una demo borra alguna. Un archivo sin ninguna del snapshot es una
+     * exacto se borre lo que se borre, y quien enseña la papelera en una demo tira alguna. Un archivo sin ninguna del snapshot es una
      * base recién creada, y entonces se ancla a hoy.
      *
      * `round` y no un `(int)` a secas: entre dos medianoches con cambio de hora la diferencia
@@ -1823,6 +1794,21 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         return Carbon::parse($date)->addDays($this->offsetDays())->toDateTimeString();
     }
 
+    /**
+     * Cuándo sale la pieza — y para una programada, cuándo sale **a partir de hoy**.
+     *
+     * El snapshot es estático y su calendario envejece. Las tres piezas `scheduled` llevan
+     * fecha de julio, así que unos meses después están programadas para el pasado:
+     * `kilkana:publish-scheduled` corre cada minuto y las publica antes de que nadie abra el
+     * CMS. La demo se queda sin el único estado que hay que ver para creerse el programador, y
+     * re-sembrar además DUPLICA la fila —su `url_date` ya no es nulo, así que `firstOrCreate` no
+     * la reconoce y crea otra—.
+     *
+     * Se mueve solo la fecha y se conserva la hora del snapshot: un cierre a las 6:30 sigue
+     * siendo un cierre a las 6:30, que es lo que hace creíble la parrilla. El desplazamiento
+     * sale del slug, así que las tres caen en días distintos y dos siembras del mismo día dan
+     * lo mismo.
+     */
     private function publishAt(array $post): string
     {
         $at = $this->shift($post['publish_at']);
@@ -1852,15 +1838,14 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     /**
      * La audiencia del fixture, en la tabla que la cuenta.
      *
-     * `posts.reads` era una columna con un número grande dentro que nada incrementaba: el
-     * se trataba como si fuera audiencia y el «más leído» ordenaba por ella. El número
-     * del fixture no se pierde —es lo que hace la demo creíble—, cambia de sitio: se reparte
-     * en `kilkana_post_views`, que es donde aterriza una lectura de verdad.
+     * `reads` es un número del fixture que nada incrementa, así que no es audiencia por sí
+     * solo. No se pierde —es lo que hace la demo creíble—: se reparte en `kilkana_post_views`,
+     * que es donde aterriza una lectura de verdad.
      *
      * El reparto va por la EDAD de cada pieza, no por el día del calendario. Una noticia se
      * lee sobre todo el día que sale y luego cae; con una curva igual para todas, «hoy»,
-     * «esta semana» y «total» devolvían el mismo orden —solo era el total reescalado— y las
-     * tres ventanas no probaban nada. Desfasadas por su fecha de publicación, lo de hoy lo
+     * «esta semana» y «total» devolverían el mismo orden —el total reescalado— y las tres
+     * ventanas no probarían nada. Desfasadas por su fecha de publicación, lo de hoy lo
      * dominan las piezas recientes y el total las que más se leyeron en su momento.
      */
     private function seedViews(): void

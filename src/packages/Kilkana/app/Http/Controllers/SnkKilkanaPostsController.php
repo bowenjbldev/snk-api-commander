@@ -6,7 +6,6 @@ use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 use Packages\Kilkana\Enums\SnkKilkanaBlockTypeEnum;
 use Packages\Kilkana\Enums\SnkKilkanaContentTierEnum;
@@ -20,11 +19,11 @@ use Packages\Kilkana\Services\SnkKilkanaPostService;
 use Packages\Kilkana\Services\SnkKilkanaPublicService;
 
 /**
- * CRUD de artículos con BD normalizada. La escritura acepta texto libre del editor
- * (category=slug existente, image=url, tags=nombres) y el server resuelve/crea las
- * relaciones; la FIRMA no, que viaja como `author_id` de una fila existente porque se
- * gobierna como agregado propio. La lectura sale anidada (category/author/cover/tags/meta,
- * serialización del modelo). Solo claves de meta conocidas pasan la validación.
+ * CRUD de artículos con BD normalizada. La escritura acepta texto libre del editor (la sección
+ * por slug existente, las etiquetas por nombre) y el servidor resuelve o crea las relaciones;
+ * la FIRMA no, que viaja como `author_id` de una fila existente porque se gobierna como
+ * agregado propio. La lectura sale por `SnkKilkanaPostResource`, con los campos y las
+ * relaciones que pida la query.
  */
 #[Group('Posts')]
 class SnkKilkanaPostsController extends CoreBaseApiController
@@ -42,12 +41,11 @@ class SnkKilkanaPostsController extends CoreBaseApiController
     protected ?string $resourceClass = SnkKilkanaPostResource::class;
 
     /**
-     * Vistas reales agregadas también en la API editorial, no solo en la salida pública.
+     * El punto de partida de toda consulta, acotado por propiedad: sin `edit others posts`,
+     * solo lo propio.
      *
-     * Tres ventanas: hoy, últimos siete días y total histórico. Aquí hubo una columna
-     * `posts.reads` que nada incrementaba y se presentaba como si fuera audiencia;
-     * `views_total` es la misma pregunta contestada con los datos de verdad. Mismos alias que
-     * `SnkKilkanaPublicController::posts()`, para que quien lea vea un único contrato.
+     * La audiencia no se cuelga aquí sino en `index()`, después de recortar columnas, y con el
+     * mismo alias `views_total` que usa la calle, para que quien lea vea un único contrato.
      */
     protected function newQuery()
     {
@@ -77,10 +75,10 @@ class SnkKilkanaPostsController extends CoreBaseApiController
     /**
      * Saber que una pieza ajena existe, que **no es lo mismo que poder tocarla**.
      *
-     * Son dos permisos porque son dos preguntas: con uno solo, el sumario de la redaccion
-     * —cuanto hay sin publicar y en que fase— viajaria tambien a quien escribe desde fuera.
-     * La linea no es «puede editar / no puede editar», es plantilla contra fuera: dentro de
-     * la sala se sabe en que anda el resto.
+     * Son dos permisos porque son dos preguntas: con uno solo, el sumario de la redacción
+     * —cuánto hay sin publicar y en qué fase— viajaría también a quien escribe desde fuera.
+     * La línea no es «puede editar / no puede editar», es plantilla contra fuera: dentro de
+     * la sala se sabe en qué anda el resto.
      */
     private function canViewOthers(): bool
     {
@@ -120,16 +118,15 @@ class SnkKilkanaPostsController extends CoreBaseApiController
     protected string $destroyPermission = 'delete posts';
 
     /**
-     * `status` no está en los arrays de abajo y no puede estarlo: la inicialización de una
-     * propiedad solo admite expresiones constantes, y su regla sale de un método del enum.
-     * Aquí es donde las dos listas se juntan, y donde un estado nuevo entra sin tocar nada.
-     */
-    /**
-     * Los tres por el constructor y no con `app()` dentro del método.
+     * Los tres servicios por el constructor y no con `app()` dentro del método.
      *
      * `SnkKilkanaActivityService` es singleton, así que el `quiet()` y el `log()` de una
      * restauración hablan del mismo objeto, y el constructor lo deja escrito en vez de fiarlo
      * a que el contenedor devuelva dos veces la misma instancia.
+     *
+     * `status` no está en los arrays de abajo y no puede estarlo: la inicialización de una
+     * propiedad solo admite expresiones constantes, y su regla sale de un método del enum.
+     * Aquí es donde las dos listas se juntan, y donde un estado nuevo entra sin tocar nada.
      */
     public function __construct(
         private readonly SnkKilkanaPostService $posts,
@@ -140,7 +137,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         $this->validationRulesUpdate['status'] = 'sometimes|required|'.SnkKilkanaPostStatusEnum::rule();
 
         // Lo que hace falta para SALIR, no para existir. Un borrador se crea con el titular y
-        // poco mas —el texto llega despues—, pero publicarlo sin entradilla ni fecha es
+        // poco más —el texto llega después—, pero publicarlo sin entradilla ni fecha es
         // publicar media pieza. La lista de estados sale del propio enum.
         $onPublish = 'required_if:status,'.implode(',', SnkKilkanaPostStatusEnum::publishing());
 
@@ -209,7 +206,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
      * Sustituye al `index()` del controlador base, que devuelve `->get()` pelado. No se
      * cambia allí porque lo comparten Commander, DemoApp y el resto de recursos: lo que
      * aquí se concreta es el listado de artículos, que es el único con quinientas filas,
-     * cuatro relaciones cargadas y tres sumas de vistas por pieza.
+     * cuatro relaciones cargadas y una suma de vistas por pieza.
      */
     public function index(): JsonResponse
     {
@@ -233,17 +230,17 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             $this->perPage(),
         );
 
-        // `counts` es lo que ve quien mira, que es lo que cuentan las pestanas de Posts.
-        // `counts_all` es el periodico entero, y el tablero las ensena juntas: sin la
-        // segunda su cifra queda al lado de una seccion del periodico entero y se lee como
-        // una contradiccion. Sin `view others posts` las dos vienen iguales — el servicio
+        // `counts` es lo que ve quien mira, que es lo que cuentan las pestañas de Posts.
+        // `counts_all` es el periódico entero, y el tablero las enseña juntas: sin la
+        // segunda su cifra queda al lado de una sección del periódico entero y se lee como
+        // una contradicción. Sin `view others posts` las dos vienen iguales — el servicio
         // las iguala, no las calla, porque el panel deduce de esa igualdad que hay una
         // sola escala que dibujar.
         //
         // **Y solo si se piden.** Cuentan el archivo entero, no la página, así que no son
         // parte de esta respuesta: son otra pregunta. Tres pantallas del panel piden este
         // listado solo para enseñar «lo último publicado» —secciones, etiquetas, firmas— y
-        // pagaban el recuento sin usarlo.
+        // pagarían el recuento sin usarlo.
         $counts = $this->wants('counts')
             ? $this->posts->countsByStatus((int) auth()->id(), $this->canEditOthers(), $this->canViewOthers())
             : null;
@@ -361,7 +358,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
     /**
      * Acción masiva sobre varios artículos: cambio de estado, etiquetado o borrado.
      *
-     * Un endpoint y no N peticiones: publicar veinte eran veinte PUT, cada
+     * Un endpoint y no N peticiones: publicar veinte serían veinte PUT, cada
      * uno con su carrera y su fallo parcial. `publish` sella `publish_at` cuando falta o
      * cuando apunta al futuro: publicar a mano una pieza programada la saca AHORA, y dejarle
      * la fecha prevista la ordenaría mañana en la portada, el sitemap y el feed.
@@ -383,8 +380,8 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             'ids.*' => 'integer',
             // Los estados que mueve la barra de selección del panel, el borrado y los dos del
             // reetiquetado. Sin `scheduled`: programar pide una fecha y un lote solo trae ids,
-            // así que la pieza sin fecha se quedaba programada para siempre y la de fecha
-            // pasada salía al minuto. Se programa desde el editor, pieza a pieza.
+            // así que la pieza sin fecha se quedaría programada para siempre y la de fecha
+            // pasada saldría al minuto. Se programa desde el editor, pieza a pieza.
             'action' => 'required|in:publish,draft,review,delete,tag,untag',
             // Nombres y no ids: es lo que el backend ya escribe (`firstOrCreateByName`) y lo
             // que un humano lee. Un id de etiqueta no significa nada fuera de esta base.
@@ -452,7 +449,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         ]);
     }
 
-    /** Restaura una revisión: el estado actual se snapshotea antes (restore reversible). */
+    /** Restaura una revisión: el estado actual se guarda antes como revisión, así que se puede deshacer. */
     public function restore($id, $revisionId): JsonResponse
     {
         if ($response = $this->requirePermission($this->updatePermission)) {

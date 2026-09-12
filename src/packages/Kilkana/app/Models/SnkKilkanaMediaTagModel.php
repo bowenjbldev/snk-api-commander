@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 // Etiqueta de la biblioteca: describe el FICHERO («apaisado», «primer plano»), no el tema de
-// la noticia. Vocabulario controlado, ver `docs/05-medios.md`.
+// la noticia. Vocabulario controlado, ver `docs/products/kilkana/database/05-medios.md`.
 class SnkKilkanaMediaTagModel extends Model
 {
     protected $table = 'kilkana_media_tags';

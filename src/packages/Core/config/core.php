@@ -10,8 +10,8 @@ return [
     | Dominio del control plane y dominio de plataforma para las APIs tenant.
     | El host identifica al cliente; /api/v1/{producto} selecciona el package.
     | En local: commander.snakepc.test y {cliente}.commander.test/api/v1/kilkana.
-    | TENANT_BASE_DOMAIN conserva BASE_DOMAIN como fallback para despliegues
-    | existentes que todavia usan un unico dominio.
+    | TENANT_BASE_DOMAIN usa BASE_DOMAIN como fallback para los despliegues
+    | que sirven todo desde un único dominio.
     |
     */
 
@@ -49,8 +49,8 @@ return [
     | Package State (kill-switch)
     |--------------------------------------------------------------------------
     |
-    | Estado local del deploy (active|grace|suspended) leido por el middleware
-    | con cache. Las rutas exentas siguen respondiendo aunque este suspendido.
+    | Estado local del deploy (active|grace|suspended) leído por el middleware
+    | con caché. Las rutas exentas siguen respondiendo aunque esté suspendido.
     |
     */
 
@@ -69,7 +69,7 @@ return [
         'enabled' => (bool) env('CORE_METERING_ENABLED', true),
         'sample_rate' => (float) env('CORE_METERING_SAMPLE_RATE', 1.0),
         'retention_days' => (int) env('CORE_METERING_RETENTION_DAYS', 30),
-        // Filas que un worker acumula antes de escribirlas, y segundos maximos de espera. Con 1 se
+        // Filas que un worker acumula antes de escribirlas, y segundos máximos de espera. Con 1 se
         // escribe al momento (FPM, consola, pruebas); en Octane el compose pone 20.
         'batch' => (int) env('CORE_METERING_BATCH', 1),
         'batch_seconds' => (float) env('CORE_METERING_BATCH_SECONDS', 5),
@@ -81,7 +81,7 @@ return [
     | Quotas
     |--------------------------------------------------------------------------
     |
-    | Limites null = sin limite. on_exceed se define por fila en BD.
+    | Límites null = sin límite. La acción al superarlo se define por fila en BD.
     |
     */
 

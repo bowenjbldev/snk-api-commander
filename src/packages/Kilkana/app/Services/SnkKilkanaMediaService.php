@@ -72,7 +72,7 @@ class SnkKilkanaMediaService
         return SnkKilkanaMediaModel::withTrashed()->find($id);
     }
 
-    /** Columnas y las dos taxonomias son una sola edicion del inspector: van juntas o no van. */
+    /** Columnas y las dos taxonomías son una sola edición del inspector: van juntas o no van. */
     public function update(SnkKilkanaMediaModel $media, array $data): SnkKilkanaMediaModel
     {
         DB::transaction(function () use ($media, $data) {
@@ -120,7 +120,7 @@ class SnkKilkanaMediaService
         $media->forceDelete();
     }
 
-    /** Marcar diez fotos y etiquetarlas es UNA accion: no puede quedarse en las cuatro primeras. */
+    /** Marcar diez fotos y etiquetarlas es UNA acción: no puede quedarse en las cuatro primeras. */
     public function bulk(array $ids, string $action, array $tagIds = [], array $collectionIds = []): void
     {
         DB::transaction(fn () => $this->applyBulk($ids, $action, $tagIds, $collectionIds));
@@ -214,21 +214,21 @@ class SnkKilkanaMediaService
             ]);
             $this->warm($media);
         } catch (UniqueConstraintViolationException) {
-            // El indice unico gana la carrera que el `first()` de arriba no puede cerrar.
+            // El índice único gana la carrera que el `first()` de arriba no puede cerrar.
             //
-            // Comprobar y luego insertar deja un hueco entre las dos mitades, y por ahi caben dos
-            // peticiones con el MISMO fichero: las dos ven la biblioteca sin el, las dos escriben,
-            // y la segunda choca. Pasaba soltando la misma foto dos veces en una tanda —el panel
-            // sube en paralelo—, y el operador leia «rechazada» de un fichero que si esta dentro.
-            // La respuesta correcta es la misma que si hubiera llegado un segundo despues:
-            // duplicada, con la fila que gano.
+            // Comprobar y luego insertar deja un hueco entre las dos mitades, y por ahí caben dos
+            // peticiones con el MISMO fichero: las dos ven la biblioteca sin él, las dos escriben,
+            // y la segunda choca. Pasa al soltar la misma foto dos veces en una tanda —el panel
+            // sube en paralelo—, y sin esto el operador lee «rechazada» de un fichero que sí está
+            // dentro. La respuesta correcta es la misma que si hubiera llegado un segundo después:
+            // duplicada, con la fila que ganó.
             Storage::disk('public')->delete($path);
             if ($master) {
                 Storage::disk('public')->delete($master['path']);
             }
             $winner = SnkKilkanaMediaModel::withTrashed()->where('content_hash', $hash)->first();
 
-            // Sin fila que devolver el choque era de otra columna, y eso no es un duplicado:
+            // Sin fila que devolver el choque es de otra columna, y eso no es un duplicado:
             // se relanza para que se vea en vez de contarlo como «ya estaba».
             if (! $winner) {
                 throw new RuntimeException('media upload clashed on something other than its content hash');
@@ -254,15 +254,14 @@ class SnkKilkanaMediaService
             return ['media' => $this->serialize($clash), 'duplicate' => true];
         }
 
-        // ORDEN, no transaccion: una transaccion de base de datos no deshace un `unlink`.
+        // ORDEN, no transacción: una transacción de base de datos no deshace un `unlink`.
         //
-        // Esto borraba el fichero viejo ANTES de escribir el nuevo, asi que un fallo al
-        // guardar —disco lleno, permisos, fichero corrupto— dejaba la fila apuntando a algo
-        // que ya no existia: la foto desaparecia del periodico sin que nada fallara despues.
-        //
-        // Ahora se escribe el nuevo, la fila pasa a apuntarlo, y SOLO entonces se borra el
-        // viejo. Si algo revienta por el camino, lo peor que queda es un fichero huerfano en
-        // disco, que es basura y no una perdida.
+        // Se escribe el nuevo, la fila pasa a apuntarlo, y SOLO entonces se borra el viejo.
+        // Borrar el viejo antes haría que un fallo al guardar —disco lleno, permisos, fichero
+        // corrupto— dejara la fila apuntando a algo que no existe: la foto desaparecería del
+        // periódico sin que nada fallara después. En este orden, si algo revienta por el
+        // camino, lo peor que queda es un fichero huérfano en disco, que es basura y no una
+        // pérdida.
         $previousDisk = $media->disk;
         $previousPath = $media->path;
         $previousMaster = $media->master_path;
@@ -307,8 +306,8 @@ class SnkKilkanaMediaService
             Storage::disk('public')->delete($previousMaster);
         }
 
-        // Ya no lo referencia nadie. La comparacion cubre el caso de que el nombre generado
-        // coincidiera con el anterior: borrarlo seria borrar el que se acaba de escribir.
+        // Nadie lo referencia. La comparación cubre el caso de que el nombre generado
+        // coincida con el anterior: borrarlo sería borrar el que se acaba de escribir.
         if ($previousDisk && $previousPath && $previousPath !== $path) {
             Storage::disk($previousDisk)->delete($previousPath);
         }
@@ -407,10 +406,10 @@ class SnkKilkanaMediaService
         } elseif ($status === 'unused') {
             $query->unused();
         } elseif ($status === 'missing_alt') {
-            // La faceta existia y el filtro no, asi que el panel podia decir «19 sin alt» y no
-            // tenia como ensenar cuales. Es el unico filtro de la mediateca que bloquea un
-            // despliegue: un fichero sin texto alternativo tumba la puerta de toda ruta que lo
-            // use, y esta pantalla es donde se resuelve.
+            // La faceta cuenta los que no tienen alt, y este filtro es lo que deja enseñar
+            // cuáles. Es el único filtro de la mediateca que bloquea un despliegue: un fichero
+            // sin texto alternativo tumba la puerta de toda ruta que lo use, y esta pantalla es
+            // donde se resuelve.
             $query->where(fn (Builder $sub) => $sub->whereNull('alt')->orWhere('alt', ''));
         }
 
@@ -430,9 +429,9 @@ class SnkKilkanaMediaService
         if ($collectionId = $request->integer('collection_id')) {
             $query->whereHas('collections', fn (Builder $sub) => $sub->where('kilkana_media_collections.id', $collectionId));
         }
-        // Y por NOMBRE, que es lo que se lee en el rail y lo que cabe en una URL compartible.
-        // El nombre es unico en la tabla, asi que no es un filtro mas laxo que el id: es el
-        // mismo filtro sin obligar a quien pregunta a traerse antes el catalogo para traducir.
+        // Y por NOMBRE, que es lo que se lee en el raíl y lo que cabe en una URL compartible.
+        // El nombre es único en la tabla, así que no es un filtro más laxo que el id: es el
+        // mismo filtro sin obligar a quien pregunta a traerse antes el catálogo para traducir.
         if ($collection = $request->string('collection')->trim()->toString()) {
             $query->whereHas('collections', fn (Builder $sub) => $sub->where('kilkana_media_collections.name', $collection));
         }
@@ -483,15 +482,15 @@ class SnkKilkanaMediaService
     }
 
     /**
-     * Cuantos hay de cada familia y cuanto pesa la biblioteca, en UNA consulta.
+     * Cuántos hay de cada familia y cuánto pesa la biblioteca, en UNA consulta.
      *
-     * Las pestanas del panel llevan su cifra y la tira de estadisticas dice lo que ocupa el
-     * archivo; eso son cuatro numeros, y pedirlos por separado son cuatro `LIKE 'image/%'`
-     * sobre una columna sin indice. Agrupando por la familia del `mime` sale todo de un
+     * Las pestañas del panel llevan su cifra y la tira de estadísticas dice lo que ocupa el
+     * archivo; eso son cuatro números, y pedirlos por separado son cuatro `LIKE 'image/%'`
+     * sobre una columna sin índice. Agrupando por la familia del `mime` sale todo de un
      * recorrido: la misma tabla se lee una vez en vez de cuatro.
      *
-     * Con un filtro delante cuenta DENTRO de el: las pestanas del panel son un filtro mas, y
-     * decir «68 imagenes» en una coleccion de quince es una cifra que contradice la lista que
+     * Con un filtro delante cuenta DENTRO de él: las pestañas del panel son un filtro más, y
+     * decir «68 imágenes» en una colección de quince es una cifra que contradice la lista que
      * tiene debajo.
      *
      * @return array{image: int, video: int, audio: int, bytes: int}
@@ -500,9 +499,9 @@ class SnkKilkanaMediaService
     {
         $tally = ['image' => 0, 'video' => 0, 'audio' => 0, 'bytes' => 0];
 
-        // Se agrupa por el `mime` entero y la familia se parte aqui: `SUBSTRING_INDEX` es de
-        // MariaDB y las pruebas corren sobre SQLite, asi que un SQL que solo funciona en
-        // produccion es un fallo que no se ve hasta produccion. Los mimes distintos son una
+        // Se agrupa por el `mime` entero y la familia se parte aquí: `SUBSTRING_INDEX` es de
+        // MariaDB y las pruebas corren sobre SQLite, así que un SQL que solo funciona en
+        // producción es un fallo que no se ve hasta producción. Los mimes distintos son una
         // docena, no una fila por foto.
         $rows = SnkKilkanaMediaModel::query()
             ->selectRaw('mime, COUNT(*) AS items, COALESCE(SUM(size_bytes), 0) AS bytes')
@@ -523,9 +522,9 @@ class SnkKilkanaMediaService
     }
 
     /**
-     * Las mismas cuatro cifras de las pestanas, pero contadas dentro de lo que se esta mirando
-     * y sin el filtro de tipo: cada pestana dice cuantos saldrian al pulsarla, con la
-     * coleccion, la busqueda y las fechas puestas. `facets` sigue siendo el archivo entero,
+     * Las mismas cuatro cifras de las pestañas, pero contadas dentro de lo que se está mirando
+     * y sin el filtro de tipo: cada pestaña dice cuántos saldrían al pulsarla, con la
+     * colección, la búsqueda y las fechas puestas. `facets` sigue siendo el archivo entero,
      * que es lo que mide la tira de estadisticas.
      *
      * @return array{all: int, image: int, video: int, audio: int}
@@ -568,13 +567,13 @@ class SnkKilkanaMediaService
     }
 
     /**
-     * Rellena lo que el articulo SI sabe de su portada: titulo, alt, pie, derechos y licencia.
+     * Rellena lo que el artículo SÍ sabe de su portada: título, alt, pie, derechos y licencia.
      *
-     * Solo rellena huecos —nunca pisa lo que alguien escribio a mano— y no toca etiquetas ni
-     * colecciones. Llego a copiar los tags del post y el nombre de su seccion, y como corre
-     * sobre todos los tenants bastaba una ejecucion para dejar cada fototeca con el
-     * vocabulario editorial dentro: un tag de medio describe el FICHERO —«retrato»,
-     * «apaisado», «archivo»—, no el tema de la noticia.
+     * Solo rellena huecos —nunca pisa lo que alguien escribió a mano— y no toca etiquetas ni
+     * colecciones: corre sobre todos los tenants, y copiar los tags del post o el nombre de su
+     * sección dejaría en una ejecución cada fototeca con el vocabulario editorial dentro. Un
+     * tag de medio describe el FICHERO —«retrato», «apaisado», «archivo»—, no el tema de la
+     * noticia.
      */
     public function enrichFromPosts(): int
     {
@@ -589,7 +588,7 @@ class SnkKilkanaMediaService
             $fromUnsplash = str_contains((string) $media->source_url, 'unsplash.com');
             $changes = [];
 
-            // El nombre que trae el fichero descargado no es un titulo: `photo-1a2b3c`.
+            // El nombre que trae el fichero descargado no es un título: `photo-1a2b3c`.
             if (! $media->title || preg_match('/^(photo|unsplash)-[a-z0-9-]+$/i', $media->title)) {
                 $changes['title'] = $post->title;
             }
@@ -619,14 +618,14 @@ class SnkKilkanaMediaService
     }
 
     /**
-     * Quien usa este fichero, por su nombre y diciendo como.
+     * Quién usa este fichero, por su nombre y diciendo cómo.
      *
-     * Las tres formas de estar en uso son las de `SnkKilkanaMediaModel::USES`, y salen de ahi
-     * para que una cuarta clave foranea hacia un medio aparezca aqui sola en vez de dejar una
+     * Las tres formas de estar en uso son las de `SnkKilkanaMediaModel::USES`, y salen de ahí
+     * para que una cuarta clave foránea hacia un medio aparezca aquí sola en vez de dejar una
      * lista corta que parece completa.
      *
-     * El tope es por relacion y no del total: con un tope global, una foto usada en cuarenta
-     * portadas dejaria fuera la firma que tambien la lleva de retrato, que es justo la que
+     * El tope es por relación y no del total: con un tope global, una foto usada en cuarenta
+     * portadas dejaría fuera la firma que también la lleva de retrato, que es justo la que
      * sorprende al borrarla.
      *
      * @return list<array{kind: string, id: int, title: string}>
@@ -654,11 +653,11 @@ class SnkKilkanaMediaService
     }
 
     /**
-     * La ficha recien escrita, con la MISMA forma que trae el listado.
+     * La ficha recién escrita, con la MISMA forma que trae el listado.
      *
      * Actualizar, restaurar, subir y reemplazar devuelven una fila que el panel mete en la lista que
-     * ya tiene delante. Si esa fila viniera con mas campos que las demas, la lista dejaria de
-     * ser homogenea justo en la fila que se acaba de tocar.
+     * ya tiene delante. Si esa fila viniera con más campos que las demás, la lista dejaría de
+     * ser homogénea justo en la fila que se acaba de tocar.
      */
     public function serialize(SnkKilkanaMediaModel $media): SnkKilkanaMediaModel
     {

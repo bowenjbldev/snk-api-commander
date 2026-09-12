@@ -8,13 +8,13 @@ use PHPUnit\Framework\TestCase;
 class CorePackageSelectorSupportTest extends TestCase
 {
     /**
-     * La cache de permisos de un inquilino no puede ser la de otro.
+     * La caché de permisos de un inquilino no puede ser la de otro.
      *
      * Spatie cachea el registro de permisos en una clave global al proceso, y con una base por
-     * periodico dos inquilinos que compartieran clave compartirian permisos — que es privilegio
+     * periódico dos inquilinos que compartieran clave compartirían permisos — que es privilegio
      * cruzado, no una molestia de rendimiento. Por eso la clave lleva el nombre de la base, y
-     * por eso se comprueba: es lo unico que separa «el panel va mas rapido» de «el redactor de
-     * un periodico manda en otro».
+     * por eso se comprueba: es lo único que separa «el panel va más rápido» de «el redactor de
+     * un periódico manda en otro».
      */
     public function test_each_database_has_its_own_permission_cache_key(): void
     {

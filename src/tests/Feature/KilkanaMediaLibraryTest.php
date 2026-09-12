@@ -17,12 +17,12 @@ use Packages\Kilkana\Services\SnkKilkanaMediaService;
 use Tests\TestCase;
 
 /**
- * La mediateca sobre la conexion de inquilino: que publica y quien la usa.
+ * La mediateca sobre la conexión de inquilino: qué publica y quién la usa.
  *
- * Como el listado editorial, se prueba el servicio y no la ruta HTTP: montar una peticion
- * autenticada contra un inquilino exige un arnes que la suite no tiene. Lo que se fija aqui es
- * lo que puede romperse en silencio — una columna nueva colandose en el JSON, y la lista de
- * «Used in» quedandose corta justo en la relacion por la que una foto no se puede borrar.
+ * Como el listado editorial, se prueba el servicio y no la ruta HTTP: montar una petición
+ * autenticada contra un inquilino exige un arnés que la suite no tiene. Lo que se fija aquí es
+ * lo que puede romperse en silencio — una columna nueva colándose en el JSON, y la lista de
+ * «Used in» quedándose corta justo en la relación por la que una foto no se puede borrar.
  */
 class KilkanaMediaLibraryTest extends TestCase
 {
@@ -66,9 +66,8 @@ class KilkanaMediaLibraryTest extends TestCase
 
         $this->assertSame($expected, $published, 'la ficha publica claves que esta lista no nombra');
 
-        // `caption` sale, y antes no: la lista blanca de la mediateca lo escondia mientras la
-        // de la calle lo publicaba, asi que el pie de una foto lo veia un lector y no quien la
-        // edita. Dos listas para el mismo dato es como se llega a eso.
+        // `caption` sale: si la lista blanca de la mediateca lo esconde mientras la de la calle
+        // lo publica, el pie de una foto lo ve un lector y no quien la edita. Dos listas para el mismo dato es como se llega a eso.
         //
         // Los que no salen son los que llevan al fichero, y esos no dependen de la puerta.
         $this->assertSame('public', $photo->disk);
@@ -78,10 +77,10 @@ class KilkanaMediaLibraryTest extends TestCase
     }
 
     /**
-     * El encuadre viaja como numero y no como cadena.
+     * El encuadre viaja como número y no como cadena.
      *
      * `decimal` de MariaDB sale del JSON como «0.5000», y al otro lado un `x * ancho` con una
-     * cadena concatena en vez de multiplicar. El punto ya lo casteaba; el marco entro despues.
+     * cadena concatena en vez de multiplicar. Se castean el punto y el marco.
      */
     public function test_the_focal_point_and_the_crop_travel_as_numbers(): void
     {
@@ -91,7 +90,7 @@ class KilkanaMediaLibraryTest extends TestCase
         $row = $this->media->serialize($photo->fresh())->toArray();
 
         foreach (['focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h'] as $field) {
-            $this->assertIsFloat($row[$field], "«{$field}» no llega como numero");
+            $this->assertIsFloat($row[$field], "«{$field}» no llega como número");
         }
         $this->assertSame(0.42, $row['focal_x']);
         $this->assertSame(0.5, $row['crop_w']);
@@ -100,9 +99,9 @@ class KilkanaMediaLibraryTest extends TestCase
     /**
      * «Used in» nombra las TRES formas de estar en uso, no solo la portada.
      *
-     * Contar solo portadas ofrecia para borrar justo las fotos publicadas: la imagen social de
-     * un articulo y el retrato de una firma salian como libres. Las FK son SET NULL, asi que
-     * borrarlas no rompia la base — dejaba al articulo sin imagen social y al periodista sin
+     * Contar solo portadas ofrece para borrar justo las fotos publicadas: la imagen social de
+     * un artículo y el retrato de una firma salen como libres. Las FK son SET NULL, así que
+     * borrarlas no rompe la base — deja al artículo sin imagen social y al periodista sin
      * cara, sin un solo error.
      */
     public function test_used_in_names_the_three_ways_of_being_in_use(): void
@@ -130,15 +129,15 @@ class KilkanaMediaLibraryTest extends TestCase
     /**
      * Dos peticiones con el MISMO fichero: la segunda vuelve como duplicada, no como error.
      *
-     * El dedup es comprobar-y-luego-insertar, y entre las dos mitades cabe otra peticion con el
-     * mismo contenido: las dos ven la biblioteca sin el, las dos escriben, y la segunda choca
-     * contra el indice unico de `content_hash`. Salia como un 500, asi que el panel decia
-     * «rechazada» de un fichero que SI estaba dentro —y dejaba su copia huerfana en el disco—.
-     * Se veia soltando la misma foto dos veces en una tanda, porque el panel sube en paralelo.
+     * El dedup es comprobar-y-luego-insertar, y entre las dos mitades cabe otra petición con el
+     * mismo contenido: las dos ven la biblioteca sin él, las dos escriben, y la segunda choca
+     * contra el índice único de `content_hash`. Sin tratar el choque sale un 500, y el panel dice
+     * «rechazada» de un fichero que SÍ está dentro —y deja su copia huérfana en el disco—.
+     * Pasa al soltar la misma foto dos veces en una tanda, porque el panel sube en paralelo.
      *
      * El entrelazado se fuerza y no se espera: un oyente de `creating` mete la fila rival
-     * justo DESPUES de que el servicio haya mirado y justo ANTES de que escriba, que es
-     * exactamente el hueco de la carrera. Sin eso, la prueba dependeria de que dos hilos se
+     * justo DESPUÉS de que el servicio haya mirado y justo ANTES de que escriba, que es
+     * exactamente el hueco de la carrera. Sin eso, la prueba dependería de que dos hilos se
      * crucen, que es como se escribe una prueba que pasa siempre y no comprueba nada.
      */
     public function test_the_same_file_uploaded_concurrently_returns_as_duplicate(): void
@@ -171,16 +170,16 @@ class KilkanaMediaLibraryTest extends TestCase
 
         $this->assertTrue($result['duplicate'], 'el choque se contó como fallo y no como duplicado');
         $this->assertSame($rival, $result['media']->id, 'no devuelve la fila que ganó la carrera');
-        // Una sola fila con ese contenido: eso es lo que el indice unico existe para garantizar.
+        // Una sola fila con ese contenido: eso es lo que el índice único existe para garantizar.
         $this->assertSame(1, SnkKilkanaMediaModel::withTrashed()->where('content_hash', $hash)->count());
         // Y sin dejar su copia en el disco, que es basura que nadie va a reclamar.
         $this->assertCount(0, Storage::disk('public')->allFiles());
     }
 
     /**
-     * Las pestanas del panel son un filtro mas, y su cifra dice cuantos saldrian al pulsarlas
-     * DENTRO de lo que ya se esta mirando: en una coleccion de una foto, «Images 1». `facets`
-     * sigue contando el archivo entero, que es lo que mide la tira de estadisticas.
+     * Las pestañas del panel son un filtro más, y su cifra dice cuántos saldrían al pulsarlas
+     * DENTRO de lo que ya se está mirando: en una colección de una foto, «Images 1». `facets`
+     * sigue contando el archivo entero, que es lo que mide la tira de estadísticas.
      */
     public function test_tab_counts_count_within_the_filter(): void
     {
@@ -194,11 +193,11 @@ class KilkanaMediaLibraryTest extends TestCase
         $inside = $this->media->index(Request::create('/media', 'GET', ['collection' => 'Cultura']));
 
         $this->assertSame(['all' => 1, 'image' => 1, 'video' => 0, 'audio' => 0], $inside['scope']);
-        $this->assertSame(1, $inside['meta']['total'], 'la lista y las pestanas cuentan lo mismo');
-        $this->assertSame(2, $inside['facets']['all'], 'las estadisticas siguen midiendo el archivo entero');
+        $this->assertSame(1, $inside['meta']['total'], 'la lista y las pestañas cuentan lo mismo');
+        $this->assertSame(2, $inside['facets']['all'], 'las estadísticas siguen midiendo el archivo entero');
 
-        // Y el propio filtro de tipo no se cuenta a si mismo: con «Video» puesto, «Images»
-        // tiene que seguir diciendo cuantas hay, no cero.
+        // Y el propio filtro de tipo no se cuenta a sí mismo: con «Video» puesto, «Images»
+        // tiene que seguir diciendo cuántas hay, no cero.
         $video = $this->media->index(Request::create('/media', 'GET', ['kind' => 'video']));
         $this->assertSame(['all' => 2, 'image' => 2, 'video' => 0, 'audio' => 0], $video['scope']);
     }

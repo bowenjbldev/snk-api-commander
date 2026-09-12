@@ -76,11 +76,11 @@ class SnkKilkanaSettingModel extends Model
 
     /**
      * Los idiomas que la calle sabe servir: `lang`, `hreflang`, el formato de fecha y **el cromo**
-     * —el menu de la cabecera, la caja de comentarios, la hemeroteca—.
+     * —el menú de la cabecera, la caja de comentarios, la hemeroteca—.
      *
-     * Eran seis. Ofrecer una lengua cuyo menu sale en otra es peor que no ofrecerla, asi que la
-     * lista es la de lo que el panel tiene traducido de verdad, y se reabre cuando haya traduccion
-     * revisada por alguien que hable esa lengua.
+     * Ofrecer una lengua cuyo menú sale en otra es peor que no ofrecerla, así que la lista es la
+     * de lo que el panel tiene traducido de verdad, y se amplía cuando haya traducción revisada
+     * por alguien que hable esa lengua.
      */
     public const LANGS = ['es-ES', 'en-GB'];
 
@@ -161,7 +161,7 @@ class SnkKilkanaSettingModel extends Model
      * Lo que sale a la API sobre el vestido.
      *
      * Viaja el spec RESUELTO —el congelado con el retoque ya aplicado— y no las dos piezas por
-     * separado. Quien pinta no tiene que saber que hubo una copia ni en qué orden se mezclan:
+     * separado. Quien pinta no tiene que saber que hay una copia ni en qué orden se mezclan:
      * recibe el tema y lo emite. Es también lo que impide que dos clientes distintos resuelvan
      * la mezcla de dos maneras. El retoque suelto viaja además, porque el inspector necesita
      * saber qué tocó la redacción para pintar el «modificado» y ofrecer restaurar.

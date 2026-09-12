@@ -39,10 +39,6 @@ class SnkKilkanaReaderService
     }
 
     /**
-     * Si la cuenta es SOLO lectora. Spatie admite varios roles, y quien además tiene un asiento
-     * es un compañero aunque también comente: a ese no se le bloquea desde aquí. Falla cerrado.
-     */
-    /**
      * Cuelga de cada cuenta lo que la pantalla de lectores enseña de ella: comentarios,
      * lecturas del mes y su estado en el boletín.
      *
@@ -113,6 +109,10 @@ class SnkKilkanaReaderService
         });
     }
 
+    /**
+     * Si la cuenta es SOLO lectora. Spatie admite varios roles, y quien además tiene un asiento
+     * es un compañero aunque también comente: a ese no se le bloquea desde aquí. Falla cerrado.
+     */
     public function isReader(?CoreUserModel $user): bool
     {
         $roles = $user?->roles->pluck('name') ?? collect();

@@ -48,7 +48,7 @@ class SnkKilkanaSettingsController extends Controller
             'tenant.city' => 'nullable|string|max:255',
             // `url:http,https` y no `url` a secas: la dirección del periódico se pinta como
             // enlace y sale en cada correo, así que `javascript:` aquí es un agujero, igual
-            // que lo era en la web de una firma.
+            // que en la web de una firma.
             'tenant.url' => 'nullable|url:http,https|max:255',
             // Solo hacia delante: `true` sella `launched_at` si no lo estaba, y `false` no hace nada.
             'launched' => 'sometimes|boolean',

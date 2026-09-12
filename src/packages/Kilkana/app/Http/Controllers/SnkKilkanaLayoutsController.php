@@ -9,10 +9,10 @@ use Illuminate\Http\Request;
 use Packages\Kilkana\Services\SnkKilkanaLayoutService;
 
 /**
- * Documentos LayoutSchema del builder (portada/seccion), uno por fila, con concurrencia
- * optimista: el PUT exige la version leida y devuelve 409 con el estado actual si otro
- * guardado gano. La validacion estructural profunda del schema vive en el cliente
- * (normalizeLayoutSchema); aqui solo forma minima.
+ * Documentos LayoutSchema del builder (portada/sección), uno por fila, con concurrencia
+ * optimista: el PUT exige la versión leída y devuelve 409 con el estado actual si otro
+ * guardado ganó. La validación estructural profunda del schema vive en el cliente; aquí solo
+ * la forma mínima.
  */
 #[Group('Layouts')]
 class SnkKilkanaLayoutsController extends Controller
@@ -55,7 +55,7 @@ class SnkKilkanaLayoutsController extends Controller
         return response()->json($this->layouts->revisions($layout));
     }
 
-    /** Restaura una revisión del documento (el estado actual se snapshotea antes). */
+    /** Restaura una revisión del documento: el estado actual se guarda antes como revisión. */
     public function restore(string $layout, $revisionId): JsonResponse
     {
         $row = $this->layouts->restore($layout, $revisionId, auth()->id());

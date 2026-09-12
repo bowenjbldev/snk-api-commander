@@ -137,7 +137,7 @@ return [
     'warm' => [
         ...Octane::defaultServicesToWarm(),
         // La cola de metering tiene que vivir en el contenedor base del worker: resuelta dentro de
-        // una peticion caeria en su sandbox y se perderia con ella.
+        // una petición caería en su sandbox y se perdería con ella.
         CoreMeteringBufferSupport::class,
         // Y el registrar de permisos igual: guarda por worker la colección hidratada de cada base
         // (`CorePermissionRegistrarSupport`), y resuelto dentro de una petición moriría con ella.

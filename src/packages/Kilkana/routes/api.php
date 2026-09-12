@@ -53,7 +53,7 @@ Route::middleware(['api'])->group(function () {
     });
 });
 
-// Lectura pública (sin auth): solo published, resuelta por slug (URLs SEO).
+// Lectura pública (sin auth): solo lo publicado, resuelto por slug (URLs SEO).
 Route::middleware(['api'])->group(function () {
     Route::get('public/posts', [SnkKilkanaPublicController::class, 'posts']);
     Route::get('public/sitemap', [SnkKilkanaPublicController::class, 'sitemap']);
@@ -127,8 +127,8 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::get('media/{id}/frame/{at}', [SnkKilkanaMediaController::class, 'frame'])->whereNumber(['id', 'at']);
     Route::post('media/{id}/poster', [SnkKilkanaMediaController::class, 'poster'])->whereNumber('id');
     // Sin `store`: un medio ENTRA por `upload` o por `replace`, que calculan hash, ruta y
-    // dimensiones. El alta genérica no validaba nada —el controlador no declara reglas, así
-    // que el base metía `$request->all()` en el modelo— y dejaba escribir `disk` y `path`,
+    // dimensiones. El alta genérica no valida nada —el controlador no declara reglas, así
+    // que el base mete `$request->all()` en el modelo— y dejaría escribir `disk` y `path`,
     // que son justo lo que `Storage::delete` consume al vaciar la papelera.
     Route::apiResource('media', SnkKilkanaMediaController::class)->except('store');
     // Taxonomías de medios: tags y colecciones comparten controlador; el segmento {taxonomy} decide el modelo.
@@ -137,13 +137,13 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::put('media-{taxonomy}/{id}', [SnkKilkanaMediaTaxonomiesController::class, 'update'])->whereIn('taxonomy', ['tags', 'collections'])->whereNumber('id')->middleware('can:update media');
     Route::post('media-{taxonomy}/{id}/merge', [SnkKilkanaMediaTaxonomiesController::class, 'merge'])->whereIn('taxonomy', ['tags', 'collections'])->whereNumber('id')->middleware('can:update media');
     Route::delete('media-{taxonomy}/{id}', [SnkKilkanaMediaTaxonomiesController::class, 'destroy'])->whereIn('taxonomy', ['tags', 'collections'])->whereNumber('id')->middleware('can:update media');
-    // Antes del apiResource: `tags/{id}/merge` no choca con `show`, pero declararla despues
-    // deja la fusion escondida detras del recurso al leer las rutas de una taxonomia.
+    // Antes del apiResource: `tags/{id}/merge` no choca con `show`, pero declararla después
+    // deja la fusión escondida detrás del recurso al leer las rutas de una taxonomía.
     //
-    // Y las dos con `whereNumber`: sin el, `tags/1abc` llega al controlador y MySQL castea el
-    // id al comparar, asi que `DELETE tags/1abc` borra la etiqueta 1 —con sus piezas
-    // desetiquetadas— y `POST tags/1abc/merge` funde la 1. Es el mismo `where` que ya acotan
-    // las taxonomias de medios y las portadas, aplicado a lo que se puede destruir.
+    // Y las dos con `whereNumber`: sin él, `tags/1abc` llega al controlador y MySQL castea el
+    // id al comparar, así que `DELETE tags/1abc` borra la etiqueta 1 —con sus piezas
+    // desetiquetadas— y `POST tags/1abc/merge` funde la 1. Es el mismo `where` que acota las
+    // taxonomías de medios y las portadas, aplicado a lo que se puede destruir.
     Route::post('tags/{id}/merge', [SnkKilkanaTagsController::class, 'merge'])->whereNumber('id');
     Route::apiResource('tags', SnkKilkanaTagsController::class)->whereNumber('tag');
     // Antes del apiResource, como en posts: si no, `show` se traga «bulk» como id.
@@ -190,16 +190,16 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     // Tampoco `can:show settings`, que dejaría sin plan a cuatro de los seis que sí deben verlo.
     Route::get('plan', [SnkKilkanaPlanController::class, 'show'])->middleware('can:index posts');
 
-    // Las dos pantallas que el panel pedía a trozos. No sustituyen al CRUD por recurso —que
-    // sigue siendo el contrato general y lo usa el resto del panel—: son un atajo para las dos
-    // pantallas donde la medida decía que el coste eran los viajes y no las consultas.
+    // Las dos pantallas que el panel pediría a trozos. No sustituyen al CRUD por recurso —que
+    // es el contrato general y lo usa el resto del panel—: son un atajo para las dos pantallas
+    // donde lo que cuesta, medido, son los viajes y no las consultas.
     //
     // `bootstrap` no lleva permiso propio a propósito: cada sección conserva el suyo y la que
     // quien mira no puede ver llega nula. Un `can:` aquí dejaría al moderador —que no tiene
     // ninguno de los tres catálogos— sin armazón desde el que irse a su pantalla.
     Route::get('panel/bootstrap', [SnkKilkanaPanelController::class, 'bootstrap']);
     Route::get('panel/dashboard', [SnkKilkanaPanelController::class, 'dashboard'])->middleware('can:index posts');
-    // El idioma del panel es de quien mira, no del periodico: sin permiso, porque cada cuenta
+    // El idioma del panel es de quien mira, no del periódico: sin permiso, porque cada cuenta
     // solo puede tocar el suyo.
     Route::put('panel/locale', [SnkKilkanaPanelController::class, 'locale']);
 
@@ -209,7 +209,7 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::get('activity', [SnkKilkanaActivityController::class, 'index'])->middleware('can:view others posts');
     Route::post('activity/seen', [SnkKilkanaActivityController::class, 'seen'])->middleware('can:view others posts');
 
-    // El output gate: el veredicto de la última pasada, y la pasada nueva que lo sustituye.
+    // La puerta de salida: el veredicto de la última pasada, y la pasada nueva que lo sustituye.
     // Quien audita es la salida pública; aquí se guarda y se lee.
     Route::get('gate', [SnkKilkanaGateController::class, 'index']);
     Route::put('gate', [SnkKilkanaGateController::class, 'store']);

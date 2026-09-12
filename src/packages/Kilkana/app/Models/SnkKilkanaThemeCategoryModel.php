@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  *
  * Vocabulario cerrado que llega del fichero maestro. No hay alta por API a propósito: una
  * categoría que se puede crear al vuelo deja de ser un filtro y se convierte en la lista de
- * sinónimos de quien la escribió — la lección que ya dejó `kilkana_tags`.
+ * sinónimos de quien la escribió.
  */
 class SnkKilkanaThemeCategoryModel extends Model
 {

@@ -108,7 +108,7 @@ class KilkanaActivityTest extends TestCase
         $this->assertSame(['verb' => 'tags_merged', 'what' => 'movilidad', 'params' => null], SnkKilkanaActivityService::fromLegacy('merged the tags', 'movilidad-urbana into movilidad', 'movilidad'));
         $this->assertSame(['verb' => 'front_published', 'what' => '', 'params' => ['layout' => 'section']], SnkKilkanaActivityService::fromLegacy('published the front page', 'Section'));
         $this->assertSame(['verb' => 'uploaded', 'what' => '', 'params' => null], SnkKilkanaActivityService::fromLegacy('uploaded', 'a file'));
-        $this->assertNull(SnkKilkanaActivityService::fromLegacy('published_elsewhere', 'Plan'), 'Lo que no es una frase de antes no se toca.');
+        $this->assertNull(SnkKilkanaActivityService::fromLegacy('published_elsewhere', 'Plan'), 'Lo que no es una frase heredada no se toca.');
     }
 
     /** Los movimientos de cuentas son de quien administra cuentas; la máquina no cuenta como persona. */

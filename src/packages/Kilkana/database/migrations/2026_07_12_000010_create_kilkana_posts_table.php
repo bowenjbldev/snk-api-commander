@@ -42,8 +42,8 @@ return new class extends Migration
         // El buscador del sitio, sin motor externo. Va aparte y con guarda de driver porque
         // sqlite no compila un índice FULLTEXT y aborta la migración entera: sin esto el
         // esquema de un inquilino no se puede levantar en pruebas, y nada de la API editorial
-        // tiene arnés. Sobre MariaDB el resultado es exactamente el mismo de antes, así que
-        // no evoluciona el esquema desplegado: lo hace portable al driver de la suite.
+        // tiene arnés. Sobre MariaDB el índice es el mismo: la guarda solo hace el esquema
+        // portable al driver de la suite.
         if (Schema::getConnection()->getDriverName() !== 'sqlite') {
             Schema::table('kilkana_posts', function (Blueprint $table) {
                 $table->fullText(['title', 'excerpt']);

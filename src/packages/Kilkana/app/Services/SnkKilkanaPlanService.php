@@ -34,7 +34,7 @@ class SnkKilkanaPlanService
         }
 
         // **Activo, como lo exige el medidor.** `targetInstanceIds` solo cuenta los ítems con
-        // `status = active`, así que un ítem dado de baja ya no acota nada: servir su plan sería
+        // `status = active`, así que un ítem dado de baja no acota nada: servir su plan sería
         // rotular un contrato que no se aplica.
         $item = $instance->subscriptionItem()
             ->where('status', 'active')
@@ -72,7 +72,7 @@ class SnkKilkanaPlanService
                 // miden y las dos se aplican —una de suscripción que suspende apaga todas las
                 // cabeceras del grupo (`targetInstanceIds`)—. Quien las funda en una pierde la que
                 // no dibuja, y el provisioning crea SIEMPRE la de instancia, así que la que se
-                // perdía era la compartida.
+                // pierde es la compartida.
                 'scope' => $quota->subscription_id !== null ? 'subscription' : 'instance',
                 'name' => $quota->metric->name,
                 'unit' => $quota->metric->unit,
@@ -87,7 +87,7 @@ class SnkKilkanaPlanService
                 // solo puede decir «no pasa nada», que es cierto en tres de los cuatro casos.
                 'action' => $quota->action,
                 // Cuántos periodos seguidos por encima hacen falta para que esa acción ocurra.
-                // Es `settable` de 1 a 12, así que un «dos meses» escrito en el panel es una
+                // Se configura de 1 a 12 por contrato, así que un «dos meses» escrito en el panel es una
                 // afirmación sobre un contrato que el panel no ve.
                 'consecutive_periods' => $quota->consecutive_periods,
             ])->values()->all(),
@@ -119,9 +119,9 @@ class SnkKilkanaPlanService
 
         // **Y solo las de métricas vivas.** `CommanderQuotaMeasurerService` salta las inactivas
         // —deja de medirlas y deja de aplicarlas—, así que su `current_value` se queda congelado
-        // en la última pasada. Servirlo igual pone al panel a informar sobre un tope que ya no
-        // acota: una cifra rancia que solo se dibujaba mal ahora enciende un aviso que promete una
-        // suspensión que no puede ocurrir. Lo que se aplica y lo que se informa tienen que
+        // en la última pasada. Servirlo igual pone al panel a informar sobre un tope que no
+        // acota: una cifra rancia que enciende un aviso que promete una suspensión que no puede
+        // ocurrir. Lo que se aplica y lo que se informa tienen que
         // decidirse con la misma condición.
         return $quotasBy('instance_id', $instance->getKey())
             ->concat($quotasBy('subscription_id', $subscriptionId))

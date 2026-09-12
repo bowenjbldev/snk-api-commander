@@ -6,8 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 use Packages\Kilkana\Enums\SnkKilkanaConsentSourceEnum;
 use Packages\Kilkana\Enums\SnkKilkanaSubscriberStatusEnum;
 
-// Suscriptor del boletin. Lo que significa cada estado lo dice SnkKilkanaSubscriberStatusEnum,
-// y de donde salio su correo, SnkKilkanaConsentSourceEnum.
+// Suscriptor del boletín. Lo que significa cada estado lo dice SnkKilkanaSubscriberStatusEnum,
+// y de dónde salió su correo, SnkKilkanaConsentSourceEnum.
 class SnkKilkanaSubscriberModel extends Model
 {
     protected $table = 'kilkana_subscribers';
@@ -25,7 +25,7 @@ class SnkKilkanaSubscriberModel extends Model
         static::creating(function (self $subscriber) {
             // Un alta que no dice de dónde salió procede del flujo administrativo:
             // es el único camino de creación que no lo declara —el formulario público pone
-            // `public_form`, y el seeder y la importacion `import`—. Aqui y no en el
+            // `public_form`, y el seeder y la importación `import`—. Aquí y no en el
             // controlador porque el `store()` base crea con lo validado y no admite retoques
             // en medio.
             $subscriber->consent_source ??= SnkKilkanaConsentSourceEnum::Admin;

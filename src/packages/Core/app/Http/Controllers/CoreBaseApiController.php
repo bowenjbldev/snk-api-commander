@@ -35,10 +35,9 @@ abstract class CoreBaseApiController extends Controller
      * Lo que este recurso deja pedir por query string, con los nombres de
      * `spatie/laravel-query-builder`: `?include=`, `?fields=`, `?sort=` y `?filter[x]=`.
      *
-     * Se adoptan **sus** nombres y no los que había aquí. Lo que estaba escrito a mano
-     * —resolver `?with=`, recortar columnas, leer el `-` del orden— lo hace el paquete, y con
-     * su vocabulario: quien conoce spatie conoce esta API sin leer nada, y no hay una segunda
-     * convención de la casa que mantener.
+     * Son **sus** nombres: resolver relaciones, recortar columnas y leer el `-` del orden lo
+     * hace el paquete, y con su vocabulario: quien conoce spatie conoce esta API sin leer nada,
+     * y no hay una segunda convención de la casa que mantener.
      */
     protected array $allowedIncludes = [];
 
@@ -75,11 +74,10 @@ abstract class CoreBaseApiController extends Controller
      * El `JsonResource` que declara la forma de salida de este recurso, si lo tiene.
      *
      * Sin él, el CRUD serializa el modelo tal cual y la forma la deciden `$hidden`, `$appends` y
-     * `$with` —global por modelo, y por tanto igual para el editor, el listado y la calle, que
-     * es justo lo que obligó a inventar listas blancas en tres sitios—. Con él, la forma se
-     * declara una vez y **quien llama elige qué columnas dentro del techo**.
+     * `$with` —global por modelo, y por tanto igual para el editor, el listado y la calle—. Con
+     * él, la forma se declara una vez y **quien llama elige qué columnas dentro del techo**.
      *
-     * Se declara recurso a recurso: lo que no lo tenga sigue saliendo como salía.
+     * Se declara recurso a recurso: lo que no lo tiene sale como el modelo serializado.
      */
     protected ?string $resourceClass = null;
 
@@ -108,7 +106,7 @@ abstract class CoreBaseApiController extends Controller
      */
     protected function queryBuilder(?Builder $query = null): QueryBuilder
     {
-        // Dos cosas del orden y de la forma, las dos pagadas con un 500:
+        // Dos cosas del orden y de la forma, y saltarse cualquiera de las dos da un 500:
         //
         // - **`allowedFields()` va antes que `allowedIncludes()`.** Declarar una inclusión
         //   resuelve ahí mismo los campos de esa relación, y si la lista blanca todavía no

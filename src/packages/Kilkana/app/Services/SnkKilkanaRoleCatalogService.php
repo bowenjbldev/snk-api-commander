@@ -10,7 +10,7 @@ use Spatie\Permission\Models\Role;
  *
  * Vive aquí y no dentro del seeder porque tiene **dos llamadores y una sola verdad**: el
  * seeder lo aplica al nacer un periódico, y `kilkana:sync-permissions` lo reaplica sobre los
- * que ya existían cuando el reparto cambia. Escrito dos veces serían dos escritores de
+ * que ya existen cuando el reparto cambia. Escrito dos veces serían dos escritores de
  * `role_has_permissions` que un día divergen, y el que perdiera sería el que no se ejecutó.
  *
  * El CRUD por recurso no describe un periódico: funde en un solo `update posts` tres poderes

@@ -10,12 +10,12 @@ use Packages\Kilkana\Services\SnkKilkanaThemeWearService;
 use Tests\TestCase;
 
 /**
- * El vestido del periodico: los rangos del retoque y el mapeo que sale a la API.
+ * El vestido del periódico: los rangos del retoque y el mapeo que sale a la API.
  *
- * Estos casos no tocan la base a proposito: las migraciones de negocio de Kilkana no se cargan
- * en la conexion por defecto (ver `CoreServiceProvider::boot`) y la suite corre sobre sqlite,
+ * Estos casos no tocan la base a propósito: las migraciones de negocio de Kilkana no se cargan
+ * en la conexión por defecto (ver `CoreServiceProvider::boot`) y la suite corre sobre sqlite,
  * que no admite el `ALTER TABLE ... ADD CONSTRAINT CHECK` con el que se declara el singleton.
- * Lo que si es comprobable aqui, y es lo que importa, es que un valor fuera de banda no entre.
+ * Lo que sí es comprobable aquí, y es lo que importa, es que un valor fuera de banda no entre.
  */
 class SnkKilkanaThemeWearTest extends TestCase
 {
@@ -51,10 +51,10 @@ class SnkKilkanaThemeWearTest extends TestCase
     }
 
     /**
-     * Un color tiene que ser un hex de seis digitos.
+     * Un color tiene que ser un hex de seis dígitos.
      *
-     * `red` o `var(--algo)` son CSS validos y por eso es tentador dejarlos pasar, pero acaban
-     * emitidos como custom property en la hoja del periodico sin que nadie los acote.
+     * `red` o `var(--algo)` son CSS válidos y por eso es tentador dejarlos pasar, pero acaban
+     * emitidos como custom property en la hoja del periódico sin que nadie los acote.
      */
     public function test_it_rejects_a_colour_that_is_not_hex(): void
     {
@@ -77,12 +77,12 @@ class SnkKilkanaThemeWearTest extends TestCase
         ] as $field => $data) {
             $validator = $this->validate(['theme_overrides' => $data]);
 
-            $this->assertTrue($validator->fails(), "{$field} deberia haber fallado");
+            $this->assertTrue($validator->fails(), "{$field} debería haber fallado");
             $this->assertArrayHasKey($field, $validator->errors()->toArray());
         }
     }
 
-    /** Un numero sin unidad no es un valor CSS, y `themeVars()` lo emitiria tal cual. */
+    /** Un número sin unidad no es un valor CSS, y `themeVars()` lo emitiría tal cual. */
     public function test_it_rejects_a_css_value_without_its_unit(): void
     {
         $validator = $this->validate(['theme_overrides' => ['hero' => ['tracking' => '-0.02']]]);
@@ -91,10 +91,10 @@ class SnkKilkanaThemeWearTest extends TestCase
     }
 
     /**
-     * Una clave que no esta declarada no se rechaza: no se guarda.
+     * Una clave que no está declarada no se rechaza: no se guarda.
      *
      * Es la diferencia entre lo que el tema deja tocar y lo que es del tema —el kicker, la
-     * tarjeta, las familias tipograficas—. Mandar `fontSerif` no es un error del cliente,
+     * tarjeta, las familias tipográficas—. Mandar `fontSerif` no es un error del cliente,
      * simplemente no es suyo.
      */
     public function test_it_drops_keys_that_are_not_part_of_the_tweak(): void
@@ -126,7 +126,7 @@ class SnkKilkanaThemeWearTest extends TestCase
      * Con retoque, el resuelto lo aplica encima y el suelto sigue viajando aparte.
      *
      * El retoque que no es de color son dos cosas: el aire (`density`) y la APERTURA (`hero`).
-     * Los otros nueve peldanos son la escala del tema, y tocarlos uno a uno seria redisenarlo
+     * Los otros nueve peldaños son la escala del tema, y tocarlos uno a uno sería rediseñarlo
      * en vez de vestirlo.
      */
     public function test_the_resolved_spec_layers_the_newsroom_tweak_on_top(): void
@@ -157,16 +157,16 @@ class SnkKilkanaThemeWearTest extends TestCase
         $this->assertSame(60, $resolved['density']['rowGap']);
         $this->assertSame(18, $resolved['density']['blockGap'], 'lo que no se toca se hereda del spec');
         $this->assertSame(64, $resolved['type']['steps']['hero']['size']);
-        $this->assertSame(700, $resolved['type']['steps']['hero']['weight'], 'el peldano se mezcla, no se sustituye');
-        $this->assertSame(20, $resolved['type']['steps']['card']['size'], 'los otros peldanos no se tocan');
+        $this->assertSame(700, $resolved['type']['steps']['hero']['weight'], 'el peldaño se mezcla, no se sustituye');
+        $this->assertSame(20, $resolved['type']['steps']['card']['size'], 'los otros peldaños no se tocan');
         $this->assertSame('Georgia, serif', $resolved['type']['display']);
     }
 
     /**
      * El payload de ajustes: plano en la base, anidado en la API, y con el tema resuelto.
      *
-     * `version` no viaja: un control optimista que ningun cliente manda no protege de nada, y
-     * el numero solo daria la impresion de que si.
+     * `version` no viaja: un control optimista que ningún cliente manda no protege de nada, y
+     * el número solo daría la impresión de que sí.
      */
     public function test_settings_payload_nests_the_tenant_and_resolves_the_theme(): void
     {
@@ -195,10 +195,10 @@ class SnkKilkanaThemeWearTest extends TestCase
     }
 
     /**
-     * El aviso de actualizacion compara VERSIONES, no los dos JSON.
+     * El aviso de actualización compara VERSIONES, no los dos JSON.
      *
-     * La version es lo que sube el fichero maestro al publicar, asi que es la unica senal que no
-     * depende de como se serialice un spec.
+     * La versión es lo que sube el fichero maestro al publicar, así que es la única señal que no
+     * depende de cómo se serialice un spec.
      */
     public function test_it_flags_an_update_only_when_the_catalogue_moved_on(): void
     {
@@ -212,7 +212,7 @@ class SnkKilkanaThemeWearTest extends TestCase
         $upToDate->setRelation('theme', $theme);
         $this->assertFalse(app(SnkKilkanaThemeWearService::class)->updateAvailable($upToDate));
 
-        // Sin tema del catalogo detras —retirado, o base recien sembrada— no hay con que comparar.
+        // Sin tema del catálogo detrás —retirado, o base recién sembrada— no hay con qué comparar.
         $orphan = new SnkKilkanaSettingModel(['theme_version' => '2.0.0']);
         $orphan->setRelation('theme', null);
         $this->assertFalse(app(SnkKilkanaThemeWearService::class)->updateAvailable($orphan));

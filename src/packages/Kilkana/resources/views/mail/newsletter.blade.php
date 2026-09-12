@@ -1,8 +1,8 @@
 {{--
-    Un numero del boletin. Markdown para que la maqueta la ponga Laravel, como el resto de
-    correos del paquete. En INGLES como todo lo que ve el lector: el contrato del producto lo es.
+    Un número del boletín. Markdown para que la maqueta la ponga Laravel, como el resto de
+    correos del paquete. En INGLÉS como todo lo que ve el lector: el contrato del producto lo es.
 
-    El pixel va al final y solo cuando hay a quien contarselo: una prueba no lleva.
+    El píxel va al final y solo cuando hay a quien contárselo: una prueba no lleva.
 --}}
 @component('mail::message')
 @if ($preheader)

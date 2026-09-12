@@ -7,11 +7,11 @@ use Packages\Kilkana\Database\Seeders\SnkKilkanaDemoProse;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Un cuerpo de demo tiene que leerse como un articulo, no como una plantilla.
+ * Un cuerpo de demo tiene que leerse como un artículo, no como una plantilla.
  *
- * Lo que se fija: no se repite un parrafo dentro de la pieza, dos piezas de la misma seccion no
+ * Lo que se fija: no se repite un párrafo dentro de la pieza, dos piezas de la misma sección no
  * son la misma con otro titular, el cierre no es una frase con la etiqueta dentro, y el largo es
- * el de un articulo y no el de un titular con dos frases.
+ * el de un artículo y no el de un titular con dos frases.
  */
 class SnkKilkanaDemoBodyFactoryTest extends TestCase
 {
@@ -44,7 +44,7 @@ class SnkKilkanaDemoBodyFactoryTest extends TestCase
                 $cat = array_search($family, SnkKilkanaDemoBodyFactory::FAMILY_OF, true);
                 $paragraphs = $this->paragraphs(SnkKilkanaDemoBodyFactory::blocks($this->makePost($slug, $cat), 7));
 
-                $this->assertSame(count($paragraphs), count(array_unique($paragraphs)), "{$family}/{$slug} repite un parrafo.");
+                $this->assertSame(count($paragraphs), count(array_unique($paragraphs)), "{$family}/{$slug} repite un párrafo.");
                 $this->assertGreaterThanOrEqual(9, count($paragraphs));
             }
         }
@@ -55,9 +55,9 @@ class SnkKilkanaDemoBodyFactoryTest extends TestCase
         $one = $this->paragraphs(SnkKilkanaDemoBodyFactory::blocks($this->makePost('el-pleno-aprueba-el-plan'), 7));
         $other = $this->paragraphs(SnkKilkanaDemoBodyFactory::blocks($this->makePost('los-vecinos-piden-plazos'), 7));
 
-        // La entradilla es la misma en la prueba; lo demas casi no coincide.
+        // La entradilla es la misma en la prueba; lo demás casi no coincide.
         $shared = count(array_intersect($one, $other)) - 1;
-        $this->assertLessThanOrEqual(3, $shared, 'Dos piezas seguidas comparten como mucho tres parrafos de nueve.');
+        $this->assertLessThanOrEqual(3, $shared, 'Dos piezas seguidas comparten como mucho tres párrafos de nueve.');
     }
 
     public function test_the_closing_does_not_contain_the_tag_and_the_post_is_long(): void
@@ -66,7 +66,7 @@ class SnkKilkanaDemoBodyFactoryTest extends TestCase
         $text = implode(' ', $this->paragraphs($blocks));
 
         $this->assertStringNotContainsString('El seguimiento de pleno', $text);
-        $this->assertGreaterThan(200, count(preg_split('/\s+/u', trim($text))), 'Un articulo, no un titular con dos frases.');
+        $this->assertGreaterThan(200, count(preg_split('/\s+/u', trim($text))), 'Un artículo, no un titular con dos frases.');
 
         $caption = collect($blocks)->firstWhere('type', 'image')['config']['caption'];
         $this->assertSame('Primera frase de la entradilla.', $caption);
@@ -77,7 +77,7 @@ class SnkKilkanaDemoBodyFactoryTest extends TestCase
         }
     }
 
-    /** El muro corta donde se lee gratis: una `locked` ensena entradilla y un parrafo. */
+    /** El muro corta donde se lee gratis: una `locked` enseña entradilla y un párrafo. */
     public function test_the_paywall_sits_inside_the_body(): void
     {
         $blocks = SnkKilkanaDemoBodyFactory::blocks($this->makePost('slug', 'local', 'locked'), 7);

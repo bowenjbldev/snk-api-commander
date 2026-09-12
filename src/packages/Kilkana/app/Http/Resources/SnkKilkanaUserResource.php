@@ -34,7 +34,7 @@ class SnkKilkanaUserResource extends JsonResource
             /*
              * Atado a la clave y **no a los dos sellos que lee**: son columnas anulables, y una
              * cuenta recién creada no las lleva en sus atributos —`create()` solo guarda lo que
-             * se le pasó—, así que condicionarlo a ellas dejaba el alta sin estado. Se leen del
+             * se le pasó—, así que condicionarlo a ellas dejaría el alta sin estado. Se leen del
              * array crudo por lo mismo: pedirlas por su nombre reventaría el día que se encienda
              * `preventAccessingMissingAttributes()`.
              */

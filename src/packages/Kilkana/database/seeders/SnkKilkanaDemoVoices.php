@@ -3,12 +3,12 @@
 namespace Packages\Kilkana\Database\Seeders;
 
 /**
- * Lo que dicen los lectores de la demo, por familia de seccion y por tono.
+ * Lo que dicen los lectores de la demo, por familia de sección y por tono.
  *
  * Solo texto: quien lo reparte es `seedComments()`. Un comentario de deportes habla del
- * partido y uno de economia de los precios, porque en un periodico de verdad la gente comenta lo
- * que ha leido. Los generales valen para cualquier pieza —agradecen, discrepan, corrigen,
- * preguntan— y son los que hacen que dos hilos de la misma seccion no suenen iguales.
+ * partido y uno de economía de los precios, porque en un periódico de verdad la gente comenta lo
+ * que ha leído. Los generales valen para cualquier pieza —agradecen, discrepan, corrigen,
+ * preguntan— y son los que hacen que dos hilos de la misma sección no suenen iguales.
  */
 final class SnkKilkanaDemoVoices
 {

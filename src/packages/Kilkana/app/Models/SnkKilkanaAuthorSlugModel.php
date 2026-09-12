@@ -5,7 +5,7 @@ namespace Packages\Kilkana\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-// URLs retiradas de una firma: la vieja redirige a la ficha actual. Ver `docs/02-firmas.md`.
+// URLs retiradas de una firma: la vieja redirige a la ficha actual. Ver `docs/products/kilkana/database/02-firmas.md`.
 class SnkKilkanaAuthorSlugModel extends Model
 {
     protected $table = 'kilkana_author_slugs';

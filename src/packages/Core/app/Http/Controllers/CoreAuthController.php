@@ -33,7 +33,7 @@ class CoreAuthController extends Controller
             'password' => 'required|string|max:255',
         ]);
 
-        // Aislamiento por BD: el login corre contra la BD del subdominio (conexion ya conmutada por
+        // Aislamiento por BD: el login corre contra la BD del subdominio (conexión ya conmutada por
         // CoreResolveInstanceFromHostMiddleware) o la commander (operador). Solo busca por email.
         /** @var CoreUserModel|null $user */
         $user = CoreUserModel::query()->where('email', $data['email'])->first();
@@ -48,7 +48,7 @@ class CoreAuthController extends Controller
             return response()->json(['error' => 'Invalid credentials'], 401);
         }
 
-        // Nombre, capacidades y caducidad son politica del servidor, nunca entrada del cliente.
+        // Nombre, capacidades y caducidad son política del servidor, nunca entrada del cliente.
         $token = $user->createToken(
             'login',
             ['api'],
@@ -59,8 +59,8 @@ class CoreAuthController extends Controller
             'token' => $token->plainTextToken,
             'token_type' => 'Bearer',
             // Cuando deja de servir. Sin esto, quien lo guarda no tiene forma de saberlo salvo
-            // por un 401, y el minuto acaba escrito tambien en el cliente — dos fuentes para el
-            // mismo numero, y la que manda es la que lo emite.
+            // por un 401, y el minuto acaba escrito también en el cliente — dos fuentes para el
+            // mismo número, y la que manda es la que lo emite.
             'expires_at' => $token->accessToken->expires_at?->toIso8601String(),
             'user' => $user,
             'token_id' => $token->accessToken->id,

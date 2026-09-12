@@ -7,11 +7,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Renombrar una entidad publica sin romper lo que ya esta enlazado.
+ * Renombrar una entidad pública sin romper lo que ya está enlazado.
  *
- * Lo comparten las entidades cuya ruta publica ES su slug —firmas y secciones—. Los
- * articulos NO lo usan: su ruta son cuatro segmentos con la fecha sellada delante y sus
- * reglas son otras (desempate por dia, tercer salto de reparacion). Forzarlos aqui seria
+ * Lo comparten las entidades cuya ruta pública ES su slug —firmas y secciones—. Los
+ * artículos NO lo usan: su ruta son cuatro segmentos con la fecha sellada delante y sus
+ * reglas son otras (desempate por día, tercer salto de reparación). Forzarlos aquí sería
  * abstraer dos cosas que solo se parecen por fuera.
  *
  * Lo que aporta son las dos mitades del mismo hecho:
@@ -19,13 +19,13 @@ use Illuminate\Validation\ValidationException;
  *   guardar   la ruta que se deja entra en el historial; la que se toma sale, si era suya
  *   proteger  no se puede tomar una ruta que otro tiene viva NI retirada
  *
- * La segunda es la que no es evidente: una URL retirada sigue redirigiendo, asi que no esta
- * libre. Sin ella, renombrar encima de la redireccion de otro la borraria y sus lectores
- * acabarian en la entidad equivocada, con un 200 y sin ninguna señal.
+ * La segunda es la que no es evidente: una URL retirada sigue redirigiendo, así que no está
+ * libre. Sin ella, renombrar encima de la redirección de otro la borraría y sus lectores
+ * acabarían en la entidad equivocada, con un 200 y sin ninguna señal.
  */
 trait SnkKilkanaRetiredSlugsSupport
 {
-    /** Las rutas que esta entidad ha dejado atras. */
+    /** Las rutas que esta entidad ha dejado atrás. */
     abstract public function retiredSlugs(): HasMany;
 
     /** El modelo de esa tabla, para poder preguntar por rutas de OTROS. */
@@ -38,7 +38,7 @@ trait SnkKilkanaRetiredSlugsSupport
      * Ocupada si la tiene otra entidad viva o si la conserva el historial de otra.
      *
      * `$ignoreId` deja fuera a la propia: su URL vieja no puede bloquearle, o revertir un
-     * renombrado seria imposible.
+     * renombrado sería imposible.
      */
     public static function slugTaken(string $slug, ?int $ignoreId = null): bool
     {
@@ -74,14 +74,14 @@ trait SnkKilkanaRetiredSlugsSupport
                 return;
             }
 
-            // Dentro de `updated` el original todavia no se ha sincronizado: es el de antes.
+            // Dentro de `updated` el original todavía no se ha sincronizado: es el previo al cambio.
             $previousSlug = $model->getOriginal('slug');
             if ($previousSlug) {
                 $model->retiredSlugs()->updateOrCreate(['path' => $previousSlug]);
             }
 
-            // Y la que acaba de adoptar deja de ser redireccion, o apuntaria a si misma.
-            // Acotado a las suyas: la de otro no se toca ni existiendo dato viejo.
+            // Y la que acaba de adoptar deja de ser redirección, o apuntaría a sí misma.
+            // Acotado a las suyas: la de otro no se toca aunque exista la fila.
             $model->retiredSlugs()->where('path', $model->slug)->delete();
         });
     }

@@ -20,9 +20,8 @@ use Illuminate\Support\Facades\Schema;
  * justo el dato que esa pantalla publica.
  *
  * Va como migración aparte y no editando la que creó la tabla, que es la regla del repo: la
- * `000018` ya se aplicó en todas las bases vivas, así que reescribirla no habría cambiado
- * ninguna. Solo las que nacen de cero —las de la suite, que se migran en cada ejecución— y por
- * eso el fallo no se veía hasta abrir el periódico de demo.
+ * `000018` ya está aplicada en las bases vivas, y reescribirla solo cambiaría las que nacen de
+ * cero, como las de la suite.
  */
 return new class extends Migration
 {
@@ -49,7 +48,7 @@ return new class extends Migration
             $table->boolean('onboarded')->default(false);
         });
 
-        // Al revés se pierde el día y queda el hecho, que es lo que había antes.
+        // Al revés se pierde el día y queda el hecho: el flag, sin fecha.
         DB::table('kilkana_settings')->whereNotNull('launched_at')->update(['onboarded' => true]);
 
         Schema::table('kilkana_settings', function (Blueprint $table) {

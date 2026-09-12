@@ -5,27 +5,26 @@ namespace Packages\Kilkana\Enums;
 use Packages\Kilkana\Enums\Concerns\SnkKilkanaEnumValuesSupport;
 
 /**
- * Los documentos componibles del periodico, y la UNICA definicion de cuales son.
+ * Los documentos componibles del periódico, y la ÚNICA definición de cuáles son.
  *
- * No es un estado: es una lista cerrada de DOCUMENTOS. Le aplica la misma regla igualmente
- * —una lista cerrada se declara como tal— porque el problema era el mismo: los dos valores
- * estaban escritos a mano en cinco `whereIn` de las rutas y la columna era un `varchar(16)`
- * que aceptaba cualquier cosa.
+ * No es un estado: es una lista cerrada de DOCUMENTOS, y le aplica la misma regla —una lista
+ * cerrada se declara como tal—. De aquí la leen los `whereIn` de las rutas y la columna, que
+ * de otro modo aceptaría cualquier cosa.
  *
- * Con una puerta lateral, ademas: el servicio hace `firstOrCreate`, asi que cualquier llamada
- * con una cadena inventada CREABA la fila. Lo unico que lo impedia era el filtro de las rutas,
- * por el que no pasan ni el seeder ni la consola.
+ * Y hay una puerta lateral: el servicio hace `firstOrCreate`, así que una llamada con una
+ * cadena inventada CREARÍA la fila, y el filtro de las rutas no lo pasan ni el seeder ni la
+ * consola.
  *
- * Hoy son dos y llevan tiempo siendolo: la portada y la seccion. Anadir un tercero es anadir
- * un caso aqui, y la migracion y las rutas se enteran solas.
+ * Son dos: la portada y la sección. Añadir un tercero es añadir un caso aquí, y la migración y
+ * las rutas se enteran solas.
  */
 enum SnkKilkanaLayoutEnum: string
 {
     use SnkKilkanaEnumValuesSupport;
 
-    /** La portada del periodico. */
+    /** La portada del periódico. */
     case Front = 'front';
 
-    /** La composicion que comparten TODAS las secciones: lo que cambia es el pool de piezas. */
+    /** La composición que comparten TODAS las secciones: lo que cambia es el pool de piezas. */
     case Section = 'section';
 }

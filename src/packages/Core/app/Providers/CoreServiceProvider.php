@@ -30,9 +30,10 @@ class CoreServiceProvider extends ServiceProvider
         // Cola de metering por proceso: en Octane vive lo que vive el worker y escribe en lote.
         $this->app->singleton(CoreMeteringBufferSupport::class);
 
-        // Multi-tenant: la cache de permisos de Spatie es por-request ('array'), no persistente.
-        // Con BD por instancia, una cache compartida (file) filtraria los permisos de un tenant a
-        // otra conexion; 'array' fuerza recargar de la conexion activa en cada request.
+        // Multi-tenant: por defecto la caché de permisos de Spatie es por request ('array'), no
+        // persistente. Con BD por instancia, una caché compartida con una sola clave filtraría los
+        // permisos de un tenant a otra conexión. En HTTP, CoreResolveInstanceFromHostMiddleware la
+        // hace persistente con una clave por base; en CLI y en cola manda este 'array'.
         config(['permission.cache.store' => 'array']);
 
         // Overrides del framework Core.
@@ -80,10 +81,10 @@ class CoreServiceProvider extends ServiceProvider
         // El token de Sanctum con `last_used_at` escrito al minuto y no en cada petición.
         Sanctum::usePersonalAccessTokenModel(CorePersonalAccessTokenModel::class);
 
-        // Migraciones del deploy COMMANDER (conexion default = commander): base del operador
+        // Migraciones del deploy COMMANDER (conexión default = commander): base del operador
         // (roles/users/tokens) + registro + metering + operador (commander_*). Las de NEGOCIO
-        // de cada package NO se auto-cargan: las corre el provisioning sobre la conexion del tenant
-        // (core:migrate --package=Pkg), nunca sobre la commander.
+        // de cada package NO se auto-cargan: las corre el provisioning sobre la conexión del tenant
+        // (core:migrate --client=acme --package=Shop), nunca sobre la commander.
         $paths = array_filter([
             base_path('packages/Core/database/migrations'),
             base_path('packages/Commander/database/migrations'),

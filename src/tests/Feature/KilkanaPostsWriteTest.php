@@ -17,10 +17,9 @@ use Tests\TestCase;
 /**
  * Lo que se escribe por la puerta de artículos: alta, guardado, lote e historial.
  *
- * Existe porque **seis de las ocho acciones de este controlador no las ejecutaba ninguna
- * prueba**: el alta entera, el lote, el historial, la restauración, el muro de publicación en
- * sus tres puertas y el 404 de lo ajeno. Todo eso se puede romper sin que la suite se entere,
- * y lo que viene después es mover ese código de sitio.
+ * Cubre las acciones del controlador que ninguna otra prueba ejecuta: el alta entera, el lote,
+ * el historial, la restauración, el muro de publicación en sus tres puertas y el 404 de lo
+ * ajeno. Sin ella, todo eso se puede romper sin que la suite se entere.
  *
  * La forma del 422 es contrato y aquí se fija: **el objeto de errores va pelado, en la raíz**.
  * Envolverlo en `{message, errors}` —que es lo que hace un `FormRequest` al lanzar— cambiaría
@@ -99,8 +98,8 @@ class KilkanaPostsWriteTest extends TestCase
     /**
      * Publicar es AHORA, y por eso la fecha no se le pide a nadie.
      *
-     * Un borrador no tiene `publish_at` —se sella al salir—, así que validar solo el cuerpo
-     * hacía que `required_if` rechazase: desde el editor no se podía publicar una pieza.
+     * Un borrador no tiene `publish_at` —se sella al salir—, así que validando solo el cuerpo
+     * `required_if` rechaza la petición y desde el editor no se puede publicar una pieza.
      */
     public function test_publishing_a_draft_needs_neither_a_date_nor_an_excerpt(): void
     {

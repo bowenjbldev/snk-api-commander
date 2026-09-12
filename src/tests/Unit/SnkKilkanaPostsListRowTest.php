@@ -6,7 +6,7 @@ use Packages\Kilkana\Services\SnkKilkanaPublicService;
 use PHPUnit\Framework\TestCase;
 
 /**
- * El techo de lo que la calle puede pedir, que es lo único que sigue siendo una constante.
+ * El techo de lo que la calle puede pedir, que es lo único de la fila declarado como constante.
  *
  * Los campos de la fila del listado no se declaran en este lado: la lista la manda quien llama con
  * `?fields=` y el servidor solo declara el techo. Que la fila traiga exactamente lo que se pide lo

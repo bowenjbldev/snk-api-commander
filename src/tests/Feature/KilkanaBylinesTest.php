@@ -14,12 +14,12 @@ use Spatie\QueryBuilder\Exceptions\InvalidFieldQuery;
 use Tests\TestCase;
 
 /**
- * Una firma es una pagina publica; un asiento es acceso al panel.
+ * Una firma es una página pública; un asiento es acceso al panel.
  *
  * Toda la clase gira alrededor de esa frase: hay firmas sin cuenta —agencias, colectivos— y
- * cuentas sin firma, y hasta ahora el esquema no lo admitia. Lo que se prueba aqui es lo que se
- * rompe al separarlas: de donde sale el nombre publicado cuando no hay cuenta detras, y que el
- * correo de la pagina de autor no es el de entrar.
+ * cuentas sin firma, y el esquema admite las dos. Lo que se prueba aquí es lo que se rompe al
+ * separarlas: de dónde sale el nombre publicado cuando no hay cuenta detrás, y que el correo de
+ * la página de autor no es el de entrar.
  */
 class KilkanaBylinesTest extends TestCase
 {
@@ -90,8 +90,8 @@ class KilkanaBylinesTest extends TestCase
     /**
      * Dos correos distintos a propósito: con el que se entra y con el que se contacta.
      *
-     * Publicar el primero como si fuera el segundo es lo que hacía la ficha del panel cuando
-     * el único correo de una firma era el de su cuenta.
+     * Si el único correo de una firma fuera el de su cuenta, la ficha del panel publicaría el
+     * primero como si fuera el segundo.
      */
     public function test_the_public_email_is_not_the_account_email(): void
     {
@@ -106,10 +106,10 @@ class KilkanaBylinesTest extends TestCase
     /**
      * El correo de acceso no sale del panel, y esto es lo que lo sostiene.
      *
-     * Mientras `seat` fue un `append` del modelo viajaba en **cada** firma que serializara
-     * cualquiera —y la portada pública y la página de cada artículo anidan la firma entera—, así
-     * que el correo con el que se entra al CMS salía a la calle sin sesión. Ahora es una
-     * subconsulta del listado del panel: quien no la pide, no lo tiene.
+     * `seat` es una subconsulta del listado del panel y no un `append` del modelo. Como `append`
+     * viajaría en **cada** firma que serializara cualquiera —y la portada pública y la página de
+     * cada artículo anidan la firma entera—, y el correo con el que se entra al CMS saldría a la
+     * calle sin sesión. Quien no pide el listado, no lo tiene.
      */
     public function test_the_seat_belongs_to_the_panel_listing_and_not_the_model(): void
     {
@@ -142,7 +142,7 @@ class KilkanaBylinesTest extends TestCase
      * `?fields=` recorta la fila y **no** se lleva lo que el catálogo cuelga.
      *
      * El asiento es un `addSelect` y los otros dos son agregados; spatie hace `select()`, así
-     * que puestos antes del recorte desaparecían. Y no se piden por su nombre: no son columnas.
+     * que puestos antes del recorte desaparecen. Y no se piden por su nombre: no son columnas.
      */
     public function test_requesting_fields_trims_the_row_and_keeps_the_seat(): void
     {

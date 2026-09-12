@@ -31,13 +31,13 @@ class SnkKilkanaPostViewModel extends Model
      * Suma uno a los contadores indicados de la fila de hoy, en UNA sentencia.
      *
      * El `unique(post_id, date)` es lo que la hace posible: la base decide sola si toca crear
-     * la fila del día o sumarle, de forma atómica. Antes eran dos o tres consultas —intentar
-     * sumar, ver que no había fila, crearla, y capturar la violación de unicidad si otra
-     * petición se había adelantado— para acabar en el mismo sitio. Aquí no hay carrera que
-     * manejar porque no hay hueco entre comprobar y escribir.
+     * la fila del día o sumarle, de forma atómica, sin las dos o tres consultas de intentar
+     * sumar, ver que no hay fila, crearla y capturar la violación de unicidad si otra petición
+     * se adelanta. Aquí no hay carrera que manejar porque no hay hueco entre comprobar y
+     * escribir.
      *
      * Va por `upsert` con expresiones crudas: el constructor no sabe sumar sobre el valor
-     * existente por si solo, y la expresion es lo que lo hace compilar tanto en MariaDB como
+     * existente por sí solo, y la expresión es lo que lo hace compilar tanto en MariaDB como
      * en el sqlite de la suite.
      *
      * Los nombres de columna se interpolan en esas expresiones, así que se filtran contra
@@ -54,9 +54,6 @@ class SnkKilkanaPostViewModel extends Model
             return;
         }
 
-        // `upsert` compila la suma sobre el valor existente en MariaDB y en sqlite, que es
-        // donde corre la suite; las columnas vienen filtradas contra `COUNTERS`, asi que la
-        // expresion cruda solo lleva nombres de la lista.
         $increments = array_combine($counters, array_map(fn (string $c) => DB::raw("{$c} + 1"), $counters));
 
         self::query()->upsert(

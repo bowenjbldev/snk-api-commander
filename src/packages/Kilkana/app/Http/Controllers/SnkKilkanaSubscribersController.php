@@ -15,8 +15,8 @@ use Packages\Kilkana\Models\SnkKilkanaSubscriberModel;
 use Packages\Kilkana\Services\SnkKilkanaActivityService;
 
 /**
- * Gestión de la lista del boletín (admin). El alta pública NO pasa por aquí:
- * es POST public/subscribe (sin auth, throttled). update = moderar status.
+ * Gestión de la lista del boletín desde el panel. El alta pública NO pasa por aquí: es
+ * `POST public/subscribe`, sin sesión y con límite de ritmo. `update` modera el estado.
  */
 #[Group('Subscribers')]
 class SnkKilkanaSubscribersController extends CoreBaseApiController

@@ -37,21 +37,19 @@ class SnkKilkanaTagModel extends Model
     protected $hidden = ['pivot'];
 
     /**
-     * De aqui salen los anchos de las dos columnas y los topes de la validacion.
-     *
-     * Eran `varchar(255)` mientras las cuatro reglas de la API decian 64: la columna prometia
-     * cuatro veces lo que nadie podia escribir. 64 sobra para un tema —«cambio climatico» son
-     * 16— y es lo que hace que el slug quepa siempre en su columna.
+     * De aquí salen los anchos de las dos columnas y los topes de la validación, para que la
+     * columna no prometa más de lo que la API deja escribir. 64 sobra para un tema —«cambio
+     * climático» son 16— y es lo que hace que el slug quepa siempre en su columna.
      */
     public const NAME_MAX = 64;
 
     public const SLUG_MAX = 64;
 
     /**
-     * El slug de una etiqueta: lo que la identifica y la unica forma que tendria en una URL.
+     * El slug de una etiqueta: lo que la identifica y la única forma que tendría en una URL.
      *
-     * Un nombre que no deja ni una letra latina —«###», solo emoji— daria cadena vacia, y
-     * `slug` es UNIQUE: el segundo caso asi reventaba el alta. El respaldo no es una URL
+     * Un nombre que no deja ni una letra latina —«###», solo emoji— daría cadena vacía, y
+     * `slug` es UNIQUE: el segundo caso así reventaría el alta. El respaldo no es una URL
      * bonita, pero es estable, no colisiona y no tumba nada.
      */
     public static function slugFor(string $name): string
@@ -62,17 +60,17 @@ class SnkKilkanaTagModel extends Model
     }
 
     /**
-     * Busca o crea por SLUG, no por como se escribio el nombre.
+     * Busca o crea por SLUG, no por cómo se escribió el nombre.
      *
      * «Covid-19» y «Covid 19» no son dos etiquetas: son una escrita de dos maneras, y para un
-     * lector significan lo mismo. Buscar por nombre las trataba como distintas y luego chocaba
+     * lector significan lo mismo. Buscar por nombre las trataría como distintas y luego chocaría
      * contra el UNIQUE del slug con un 500 —y por esta puerta entra un redactor tecleando la
-     * etiqueta de su articulo, asi que el 500 le llegaba a el—.
+     * etiqueta de su artículo, así que el 500 le llegaría a él—.
      *
      * ponytail: dos nombres GENUINAMENTE distintos que comparten slug («C++» y «C#», que
      * `Str::slug` deja los dos en «c») se colapsan en el primero en vez de dar error. Es la
      * consecuencia aceptada de que el slug mande; quien necesite separarlos los crea a mano
-     * por `POST tags` con un slug propio, que si avisa cuando esta cogido.
+     * por `POST tags` con un slug propio, que sí avisa cuando está cogido.
      */
     public static function firstOrCreateByName(string $name): self
     {
@@ -82,8 +80,8 @@ class SnkKilkanaTagModel extends Model
     /**
      * Las piezas que llevan la etiqueta: lo que hace que su cifra signifique algo.
      *
-     * Es la inversa de `SnkKilkanaPostModel::tags()`, y de aqui salen las dos cuentas del panel
-     * —cuanto se usa y cuando se uso por ultima vez— y lo que una fusion tiene que mover.
+     * Es la inversa de `SnkKilkanaPostModel::tags()`, y de aquí salen las dos cuentas del panel
+     * —cuánto se usa y cuándo se usó por última vez— y lo que una fusión tiene que mover.
      *
      * @return BelongsToMany<SnkKilkanaPostModel, $this>
      */
@@ -100,7 +98,7 @@ class SnkKilkanaTagModel extends Model
             }
 
             $slug = self::slugFor((string) $tag->name);
-            // El alta manual SI se para: nadie ha dicho que las dos sean la misma etiqueta.
+            // El alta manual SÍ se para: nadie ha dicho que las dos sean la misma etiqueta.
             if (self::query()->where('slug', $slug)->exists()) {
                 throw ValidationException::withMessages(['slug' => 'That tag URL is already in use; choose one.']);
             }

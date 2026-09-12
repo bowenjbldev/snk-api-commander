@@ -7,16 +7,16 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * La ventana de «lo más leído» y el vocabulario de `sort`: dos listas cerradas que deciden
- * cuánto cuesta una consulta, y que **hasta ahora no fijaba nada**.
+ * cuánto cuesta una consulta.
  *
  * La ventana la preguntan dos puertas —el listado editorial y el tablero—, y lo que la protege
  * es que solo admita siete y treinta: una ventana libre invita a pedir mil días y a pagar la
  * subconsulta entera de audiencia sin que nadie mire el resultado. Lo que no sea uno de los dos
  * es «desde siempre», no un 422, que es la misma regla que el resto de la query.
  *
- * El vocabulario estaba escrito dos veces con distinta forma —las claves en el controlador para
- * validar, el mapa en el servicio para ordenar—, así que un orden nuevo había que darlo de alta
- * en los dos sitios o quedaba aceptado y sin efecto. Aquí se fija que son la misma lista.
+ * El vocabulario lo leen dos sitios —el controlador para validar y el servicio para ordenar—,
+ * y un orden que solo conociera uno de los dos quedaría aceptado y sin efecto. Aquí se fija que
+ * las claves del mapa son la lista.
  */
 class SnkKilkanaPostWindowTest extends TestCase
 {

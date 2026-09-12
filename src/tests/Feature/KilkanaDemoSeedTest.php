@@ -11,14 +11,14 @@ use Packages\Kilkana\Services\SnkKilkanaPostService;
 use Tests\TestCase;
 
 /**
- * Sembrar dos veces tiene que dejar el mismo periodico, y esa es la parte que cede.
+ * Sembrar dos veces tiene que dejar el mismo periódico, y esa es la parte que cede.
  *
  * El juego de datos de demo no solo crea filas: **edita**. Siembra dos revisiones de una pieza
- * y la ruta que esa edicion dejo atras, para que el historial del editor y los tres bloques de
- * «Route history» tengan algo dentro. El riesgo esta en la segunda siembra: el snapshot vuelve
- * a volcar el titulo con el que la pieza NACIO, y sin la regla que separa lo editorial de lo
- * estructural se quedaba con la URL nueva, su 301 y su revision — y el titular de antes. Un 301
- * que apunta a un titular que no cambio es lo contrario de lo que ese fixture viene a ensenar.
+ * y la ruta que esa edición deja atrás, para que el historial del editor y los tres bloques de
+ * «Route history» tengan algo dentro. El riesgo está en la segunda siembra: el snapshot vuelve
+ * a volcar el título con el que la pieza NACIÓ, y sin la regla que separa lo editorial de lo
+ * estructural se queda con la URL nueva, su 301 y su revisión — y el titular original. Un 301
+ * que apunta a un titular que no cambia es lo contrario de lo que ese fixture viene a enseñar.
  *
  * No hace falta el snapshot entero para verlo: son tres piezas.
  */
@@ -47,11 +47,11 @@ class KilkanaDemoSeedTest extends TestCase
             'slug' => $post->slug.'-actualizado',
         ], (int) $post->created_by, false);
 
-        // Y la siembra siguiente, que encuentra la pieza por la ruta que dejo atras.
+        // Y la siembra siguiente, que encuentra la pieza por la ruta que dejó atrás.
         $other = $this->seedDemo();
 
         $this->assertSame($post->id, $other->id, 'La encuentra por su ruta retirada.');
-        $this->assertSame('Pleno de julio (actualizado)', $other->title, 'Y no le devuelve el titulo del snapshot.');
+        $this->assertSame('Pleno de julio (actualizado)', $other->title, 'Y no le devuelve el título del snapshot.');
         $this->assertSame('pleno-de-julio-actualizado', $other->slug);
     }
 

@@ -43,8 +43,8 @@ class SnkKilkanaNewsletterController extends CoreBaseApiController
         $issues = SnkKilkanaNewsletterIssueModel::query()->orderByRaw("case when status = 'draft' then 0 else 1 end")->orderByDesc('sent_at')->orderByDesc('id')->get()->values();
 
         // Las piezas y las cifras de TODOS los números de una vez. Pedirlas número a número
-        // eran seis consultas por fila —una por las cifras y cinco por las piezas, que se
-        // traían las cuatro relaciones del modelo—, y el listado no tiene cota de números.
+        // serían seis consultas por fila —una por las cifras y cinco por las piezas, que se
+        // traerían las cuatro relaciones del modelo—, y el listado no tiene cota de números.
         // El borrador en blanco va en la misma tanda porque pregunta lo mismo que un borrador
         // sin piezas elegidas: qué llevaría un número nuevo.
         $posts = $this->newsletter->postsForIssues($issues->collect()->push(new SnkKilkanaNewsletterIssueModel(['status' => SnkKilkanaNewsletterIssueModel::DRAFT])));

@@ -73,13 +73,6 @@ class SnkKilkanaThemeSpecValidator
     ];
 
     /**
-     * Cuántas fotos dibuja cada bloque: `[tope, lo que dibuja si el tema no pide cuenta]`.
-     *
-     * **No es el número de huecos**, y por eso no se deduce de `count`: `lead-briefs` tiene
-     * cuatro piezas y UNA sola foto —los satélites son titulares— y el río crece con su cuenta
-     * hasta doce. Un bloque que no está aquí no dibuja ninguna.
-     */
-    /**
      * Las piezas que dibuja cada bloque cuando está lleno.
      *
      * Es lo que acota el mínimo que un tema puede declarar: pedir cinco piezas a un bloque
@@ -103,6 +96,13 @@ class SnkKilkanaThemeSpecValidator
         'live-ticker' => [12, 3],
     ];
 
+    /**
+     * Cuántas fotos dibuja cada bloque: `[tope, lo que dibuja si el tema no pide cuenta]`.
+     *
+     * **No es el número de huecos**, y por eso no se deduce de `count`: `lead-briefs` tiene
+     * cuatro piezas y UNA sola foto —los satélites son titulares— y el río crece con su cuenta
+     * hasta doce. Un bloque que no está aquí no dibuja ninguna.
+     */
     private const BLOCK_IMAGES = [
         'lead-story' => [1, 1],
         'lead-briefs' => [1, 1],

@@ -18,11 +18,11 @@ use Packages\Kilkana\Services\SnkKilkanaRoleCatalogService;
 use Tests\TestCase;
 
 /**
- * La moderacion no es un archivo que se consulta: es una cola que se vacia.
+ * La moderación no es un archivo que se consulta: es una cola que se vacía.
  *
- * Lo que se fija aqui es lo que hace falta para decidir sin abrir nada mas —la pieza, la
+ * Lo que se fija aquí es lo que hace falta para decidir sin abrir nada más —la pieza, la
  * frase de arriba y el historial de la cuenta—, que rechazar no es ni spam ni borrar, y que
- * bloquear a quien escribe cierra la cuenta y vacia lo que tenia en la cola.
+ * bloquear a quien escribe cierra la cuenta y vacía lo que tenía en la cola.
  */
 class KilkanaCommentsTest extends TestCase
 {
@@ -64,7 +64,7 @@ class KilkanaCommentsTest extends TestCase
         $this->assertSame('Amparo Ruiz', $row['author']['name']);
     }
 
-    /** Abre en pendiente y la busqueda mira el texto y a quien lo firma. */
+    /** Abre en pendiente y la búsqueda mira el texto y a quien lo firma. */
     public function test_the_queue_filters_by_status_and_by_search_text(): void
     {
         $this->asModerator();
@@ -128,7 +128,7 @@ class KilkanaCommentsTest extends TestCase
         $this->assertTrue(collect($queue['data'])->firstWhere('id', $target->id)['author']['blocked']);
     }
 
-    /** A un companero no se le bloquea desde la moderacion, y a una cuenta dada de baja tampoco. */
+    /** A un compañero no se le bloquea desde la moderación, y a una cuenta dada de baja tampoco. */
     public function test_only_readers_can_be_blocked(): void
     {
         $this->asModerator();
@@ -141,7 +141,7 @@ class KilkanaCommentsTest extends TestCase
         $this->assertSame(409, $this->moderation()->blockAuthor($staffComment->id)->getStatusCode());
         $this->assertNull($staffWriter->fresh()->suspended_at);
 
-        // Lector Y redactora a la vez: sigue siendo un companero. La guarda falla cerrado.
+        // Lector Y redactora a la vez: sigue siendo un compañero. La guarda falla cerrado.
         $staffWriter->assignRole('reader');
         $this->assertSame(409, $this->moderation()->blockAuthor($staffComment->id)->getStatusCode());
         $this->assertNull($staffWriter->fresh()->suspended_at);
@@ -149,7 +149,7 @@ class KilkanaCommentsTest extends TestCase
         $this->assertSame(404, $this->moderation()->blockAuthor(999)->getStatusCode());
     }
 
-    /** El rail pregunta cuantos esperan en cada carga del armazon: solo la cifra, sin la pagina. */
+    /** El rail pregunta cuántos esperan en cada carga del armazón: solo la cifra, sin la página. */
     public function test_the_rail_can_request_only_the_counts(): void
     {
         $this->asModerator();
@@ -188,10 +188,10 @@ class KilkanaCommentsTest extends TestCase
         $listed = $street->posts([])->first();
         $detail = $street->post('2026', '07', '01', $post->slug);
 
-        // Contar los comentarios de una pieza **se pide**: era un `$withCount` del modelo
-        // encendido siempre, que añadía una subconsulta a toda consulta de piezas del sistema
-        // para un valor que no publica la fila del listado ni parsea el panel. Y de paso fijaba
-        // `select kilkana_posts.*`, que es lo que anulaba las proyecciones en silencio.
+        // Contar los comentarios de una pieza **se pide**: un `$withCount` del modelo encendido
+        // siempre añade una subconsulta a toda consulta de piezas del sistema para un valor que
+        // no publica la fila del listado ni parsea el panel, y de paso fija
+        // `select kilkana_posts.*`, que anula las proyecciones en silencio.
         $withCommentCount = SnkKilkanaPostModel::query()->withCount('comments')->find($post->id);
         $this->assertSame(3, $withCommentCount->comments_count, 'Total, no solo aprobados: para moderar hay que ver que hay algo.');
         $this->assertSame(1, $listed->comments_count);

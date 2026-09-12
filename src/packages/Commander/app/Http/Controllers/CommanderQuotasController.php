@@ -12,7 +12,7 @@ use Packages\Commander\Models\CommanderSubscriptionModel;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 
 /**
- * Cada cuota pertenece a una instancia o a una suscripcion. El motor mide y aplica la misma fila.
+ * Cada cuota pertenece a una instancia o a una suscripción. El motor mide y aplica la misma fila.
  */
 #[Group('Quotas')]
 class CommanderQuotasController extends CoreBaseApiController

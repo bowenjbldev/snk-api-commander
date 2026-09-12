@@ -6,13 +6,13 @@ use HTMLPurifier;
 use HTMLPurifier_Config;
 
 /**
- * Saneado server-side del HTML rico del editor (Tiptap) antes de persistirlo. Solo admite estos
- * tags y, en <p>, `text-align`. Es la frontera de confianza: lo guardado ya es seguro para su
+ * Saneado en el servidor del HTML rico del editor (Tiptap) antes de persistirlo. Solo admite
+ * estas etiquetas y, en <p>, `text-align`. Es la frontera de confianza: lo guardado ya es seguro para su
  * renderizado posterior sin depender del cliente.
  */
 class SnkKilkanaRichText
 {
-    /** Tags permitidos y `text-align` solo en <p>. */
+    /** Etiquetas permitidas y `text-align` solo en <p>. */
     private const ALLOWED = 'p[style],br,strong,b,em,i,s,code';
 
     private static ?HTMLPurifier $purifier = null;
@@ -30,9 +30,9 @@ class SnkKilkanaRichText
     /**
      * Recorre body_blocks y sanea el `config.html` de cualquier bloque que lo traiga.
      *
-     * **Por tener HTML, no por ser de un tipo.** Mirar solo el bloque de texto ataria la
-     * seguridad al vocabulario: el dia que el editor compone una cita, un recuadro de datos o
-     * un intertitulo con marcado, ese HTML entraria sin pasar por aqui. Saneando por presencia
+     * **Por tener HTML, no por ser de un tipo.** Mirar solo el bloque de texto ataría la
+     * seguridad al vocabulario: el día que el editor compone una cita, un recuadro de datos o
+     * un intertítulo con marcado, ese HTML entraría sin pasar por aquí. Saneando por presencia
      * del campo, un tipo nuevo nace cubierto.
      */
     public static function cleanBlocks(?array $blocks): ?array

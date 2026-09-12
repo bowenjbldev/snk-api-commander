@@ -5,28 +5,28 @@ namespace Packages\Kilkana\Models\Concerns;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Un historial acotado: se guardan las N ultimas de cada cosa y las viejas caen solas.
+ * Un historial acotado: se guardan las N últimas de cada cosa y las viejas caen solas.
  *
- * Estas dos tablas son las que mas crecen del esquema, y por una razon que no se ve en el
- * esquema: cada fila copia el objeto ENTERO —el cuerpo del articulo, la composicion de la
+ * Estas dos tablas son las que más crecen del esquema, y por una razón que no se ve en el
+ * esquema: cada fila copia el objeto ENTERO —el cuerpo del artículo, la composición de la
  * portada—, y se escribe una por guardado. En la portada eso es una por autoguardado, que
- * salta cada 800 ms de pausa: una sesion componiendo deja decenas de copias de 4 KB.
+ * salta cada 800 ms de pausa: una sesión componiendo deja decenas de copias de 4 KB.
  *
- * Se poda al insertar, dentro de la misma transaccion, y no con un cron: asi la tabla esta
- * acotada POR CONSTRUCCION y nadie tiene que acordarse de barrer. El coste es una consulta
- * por guardado sobre un indice que ya existe.
+ * Se poda al insertar, dentro de la misma transacción, y no con un cron: así la tabla está
+ * acotada POR CONSTRUCCIÓN y nadie tiene que acordarse de barrer. El coste es una consulta
+ * por guardado sobre un índice que ya existe.
  *
  * Lo que esto NO resuelve, y conviene tener claro: el tope acota el espacio, no el ruido. Una
- * rafaga de autoguardados sigue gastando el historial entero en una sola sesion, asi que
- * «deshacer a lo de ayer» puede no existir aunque el numero parezca generoso. Agrupar una
- * rafaga en una sola revision es otra decision, y va aparte.
+ * ráfaga de autoguardados sigue gastando el historial entero en una sola sesión, así que
+ * «deshacer a lo de ayer» puede no existir aunque el número parezca generoso. Agrupar una
+ * ráfaga en una sola revisión es otra decisión, y va aparte.
  */
 trait SnkKilkanaPrunesRevisionsSupport
 {
     /** La columna que agrupa las revisiones de una misma cosa. */
     abstract public static function revisionOwnerKey(): string;
 
-    /** Cuantas se conservan por dueño. Un modelo puede subirlo o bajarlo. */
+    /** Cuántas se conservan por dueño. Un modelo puede subirlo o bajarlo. */
     public static function revisionsKept(): int
     {
         return 50;
@@ -38,7 +38,7 @@ trait SnkKilkanaPrunesRevisionsSupport
             $key = static::revisionOwnerKey();
 
             // Por `id` y no por `created_at`: dos guardados del mismo segundo empatan en la
-            // fecha, y un empate ahi decide mal cual se tira.
+            // fecha, y un empate ahí decide mal cuál se tira.
             $surplus = static::query()
                 ->where($key, $revision->{$key})
                 ->orderByDesc('id')

@@ -19,22 +19,16 @@ class SnkKilkanaCategoryModel extends Model
 
     protected $guarded = [];
 
-    /**
-     * La madre viaja siempre, pero como SLUG, no como objeto anidado.
-     *
-     * El cliente pregunta «¿este artículo está en Sports?» con un slug, y un `parent_id`
-     * numérico no se puede casar contra eso sin tener el catálogo entero delante — algo
-     * que el render SSR de la portada no tiene. Con `parent_slug`, pertenecer a una
-     * sección es una comparación de strings sobre el propio post.
-     *
-     * El eager load termina solo: la madre de una raíz es null.
-     */
     /*
-     * La madre **no se carga sola**. Estaba en `$with` para que dos accesores anexados
-     * —`parent_slug` y `parent_name`— pudieran leerla, y con eso viajaba una consulta y una
-     * relación escondida en cada sitio donde aparece una sección: también anidada dentro de
-     * cada pieza de un listado, que es donde nadie la pinta. Los dos campos los declara ahora
-     * `SnkKilkanaCategoryResource` y salen si la madre se ha incluido.
+     * La madre **no se carga sola**: en `$with` arrastraría una consulta y una relación
+     * escondida a cada sitio donde aparece una sección, también anidada dentro de cada pieza
+     * de un listado, que es donde nadie la pinta. `parent_slug` y `parent_name` los declara
+     * `SnkKilkanaCategoryResource`, y salen cuando quien consulta incluye la madre.
+     *
+     * Sale como SLUG y no como objeto anidado: el cliente pregunta «¿este artículo está en
+     * Sports?» con un slug, y un `parent_id` numérico no se puede casar contra eso sin tener el
+     * catálogo entero delante, algo que el render SSR de la portada no tiene. Con `parent_slug`,
+     * pertenecer a una sección es una comparación de cadenas sobre el propio post.
      */
 
     protected $casts = [
@@ -50,8 +44,8 @@ class SnkKilkanaCategoryModel extends Model
      * Los mismos valores por defecto que la columna, pero del lado de PHP.
      *
      * Sin esto los pone la base y la instancia recién creada no los conoce: la respuesta del
-     * alta salía sin `status` ni `noindex`, y quien la pintara no sabía si la sección acababa
-     * de nacer en preparación o si el campo no existía.
+     * alta sale sin `status` ni `noindex`, y quien la pinta no sabe si la sección acaba de
+     * nacer en preparación o si el campo no existe.
      */
     protected $attributes = [
         'status' => SnkKilkanaCategoryStatusEnum::Draft->value,
@@ -59,18 +53,17 @@ class SnkKilkanaCategoryModel extends Model
     ];
 
     /**
-     * Las que salen en la navegacion. Un solo sitio define «seccion del menu».
+     * Las que salen en la navegación. Un solo sitio define «sección del menú».
      *
      * No es lo mismo que existir para el lector: una `hidden` se abre por su URL y no
-     * aparece aqui, que es exactamente para lo que existe ese estado. Quien pregunte por lo
-     * segundo usa `reachable()`, y confundirlos publica en el menu lo que se retiro de el.
+     * aparece aquí, que es exactamente para lo que existe ese estado. Quien pregunte por lo
+     * segundo usa `reachable()`, y confundirlos publica en el menú lo que se retiró de él.
      */
     public function scopeInMenu(Builder $query): Builder
     {
         return $query->whereIn('status', self::statuses(fn ($status) => $status->inMenu()));
     }
 
-    /** Las que el lector puede abrir por su URL: las del menu y las retiradas de el. */
     /**
      * La lista del catálogo: con lo que el panel pinta de cada sección y en el orden del menú.
      *
@@ -94,15 +87,16 @@ class SnkKilkanaCategoryModel extends Model
             ->orderBy('id');
     }
 
+    /** Las que el lector puede abrir por su URL: las del menú y las retiradas de él. */
     public function scopeReachable(Builder $query): Builder
     {
         return $query->whereIn('status', self::statuses(fn ($status) => $status->isPublic()));
     }
 
     /**
-     * Los estados que contestan que si a una pregunta del enum.
+     * Los estados que contestan que sí a una pregunta del enum.
      *
-     * Los scopes preguntan y no enumeran a proposito: con la lista escrita aqui, un estado
+     * Los scopes preguntan y no enumeran a propósito: con la lista escrita aquí, un estado
      * nuevo entra en el enum y estos dos siguen contestando lo de ayer sin que nada falle.
      *
      * @param  callable(SnkKilkanaCategoryStatusEnum): bool  $filter
@@ -151,11 +145,11 @@ class SnkKilkanaCategoryModel extends Model
     }
 
     /**
-     * Las piezas archivadas en esta seccion.
+     * Las piezas archivadas en esta sección.
      *
      * Existe para poder CONTARLAS sin traerlas: el panel enseña «Local 40» y con una
-     * relacion declarada eso es un `withCount` —una subconsulta— en vez de diecisiete
-     * peticiones o un listado entero en el cliente. No se carga nunca entera: una seccion de
+     * relación declarada eso es un `withCount` —una subconsulta— en vez de diecisiete
+     * peticiones o un listado entero en el cliente. No se carga nunca entera: una sección de
      * un diario de verdad tiene decenas de miles.
      */
     public function posts(): HasMany
@@ -173,7 +167,7 @@ class SnkKilkanaCategoryModel extends Model
      *
      * 64 basta de sobra para un segmento de URL de una sección —«internacional» son 14— y es
      * lo que impide que un nombre largo derive un slug que no cabe. `name` valida hasta 255,
-     * así que sin tope un nombre de 85 caracteres tumbaba el alta con un `1406 Data too long`.
+     * así que sin tope un nombre de 85 caracteres tumbaría el alta con un `1406 Data too long`.
      */
     public const SLUG_MAX = 64;
 
@@ -191,8 +185,8 @@ class SnkKilkanaCategoryModel extends Model
                 : self::capSlug(Str::slug((string) $category->name));
 
             // `slugTaken` mira las vivas Y las retiradas: una URL que redirige no está libre.
-            // Sin esto, crear una sección con un nombre que ya existía devolvía el 1062 con
-            // el nombre del índice dentro en vez de decir qué pasaba.
+            // Sin esto, crear una sección con un nombre que ya existe devuelve el 1062 con el
+            // nombre del índice dentro en vez de decir qué pasa.
             if (! $category->slug || self::slugTaken($category->slug)) {
                 throw ValidationException::withMessages([
                     'slug' => 'That section URL is already in use, now or by a redirect; choose another.',
@@ -200,8 +194,8 @@ class SnkKilkanaCategoryModel extends Model
             }
         });
 
-        // Al crear, el slug se deriva mas arriba en este mismo evento: `saving` dispara antes y
-        // aun lo veria vacio.
+        // Al crear, el slug se deriva más arriba en este mismo evento: `saving` dispara antes y
+        // aún lo vería vacío.
         static::creating(fn (self $category) => self::guardReservedSlug($category));
         static::updating(fn (self $category) => self::guardReservedSlug($category));
 
@@ -213,9 +207,9 @@ class SnkKilkanaCategoryModel extends Model
     }
 
     /**
-     * Los primeros segmentos que la calle tiene fijos: una seccion con ese slug se guarda y su
-     * pagina publica no existe nunca, sin que nada avise. La calle esta en `kilkana.app`
-     * (`src/routes`), asi que esta lista se mueve con la suya.
+     * Los primeros segmentos que la calle tiene fijos: una sección con ese slug se guarda y su
+     * página pública no existe nunca, sin que nada avise. La calle está en `kilkana.app`
+     * (`src/routes`), así que esta lista se mueve con la suya.
      */
     public const RESERVED_SLUGS = ['admin', 'account', 'author', 'tag', 'subscribe', 'csp-report'];
 
@@ -232,18 +226,18 @@ class SnkKilkanaCategoryModel extends Model
     }
 
     /**
-     * No se devuelve a preparacion una seccion que ya tiene piezas publicadas.
+     * No se devuelve a preparación una sección que ya tiene piezas publicadas.
      *
-     * Es la otra mitad del muro que impide publicar en una seccion sin lanzar: sin esto se
-     * llega al mismo sitio por la puerta de atras —lanzar la mesa, publicar en ella, y
-     * despues retirarla— y esas piezas quedan colgando de una seccion que el lector no puede
-     * abrir, con su kicker enlazando a una pagina que ya no existe.
+     * Es la otra mitad del muro que impide publicar en una sección sin lanzar: sin esto se
+     * llega al mismo sitio por la puerta de atrás —lanzar la mesa, publicar en ella, y
+     * después retirarla— y esas piezas quedan colgando de una sección que el lector no puede
+     * abrir, con su kicker enlazando a una página que no existe.
      *
-     * Retirarla del menu si que se puede con el archivo lleno: `hidden` deja las piezas
-     * abriendose por su URL, que es justo lo que `draft` no hace.
+     * Retirarla del menú sí que se puede con el archivo lleno: `hidden` deja las piezas
+     * abriéndose por su URL, que es justo lo que `draft` no hace.
      *
-     * Cuenta tambien lo que cuelga de sus subsecciones: el arbol tiene dos niveles y la madre
-     * de una seccion viva no puede estar en preparacion.
+     * Cuenta también lo que cuelga de sus subsecciones: el árbol tiene dos niveles y la madre
+     * de una sección viva no puede estar en preparación.
      */
     private static function guardStatus(self $category): void
     {
@@ -254,9 +248,9 @@ class SnkKilkanaCategoryModel extends Model
             return;
         }
 
-        // Las suyas Y las de sus subsecciones. Una madre sin piezas propias y con una hija
-        // publicando pasaba a preparacion sin que nada la parara: la hija seguia alcanzable,
-        // sus piezas publicas, y la pagina de la madre respondia 404.
+        // Las suyas Y las de sus subsecciones. Contando solo las propias, una madre sin piezas
+        // y con una hija publicando pasaría a preparación: la hija seguiría alcanzable, sus
+        // piezas públicas, y la página de la madre respondería 404.
         $published = SnkKilkanaPostModel::query()
             ->whereIn('category_id', [
                 $category->id,
@@ -273,19 +267,19 @@ class SnkKilkanaCategoryModel extends Model
     }
 
     /**
-     * Una seccion no se ve mas que su madre, y esto cierra las dos puertas.
+     * Una sección no se ve más que su madre, y esto cierra las dos puertas.
      *
-     * `guardStatus` cierra la del estado —no devuelvas a preparacion lo que tiene publicados—
-     * pero la de la jerarquia quedaba abierta: mover una seccion viva con archivo bajo una
-     * madre en preparacion pasaba limpio, y se llegaba al mismo sitio prohibido. La forma la
-     * comprueba `guardTree`; el estado, esto.
+     * `guardStatus` cierra la del estado —no devuelvas a preparación lo que tiene publicados—
+     * y esto, la de la jerarquía: sin ella, mover una sección viva con archivo bajo una madre
+     * en preparación pasa limpio, y se llega al mismo sitio prohibido. La forma la comprueba
+     * `guardTree`; el estado, esto.
      *
-     * Y no es solo `draft`: una hija `live` bajo una madre `hidden` tampoco esta en el menu de
-     * nadie, porque el suyo cuelga de un desplegable que ya no se pinta. Por eso se compara la
+     * Y no es solo `draft`: una hija `live` bajo una madre `hidden` tampoco está en el menú de
+     * nadie, porque el suyo cuelga de un desplegable que no se pinta. Por eso se compara la
      * escala del enum y no un booleano.
      *
      * Se mira en las dos direcciones porque las dos escrituras llevan al mismo estado
-     * imposible: bajar el estado de una madre con hijas mas visibles, y colgar una hija de una
+     * imposible: bajar el estado de una madre con hijas más visibles, y colgar una hija de una
      * madre menos visible.
      */
     private static function guardVisibility(self $category): void
@@ -304,9 +298,9 @@ class SnkKilkanaCategoryModel extends Model
                 : SnkKilkanaCategoryStatusEnum::tryFrom((string) $parent);
 
             // Sin madre que mirar no se pasa: **falla cerrado**, como el resto de las puertas.
-            // Un `parent_id` que apunta a una fila que no existe llega hasta aqui —la regla
-            // `exists:` es del controlador, y el seeder y la consola no pasan por el—, y
-            // `guardTree` tampoco lo caza: su consulta devuelve null igual que la de una raiz.
+            // Un `parent_id` que apunta a una fila que no existe llega hasta aquí —la regla
+            // `exists:` es del controlador, y el seeder y la consola no pasan por él—, y
+            // `guardTree` tampoco lo caza: su consulta devuelve null igual que la de una raíz.
             if ($parent === null) {
                 throw ValidationException::withMessages([
                     $field => 'That parent section does not exist.',
@@ -338,26 +332,24 @@ class SnkKilkanaCategoryModel extends Model
     }
 
     /**
-     * El arbol tiene DOS niveles y no admite ciclos, y aqui es donde se impone.
+     * El árbol tiene DOS niveles y no admite ciclos, y aquí es donde se impone.
      *
-     * No por comodidad: MariaDB no acepta subconsultas en un `CHECK`, asi que «tu madre no
-     * puede tener madre» no se puede escribir como restriccion de la base. O vive en el
-     * modelo o no vive en ninguna parte — y no vivia en ninguna parte:
+     * No por comodidad: MariaDB no acepta subconsultas en un `CHECK`, así que «tu madre no
+     * puede tener madre» no se puede escribir como restricción de la base. O vive en el
+     * modelo o no vive en ninguna parte, y sin ella:
      *
-     *   - Se podia crear una nieta. No fallaba: la consulta de seccion mira la categoria y
-     *     su madre, asi que los articulos del tercer nivel DESAPARECIAN del listado de la
-     *     abuela sin un solo error.
-     *   - Se podia cerrar un ciclo con dos PUT que devolvian 200 cada uno. El `$with` de la
-     *     madre entraba en bucle y `public/categories` —la nav, las paginas de seccion, el
-     *     sitemap— respondia 500 tras siete segundos.
+     *   - Cabe una nieta, y no falla: la consulta de sección mira la categoría y su madre,
+     *     así que los artículos del tercer nivel DESAPARECEN del listado de la abuela sin un
+     *     solo error.
+     *   - Cabe un ciclo, cerrado con dos PUT que devuelven 200 cada uno.
      *
-     * La validacion del controlador solo cubria `parent_id != id`, y solo al actualizar. El
-     * seeder y la consola no pasan por ella; por eso la comprobacion va en el modelo.
+     * La validación del controlador no basta: el seeder y la consola no pasan por ella, y
+     * por eso la comprobación va en el modelo.
      */
     private static function guardTree(self $category): void
     {
         if ($category->parent_id === null) {
-            return; // una raiz no tiene nada que comprobar
+            return; // una raíz no tiene nada que comprobar
         }
 
         $error = fn (string $message) => throw ValidationException::withMessages(['parent_id' => $message]);
@@ -366,16 +358,16 @@ class SnkKilkanaCategoryModel extends Model
             $error('A section cannot be its own parent.');
         }
 
-        // Dos niveles: tu madre tiene que ser una raiz. Con esta sola regla los ciclos
-        // tampoco caben —cerrar uno exigiria que las dos tuvieran madre— pero el id se
-        // comprueba aparte, porque una fila que se apunta a si misma leeria de la base su
-        // propio `parent_id` viejo y se colaria.
+        // Dos niveles: tu madre tiene que ser una raíz. Con esta sola regla los ciclos
+        // tampoco caben —cerrar uno exigiría que las dos tuvieran madre— pero el id se
+        // comprueba aparte, porque una fila que se apunta a sí misma leería de la base su
+        // propio `parent_id` guardado y se colaría.
         if (self::query()->whereKey($category->parent_id)->value('parent_id') !== null) {
             $error('A subsection cannot hang from another subsection: the tree has two levels.');
         }
 
         // Y en el otro sentido: si ya eres madre, no puedes colgar de nadie. Sin esto, mover
-        // una seccion con hijas bajo otra creaba el tercer nivel por la puerta de atras.
+        // una sección con hijas bajo otra crea el tercer nivel por la puerta de atrás.
         if ($category->exists && self::query()->where('parent_id', $category->id)->exists()) {
             $error('A section with subsections cannot become a subsection itself.');
         }

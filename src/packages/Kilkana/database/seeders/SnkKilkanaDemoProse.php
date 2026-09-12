@@ -3,13 +3,13 @@
 namespace Packages\Kilkana\Database\Seeders;
 
 /**
- * La prosa de la demo, por familia de seccion.
+ * La prosa de la demo, por familia de sección.
  *
- * Solo texto: quien la reparte es `SnkKilkanaDemoBodyFactory`. Cada familia lleva parrafos de
+ * Solo texto: quien la reparte es `SnkKilkanaDemoBodyFactory`. Cada familia lleva párrafos de
  * largo real que valen para cualquier titular de su mesa —hablan de «la comarca», «el
- * municipio», «el area», nunca de un sitio con nombre—, intertitulos, citas con quien las dice
- * y cierres. Hay bastantes de cada para que dos piezas seguidas de la misma seccion no se lean
- * como la misma: cuarenta y ocho parrafos en las cuatro mesas grandes —sesenta y cuatro en local—,
+ * municipio», «el área», nunca de un sitio con nombre—, intertítulos, citas con quien las dice
+ * y cierres. Hay bastantes de cada para que dos piezas seguidas de la misma sección no se lean
+ * como la misma: cuarenta y ocho párrafos en las cuatro mesas grandes —sesenta y cuatro en local—,
  * veinticuatro en las pequeñas, y siete por pieza.
  */
 final class SnkKilkanaDemoProse

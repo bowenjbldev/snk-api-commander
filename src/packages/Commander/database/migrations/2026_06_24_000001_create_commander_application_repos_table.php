@@ -20,7 +20,7 @@ return new class extends Migration
             // Monorepo: subcarpeta del package compartido. null = repo dedicado.
             $table->string('path_prefix')->nullable();
             $table->string('default_branch', 100)->default('main');
-            // Cursor del sync incremental: hasta donde se leyo la ultima vez.
+            // Cursor del sync incremental: hasta dónde se leyó la última vez.
             $table->timestamp('last_synced_at')->nullable();
             $table->string('last_synced_sha', 40)->nullable();
             $table->timestamps();

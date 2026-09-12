@@ -10,8 +10,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  * `spec` sale como objeto **también cuando está vacío**. En PHP una lista vacía y un mapa vacío
  * son el mismo `[]`, y `json_encode` lo escribe como array: el frontend recibe `[]` donde espera
- * `{}` y el tema no se aplica. Es la misma trampa que ya costó ciento treinta y nueve piezas que
- * no se podían abrir por un `config` vacío en un bloque.
+ * `{}` y el tema no se aplica. Es la misma trampa que deja sin abrir una pieza con un `config`
+ * vacío en un bloque.
  */
 class SnkKilkanaThemeResource extends JsonResource
 {

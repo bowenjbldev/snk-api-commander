@@ -10,8 +10,8 @@ use Packages\Kilkana\Models\SnkKilkanaPostModel;
  * Un número del boletín: su cabecera, las piezas que lleva y cómo le fue.
  *
  * Las piezas y las tres cifras de apertura las cuelga quien consulta, **en una tanda para todos
- * los números**: pedirlas número a número eran seis consultas por fila —una por las cifras y
- * cinco por las piezas, que arrastraban las relaciones del modelo— y este listado no tiene cota.
+ * los números**: pedirlas número a número serían seis consultas por fila —una por las cifras y
+ * cinco por las piezas, que arrastrarían las relaciones del modelo— y este listado no tiene cota.
  *
  * `post_ids` sale como cadenas porque el panel las usa de clave, y un entero y su cadena no son
  * la misma clave en JavaScript.

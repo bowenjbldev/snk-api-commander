@@ -21,18 +21,15 @@ class CoreUserModel extends Authenticatable
     use HasApiTokens, HasFactory, HasRoles, Notifiable;
 
     /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
-    /**
-     * `lastname`, `company` y `phone` NO son columnas de Core: las anade cada package con su
-     * propia migracion (ver `create_core_base_schema`). Siguen aqui porque son el perfil que
+     * `lastname`, `company` y `phone` NO son columnas de Core: las añade cada package con su
+     * propia migración (ver `create_core_base_schema`). Están aquí porque son el perfil que
      * aceptan las reglas de `CoreUsersController`, y quien use ese controlador tiene que
      * haberlas creado.
      *
-     * Sin `avatar`: ningun contrato de Core lo valida ni lo sirve, y la foto que se publica
+     * Sin `avatar`: ningún contrato de Core lo valida ni lo sirve, y la foto que se publica
      * es cosa del package — en Kilkana, la biblioteca de medios.
+     *
+     * @var list<string>
      */
     protected $fillable = [
         'name',
@@ -66,14 +63,14 @@ class CoreUserModel extends Authenticatable
 
     /**
      * `name` es el nombre de pila y `lastname` el apellido; el nombre completo no se guarda,
-     * se compone. Va en `$appends` para que viaje en toda serializacion como si fuera columna.
+     * se compone. Va en `$appends` para que viaje en toda serialización como si fuera columna.
      */
     protected $appends = ['full_name'];
 
     protected function fullName(): Attribute
     {
         // De los atributos crudos: una consulta recortada que no trajo `lastname` no debe
-        // lanzar al serializar, y `$appends` lo pide en toda serializacion.
+        // lanzar al serializar, y `$appends` lo pide en toda serialización.
         return Attribute::get(fn () => trim(($this->attributes['name'] ?? '').' '.($this->attributes['lastname'] ?? '')));
     }
 

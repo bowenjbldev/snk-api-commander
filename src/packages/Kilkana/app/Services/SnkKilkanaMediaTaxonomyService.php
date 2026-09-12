@@ -11,10 +11,10 @@ use Packages\Kilkana\Models\SnkKilkanaMediaTagModel;
 /**
  * El vocabulario de la biblioteca: etiquetas y colecciones de medios.
  *
- * Dos tablas de la misma forma tras un solo juego de rutas, donde el segmento decide cual.
- * No se parecen a las etiquetas de articulo aunque lo aparenten: aquellas nacen al vuelo
- * tecleandolas, estas se crean a proposito. Es un vocabulario controlado, asi que una
- * etiqueta sin fotos es legitima —la creaste para usarla— y no residuo que haya que barrer.
+ * Dos tablas de la misma forma tras un solo juego de rutas, donde el segmento decide cuál.
+ * No se parecen a las etiquetas de artículo aunque lo aparenten: aquellas nacen al vuelo
+ * tecleándolas, estas se crean a propósito. Es un vocabulario controlado, así que una
+ * etiqueta sin fotos es legítima —la creaste para usarla— y no residuo que haya que barrer.
  */
 class SnkKilkanaMediaTaxonomyService
 {
@@ -27,10 +27,10 @@ class SnkKilkanaMediaTaxonomyService
     }
 
     /**
-     * El vocabulario entero, con cuantos medios cuelgan de cada termino.
+     * El vocabulario entero, con cuántos medios cuelgan de cada término.
      *
-     * El recuento no es adorno: borrar un termino se lleva sus asociaciones por CASCADE y sin
-     * preguntar, asi que quien lo borre tiene que poder ver ANTES a cuantas fotos afecta.
+     * El recuento no es adorno: borrar un término se lleva sus asociaciones por CASCADE y sin
+     * preguntar, así que quien lo borre tiene que poder ver ANTES a cuántas fotos afecta.
      */
     public function all(string $taxonomy)
     {
@@ -38,12 +38,11 @@ class SnkKilkanaMediaTaxonomyService
     }
 
     /**
-     * Las tres cifras que el panel lee de un termino sin abrirlo.
+     * Las tres cifras que el panel lee de un término sin abrirlo.
      *
-     * Cuantas fotos lleva, cuantas de ellas bloquean un despliegue por no tener alt, y cuando
-     * entro la ultima. Las tres se calculaban recorriendo la biblioteca entera en el cliente,
-     * que es justo lo que deja de estar ahi: con el archivo en el servidor, o las cuenta el
-     * servidor o el panel ensena una columna vacia.
+     * Cuántas fotos lleva, cuántas de ellas bloquean un despliegue por no tener alt, y cuándo
+     * entró la última. Las cuenta el servidor porque el archivo está en el servidor: el panel
+     * solo tiene la página que enseña, y contarlas allí daría una columna vacía.
      *
      * @return Builder<Model>
      */
@@ -85,14 +84,14 @@ class SnkKilkanaMediaTaxonomyService
     }
 
     /**
-     * Vuelca un termino en otro y borra el vaciado.
+     * Vuelca un término en otro y borra el vaciado.
      *
-     * Es una sola accion y no «mover y luego borrar»: entre las dos mitades, un fallo dejaria
-     * dos estantes con las mismas fotos y nadie sabria cual era el bueno. `syncWithoutDetaching`
+     * Es una sola acción y no «mover y luego borrar»: entre las dos mitades, un fallo dejaría
+     * dos estantes con las mismas fotos y nadie sabría cuál es el bueno. `syncWithoutDetaching`
      * y no `sync` porque el destino ya tiene lo suyo, y una foto que estuviera en los dos no
      * puede entrar dos veces en el pivote.
      *
-     * @return int cuantas fotos han cambiado de sitio
+     * @return int cuántas fotos han cambiado de sitio
      */
     public function merge(Model $source, Model $target): int
     {
@@ -106,7 +105,7 @@ class SnkKilkanaMediaTaxonomyService
         return count($mediaIds);
     }
 
-    /** Devuelve cuantas asociaciones se ha llevado por delante, para poder decirlo. */
+    /** Devuelve cuántas asociaciones se ha llevado por delante, para poder decirlo. */
     public function remove(Model $row): int
     {
         $attached = $row->media()->count();

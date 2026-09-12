@@ -16,31 +16,32 @@ use Packages\Kilkana\Models\SnkKilkanaTagModel;
 use Spatie\QueryBuilder\QueryBuilder;
 
 /**
- * Las dos pantallas que el panel pedía a trozos, cada una en una llamada.
+ * Las dos pantallas del panel que se componen de varias secciones, cada una en una llamada.
  *
- * **No hay negocio nuevo aquí.** Cada sección la resuelve el servicio que ya la posee y esto
- * solo las compone: si una cifra cambia de definición, cambia en un sitio y las dos puertas
- * —el CRUD por recurso y esto— la cuentan igual.
+ * **No hay negocio aquí.** Cada sección la resuelve el servicio que la posee y esto solo las
+ * compone: si una cifra cambia de definición, cambia en un sitio y las dos puertas —el CRUD
+ * por recurso y esto— la cuentan igual.
  *
  * Lo que ahorra no es SQL, es peaje. Cada llamada autenticada paga entre 4,7 y 6,5 ms antes de
  * llegar a su lógica —resolver el inquilino, abrir su base, el freno, el kill-switch, Sanctum y
- * el permiso—, y el armazón lo pagaba **nueve veces en cada navegación**, con nueve conexiones
- * a la base abiertas y cerradas y nueve peticiones compitiendo por los mismos cuatro núcleos.
+ * el permiso—, y el armazón pidiendo sección a sección lo pagaría **nueve veces en cada
+ * navegación**, con nueve conexiones a la base abiertas y cerradas y nueve peticiones
+ * compitiendo por los mismos cuatro núcleos.
  *
  * Tres reglas, y las tres importan:
  *
  * - **Cada sección conserva su permiso.** La que quien mira no puede ver llega `null`, no
- *   tumba la pantalla con un 403: es lo que el armazón ya hacía con su `figure()`, y sin eso
- *   un moderador —que no tiene ninguno de los tres catálogos— se quedaría sin panel.
- * - **Cada sección viaja con la forma EXACTA del endpoint que sustituye.** El panel la lee con
- *   el mismo parseador que ya tenía; un contrato propio por pantalla sería una segunda forma
- *   que mantener sincronizada con la primera.
+ *   tumba la pantalla con un 403: sin eso un moderador —que no tiene ninguno de los tres
+ *   catálogos— se quedaría sin panel.
+ * - **Cada sección viaja con la forma EXACTA de su endpoint por recurso.** El panel la lee con
+ *   el mismo parseador; un contrato propio por pantalla sería una segunda forma que mantener
+ *   sincronizada con la primera.
  * - **Solo lectura.** Escribir sigue yendo al CRUD por recurso, que es donde están la
  *   validación, la transacción y el registro de actividad.
  */
 class SnkKilkanaPanelService
 {
-    /** Cuántos movimientos lleva la campana. Es lo que el armazón pedía con `activity?bell=6`. */
+    /** Cuántos movimientos lleva la campana: la misma cifra que acepta `activity?bell=`. */
     public const BELL = 6;
 
     /** Cuántas piezas enseña cada cola del tablero, y cuántas «lo más leído». */
@@ -49,12 +50,12 @@ class SnkKilkanaPanelService
     public const MOST_READ = 6;
 
     /**
-     * Los idiomas en los que esta rotulado el panel.
+     * Los idiomas en los que está rotulado el panel.
      *
      * No es `SnkKilkanaSettingModel::LANGS`, y la diferencia importa: aquella es la lista de lo
      * que la calle sabe SERVIR —el idioma en el que se publica, con su `hreflang` y su formato de
-     * fecha— y esta es la lista de lo que el panel esta TRADUCIDO. Un diario en gallego lo edita
-     * hoy alguien con el panel en castellano o en ingles, y son dos hechos independientes.
+     * fecha— y esta es la lista de lo que el panel está TRADUCIDO. Un diario en gallego lo edita
+     * alguien con el panel en castellano o en inglés, y son dos hechos independientes.
      */
     public const PANEL_LOCALES = ['en', 'es'];
 
@@ -88,10 +89,10 @@ class SnkKilkanaPanelService
             // panel manda a ella: la fecha de apertura, si hay tema puesto y cuántas piezas han
             // salido. Sin permiso propio porque no descubre nada que la calle no diga.
             'setup' => $this->setup(),
-            // Quien mira: por ahora solo en que idioma quiere el panel. Nulo es «lo que diga el
-            // navegador», que es con lo que nace toda cuenta. Se lee de la fila y no del modelo
+            // Quien mira: en qué idioma quiere el panel. Nulo es «lo que diga el navegador», que
+            // es con lo que nace toda cuenta. Se lee de la fila y no del modelo
             // autenticado: ese modelo puede no traer la columna —el de `actingAs` en las pruebas
-            // no la trae, y el modo estricto lo convierte en excepcion—, y de la fila sale siempre
+            // no la trae, y el modo estricto lo convierte en excepción—, y de la fila sale siempre
             // lo que hay guardado.
             'account' => ['locale' => auth()->user()?->newQuery()->whereKey(auth()->id())->value('panel_locale')],
             // El mismo scope y **el mismo Resource** que sirven `GET categories`, `authors` y
@@ -145,8 +146,8 @@ class SnkKilkanaPanelService
      * El tablero: el archivo desde cuatro ángulos, más el plan que paga el periódico.
      *
      * Las cifras de la barra de estados se calculan **una vez** y viajan con las cuatro colas,
-     * porque son las mismas para todas y el panel las lee de la primera que le llega. Antes
-     * eran cuatro llamadas y por tanto cuatro veces la misma consulta de recuentos.
+     * porque son las mismas para todas y el panel las lee de la primera que le llega. Calcularlas
+     * por cola sería repetir cuatro veces la misma consulta de recuentos.
      *
      * @param  ?int  $reads  la ventana de «lo más leído» en días, ya validada
      * @return array<string, mixed>
@@ -157,9 +158,6 @@ class SnkKilkanaPanelService
         $canEditOthers = auth()->user()?->can('edit others posts') === true;
         $counts = $this->posts->countsByStatus($userId, $canEditOthers, auth()->user()?->can('view others posts') === true);
 
-        // La misma página que sirve `GET posts`, y por la misma puerta: `KilkanaPanelCompositeTest`
-        // compara sección a sección estas cuatro colas con las cuatro llamadas que sustituyen, y
-        // lo que podía romper esa comparación era que aquí estuviera copiada.
         $queue = function (array $filters, int $count, ?int $days) use ($userId, $canEditOthers, $counts) {
             // Por el mismo builder que `GET posts`, y con el mismo techo: estas cuatro colas
             // **son** ese listado servido de otra manera, y `KilkanaPanelCompositeTest` compara
@@ -211,10 +209,9 @@ class SnkKilkanaPanelService
      *
      * Los tres catálogos NO se protegen así a propósito: sin ellos el armazón no sabe si hay
      * periódico y un 502 es la respuesta honesta. Una cifra es otra cosa —es un entero al lado
-     * de un icono—, y ya costó una pantalla entera en «Something went wrong»: una columna que
-     * faltaba en la consulta de la cola de moderación se llevó el panel por delante. Antes lo
-     * paraba el armazón, que las pedía una a una; ahora vienen en la misma respuesta, así que
-     * lo tiene que parar esto. Se reporta, no se traga.
+     * de un icono—: una columna que falte en la consulta de la cola de moderación no puede
+     * llevarse el panel entero a «Something went wrong». Las cifras viajan en la misma respuesta
+     * que los catálogos, así que el fallo de una lo tiene que parar esto. Se reporta, no se traga.
      */
     private function countOrNull(string $permission, callable $section): mixed
     {

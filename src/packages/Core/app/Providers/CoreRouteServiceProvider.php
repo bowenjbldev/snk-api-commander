@@ -23,9 +23,9 @@ class CoreRouteServiceProvider extends ServiceProvider
     {
         Model::preventLazyLoading(! $this->app->isProduction());
         // Leer una columna que la consulta no seleccionó pasa de devolver `null` en silencio a
-        // reventar. Es lo que sostiene `?fields=`: con el recorte puesto, un `$post->excerpt`
-        // sobre una fila que no lo trajo devolvía «vacío» en vez de «no lo pediste», y esa
-        // diferencia no la ve nadie hasta que una pantalla pinta un hueco.
+        // reventar. Es lo que sostiene `?fields=`: sin esto, con el recorte puesto, un
+        // `$post->excerpt` sobre una fila que no lo trajo devuelve «vacío» en vez de «no lo
+        // pediste», y esa diferencia no la ve nadie hasta que una pantalla pinta un hueco.
         //
         // Fuera de producción, igual que el anterior: en producción una respuesta a medias es
         // mejor que un 500, y aquí lo que se busca es que salte en la suite.
@@ -68,9 +68,9 @@ class CoreRouteServiceProvider extends ServiceProvider
     {
         $router = $this->app->make(Router::class);
 
-        // El override de config por package YA NO es global pre-routing: con subdominio = cliente
-        // (varios packages comparten host), el package solo se conoce con el slug del path. El
-        // override vive ahora dentro del resolutor de instancia, una vez resuelto
+        // El override de config por package no es global pre-routing: con subdominio = cliente
+        // (varios packages comparten host), el package solo se conoce con el slug del path, así
+        // que el override vive dentro del resolutor de instancia, una vez resuelto
         // (cliente, slug) -> instancia. API stateless (sin sesión), así que no necesita
         // aplicarse antes del StartSession.
 
@@ -79,7 +79,7 @@ class CoreRouteServiceProvider extends ServiceProvider
         // Metering + kill-switch son el commander del tenant: solo en deploys gestionados.
         // El control plane (no tenant) lo apaga y no los engancha.
         if (config('core.commander', true)) {
-            // Metering el primero (outermost): registra tambien los 429 del throttle y los 402 del kill-switch.
+            // Metering el primero (outermost): registra también los 429 del throttle y los 402 del kill-switch.
             $router->prependMiddlewareToGroup('api', CoreMeteringMiddleware::class);
             // Kill-switch tras throttle y antes del auth de ruta.
             $router->pushMiddlewareToGroup('api', CoreEnsureActiveMiddleware::class);
@@ -111,7 +111,7 @@ class CoreRouteServiceProvider extends ServiceProvider
             $tenantBase = (string) config('core.tenant_base_domain', $base);
 
             // Rutas de Core (health/docs) GLOBALES: cualquier host (api.{BASE_DOMAIN}, localhost,
-            // monitorizacion). Son agnosticas de package; el resolutor no aplica. El health queda
+            // monitorización). Son agnósticas de package; el resolutor no aplica. El health queda
             // exento del kill-switch (core.state.exempt_paths) y no se mide (metering skip sin package).
             foreach ($coreFiles as $coreFile) {
                 Route::prefix('api/v1')

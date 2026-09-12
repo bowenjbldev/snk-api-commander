@@ -5,13 +5,13 @@ namespace Packages\Kilkana\Enums;
 use Packages\Kilkana\Enums\Concerns\SnkKilkanaEnumValuesSupport;
 
 /**
- * Que clase de firma es, que no es lo mismo que quien la escribe.
+ * Qué clase de firma es, que no es lo mismo que quién la escribe.
  *
- * Una firma es una PAGINA PUBLICA y un asiento es acceso al panel, y el periodico tiene las
+ * Una firma es una PÁGINA PÚBLICA y un asiento es acceso al panel, y el periódico tiene las
  * dos cosas por separado: agencias y colectivos publican sin entrar nunca, y hay cuentas que
- * no firman. Sin esta columna el panel no podia contestar la pregunta que trae a alguien a la
- * pantalla de firmas —«que se publica aqui sin firma de persona»— y las cuatro clases se
- * distinguian por convencion en el nombre.
+ * no firman. Sin esta columna el panel no puede contestar la pregunta que trae a alguien a la
+ * pantalla de firmas —«qué se publica aquí sin firma de persona»— y las cuatro clases solo se
+ * distinguen por convención en el nombre.
  */
 enum SnkKilkanaAuthorKindEnum: string
 {
@@ -20,7 +20,7 @@ enum SnkKilkanaAuthorKindEnum: string
     /** Plantilla: firma y entra al panel. */
     case Staff = 'staff';
 
-    /** La casa firmando en grupo: «Redaccion». Una cuenta de servicio, o ninguna. */
+    /** La casa firmando en grupo: «Redacción». Una cuenta de servicio, o ninguna. */
     case Collective = 'collective';
 
     /** Firma de fuera con nombre propio. Puede tener asiento o no tenerlo. */
@@ -32,7 +32,7 @@ enum SnkKilkanaAuthorKindEnum: string
     /**
      * Si la firma es una persona de la casa.
      *
-     * Lo usa quien tiene que decidir si esperar una cuenta detras: una agencia sin asiento es
+     * Lo usa quien tiene que decidir si esperar una cuenta detrás: una agencia sin asiento es
      * lo normal, y un `staff` sin asiento es una ficha a medio hacer.
      */
     public function isStaff(): bool

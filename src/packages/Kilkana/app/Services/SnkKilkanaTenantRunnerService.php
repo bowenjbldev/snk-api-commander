@@ -7,25 +7,24 @@ use Packages\Commander\Models\CommanderInstanceModel;
 use Packages\Core\Support\CorePackageSelectorSupport;
 
 /**
- * Corre un trabajo dentro de CADA Kilkana aprovisionado, y devuelve la conexion como estaba.
+ * Corre un trabajo dentro de CADA Kilkana aprovisionado, y devuelve la conexión como estaba.
  *
- * Es el mismo patron de conmutacion que `CoreResolveInstanceFromHostMiddleware`, pero
+ * Es el mismo patrón de conmutación que `CoreResolveInstanceFromHostMiddleware`, pero
  * recorriendo el registro del Commander en vez de resolver por host: un comando de consola
- * no tiene peticion de la que sacar el subdominio.
+ * no tiene petición de la que sacar el subdominio.
  *
- * Estaba copiado dentro de los dos comandos, y las dos copias ya habian DIVERGIDO: una
- * guardaba tres claves sueltas de config y la otra el array entero, que es la unica que
- * devuelve tambien lo que no se toco. Es estado global restaurado en un `finally`, o sea el
- * sitio exacto donde una tercera copia habria dejado al proceso hablando con la base
- * equivocada.
+ * Vive en un solo sitio y no copiado en cada comando porque es estado global restaurado en un
+ * `finally`: guarda y devuelve el array entero de la conexión, también lo que el trabajo no
+ * toca, y una copia que guardara solo unas claves sueltas dejaría al proceso hablando con la
+ * base equivocada.
  *
- * Lo que va DENTRO del `$work` es la regla editorial y no vive aqui: esto solo sabe de
+ * Lo que va DENTRO del `$work` es la regla editorial y no vive aquí: esto solo sabe de
  * conexiones.
  */
 class SnkKilkanaTenantRunnerService
 {
     /**
-     * @param  callable(string $database): mixed  $work  Se ejecuta con la conexion ya conmutada.
+     * @param  callable(string $database, string $client): mixed  $work  Se ejecuta con la conexión ya conmutada.
      * @return array{tenants: int, results: array<string, mixed>, errors: array<string, string>}
      */
     public function each(callable $work): array
@@ -74,7 +73,7 @@ class SnkKilkanaTenantRunnerService
                     // quien construye URLs o encola para volver a este periódico.
                     $results[$database] = $work($database, (string) ($instance->client?->slug ?? ''));
                 } catch (\Throwable $e) {
-                    // Un tenant roto no puede parar a los demas: se anota y se sigue.
+                    // Un tenant roto no puede parar a los demás: se anota y se sigue.
                     report($e);
                     $errors[$instance->database] = $e->getMessage();
                 }

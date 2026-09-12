@@ -25,29 +25,28 @@ class SnkKilkanaCategoriesController extends CoreBaseApiController
 
     protected string $modelClass = SnkKilkanaCategoryModel::class;
 
-    /**
-     * Cada seccion sale con cuantas piezas archiva, cuando publico la ultima y que URLs dejo
-     * atras — y en el orden del menu.
-     *
-     * Las dos primeras son subconsultas por fila y diecisiete filas, no un recuento por
-     * peticion: el panel enseña «Local 40 · 28 Jun» y sin esto la unica forma de saberlo era
-     * traerse el archivo entero al cliente y contarlo alli, que es exactamente lo que se vino
-     * a quitar del listado. `last_published_at` mira solo lo publicado: un borrador de hoy no
-     * es actividad de la seccion.
-     *
-     * El orden es `position` y no la clave: el menu del periodico es esta lista, y ordenar por
-     * id devolveria el orden de creacion en cuanto alguien reordene. `id` desempata, porque
-     * `position` nace a cero en todas y sin segundo criterio el orden seria el que quisiera la
-     * base.
-     *
-     * Va en `decorate()` y no en el modelo porque **solo lo quiere quien lista**: pedir una
-     * seccion para editarla no necesita contar sus piezas. Y detrás de `?fields=`, porque el
-     * recorte hace `select()` y se llevaría los dos agregados.
-     */
     protected ?string $resourceClass = SnkKilkanaCategoryResource::class;
 
     protected array $allowedFields = ['id', 'name', 'slug', 'status', 'position', 'parent_id', 'noindex', 'updated_at'];
 
+    /**
+     * Cada sección sale con cuántas piezas archiva, cuándo publicó la última y qué URLs dejó
+     * atrás — y en el orden del menú.
+     *
+     * Las dos primeras son subconsultas por fila sobre un catálogo corto, y no un recuento por
+     * petición: el panel enseña «Local 40 · 28 Jun», y sin esto la única forma de saberlo es
+     * traerse el archivo entero al cliente y contarlo allí. `last_published_at` mira solo lo
+     * publicado: un borrador de hoy no es actividad de la sección.
+     *
+     * El orden es `position` y no la clave: el menú del periódico es esta lista, y ordenar por
+     * id devolvería el orden de creación en cuanto alguien reordene. `id` desempata, porque
+     * `position` nace a cero en todas y sin segundo criterio el orden sería el que quisiera la
+     * base.
+     *
+     * Va en `decorate()` y no en el modelo porque **solo lo quiere quien lista**: pedir una
+     * sección para editarla no necesita contar sus piezas. Y detrás de `?fields=`, porque el
+     * recorte hace `select()` y se llevaría los dos agregados.
+     */
     protected function decorate(QueryBuilder $query): QueryBuilder
     {
         return $query->asCatalogue();
@@ -80,12 +79,12 @@ class SnkKilkanaCategoriesController extends CoreBaseApiController
     protected array $validationRulesUpdate = [
         'name' => 'sometimes|required|string|max:255',
         // Aquí NO puede ser nulo: la columna no lo admite y el derivador solo corre al crear,
-        // así que un `slug: null` en una edición era un 500. Una sección viva tiene URL
+        // así que un `slug: null` en una edición sería un 500. Una sección viva tiene URL
         // siempre; se puede cambiar, no vaciar.
         'slug' => 'sometimes|required|string|max:'.SnkKilkanaCategoryModel::SLUG_MAX.'|regex:'.SnkKilkanaCategoryModel::SLUG_SHAPE.'|unique:kilkana_categories,slug,{id}',
-        // Primera linea contra el ciclo trivial. La forma del arbol —dos niveles y sin
-        // ciclos— la impone `SnkKilkanaCategoryModel::guardTree`, que tambien cubre al
-        // seeder y a la consola, que no pasan por aqui.
+        // Primera línea contra el ciclo trivial. La forma del árbol —dos niveles y sin
+        // ciclos— la impone `SnkKilkanaCategoryModel::guardTree`, que también cubre al
+        // seeder y a la consola, que no pasan por aquí.
         'parent_id' => 'nullable|integer|exists:kilkana_categories,id|not_in:{id}',
         'description' => 'nullable|string',
         'seo_title' => 'nullable|string|max:500',
@@ -95,12 +94,12 @@ class SnkKilkanaCategoriesController extends CoreBaseApiController
     ];
 
     /**
-     * Borrar dice QUE lo impide, en vez de reventar con el SQL a la vista.
+     * Borrar dice QUÉ lo impide, en vez de reventar con el SQL a la vista.
      *
-     * Dos claves foraneas protegen una seccion —sus articulos y sus subsecciones, las dos
-     * RESTRICT— y al saltar devolvian un 500 con el nombre de la tabla y de la restriccion
-     * dentro. Quien lo recibia no podia distinguir «esta seccion tiene contenido» de «el
-     * servidor se ha roto», y de paso se publicaba el esquema.
+     * Dos claves foráneas protegen una sección —sus artículos y sus subsecciones, las dos
+     * RESTRICT— y al saltar devolverían un 500 con el nombre de la tabla y de la restricción
+     * dentro. Quien lo recibiera no podría distinguir «esta sección tiene contenido» de «el
+     * servidor se ha roto», y de paso se publicaría el esquema.
      *
      * Se cuenta antes de borrar para poder nombrar los DOS motivos a la vez: la base solo
      * informa del primero con el que tropieza, y arreglar uno para descubrir el otro es un
@@ -126,8 +125,8 @@ class SnkKilkanaCategoriesController extends CoreBaseApiController
         try {
             return parent::destroy($id);
         } catch (QueryException) {
-            // Red de seguridad: entre el recuento y el borrado cabe una escritura, y manana
-            // puede haber una tercera clave foranea que este metodo no conozca. Nunca un 500
+            // Red de seguridad: entre el recuento y el borrado cabe una escritura, y mañana
+            // puede haber una tercera clave foránea que este método no conozca. Nunca un 500
             // con SQL dentro.
             return response()->json(['error' => 'Section in use'], 409);
         }

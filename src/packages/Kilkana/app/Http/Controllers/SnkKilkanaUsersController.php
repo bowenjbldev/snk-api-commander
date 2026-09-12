@@ -246,7 +246,8 @@ class SnkKilkanaUsersController extends CoreUsersController
      * Borrar una cuenta dice QUÉ lo impide.
      *
      * `kilkana_authors.user_id` es RESTRICT: la identidad de una firma es su cuenta, así que
-     * borrarla dejaría la hemeroteca firmada por nadie. Saltaba como 500 con el SQL dentro.
+     * borrarla dejaría la hemeroteca firmada por nadie. Sin comprobarlo antes, saltaría como un
+     * 500 con el SQL dentro.
      *
      * El orden importa: primero se retira la firma —decisión editorial, y ahí es donde se ve
      * cuántos artículos arrastra—, y solo después se da de baja la cuenta. Y nadie se retira a

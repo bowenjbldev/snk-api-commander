@@ -7,11 +7,11 @@ use Packages\Kilkana\Services\SnkKilkanaMediaService;
 use Packages\Kilkana\Services\SnkKilkanaTenantRunnerService;
 
 /**
- * Rellena los huecos de metadatos de cada portada con lo que su articulo ya sabe, en cada
+ * Rellena los huecos de metadatos de cada portada con lo que su artículo ya sabe, en cada
  * instancia provisionada.
  *
- * Aqui solo queda lo que es de consola. Que se rellena lo decide
- * `SnkKilkanaMediaService::enrichFromPosts`, y donde corre `SnkKilkanaTenantRunnerService`.
+ * Aquí solo queda lo que es de consola. Qué se rellena lo decide
+ * `SnkKilkanaMediaService::enrichFromPosts`, y dónde corre `SnkKilkanaTenantRunnerService`.
  */
 class SnkKilkanaEnrichMediaCommand extends Command
 {

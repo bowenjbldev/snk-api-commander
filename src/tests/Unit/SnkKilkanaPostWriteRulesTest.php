@@ -7,11 +7,11 @@ use Packages\Kilkana\Services\SnkKilkanaPostService;
 use Tests\TestCase;
 
 /**
- * Las dos reglas que decide una edición, ahora sin petición delante.
+ * Las dos reglas que decide una edición, sin petición delante.
  *
- * Vivían dentro de `update()` y por eso solo se podían ejercitar montando un `Request`, un
- * usuario y un permiso. Son reglas del agregado —«desde qué versión escribes» y «qué significa
- * una edición parcial que publica»— y aquí se prueban por lo que son.
+ * Son reglas del agregado —«desde qué versión escribes» y «qué significa una edición parcial que
+ * publica»—, no de la petición, y aquí se prueban por lo que son: sin montar un `Request`, un
+ * usuario ni un permiso.
  *
  * No toca la base: los dos métodos son estáticos y trabajan sobre un modelo en memoria.
  */

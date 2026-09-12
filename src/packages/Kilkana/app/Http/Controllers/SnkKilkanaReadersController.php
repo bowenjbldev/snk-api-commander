@@ -51,8 +51,8 @@ class SnkKilkanaReadersController extends CoreBaseApiController
      * regla que las cruza: un bloqueado no cuenta como comentarista, porque esa pestaña es
      * con quién se puede contar. `summary=counts,stats` añade las pestañas y la banda —que
      * cuentan la tabla, no la página, así que no viajan si no se piden—; `counts=1` devuelve
-     * solo las cifras y nada más; `all=1`, lo filtrado
-     * entero sin paginar, que es lo que se lleva un export.
+     * solo las cifras y nada más; `all=1`, lo filtrado entero sin paginar, que es lo que se
+     * lleva un export.
      */
     public function index(): JsonResponse
     {
@@ -61,8 +61,8 @@ class SnkKilkanaReadersController extends CoreBaseApiController
         }
 
         $request = request();
-        // Solo la cifra del rail: cuantas cuentas hay, en una consulta. Las pestañas y la banda
-        // son ocho, y el armazon las pediria en cada carga para pintar un entero.
+        // Solo la cifra del raíl: cuántas cuentas hay, en una consulta. Las pestañas y la banda
+        // son ocho, y el armazón las pediría en cada carga para pintar un entero.
         if ($request->boolean('counts')) {
             return response()->json(['accounts' => $this->readers()->count()]);
         }
@@ -205,9 +205,9 @@ class SnkKilkanaReadersController extends CoreBaseApiController
     {
         return [
             // **`accounts` es `counts['all']` y `blocked` es `counts['blocked']`**: la misma
-            // consulta escrita dos veces. La pantalla pide las dos cosas a la vez, así que se
-            // contaban dos de más en cada carga, en cada página y en cada tecla del buscador.
-            // Cuando las pestañas ya se han contado, la banda las reutiliza.
+            // consulta escrita dos veces. La pantalla pide las dos cosas a la vez, así que
+            // contarlas otra vez serían dos consultas de más en cada carga, en cada página y en
+            // cada tecla del buscador. Cuando las pestañas ya se han contado, la banda las reutiliza.
             'accounts' => $counts['all'] ?? $this->readers()->count(),
             'confirmed_subscribers' => SnkKilkanaSubscriberModel::query()->where('status', SnkKilkanaSubscriberStatusEnum::Confirmed)->count(),
             'commented_this_month' => SnkKilkanaCommentModel::query()

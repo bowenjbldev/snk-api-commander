@@ -20,7 +20,7 @@ class CoreResolveInstanceFromHostMiddleware
     {
         $clientSubdomain = CorePackageSelectorSupport::subdomainFromHost($request->getHost());
         // SQL crudo y un solo JOIN a propósito: es la consulta de TODAS las peticiones tenant, y
-        // aquí Eloquent pesaba más que MariaDB. Medido: 0,83 ms con dos `whereHas` frente a 0,38
+        // aquí Eloquent pesa más que MariaDB. Medido: 0,83 ms con dos `whereHas` frente a 0,38
         // así, con la misma fila, los mismos casts y el mismo modelo a la salida.
         $instance = $clientSubdomain !== null
             ? CommanderInstanceModel::query()->fromQuery(
@@ -85,26 +85,26 @@ class CoreResolveInstanceFromHostMiddleware
     }
 
     /**
-     * La cache de permisos de Spatie, acotada a ESTA base.
+     * La caché de permisos de Spatie, acotada a ESTA base.
      *
      * `CoreServiceProvider` deja el almacén en `array`, que es por petición, y no es un
      * descuido: es lo que impide que una caché compartida sirva los permisos de un periódico a
-     * otro, y esa regla no se toca. Lo que cambia aquí es que la clave lleve el nombre de la
-     * base, con lo que la caché persistente vuelve a ser segura: dos inquilinos no pueden
-     * compartir entrada porque no comparten clave. `forgetCachedPermissions()` sigue olvidando
+     * otro, y esa regla no se toca. Aquí la clave lleva el nombre de la base, y eso es lo que
+     * hace segura la caché persistente: dos inquilinos no pueden compartir entrada porque no
+     * comparten clave. `forgetCachedPermissions()` sigue olvidando
      * solo la del inquilino activo, que es lo correcto cuando alguien edita un rol.
      *
      * Y hace falta que sea persistente: reconstruir la lista desde la base cuesta unos 26 ms.
      * Leerla e hidratarla en modelos, 0,6 ms por petición, y eso es lo que
      * `CorePermissionRegistrarSupport` recuerda por worker y por base.
      *
-     * **Y se hace aqui y solo aqui, a proposito.** Este es el unico sitio que conmuta la
-     * conexion en HTTP —una peticion, un inquilino, un cambio—, asi que la clave no puede
+     * **Y se hace aquí y solo aquí, a propósito.** Este es el único sitio que conmuta la
+     * conexión en HTTP —una petición, un inquilino, un cambio—, así que la clave no puede
      * quedarse vieja. Los otros ocho sitios que conmutan son CLI y trabajos en cola, donde un
-     * mismo proceso recorre VARIOS inquilinos: ahi sigue mandando el `array` del proveedor, que
+     * mismo proceso recorre VARIOS inquilinos: ahí sigue mandando el `array` del proveedor, que
      * no necesita que nadie se acuerde de nada.
      *
-     * Con `null` vuelve al estado de fabrica, para que lo que corra despues de esta peticion
+     * Con `null` vuelve al estado de fábrica, para que lo que corra después de esta petición
      * en el mismo proceso no herede ni la clave ni los permisos de un inquilino que ya no es el
      * activo.
      */
@@ -118,9 +118,9 @@ class CoreResolveInstanceFromHostMiddleware
             ]);
 
         // `initializeCache()` es lo que relee las tres claves; sin esto el registrar se queda
-        // con el almacen y la clave que resolvio al construirse. La coleccion ya cargada en
+        // con el almacén y la clave que resolvió al construirse. La colección ya cargada en
         // memoria no la toca, y un proceso que sirve dos inquilinos seguidos —worker
-        // persistente, CLI que recorre bases— le serviria al segundo los permisos del primero.
+        // persistente, CLI que recorre bases— le serviría al segundo los permisos del primero.
         $registrar = app(PermissionRegistrar::class);
         $registrar->clearPermissionsCollection();
         $registrar->initializeCache();

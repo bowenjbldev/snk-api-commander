@@ -13,11 +13,10 @@ use Packages\Kilkana\Services\SnkKilkanaTenantRunnerService;
  *
  * **Un despliegue no vuelve a sembrar.** `core:migrate --all-tenants` es lo que corre sobre
  * todos —y rechaza `--seed` por diseño—, así que un permiso nuevo nace en el seeder y no llega
- * a ningún periódico que ya existiera: los que se dieron de alta después lo tienen y los de
- * antes no, sin que falle nada. `view others posts` estuvo así en tres de las cuatro bases
- * locales, y la avería que produce es peor que una caída — parcial y verosímil: los roles que
- * pueden editar lo ajeno siguen viendo el sumario porque no les hace falta el permiso, y los
- * que no, lo pierden en silencio.
+ * a ningún periódico que ya existiera: los que se dan de alta después lo tienen y los de
+ * antes no, sin que falle nada. La avería que produce es peor que una caída — parcial y
+ * verosímil: sin `view others posts`, los roles que pueden editar lo ajeno siguen viendo el
+ * sumario porque no les hace falta el permiso, y los que no, lo pierden en silencio.
  *
  * Es un comando y no una migración a propósito. El reparto lo escribe
  * {@see SnkKilkanaRoleCatalogService} y **solo él**; una migración que repartiera permisos

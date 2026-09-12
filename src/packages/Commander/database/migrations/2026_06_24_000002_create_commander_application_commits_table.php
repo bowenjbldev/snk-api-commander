@@ -19,8 +19,8 @@ return new class extends Migration
             $table->string('author_name')->nullable();
             $table->string('author_email')->nullable();
             $table->text('message')->nullable();
-            $table->unsignedInteger('additions')->default(0);     // lineas + (scoped al path del package)
-            $table->unsignedInteger('deletions')->default(0);     // lineas -
+            $table->unsignedInteger('additions')->default(0);     // líneas + (scoped al path del package)
+            $table->unsignedInteger('deletions')->default(0);     // líneas -
             $table->unsignedInteger('files_changed')->default(0);
             $table->timestamps();
 

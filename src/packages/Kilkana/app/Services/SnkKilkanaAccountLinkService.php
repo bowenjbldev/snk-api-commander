@@ -29,7 +29,7 @@ class SnkKilkanaAccountLinkService
      *
      * `$queued` lo pide solo el camino público de «he olvidado mi contraseña»: ahí la respuesta
      * es la misma exista la cuenta o no, y un envío síncrono tarda lo que tarda el SMTP solo
-     * cuando existe, que es un reloj que dice quién trabaja aquí. Los otros emisores siguen
+     * cuando existe, que es un reloj que dice quién trabaja aquí. Los otros emisores son
      * síncronos porque dependen de que esto lance —invitar borra la cuenta si el correo no sale—.
      */
     public function send(CoreUserModel $user, string $kind, Request $request, bool $queued = false): void

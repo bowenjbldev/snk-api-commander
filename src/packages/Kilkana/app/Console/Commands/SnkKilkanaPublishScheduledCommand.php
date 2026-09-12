@@ -7,11 +7,12 @@ use Packages\Kilkana\Services\SnkKilkanaPostService;
 use Packages\Kilkana\Services\SnkKilkanaTenantRunnerService;
 
 /**
- * Scheduler editorial: publica los posts `scheduled` cuya fecha vencio, en cada instancia
- * provisionada de Kilkana. Corre por cron via schedule:run (registrado en el provider).
+ * Programador editorial: publica los posts `scheduled` cuya fecha venció, y retira los que
+ * llegan a su `unpublish_at`, en cada instancia provisionada de Kilkana. Corre por cron vía
+ * `schedule:run`, registrado en el provider.
  *
- * Aqui solo queda lo que es de consola: rotulo, salida y codigo de salida. Que se publica lo
- * decide `SnkKilkanaPostService::publishDue`, y donde corre `SnkKilkanaTenantRunnerService`.
+ * Aquí solo queda lo que es de consola: rótulo, salida y código de salida. Qué se publica lo
+ * decide `SnkKilkanaPostService::publishDue`, y dónde corre `SnkKilkanaTenantRunnerService`.
  */
 class SnkKilkanaPublishScheduledCommand extends Command
 {

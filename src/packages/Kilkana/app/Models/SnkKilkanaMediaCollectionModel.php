@@ -5,7 +5,7 @@ namespace Packages\Kilkana\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-// Colección de la biblioteca: agrupa medios por trabajo o por fecha. Ver `docs/05-medios.md`.
+// Colección de la biblioteca: agrupa medios por trabajo o por fecha. Ver `docs/products/kilkana/database/05-medios.md`.
 class SnkKilkanaMediaCollectionModel extends Model
 {
     protected $table = 'kilkana_media_collections';

@@ -24,9 +24,9 @@ class SnkKilkanaAuthorModel extends Model
      * porque lo preguntan dos puertas —el recurso y el armazón del panel—.
      *
      * **`seat` es una subconsulta y no un accesor, y esa diferencia es lo que lo mantiene
-     * dentro del panel.** Es el correo con el que se ENTRA, así que anexado al modelo viajaba
+     * dentro del panel.** Es el correo con el que se ENTRA, así que anexado al modelo viajaría
      * en cada firma que serializa cualquiera —y la portada pública y la página de cada artículo
-     * anidan la firma entera—: el correo de acceso de la redacción salía a la calle sin sesión.
+     * anidan la firma entera—: el correo de acceso de la redacción saldría a la calle sin sesión.
      * Aquí solo existe para quien pide el catálogo, y ningún serializador futuro tiene que
      * acordarse de esconderlo.
      */
@@ -60,13 +60,6 @@ class SnkKilkanaAuthorModel extends Model
     ];
 
     /**
-     * La cuenta viaja SIEMPRE **si la hay**, porque el nombre que se publica sale de ella.
-     *
-     * Con columnas: `users` guarda el correo del periodista y esto se sirve anidado en cada
-     * post de la salida pública. `$hidden` la esconde del JSON —quien lee la firma quiere
-     * `name`, no un objeto `user`— pero cargada, que es lo que necesita el accesor.
-     */
-    /**
      * La cuenta va cargada porque el nombre publicado sale de ella cuando no hay alias.
      *
      * **Consecuencia:** cualquier proyección sobre firmas tiene que traer `user_id`. Sin la
@@ -80,8 +73,8 @@ class SnkKilkanaAuthorModel extends Model
      * Ni la relación ni la clave que la nombra.
      *
      * `user` va cargada y escondida porque el accesor del nombre la necesita. Y `user_id` se
-     * esconde porque **decía quién tiene cuenta**: la portada pública anida la firma de cada
-     * pieza, así que cualquiera podía separar las firmas con asiento de las que no —que es
+     * esconde porque **dice quién tiene cuenta**: la portada pública anida la firma de cada
+     * pieza, así que cualquiera podría separar las firmas con asiento de las que no —que es
      * justo la distinción que el panel reserva a quien administra cuentas— y de paso contar
      * cuántas cuentas hay y en qué orden entraron. No se puede quitar del `select`: sin la
      * clave no hay relación que cargar, y sin relación no hay nombre publicado.
@@ -107,7 +100,7 @@ class SnkKilkanaAuthorModel extends Model
      * Las piezas firmadas.
      *
      * Existe para poder CONTARLAS sin traerlas: el panel enseña «Marta Beneyto · 34» y con una
-     * relacion declarada eso es un `withCount` en vez de once peticiones o el archivo entero en
+     * relación declarada eso es un `withCount` en vez de once peticiones o el archivo entero en
      * el cliente.
      */
     public function posts(): HasMany
@@ -146,8 +139,8 @@ class SnkKilkanaAuthorModel extends Model
     {
         static::saving(function (self $author) {
             // **Sin cuenta hace falta alias.** El nombre publicado sale del alias o de la
-            // cuenta, asi que una firma sin ninguno de los dos se publica como una cadena
-            // vacia: una fila en la tabla del panel sin nombre y una pagina de autor titulada
+            // cuenta, así que una firma sin ninguno de los dos se publica como una cadena
+            // vacía: una fila en la tabla del panel sin nombre y una página de autor titulada
             // «". "». Es la regla que sostiene que la cuenta pueda faltar.
             if ($author->user_id === null && trim((string) ($author->alias ?? '')) === '') {
                 throw ValidationException::withMessages([

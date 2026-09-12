@@ -124,9 +124,9 @@ class SnkKilkanaPublicService
             // Se suma `engaged`, no `opens`: «lo más leído» tiene que ordenarse por lo que la
             // gente lee, no por lo que consigue que pulsen.
             //
-            // **Y una suma, no tres.** Aquí hubo también `views_day` y `views_week`, dos
-            // subconsultas correlacionadas por fila que no lee nadie. En una portada de cien
-            // piezas eran doscientas subconsultas por carga.
+            // **Y una suma, no tres.** Cada ventana más es una subconsulta correlacionada por
+            // fila: en una portada de cien piezas, dos ventanas que no lee nadie son doscientas
+            // subconsultas por carga.
             ->withSum('views as views_total', 'engaged')
             // En la calle, `comments_count` es lo que la calle puede ver: los aprobados. Para
             // un lector, un número que incluye spam y rechazados no es moderación: es un
@@ -135,7 +135,7 @@ class SnkKilkanaPublicService
             // columnas decidir cuál sobrevive.
             ->withCount(['comments as comments_count' => fn ($c) => $c->approved()])
             // El desempate por `id` no es adorno: dos piezas publicadas en el mismo minuto
-            // salían en un orden u otro según el plan de la consulta, y esta lista se pagina
+            // salen en un orden u otro según el plan de la consulta, y esta lista se pagina
             // con `forPage`. Un orden inestable hace que la página 2 repita una y se salte otra.
             ->orderByDesc('publish_at')
             ->orderByDesc('id');
@@ -185,8 +185,8 @@ class SnkKilkanaPublicService
         if ($event === 'open') {
             SnkKilkanaPostViewModel::record($postId, 'opens', $this->referrerCounter($request));
             // Si quien abre viene con su cuenta, la lectura medida es suya y se le apunta al
-            // mes. La ruta no exige sesion —la calle es publica— pero un token de lector que
-            // viaje en la peticion se resuelve igual, y sin el no hay a quien apuntarsela.
+            // mes. La ruta no exige sesión —la calle es pública— pero un token de lector que
+            // viaje en la petición se resuelve igual, y sin él no hay a quién apuntársela.
             $reader = $request->user('sanctum');
             if ($reader !== null) {
                 SnkKilkanaReaderReadModel::record((int) $reader->getAuthIdentifier(), $post);
@@ -196,7 +196,7 @@ class SnkKilkanaPublicService
         }
 
         $visitor = sha1($request->ip().$request->userAgent().config('app.key').now()->toDateString());
-        // La cache es de la instalacion y cada periodico tiene su base: el nombre de la base
+        // La caché es de la instalación y cada periódico tiene su base: el nombre de la base
         // es lo que separa a un lector de `demo` del mismo lector en otro inquilino.
         $tenant = sha1(DB::connection()->getDatabaseName());
         $firstRead = Cache::add("kilkana:reader:{$tenant}:{$postId}:{$visitor}", true, now()->endOfDay());
@@ -231,14 +231,6 @@ class SnkKilkanaPublicService
     }
 
     /**
-     * Solo las del menú: una sección en preparación no existe para el lector, y una retirada
-     * dejó de ofrecerse.
-     *
-     * Sin `status` ni `position`: son la cocina del panel. Desde que hay tres estados, decir el
-     * estado en la calle es contarle a cualquiera **qué secciones retiró el periódico del menú
-     * a propósito**, que es justo lo que se estaba tapando.
-     */
-    /**
      * Lo que un rastreador puede pedir: la ruta sellada y cuándo se tocó por última vez, de
      * cada pieza publicada que no pida quedarse fuera. Sin relaciones ni contadores, porque
      * un sitemap de un periódico con años de archivo es una lista larga y nada más.
@@ -246,13 +238,11 @@ class SnkKilkanaPublicService
     public function sitemap(): array
     {
         return SnkKilkanaPostModel::query()
-            // `select()` y `without()`, y no el argumento de `get()`, porque **eso no hacía
-            // nada**: el `$withCount` del modelo fija `kilkana_posts.*` antes, así que esta
-            // consulta traía el archivo publicado entero con todas sus columnas —`body_blocks`
-            // incluido—, un `COUNT` correlacionado por fila y las cuatro cargas ansiosas del
-            // modelo, para devolver dos campos por pieza. `url_path` ni siquiera es una
-            // columna, es un accesor sobre `url_date` y `slug`: lo único que evitaba un
-            // «Unknown column» era que el argumento se ignorase.
+            // Solo las columnas de las que salen los dos campos: traer la fila entera sería traer
+            // `body_blocks` de todo el archivo publicado para devolver una ruta y una fecha.
+            // `url_path` no es una columna, es un accesor sobre `url_date` y `slug`, así que se
+            // piden esas dos. `without()` asegura que ninguna carga ansiosa entre en una lista
+            // que no pinta relaciones.
             ->select(['id', 'url_date', 'slug', 'updated_at'])
             ->without(['category', 'author', 'coverMedia', 'tags'])
             ->published()
@@ -277,6 +267,14 @@ class SnkKilkanaPublicService
         return $tag === null ? null : ['name' => $tag->name, 'slug' => $tag->slug];
     }
 
+    /**
+     * Solo las del menú: una sección en preparación no existe para el lector, y una retirada
+     * dejó de ofrecerse.
+     *
+     * No se dice el estado: con tres estados, decirlo en la calle es contarle a cualquiera
+     * **qué secciones retiró el periódico del menú a propósito**, que es justo lo que retirarlas
+     * calla.
+     */
     public function categories()
     {
         // La madre se incluye porque la calle rotula «Local · Deportes»; `status` y `position`
@@ -294,8 +292,8 @@ class SnkKilkanaPublicService
      * Una sección por su slug, o el slug de ahora si la URL pedida es una que dejó atrás.
      *
      * Devuelve cadena para redirigir, igual que `post()` y `author()`. Existe para eso: sin
-     * una entrada por slug, el historial de URLs de una sección se guardaba y no había dónde
-     * consultarlo, así que renombrar «Technology» rompía sus enlaces igual que antes.
+     * una entrada por slug, el historial de URLs de una sección se guarda y no hay dónde
+     * consultarlo, y renombrar una sección rompe sus enlaces.
      *
      * La redirección exige que la sección siga lanzada, por el mismo motivo que la de un
      * artículo exige que siga publicado: una mesa retirada no recibe tráfico por detrás.
@@ -426,8 +424,8 @@ class SnkKilkanaPublicService
 
         // Quien se dio de baja y vuelve a rellenar el formulario está pidiendo volver, y eso
         // es consentimiento nuevo: se le devuelve a `pending` para que reconfirme. Sin esto
-        // `firstOrCreate` encontraba la fila, no tocaba nada y respondía 202: el alta parecía
-        // funcionar y la persona seguía dada de baja para siempre.
+        // `firstOrCreate` encuentra la fila, no toca nada y responde 202: el alta parece
+        // funcionar y la persona sigue dada de baja para siempre.
         if ($subscriber->status === SnkKilkanaSubscriberStatusEnum::Unsubscribed) {
             $subscriber->update($consent + ['status' => SnkKilkanaSubscriberStatusEnum::Pending]);
         }
@@ -597,10 +595,9 @@ class SnkKilkanaPublicService
     /**
      * La identidad y la piel del periódico para un lector.
      *
-     * La forma es SIEMPRE la misma, haya fila o no. Antes `tenant` salía nulo cuando la fila no
-     * existía mientras el flujo administrativo, que la crea con `firstOrCreate`, no veía ese caso:
-     * dos
-     * formas posibles para el mismo endpoint, y la rara solo aparecía en la salida pública.
+     * La forma es SIEMPRE la misma, haya fila o no: `tenant` sale con sus claves aunque la fila
+     * no exista. El flujo administrativo la crea con `firstOrCreate` y nunca ve ese caso, así
+     * que una segunda forma para el mismo endpoint solo aparecería en la salida pública.
      *
      * `url` no sale: el lector ya está en ella, y es un dato de configuración.
      */

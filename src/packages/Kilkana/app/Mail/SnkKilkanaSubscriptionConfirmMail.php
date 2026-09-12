@@ -9,18 +9,18 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * El correo que convierte una direccion en un suscriptor.
+ * El correo que convierte una dirección en un suscriptor.
  *
- * Doble opt-in, y no por tramite: el clic desde el buzon es lo unico que demuestra que la
- * direccion es de quien la escribio. Sin el, cualquiera apunta a cualquiera —y quien recibe
- * un boletin que no pidio es justo quien reclama.
+ * Doble opt-in, y no por trámite: el clic desde el buzón es lo único que demuestra que la
+ * dirección es de quien la escribió. Sin él, cualquiera apunta a cualquiera —y quien recibe
+ * un boletín que no pidió es justo quien reclama.
  *
- * Lleva TAMBIEN el enlace de baja, aunque todavia no este suscrito del todo. Lo exige el RGPD
- * (art. 7.3: retirar el consentimiento tan facil como darlo) y de paso es lo que un cliente de
+ * Lleva TAMBIÉN el enlace de baja, aunque todavía no esté suscrito del todo. Lo exige el RGPD
+ * (art. 7.3: retirar el consentimiento tan fácil como darlo) y de paso es lo que un cliente de
  * correo espera encontrar para no tratar el mensaje como basura.
  *
- * Las dos URLs llegan ya firmadas y con el host del periodico: construirlas aqui las ataria a
- * `APP_URL`, que apunta a la API y no al tenant.
+ * Las dos URLs llegan ya firmadas y con el host del periódico: construirlas aquí las ataría a
+ * `APP_URL`, que apunta a la API y no al inquilino.
  */
 class SnkKilkanaSubscriptionConfirmMail extends Mailable
 {

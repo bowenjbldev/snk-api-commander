@@ -28,7 +28,7 @@ class SnkKilkanaPostResource extends JsonResource
             'status' => $this->whenHas('status'),
             'content_tier' => $this->whenHas('content_tier'),
             'publish_at' => $this->whenHas('publish_at'),
-            // Columna de verdad, no el objeto `cover` que apéndía el modelo: el panel solo
+            // Columna de verdad, no el objeto `cover` de la relación: el panel solo
             // guarda el id para pedirle la imagen a la mediateca.
             'cover_media_id' => $this->whenHas('cover_media_id'),
             // El alias del `withSum` de audiencia. Solo está si la consulta lo pidió, y por eso

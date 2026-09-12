@@ -1,9 +1,9 @@
 {{--
-    Confirmacion de alta al boletin. Markdown para que la maqueta la ponga Laravel: un
-    periodico no gana nada con plantilla propia hasta que tenga marca que aplicarle, y este
+    Confirmación de alta al boletín. Markdown para que la maqueta la ponga Laravel: un
+    periódico no gana nada con plantilla propia hasta que tenga marca que aplicarle, y este
     correo se lee igual en cualquier cliente.
 
-    En INGLES como todo lo que ve el lector: el contrato del producto lo es.
+    En INGLÉS como todo lo que ve el lector: el contrato del producto lo es.
 --}}
 @component('mail::message')
 # One last step

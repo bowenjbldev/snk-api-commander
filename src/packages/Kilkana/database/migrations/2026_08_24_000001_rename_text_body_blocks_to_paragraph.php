@@ -7,15 +7,15 @@ use Illuminate\Support\Facades\Schema;
 /**
  * El bloque de cuerpo pasa a llamarse `paragraph`, que es como lo llama el editor.
  *
- * Los dos lados tenian vocabularios distintos —siete tipos aqui, diez alli, cuatro en comun—
- * y el editor no podia guardar: cualquier pieza con un intertitulo, una lista o un recuadro
+ * Los dos lados tenían vocabularios distintos —siete tipos aquí, diez allí, cuatro en común—
+ * y el editor no podía guardar: cualquier pieza con un intertítulo, una lista o un recuadro
  * de datos rebotaba con un 422. La lista la manda el editor, porque el `type` es lo que este
- * backend razona (`publicBodyBlocks()` corta en `paywall`) y lo que un renderizador publico
- * conmuta: un `type` que miente para tres de cada diez bloques es una averia diferida.
+ * backend razona (`publicBodyBlocks()` corta en `paywall`) y lo que un renderizador público
+ * conmuta: un `type` que miente para tres de cada diez bloques es una avería diferida.
  *
- * Va como migracion hacia delante y no reescribiendo la que creo la tabla, aunque hoy no haya
- * una sola fila con cuerpo: el esquema desplegado no se reescribe, y el dia que si las haya
- * esta es la unica forma de que la reconciliacion llegue tambien alli.
+ * Va como migración hacia delante y no reescribiendo la que creó la tabla: el esquema
+ * desplegado no se reescribe, y una base que ya guarda cuerpos solo recibe la reconciliación
+ * por esta vía.
  */
 return new class extends Migration
 {
@@ -30,11 +30,11 @@ return new class extends Migration
     }
 
     /**
-     * Se hace con una sustitucion de cadena sobre el JSON y no leyendo fila a fila.
+     * Se hace con una sustitución de cadena sobre el JSON y no leyendo fila a fila.
      *
-     * `"type":"text"` no puede aparecer dentro de otra cosa: el unico sitio donde el contrato
-     * pone la clave `type` es la raiz de un bloque, y su valor es una lista cerrada. Recorrer
-     * y reescribir quinientos documentos en PHP costaria quinientas escrituras para el mismo
+     * `"type":"text"` no puede aparecer dentro de otra cosa: el único sitio donde el contrato
+     * pone la clave `type` es la raíz de un bloque, y su valor es una lista cerrada. Recorrer
+     * y reescribir quinientos documentos en PHP costaría quinientas escrituras para el mismo
      * resultado.
      */
     private function rename(string $from, string $to): void

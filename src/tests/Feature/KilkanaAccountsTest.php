@@ -25,9 +25,9 @@ use Tests\TestCase;
 /**
  * Un asiento es lo que se factura; un papel es lo que se puede hacer.
  *
- * Lo que se fija aqui es lo que separa a las cuentas de la redaccion de una tabla de usuarios:
- * quien ocupa asiento y quien no, los tres estados y lo que cada uno permite, que invitar
- * manda el enlace o no crea nada, y que nadie se cierra la puerta a si mismo.
+ * Lo que se fija aquí es lo que separa a las cuentas de la redacción de una tabla de usuarios:
+ * quién ocupa asiento y quién no, los tres estados y lo que cada uno permite, que invitar
+ * manda el enlace o no crea nada, y que nadie se cierra la puerta a sí mismo.
  */
 class KilkanaAccountsTest extends TestCase
 {
@@ -48,8 +48,8 @@ class KilkanaAccountsTest extends TestCase
         // petición: sin ajustes no hay enlace.
         SnkKilkanaSettingModel::create(['id' => 1, 'tenant_name' => 'El Diario', 'tenant_url' => 'https://demo.kilkana.test']);
 
-        // Los cinco permisos de cuentas los da el seeder de Core, no el catalogo del periodico:
-        // aqui se ponen a mano, como los pone ese seeder, para que admin sea admin.
+        // Los cinco permisos de cuentas los da el seeder de Core, no el catálogo del periódico:
+        // aquí se ponen a mano, como los pone ese seeder, para que admin sea admin.
         foreach (['index', 'show', 'create', 'update', 'delete'] as $action) {
             Permission::findOrCreate("{$action} users", 'sanctum');
         }
@@ -92,7 +92,7 @@ class KilkanaAccountsTest extends TestCase
         Mail::assertSent(SnkKilkanaAccountLinkMail::class, fn (SnkKilkanaAccountLinkMail $email) => $email->kind === 'invite' && $email->hasTo('pau@eldiario.example') && str_contains($email->url, '/admin/password?'));
     }
 
-    /** Un lector no es un asiento: por aqui no se invita. */
+    /** Un lector no es un asiento: por aquí no se invita. */
     public function test_a_reader_cannot_be_invited(): void
     {
         Mail::fake();
@@ -104,7 +104,7 @@ class KilkanaAccountsTest extends TestCase
         ]));
     }
 
-    /** Una invitada sin invitacion es un asiento pagado al que nadie puede llegar. */
+    /** Una invitada sin invitación es un asiento pagado al que nadie puede llegar. */
     public function test_if_the_email_is_not_sent_no_account_is_created(): void
     {
         Mail::shouldReceive('to')->once()->andThrow(new \RuntimeException('smtp down'));
@@ -194,7 +194,7 @@ class KilkanaAccountsTest extends TestCase
         $this->assertCount(7, $roles);
         $this->assertSame(1, $roles['admin']['users_count']);
         $this->assertSame(1, $roles['redactor']['users_count']);
-        $this->assertNotContains('publish posts', $roles['redactor']['permissions'], 'Un redactor manda a revision y no publica.');
+        $this->assertNotContains('publish posts', $roles['redactor']['permissions'], 'Un redactor manda a revisión y no publica.');
         $this->assertContains('publish posts', $roles['editor']['permissions']);
         $this->assertFalse($roles['reader']['seat']);
         $this->assertTrue($roles['redactor']['seat']);

@@ -106,8 +106,8 @@ class SnkKilkanaNewsletterService
     /**
      * De una pieza aquí solo se lee esto: el panel pinta el titular, y el correo el titular, la
      * entradilla y el enlace —que sale de `url_date` y `slug`—. Nadie serializa la pieza entera,
-     * así que las cuatro relaciones que `$with` carga sola eran cuatro consultas por llamada
-     * para nada.
+     * así que ni el resto de columnas ni las relaciones se cargan: `without()` asegura que
+     * ninguna carga ansiosa se cuele en una consulta que no las pinta.
      */
     private function row(Builder $query): Builder
     {

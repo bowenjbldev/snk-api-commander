@@ -140,13 +140,13 @@ class KilkanaStreetTest extends TestCase
     /**
      * El listado de la calle no paga lo que no enseña.
      *
-     * `makeHidden('body_blocks')` escondía el cuerpo **al serializar**, después de haberlo
-     * traído: una portada de cien piezas movía 239 KB de cuerpos de MariaDB a PHP para
-     * tirarlos al final. Y `views_day`/`views_week` eran dos subconsultas correlacionadas por
+     * `makeHidden('body_blocks')` esconde el cuerpo **al serializar**, después de haberlo
+     * traído: una portada de cien piezas mueve 239 KB de cuerpos de MariaDB a PHP para
+     * tirarlos al final. Y `views_day`/`views_week` son dos subconsultas correlacionadas por
      * fila que no lee nadie, ni la calle ni el panel.
      *
      * Se comprueba sobre el SQL **y** sobre la fila, porque son dos fallos distintos: el
-     * primero no se ve en la respuesta —el JSON salía igual con y sin el cuerpo— y el segundo
+     * primero no se ve en la respuesta —el JSON sale igual con y sin el cuerpo— y el segundo
      * sí.
      */
     public function test_the_public_listing_skips_the_body_and_what_nobody_renders(): void
@@ -184,11 +184,10 @@ class KilkanaStreetTest extends TestCase
     /**
      * El sitemap devuelve dos campos por pieza, y eso es lo que tiene que costar.
      *
-     * `get(['url_path','updated_at'])` no proyectaba nada: el `$withCount` que declara el
-     * modelo fija `kilkana_posts.*` en cuanto se construye la consulta, así que esto traía el
-     * archivo publicado entero —cuerpos incluidos— más las cuatro relaciones que el modelo
-     * carga solo. `url_path` ni siquiera es una columna, es un accesor: lo único que evitaba
-     * un «Unknown column» era que el argumento se ignorase.
+     * Un `get(['url_path','updated_at'])` no basta: un agregado o una relación que el modelo
+     * cargue solo fija `kilkana_posts.*` en cuanto se construye la consulta, y trae el archivo
+     * publicado entero —cuerpos incluidos—. Y `url_path` ni siquiera es una columna, es un
+     * accesor: proyectarlo por su nombre es un «Unknown column».
      */
     public function test_the_sitemap_loads_no_relations_or_columns_it_does_not_return(): void
     {
@@ -209,7 +208,7 @@ class KilkanaStreetTest extends TestCase
      * Dos piezas del mismo minuto salen siempre en el mismo orden.
      *
      * Sin desempate, `order by publish_at desc` no es un orden total y la base puede devolver
-     * los empates como quiera —cambió al recortar las columnas, porque cambió el plan—. Esta
+     * los empates como quiera —basta con que cambie el plan, y recortar columnas lo cambia—. Esta
      * lista se pagina con `forPage`, así que un orden inestable hace que la página 2 repita
      * una pieza y se salte otra.
      */
@@ -244,7 +243,7 @@ class KilkanaStreetTest extends TestCase
      *
      * Y elige de verdad: `url_path` no es una columna sino un accesor sobre `url_date` y
      * `slug`, así que pedirlo tiene que traer las dos o devolvería `null` sin decir por qué
-     * —la trampa que ya pagó el sitemap—. Lo que no está en el techo se ignora, como el resto
+     * —la misma trampa que el sitemap—. Lo que no está en el techo se ignora, como el resto
      * de la query: nunca un 422, y nunca una columna que la calle no puede ver.
      */
     public function test_the_street_picks_fields_and_cannot_request_ones_that_are_not_its_own(): void
@@ -272,7 +271,7 @@ class KilkanaStreetTest extends TestCase
         $this->assertSame(
             ['id', 'title', 'slug', 'views_total', 'url_path', 'comments_count'],
             array_keys($minimal),
-            'Ni una relación: el modelo dejó de cargarlas solo y aquí no se ha incluido ninguna.',
+            'Ni una relación: el modelo no las carga solo y aquí no se ha incluido ninguna.',
         );
         $this->assertNotNull($minimal['url_path'], 'El derivado sale con la columna de la que depende.');
 

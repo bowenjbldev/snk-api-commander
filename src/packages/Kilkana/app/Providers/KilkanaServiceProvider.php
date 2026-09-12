@@ -55,7 +55,7 @@ class KilkanaServiceProvider extends ServiceProvider
                 SnkKilkanaSyncThemesCommand::class,
             ]);
 
-            // Scheduler editorial (cron corre schedule:run, como los del Commander).
+            // El programador editorial: el cron corre `schedule:run`, como en Commander.
             $this->app->booted(function (): void {
                 $this->app->make(Schedule::class)
                     ->command('kilkana:publish-scheduled')
