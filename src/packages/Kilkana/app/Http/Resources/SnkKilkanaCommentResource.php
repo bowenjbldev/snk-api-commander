@@ -30,9 +30,10 @@ class SnkKilkanaCommentResource extends JsonResource
             // Quién lo escribió, con su historial. Los dos recuentos los cuelga
             // `SnkKilkanaCommentService::withAuthorHistory()` sobre la cuenta, en una consulta
             // para toda la página: preguntarlo por fila serían cincuenta.
+            // Una cuenta retirada llega sin nombre (`null`): el panel lo rotula en su idioma.
             'author' => $this->whenLoaded('user', fn () => $this->resource->user === null ? null : [
                 'id' => (string) $this->resource->user->getKey(),
-                'name' => $this->resource->user->full_name,
+                'name' => $this->resource->user->full_name !== '' ? $this->resource->user->full_name : null,
                 'email' => $this->resource->user->email,
                 'since' => $this->resource->user->created_at?->toIso8601String(),
                 'total' => (int) ($this->resource->user->comments_total ?? 0),
@@ -48,7 +49,7 @@ class SnkKilkanaCommentResource extends JsonResource
             // A quién responde: el nombre de quien escribió el padre y su texto, que es lo que
             // el panel enseña encima para dar contexto sin abrir el hilo.
             'reply_to' => $this->whenLoaded('parent', fn () => $this->resource->parent === null ? null : [
-                'author' => $this->resource->parent->user?->full_name,
+                'author' => $this->resource->parent->user?->full_name ?: null,
                 'body' => $this->resource->parent->body,
             ]),
         ];

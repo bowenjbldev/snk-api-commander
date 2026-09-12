@@ -143,15 +143,19 @@ class SnkKilkanaReaderService
      *
      * Bloquea primero —sesiones fuera, pendientes rechazados— y después borra lo que identifica:
      * nombre, correo y contraseña. Los comentarios se quedan, que son parte de la conversación
-     * de cada pieza, firmados por «Lector» y sin nadie detrás; y si ese correo estaba en el
-     * boletín, se va de la lista. Cuenta como bloqueada para siempre, y no vuelve.
+     * de cada pieza, y sin nadie detrás; y si ese correo estaba en el boletín, se va de la lista.
+     * Cuenta como bloqueada para siempre, y no vuelve.
+     *
+     * El nombre queda **vacío** y no con un rótulo: quién firma un comentario sin dueño lo dice
+     * cada lado en su idioma —la calle en el del periódico, el panel en el de quien lo mira—, y
+     * un texto guardado aquí saldría en un único idioma para todos.
      */
     public function anonymize(CoreUserModel $user): void
     {
         $email = (string) $user->email;
         $this->block($user);
         $user->forceFill([
-            'name' => 'Lector',
+            'name' => null,
             'lastname' => null,
             'email' => 'retired-'.$user->getKey().'@anonymised.invalid',
             'password' => Str::random(40),

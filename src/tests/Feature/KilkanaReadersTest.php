@@ -301,8 +301,10 @@ class KilkanaReadersTest extends TestCase
         $this->assertSame(200, $this->readers()->anonymize($neighbour->id)->getStatusCode());
 
         $retired = $neighbour->fresh();
-        $this->assertSame('Lector', $retired->name);
+        $this->assertNull($retired->name, 'El nombre queda vacío: cada lado lo rotula en su idioma.');
         $this->assertNull($retired->lastname);
+        $row = collect($this->readers(['tab' => 'blocked'])->index()->getData(true)['data'])->firstWhere('id', (string) $neighbour->id);
+        $this->assertNull($row['name'], 'Y la fila del panel llega sin nombre, no con una cadena vacía.');
         $this->assertStringStartsWith('retired-', $retired->email);
         $this->assertNotNull($retired->suspended_at);
         $this->assertSame(2, SnkKilkanaCommentModel::query()->where('user_id', $neighbour->id)->count(), 'Los comentarios se quedan.');

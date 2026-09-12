@@ -129,9 +129,11 @@ bloqueados. Cada fila lleva `comments`, `rejected`, `reads` —las medidas del m
 `POST readers/{id}/block` y `DELETE readers/{id}/block` (`update readers`) cierran y reabren la
 cuenta. Bloquear tira las sesiones y rechaza lo pendiente; desbloquear no deshace ninguna decisión,
 porque rechazar ya fue una. No hay `show`, y `DELETE readers/{id}` (`delete readers`) no borra:
-**retira** —bloquea, y sustituye nombre, correo y contraseña por nada reconocible (`Reader`,
-`retired-{id}@anonymised.invalid`)—, borra su fila del boletín y deja los comentarios, que son
-parte de la conversación de cada pieza. Es lo que el RGPD pide cuando alguien se va, y no vuelve.
+**retira** —bloquea, deja el nombre vacío (`null`) y sustituye correo y contraseña por nada
+reconocible (`retired-{id}@anonymised.invalid`)—, borra su fila del boletín y deja los comentarios,
+que son parte de la conversación de cada pieza. Es lo que el RGPD pide cuando alguien se va, y no
+vuelve. Quién firma esos comentarios no se guarda: `users.name` admite nulo desde
+`2026_09_13_000001_make_users_name_nullable`, y la calle y el panel lo rotulan cada uno en su idioma.
 
 ## `kilkana_reader_reads` — las lecturas medidas
 

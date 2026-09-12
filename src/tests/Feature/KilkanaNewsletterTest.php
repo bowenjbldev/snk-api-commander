@@ -46,6 +46,19 @@ class KilkanaNewsletterTest extends TestCase
         SnkKilkanaSettingModel::create(['id' => 1, 'tenant_name' => 'El Diario', 'tenant_url' => 'https://demo.kilkana.test']);
     }
 
+    /** El asunto con el que nace un número lo pone el panel; sin él, el de la demo. */
+    public function test_a_new_issue_takes_the_subject_the_panel_sends(): void
+    {
+        $this->asModerator();
+
+        $sent = $this->controller()->store(Request::create('/', 'POST', ['subject' => 'Untitled issue']));
+        $this->assertSame(201, $sent->getStatusCode());
+        $this->assertSame('Untitled issue', $sent->getData(true)['subject']);
+
+        $bare = $this->controller()->store(Request::create('/', 'POST'))->getData(true);
+        $this->assertSame('Número sin título', $bare['subject'], 'Sin asunto, nace con el de la demo.');
+    }
+
     public function test_sending_locks_the_issue_and_queues_batches_tagged_with_the_client(): void
     {
         Queue::fake();

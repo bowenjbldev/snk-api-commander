@@ -23,8 +23,9 @@ class SnkKilkanaReaderResource extends JsonResource
         // entera con `assertSame`, que en PHP distingue el orden de las claves.
         return [
             'id' => $this->whenHas('id', fn () => (string) $this->resource->getKey()),
-            // Nombre y apellido compuestos: el mismo criterio que el hilo de comentarios.
-            'name' => $this->whenHas('name', fn () => $this->resource->full_name),
+            // Nombre y apellido compuestos: el mismo criterio que el hilo de comentarios. Una
+            // cuenta retirada no tiene nombre y sale `null`, que el panel rotula en su idioma.
+            'name' => $this->whenHas('name', fn () => $this->resource->full_name !== '' ? $this->resource->full_name : null),
             'email' => $this->whenHas('email'),
             'since' => $this->whenHas('created_at', fn () => $this->resource->created_at?->toIso8601String()),
 

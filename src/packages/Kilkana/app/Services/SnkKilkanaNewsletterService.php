@@ -35,11 +35,16 @@ class SnkKilkanaNewsletterService
 
     public function __construct(private readonly SnkKilkanaActivityService $activityLog) {}
 
-    /** Un borrador nuevo, arriba. */
-    public function create(?int $userId): SnkKilkanaNewsletterIssueModel
+    /**
+     * Un borrador nuevo, arriba.
+     *
+     * El asunto llega del panel en el idioma de quien crea el número. Sin él —una llamada que no
+     * lo manda— nace con el de la demo, porque la columna no admite vacío.
+     */
+    public function create(?int $userId, ?string $subject = null): SnkKilkanaNewsletterIssueModel
     {
         return SnkKilkanaNewsletterIssueModel::create([
-            'subject' => 'Número sin título',
+            'subject' => trim((string) $subject) !== '' ? trim((string) $subject) : 'Número sin título',
             'preheader' => null,
             'status' => SnkKilkanaNewsletterIssueModel::DRAFT,
             'created_by' => $userId,

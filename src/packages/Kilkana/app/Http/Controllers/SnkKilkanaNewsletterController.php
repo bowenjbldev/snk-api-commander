@@ -71,7 +71,12 @@ class SnkKilkanaNewsletterController extends CoreBaseApiController
             return $response;
         }
 
-        return response()->json(new SnkKilkanaNewsletterIssueResource($this->withCounts($this->newsletter->create(auth()->id() ? (int) auth()->id() : null))), 201);
+        // El asunto con el que nace lo pone el panel, en el idioma de quien lo crea: es un
+        // texto que la redacción lee y reescribe, no un rótulo de la API.
+        $data = $request->validate(['subject' => 'nullable|string|max:200']);
+        $issue = $this->newsletter->create(auth()->id() ? (int) auth()->id() : null, $data['subject'] ?? null);
+
+        return response()->json(new SnkKilkanaNewsletterIssueResource($this->withCounts($issue)), 201);
     }
 
     /** Asunto y preheader, y solo en un borrador: lo que hay en las bandejas no cambia. */

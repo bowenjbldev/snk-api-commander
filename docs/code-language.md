@@ -29,8 +29,12 @@ vocabulario de TypeScript.
 - Los mensajes de las aserciones: `assertSame('local', $reseeded->category->slug, 'La sección vuelve
   a la del catálogo.')`.
 - **Los datos**: titulares, nombres y textos que siembra el seeder, y también los valores por
-  defecto que el código guarda en la base y enseña el panel —el título de un número sin título, el
-  nombre de un lector sin nombre—.
+  defecto que el código guarda en la base cuando nadie manda otro —el asunto de un número que se
+  crea sin él—. Los datos que ya existen se quedan como están aunque estén en otro idioma.
+- **Mejor que guardar un rótulo, no guardarlo**: si un texto por defecto lo lee gente en idiomas
+  distintos, se guarda vacío y lo pone cada lado en el suyo. Un lector retirado se queda sin nombre
+  y la calle y el panel dicen quién firma; el asunto de un número nuevo lo manda el panel en el
+  idioma de quien lo crea.
 
 ## Lo que no se renombra aunque esté en español
 

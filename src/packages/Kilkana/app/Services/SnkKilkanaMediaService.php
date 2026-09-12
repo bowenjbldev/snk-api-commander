@@ -598,9 +598,6 @@ class SnkKilkanaMediaService
             if (! $media->caption) {
                 $changes['caption'] = $post->excerpt;
             }
-            if (! $media->description) {
-                $changes['description'] = "Portada editorial de: {$post->title}";
-            }
             if ($fromUnsplash && $media->rights_status->needsReview()) {
                 $changes['rights_status'] = SnkKilkanaMediaRightsEnum::Licensed;
             }
