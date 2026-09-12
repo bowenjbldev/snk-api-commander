@@ -45,22 +45,22 @@ class CorePermissionRegistrarSupport extends PermissionRegistrar
     private function hydrated(): Collection
     {
         $raw = $this->cache->get($this->cacheKey);
-        $known = $this->hydratedByKey[$this->cacheKey] ?? null;
+        $cachedEntry = $this->hydratedByKey[$this->cacheKey] ?? null;
 
-        if ($raw === null || $known === null || $known['raw'] !== $raw) {
+        if ($raw === null || $cachedEntry === null || $cachedEntry['raw'] !== $raw) {
             // La carga de Spatie: lee la caché —o la reconstruye desde la base— e hidrata.
             parent::getPermissions();
-            $known = ['raw' => $raw ?? $this->cache->get($this->cacheKey), 'hydrated' => $this->permissions];
+            $cachedEntry = ['raw' => $raw ?? $this->cache->get($this->cacheKey), 'hydrated' => $this->permissions];
 
             unset($this->hydratedByKey[$this->cacheKey]);
-            $this->hydratedByKey[$this->cacheKey] = $known;
+            $this->hydratedByKey[$this->cacheKey] = $cachedEntry;
             if (count($this->hydratedByKey) > self::MAX_DATABASES) {
                 array_shift($this->hydratedByKey);
             }
         }
 
-        // Eloquent clone is shallow: the cached roles and their collection must not escape.
-        return $known['hydrated']->map(fn ($permission) => (clone $permission)->setRelation(
+        // El clone de Eloquent es superficial: los roles guardados y su colección no pueden salir de aquí.
+        return $cachedEntry['hydrated']->map(fn ($permission) => (clone $permission)->setRelation(
             'roles', $permission->roles->map(fn ($role) => clone $role),
         ));
     }

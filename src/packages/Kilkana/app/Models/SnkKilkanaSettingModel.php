@@ -74,8 +74,15 @@ class SnkKilkanaSettingModel extends Model
         'search_visible' => true,
     ];
 
-    /** Los idiomas que la calle sabe servir: `lang`, `hreflang` y el formato de fecha. */
-    public const LANGS = ['es-ES', 'ca-ES', 'gl-ES', 'eu-ES', 'pt-PT', 'en-GB'];
+    /**
+     * Los idiomas que la calle sabe servir: `lang`, `hreflang`, el formato de fecha y **el cromo**
+     * —el menu de la cabecera, la caja de comentarios, la hemeroteca—.
+     *
+     * Eran seis. Ofrecer una lengua cuyo menu sale en otra es peor que no ofrecerla, asi que la
+     * lista es la de lo que el panel tiene traducido de verdad, y se reabre cuando haya traduccion
+     * revisada por alguien que hable esa lengua.
+     */
+    public const LANGS = ['es-ES', 'en-GB'];
 
     public const DEFAULT_LANG = 'es-ES';
 
@@ -119,35 +126,35 @@ class SnkKilkanaSettingModel extends Model
     public function resolvedSpec(): array
     {
         $spec = $this->theme_spec ?? [];
-        $retoque = $this->theme_overrides ?? [];
+        $overrides = $this->theme_overrides ?? [];
 
         if ($spec === []) {
             return [];
         }
 
-        $resuelto = [
+        $resolved = [
             ...$spec,
-            'tokens' => [...($spec['tokens'] ?? []), ...($retoque['tokens'] ?? [])],
+            'tokens' => [...($spec['tokens'] ?? []), ...($overrides['tokens'] ?? [])],
         ];
 
-        if (is_array($retoque['density'] ?? null)) {
-            $resuelto['density'] = [...($spec['density'] ?? []), ...$retoque['density']];
+        if (is_array($overrides['density'] ?? null)) {
+            $resolved['density'] = [...($spec['density'] ?? []), ...$overrides['density']];
         }
 
         // El retoque tipográfico llega solo a la APERTURA, que es el peldaño con el que se
         // decide si un tema se ve grande o pequeño. Los otros nueve son la escala del tema y
         // tocarlos uno a uno sería rediseñarlo, no vestirlo.
-        if (is_array($retoque['hero'] ?? null) && is_array($spec['type'] ?? null)) {
-            $resuelto['type'] = [
+        if (is_array($overrides['hero'] ?? null) && is_array($spec['type'] ?? null)) {
+            $resolved['type'] = [
                 ...$spec['type'],
                 'steps' => [
                     ...($spec['type']['steps'] ?? []),
-                    'hero' => [...($spec['type']['steps']['hero'] ?? []), ...$retoque['hero']],
+                    'hero' => [...($spec['type']['steps']['hero'] ?? []), ...$overrides['hero']],
                 ],
             ];
         }
 
-        return $resuelto;
+        return $resolved;
     }
 
     /**
@@ -185,33 +192,33 @@ class SnkKilkanaSettingModel extends Model
      */
     public static function shapeRules(): array
     {
-        $entre = function (string $rango): string {
-            [$min, $max] = SnkKilkanaThemeSpecValidator::RANGES[$rango];
+        $between = function (string $range): string {
+            [$min, $max] = SnkKilkanaThemeSpecValidator::RANGES[$range];
 
             return "between:{$min},{$max}";
         };
 
-        $reglas = [
+        $rules = [
             'theme_overrides' => 'nullable|array',
             'theme_overrides.tokens' => 'nullable|array',
             'theme_overrides.tokens.pageRadius' => ['nullable', 'string', self::inUnit('pageRadius')],
             // El aire, en px y como número: `density` viaja sin unidad.
-            'theme_overrides.density.rowGap' => ['nullable', 'integer', $entre('gap')],
-            'theme_overrides.density.blockGap' => ['nullable', 'integer', $entre('gap')],
-            'theme_overrides.density.padX' => ['nullable', 'integer', $entre('pad')],
-            'theme_overrides.density.padY' => ['nullable', 'integer', $entre('pad')],
+            'theme_overrides.density.rowGap' => ['nullable', 'integer', $between('gap')],
+            'theme_overrides.density.blockGap' => ['nullable', 'integer', $between('gap')],
+            'theme_overrides.density.padX' => ['nullable', 'integer', $between('pad')],
+            'theme_overrides.density.padY' => ['nullable', 'integer', $between('pad')],
             // Y la apertura, que es el peldaño con el que se decide si un tema se ve grande.
-            'theme_overrides.hero.size' => ['nullable', 'integer', $entre('size')],
-            'theme_overrides.hero.weight' => ['nullable', 'integer', $entre('weight'), 'multiple_of:100'],
-            'theme_overrides.hero.leading' => ['nullable', 'numeric', $entre('leading')],
+            'theme_overrides.hero.size' => ['nullable', 'integer', $between('size')],
+            'theme_overrides.hero.weight' => ['nullable', 'integer', $between('weight'), 'multiple_of:100'],
+            'theme_overrides.hero.leading' => ['nullable', 'numeric', $between('leading')],
             'theme_overrides.hero.tracking' => ['nullable', 'string', self::inUnit('tracking')],
         ];
 
-        foreach (self::COLOR_KEYS as $clave) {
-            $reglas["theme_overrides.tokens.{$clave}"] = ['nullable', 'string', 'regex:/^#[0-9a-f]{6}$/i'];
+        foreach (self::COLOR_KEYS as $key) {
+            $rules["theme_overrides.tokens.{$key}"] = ['nullable', 'string', 'regex:/^#[0-9a-f]{6}$/i'];
         }
 
-        return $reglas;
+        return $rules;
     }
 
     /**
@@ -221,21 +228,21 @@ class SnkKilkanaSettingModel extends Model
      * properties. Validar el rango exige separar número y unidad, y eso es justo lo que un
      * `regex` por sí solo no puede hacer.
      */
-    private static function inUnit(string $clave): Closure
+    private static function inUnit(string $key): Closure
     {
-        [$unidad, $rango] = self::UNITS[$clave];
-        [$min, $max] = SnkKilkanaThemeSpecValidator::RANGES[$rango];
+        [$unit, $range] = self::UNITS[$key];
+        [$min, $max] = SnkKilkanaThemeSpecValidator::RANGES[$range];
 
-        return function (string $atributo, mixed $valor, Closure $fallar) use ($unidad, $min, $max) {
-            if (! is_string($valor) || ! preg_match('/^(-?\d+(?:\.\d+)?)'.$unidad.'$/', $valor, $partes)) {
-                $fallar("The {$atributo} must be a number followed by {$unidad}.");
+        return function (string $attribute, mixed $value, Closure $fail) use ($unit, $min, $max) {
+            if (! is_string($value) || ! preg_match('/^(-?\d+(?:\.\d+)?)'.$unit.'$/', $value, $parts)) {
+                $fail("The {$attribute} must be a number followed by {$unit}.");
 
                 return;
             }
 
-            $numero = (float) $partes[1];
-            if ($numero < $min || $numero > $max) {
-                $fallar("The {$atributo} must be between {$min}{$unidad} and {$max}{$unidad}.");
+            $number = (float) $parts[1];
+            if ($number < $min || $number > $max) {
+                $fail("The {$attribute} must be between {$min}{$unit} and {$max}{$unit}.");
             }
         };
     }

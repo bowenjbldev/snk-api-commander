@@ -32,109 +32,109 @@ class KilkanaReadersTest extends TestCase
         parent::setUp();
 
         DB::setDefaultConnection('tenant');
-        foreach (['Core', 'Kilkana'] as $paquete) {
+        foreach (['Core', 'Kilkana'] as $package) {
             $this->artisan('migrate', [
                 '--database' => 'tenant',
-                '--path' => "packages/{$paquete}/database/migrations",
+                '--path' => "packages/{$package}/database/migrations",
             ])->run();
         }
 
         app(SnkKilkanaRoleCatalogService::class)->sync();
     }
 
-    public function test_la_lista_es_de_lectores_y_cada_fila_trae_boletin_comentarios_y_lecturas(): void
+    public function test_the_list_only_shows_readers_and_each_row_includes_newsletter_comments_and_reads(): void
     {
-        $this->comoModerador();
-        $amparo = $this->lector('amparo@lectores.example', 'Amparo Ruiz');
-        $joaquin = $this->lector('joaquin@lectores.example', 'Joaquín Vidal');
-        $pieza = $this->pieza('Plan de aparcamientos', SnkKilkanaContentTierEnum::Metered);
-        $this->comentario($amparo, $pieza, 'Las plazas ya estaban saturadas.', 'approved');
-        $this->comentario($amparo, $pieza, 'Insulto que no sale.', 'rejected');
+        $this->asModerator();
+        $amparo = $this->reader('amparo@lectores.example', 'Amparo Ruiz');
+        $joaquin = $this->reader('joaquin@lectores.example', 'Joaquín Vidal');
+        $post = $this->makePost('Plan de aparcamientos', SnkKilkanaContentTierEnum::Metered);
+        $this->comment($amparo, $post, 'Las plazas ya estaban saturadas.', 'approved');
+        $this->comment($amparo, $post, 'Insulto que no sale.', 'rejected');
         SnkKilkanaSubscriberModel::create(['email' => 'amparo@lectores.example', 'status' => 'confirmed', 'consent_source' => 'public_form']);
-        SnkKilkanaReaderReadModel::record($amparo->id, $pieza);
+        SnkKilkanaReaderReadModel::record($amparo->id, $post);
 
-        $lista = $this->lectores()->index()->getData(true);
+        $listing = $this->readers()->index()->getData(true);
 
-        $this->assertSame(2, $lista['meta']['total'], 'La moderadora no es una lectora.');
-        $fila = collect($lista['data'])->firstWhere('id', (string) $amparo->id);
-        $this->assertSame('Amparo Ruiz', $fila['name']);
-        $this->assertSame(['comments' => 2, 'rejected' => 1, 'reads' => 1, 'blocked' => false], array_intersect_key($fila, ['comments' => 1, 'rejected' => 1, 'reads' => 1, 'blocked' => 1]));
-        $this->assertSame('confirmed', $fila['newsletter']['status']);
-        $this->assertSame('public_form', $fila['newsletter']['consent_source']);
-        $this->assertNotNull($fila['last_seen_at']);
-        $this->assertNull(collect($lista['data'])->firstWhere('id', (string) $joaquin->id)['newsletter']);
-        $this->assertSame(['all' => 2, 'subscribers' => 1, 'commenters' => 1, 'blocked' => 0], $lista['counts']);
-        $this->assertSame(['accounts' => 2, 'confirmed_subscribers' => 1, 'commented_this_month' => 1, 'blocked' => 0], $lista['stats']);
+        $this->assertSame(2, $listing['meta']['total'], 'La moderadora no es una lectora.');
+        $row = collect($listing['data'])->firstWhere('id', (string) $amparo->id);
+        $this->assertSame('Amparo Ruiz', $row['name']);
+        $this->assertSame(['comments' => 2, 'rejected' => 1, 'reads' => 1, 'blocked' => false], array_intersect_key($row, ['comments' => 1, 'rejected' => 1, 'reads' => 1, 'blocked' => 1]));
+        $this->assertSame('confirmed', $row['newsletter']['status']);
+        $this->assertSame('public_form', $row['newsletter']['consent_source']);
+        $this->assertNotNull($row['last_seen_at']);
+        $this->assertNull(collect($listing['data'])->firstWhere('id', (string) $joaquin->id)['newsletter']);
+        $this->assertSame(['all' => 2, 'subscribers' => 1, 'commenters' => 1, 'blocked' => 0], $listing['counts']);
+        $this->assertSame(['accounts' => 2, 'confirmed_subscribers' => 1, 'commented_this_month' => 1, 'blocked' => 0], $listing['stats']);
     }
 
     /** Las pestañas son tres preguntas sobre la misma persona, y un bloqueado no es un comentarista. */
-    public function test_las_pestanas_filtran_y_la_busqueda_mira_nombre_y_correo(): void
+    public function test_tabs_filter_and_search_matches_name_and_email(): void
     {
-        $this->comoModerador();
-        $amparo = $this->lector('amparo@lectores.example', 'Amparo Ruiz');
-        $ramon = $this->lector('rsempere@lectores.example', 'Ramón Sempere');
-        $pieza = $this->pieza('Plan de aparcamientos');
-        $this->comentario($amparo, $pieza, 'Las plazas ya estaban saturadas.', 'approved');
-        $this->comentario($ramon, $pieza, 'Publicidad.', 'spam');
-        $this->comentario($this->lector('u9902@correo-gratis.example', 'u9902'), $pieza, 'Compra aqui.', 'spam');
+        $this->asModerator();
+        $amparo = $this->reader('amparo@lectores.example', 'Amparo Ruiz');
+        $ramon = $this->reader('rsempere@lectores.example', 'Ramón Sempere');
+        $post = $this->makePost('Plan de aparcamientos');
+        $this->comment($amparo, $post, 'Las plazas ya estaban saturadas.', 'approved');
+        $this->comment($ramon, $post, 'Publicidad.', 'spam');
+        $this->comment($this->reader('u9902@correo-gratis.example', 'u9902'), $post, 'Compra aqui.', 'spam');
         $ramon->forceFill(['suspended_at' => now()])->save();
 
-        $comentan = $this->lectores(['tab' => 'commenters'])->index()->getData(true);
-        $this->assertSame([(string) $amparo->id], array_column($comentan['data'], 'id'), 'Solo spam no es comentar.');
+        $commenters = $this->readers(['tab' => 'commenters'])->index()->getData(true);
+        $this->assertSame([(string) $amparo->id], array_column($commenters['data'], 'id'), 'Solo spam no es comentar.');
 
-        $bloqueados = $this->lectores(['tab' => 'blocked'])->index()->getData(true);
-        $this->assertSame([(string) $ramon->id], array_column($bloqueados['data'], 'id'));
-        $this->assertTrue($bloqueados['data'][0]['blocked']);
+        $blocked = $this->readers(['tab' => 'blocked'])->index()->getData(true);
+        $this->assertSame([(string) $ramon->id], array_column($blocked['data'], 'id'));
+        $this->assertTrue($blocked['data'][0]['blocked']);
 
-        $porCorreo = $this->lectores(['q' => 'rsempere'])->index()->getData(true);
-        $this->assertSame([(string) $ramon->id], array_column($porCorreo['data'], 'id'));
+        $byEmail = $this->readers(['q' => 'rsempere'])->index()->getData(true);
+        $this->assertSame([(string) $ramon->id], array_column($byEmail['data'], 'id'));
 
-        $solo = $this->lectores(['counts' => '1'])->index()->getData(true);
-        $this->assertSame(['accounts' => 3], $solo);
+        $countsOnly = $this->readers(['counts' => '1'])->index()->getData(true);
+        $this->assertSame(['accounts' => 3], $countsOnly);
     }
 
-    public function test_bloquear_cierra_la_cuenta_y_vacia_su_cola_y_desbloquear_la_reabre(): void
+    public function test_blocking_closes_the_account_and_empties_its_queue_and_unblocking_reopens_it(): void
     {
-        $this->comoModerador();
-        $ramon = $this->lector('rsempere@lectores.example', 'Ramón Sempere');
+        $this->asModerator();
+        $ramon = $this->reader('rsempere@lectores.example', 'Ramón Sempere');
         $ramon->createToken('calle');
-        $pieza = $this->pieza('Plan de aparcamientos');
-        $this->comentario($ramon, $pieza, 'Pendiente.', 'pending');
-        $this->comentario($ramon, $pieza, 'Ya aprobado.', 'approved');
+        $post = $this->makePost('Plan de aparcamientos');
+        $this->comment($ramon, $post, 'Pendiente.', 'pending');
+        $this->comment($ramon, $post, 'Ya aprobado.', 'approved');
 
-        $bloqueo = $this->lectores()->block($ramon->id);
-        $this->assertSame(200, $bloqueo->getStatusCode());
-        $this->assertSame(1, $bloqueo->getData(true)['rejected']);
+        $block = $this->readers()->block($ramon->id);
+        $this->assertSame(200, $block->getStatusCode());
+        $this->assertSame(1, $block->getData(true)['rejected']);
         $ramon->refresh();
         $this->assertNotNull($ramon->suspended_at);
         $this->assertSame(0, $ramon->tokens()->count());
         $this->assertSame(1, SnkKilkanaCommentModel::query()->where('user_id', $ramon->id)->where('status', 'rejected')->count());
         $this->assertSame(1, SnkKilkanaCommentModel::query()->where('user_id', $ramon->id)->where('status', 'approved')->count(), 'Lo aprobado se queda.');
 
-        $this->assertSame(200, $this->lectores()->unblock($ramon->id)->getStatusCode());
+        $this->assertSame(200, $this->readers()->unblock($ramon->id)->getStatusCode());
         $this->assertNull($ramon->refresh()->suspended_at);
         $this->assertSame(1, SnkKilkanaCommentModel::query()->where('user_id', $ramon->id)->where('status', 'rejected')->count(), 'Desbloquear no deshace una decisión.');
     }
 
     /** A un compañero no se le bloquea desde aquí: la lista no lo ve ni con su id a mano. */
-    public function test_la_redaccion_no_se_bloquea_desde_lectores(): void
+    public function test_newsroom_accounts_cannot_be_blocked_from_readers(): void
     {
-        $elena = $this->comoModerador();
+        $elena = $this->asModerator();
 
-        $this->assertSame(404, $this->lectores()->block($elena->id)->getStatusCode());
+        $this->assertSame(404, $this->readers()->block($elena->id)->getStatusCode());
         $this->assertNull($elena->refresh()->suspended_at);
     }
 
     /** Sin `update readers` no se bloquea, ni desde aquí ni desde la moderación. */
-    public function test_bloquear_es_de_quien_gobierna_lectores(): void
+    public function test_blocking_belongs_to_whoever_manages_readers(): void
     {
         $editor = CoreUserModel::create(['name' => 'Iván', 'email' => 'ivan@eldiario.example', 'password' => 'secret1234']);
         $editor->assignRole('editor');
         $this->actingAs($editor, 'sanctum');
-        $ramon = $this->lector('rsempere@lectores.example', 'Ramón Sempere');
+        $ramon = $this->reader('rsempere@lectores.example', 'Ramón Sempere');
 
-        $this->assertSame(403, $this->lectores()->index()->getStatusCode());
-        $this->assertSame(403, $this->lectores()->block($ramon->id)->getStatusCode());
+        $this->assertSame(403, $this->readers()->index()->getStatusCode());
+        $this->assertSame(403, $this->readers()->block($ramon->id)->getStatusCode());
     }
 
     /**
@@ -142,23 +142,23 @@ class KilkanaReadersTest extends TestCase
      * apunta lo decide `recordView` con el token que viaje; eso no se prueba aquí porque el
      * contador diario va en SQL de MariaDB y SQLite no lo ejecuta.
      */
-    public function test_una_lectura_medida_cuenta_una_vez_al_mes_y_una_gratuita_no_cuenta(): void
+    public function test_a_metered_read_counts_once_a_month_and_a_free_one_does_not_count(): void
     {
-        $amparo = $this->lector('amparo@lectores.example', 'Amparo Ruiz');
-        $medida = $this->pieza('Plan de aparcamientos', SnkKilkanaContentTierEnum::Metered);
-        $gratis = $this->pieza('Fiestas de agosto', SnkKilkanaContentTierEnum::Free);
+        $amparo = $this->reader('amparo@lectores.example', 'Amparo Ruiz');
+        $metered = $this->makePost('Plan de aparcamientos', SnkKilkanaContentTierEnum::Metered);
+        $free = $this->makePost('Fiestas de agosto', SnkKilkanaContentTierEnum::Free);
 
-        SnkKilkanaReaderReadModel::record($amparo->id, $medida);
-        SnkKilkanaReaderReadModel::record($amparo->id, $medida);
-        SnkKilkanaReaderReadModel::record($amparo->id, $gratis);
-        SnkKilkanaReaderReadModel::record($amparo->id, $medida, now()->subMonth());
+        SnkKilkanaReaderReadModel::record($amparo->id, $metered);
+        SnkKilkanaReaderReadModel::record($amparo->id, $metered);
+        SnkKilkanaReaderReadModel::record($amparo->id, $free);
+        SnkKilkanaReaderReadModel::record($amparo->id, $metered, now()->subMonth());
 
         $this->assertSame(2, SnkKilkanaReaderReadModel::query()->where('user_id', $amparo->id)->count());
         $this->assertSame(1, SnkKilkanaReaderReadModel::query()->inMonth()->count(), 'Releer no gasta otra; el mes pasado no es este.');
-        $this->assertSame(0, SnkKilkanaReaderReadModel::query()->where('post_id', $gratis->id)->count(), 'Una gratuita no consume.');
+        $this->assertSame(0, SnkKilkanaReaderReadModel::query()->where('post_id', $free->id)->count(), 'Una gratuita no consume.');
     }
 
-    private function comoModerador(): CoreUserModel
+    private function asModerator(): CoreUserModel
     {
         $elena = CoreUserModel::create(['name' => 'Elena', 'email' => 'elena@eldiario.example', 'password' => 'secret1234']);
         $elena->assignRole('moderador');
@@ -171,83 +171,83 @@ class KilkanaReadersTest extends TestCase
      * La banda no vuelve a contar lo que las pestañas ya contaron.
      *
      * `stats['accounts']` es la misma consulta que `counts['all']`, y `stats['blocked']` la
-     * misma que `counts['blocked']`. La pantalla pide las dos cosas a la vez, así que se
-     * contaban dos de más en cada carga, en cada página y en cada tecla del buscador.
+     * misma que `counts['blocked']`. La pantalla pide las dos cosas a la vez, así que contarlas
+     * aparte serían dos consultas de más en cada carga, en cada página y en cada tecla del buscador.
      */
-    public function test_la_banda_no_vuelve_a_contar_lo_que_las_pestanas_ya_contaron(): void
+    public function test_the_stats_band_does_not_recount_what_the_tabs_already_counted(): void
     {
-        $this->comoModerador();
-        $amparo = $this->lector('amparo@lectores.example', 'Amparo Ruiz');
-        $this->lector('joaquin@lectores.example', 'Joaquín Vidal');
-        $this->comentario($amparo, $this->pieza('Plan'), 'Cabe.', 'approved');
+        $this->asModerator();
+        $amparo = $this->reader('amparo@lectores.example', 'Amparo Ruiz');
+        $this->reader('joaquin@lectores.example', 'Joaquín Vidal');
+        $this->comment($amparo, $this->makePost('Plan'), 'Cabe.', 'approved');
 
         // La primera pasada hidrata los permisos y deja la caché caliente: sin esto, la medida
         // que salga primero carga con consultas que no son del listado.
-        $this->lectores(['summary' => 'counts,stats'])->index();
+        $this->readers(['summary' => 'counts,stats'])->index();
 
-        $solas = $this->consultasDelListado(['summary' => '']);
-        $cifras = $this->consultasDelListado(['summary' => 'counts']);
-        $banda = $this->consultasDelListado(['summary' => 'stats']);
-        $juntas = $this->consultasDelListado(['summary' => 'counts,stats']);
+        $withoutSummary = $this->listQueries(['summary' => '']);
+        $counts = $this->listQueries(['summary' => 'counts']);
+        $band = $this->listQueries(['summary' => 'stats']);
+        $together = $this->listQueries(['summary' => 'counts,stats']);
 
-        $this->assertSame(4, $cifras - $solas, 'Una consulta por pestaña.');
-        $this->assertSame(4, $banda - $solas, 'Y cuatro cifras en la banda.');
-        $this->assertSame(6, $juntas - $solas, 'Pero juntas, seis: dos de las ocho eran la misma consulta.');
-        $this->assertArrayNotHasKey('counts', $this->lectores(['summary' => ''])->index()->getData(true), 'Y sin pedirlas no llegan.');
+        $this->assertSame(4, $counts - $withoutSummary, 'Una consulta por pestaña.');
+        $this->assertSame(4, $band - $withoutSummary, 'Y cuatro cifras en la banda.');
+        $this->assertSame(6, $together - $withoutSummary, 'Pero juntas, seis: dos de las ocho eran la misma consulta.');
+        $this->assertArrayNotHasKey('counts', $this->readers(['summary' => ''])->index()->getData(true), 'Y sin pedirlas no llegan.');
     }
 
-    private function consultasDelListado(array $query): int
+    private function listQueries(array $query): int
     {
-        $conexion = DB::connection();
-        $conexion->flushQueryLog();
-        $conexion->enableQueryLog();
-        $this->lectores($query)->index();
-        $n = count($conexion->getQueryLog());
-        $conexion->disableQueryLog();
+        $connection = DB::connection();
+        $connection->flushQueryLog();
+        $connection->enableQueryLog();
+        $this->readers($query)->index();
+        $n = count($connection->getQueryLog());
+        $connection->disableQueryLog();
 
         return $n;
     }
 
     /**
-     * Con los agregados pedidos por defecto, que es lo que hace la pantalla: la API ya no los
-     * manda solos. Quien quiera probar que no llegan, pasa `summary` vacío.
+     * Con los agregados pedidos por defecto, que es lo que hace la pantalla: la API no los
+     * manda si no se piden. Quien quiera probar que no llegan, pasa `summary` vacío.
      */
-    private function lectores(array $query = []): SnkKilkanaReadersController
+    private function readers(array $query = []): SnkKilkanaReadersController
     {
         request()->query->replace(['summary' => 'counts,stats', ...$query]);
 
         return app(SnkKilkanaReadersController::class);
     }
 
-    private function lector(string $email, string $nombre): CoreUserModel
+    private function reader(string $email, string $name): CoreUserModel
     {
-        $lector = CoreUserModel::create(['name' => $nombre, 'email' => $email, 'password' => 'secret1234']);
-        $lector->assignRole('reader');
+        $reader = CoreUserModel::create(['name' => $name, 'email' => $email, 'password' => 'secret1234']);
+        $reader->assignRole('reader');
 
-        return $lector;
+        return $reader;
     }
 
-    private function comentario(CoreUserModel $autor, SnkKilkanaPostModel $pieza, string $texto, string $estado): SnkKilkanaCommentModel
+    private function comment(CoreUserModel $author, SnkKilkanaPostModel $post, string $body, string $status): SnkKilkanaCommentModel
     {
         return SnkKilkanaCommentModel::create([
-            'post_id' => $pieza->id,
-            'user_id' => $autor->id,
-            'body' => $texto,
-            'status' => $estado,
+            'post_id' => $post->id,
+            'user_id' => $author->id,
+            'body' => $body,
+            'status' => $status,
         ]);
     }
 
-    private function pieza(string $titulo, SnkKilkanaContentTierEnum $tier = SnkKilkanaContentTierEnum::Free): SnkKilkanaPostModel
+    private function makePost(string $title, SnkKilkanaContentTierEnum $tier = SnkKilkanaContentTierEnum::Free): SnkKilkanaPostModel
     {
-        $seccion = SnkKilkanaCategoryModel::firstOrCreate(['slug' => 'local'], ['name' => 'Local', 'status' => 'live', 'position' => 0]);
-        $firma = SnkKilkanaAuthorModel::firstOrCreate(['slug' => 'redaccion'], ['alias' => 'Redacción']);
+        $section = SnkKilkanaCategoryModel::firstOrCreate(['slug' => 'local'], ['name' => 'Local', 'status' => 'live', 'position' => 0]);
+        $byline = SnkKilkanaAuthorModel::firstOrCreate(['slug' => 'redaccion'], ['alias' => 'Redacción']);
 
         return SnkKilkanaPostModel::create([
-            'title' => $titulo,
-            'slug' => str($titulo)->slug()->value(),
+            'title' => $title,
+            'slug' => str($title)->slug()->value(),
             'url_date' => '2026-07-01',
-            'category_id' => $seccion->id,
-            'author_id' => $firma->id,
+            'category_id' => $section->id,
+            'author_id' => $byline->id,
             'status' => 'published',
             'publish_at' => '2026-07-01 08:00:00',
             'content_tier' => $tier,
@@ -255,59 +255,59 @@ class KilkanaReadersTest extends TestCase
     }
 
     /** Un lector nace solo desde la calle, y lo único que puede hacer con su sesión es comentar. */
-    public function test_un_lector_se_registra_solo_y_su_comentario_nace_pendiente(): void
+    public function test_a_reader_can_self_register_and_their_comment_starts_pending(): void
     {
         $auth = new SnkKilkanaAuthController;
-        $alta = fn (array $extra = []) => $auth->register(Request::create('/', 'POST', $extra + [
+        $creation = fn (array $extra = []) => $auth->register(Request::create('/', 'POST', $extra + [
             'name' => 'Vecina Nueva', 'email' => 'vecina@lectores.example', 'password' => 'correcthorse1', 'password_confirmation' => 'correcthorse1',
         ]));
 
-        $respuesta = $alta();
-        $this->assertSame(201, $respuesta->getStatusCode());
-        $this->assertNotEmpty($respuesta->getData(true)['token']);
-        $vecina = CoreUserModel::query()->where('email', 'vecina@lectores.example')->first();
-        $this->assertTrue($vecina->hasRole('reader'));
-        $this->assertSame(['create comments'], $vecina->getAllPermissions()->pluck('name')->all(), 'Comentar y nada más.');
+        $response = $creation();
+        $this->assertSame(201, $response->getStatusCode());
+        $this->assertNotEmpty($response->getData(true)['token']);
+        $neighbour = CoreUserModel::query()->where('email', 'vecina@lectores.example')->first();
+        $this->assertTrue($neighbour->hasRole('reader'));
+        $this->assertSame(['create comments'], $neighbour->getAllPermissions()->pluck('name')->all(), 'Comentar y nada más.');
 
         try {
-            $alta();
+            $creation();
             $this->fail('El mismo correo no se registra dos veces.');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('email', $e->errors());
         }
 
-        $pieza = $this->pieza('Plan');
-        $this->actingAs($vecina, 'sanctum');
-        $comentario = app(SnkKilkanaCommentsController::class)->store(Request::create('/', 'POST', ['post_id' => $pieza->id, 'body' => 'Hola']));
-        $this->assertSame(201, $comentario->getStatusCode());
-        $this->assertSame('pending', SnkKilkanaCommentModel::query()->where('user_id', $vecina->id)->first()->status->value);
+        $post = $this->makePost('Plan');
+        $this->actingAs($neighbour, 'sanctum');
+        $comment = app(SnkKilkanaCommentsController::class)->store(Request::create('/', 'POST', ['post_id' => $post->id, 'body' => 'Hola']));
+        $this->assertSame(201, $comment->getStatusCode());
+        $this->assertSame('pending', SnkKilkanaCommentModel::query()->where('user_id', $neighbour->id)->first()->status->value);
 
-        $this->comoModerador();
-        $this->assertContains('vecina@lectores.example', array_column($this->lectores()->index()->getData(true)['data'], 'email'), 'Y aparece en Lectores.');
+        $this->asModerator();
+        $this->assertContains('vecina@lectores.example', array_column($this->readers()->index()->getData(true)['data'], 'email'), 'Y aparece en Lectores.');
     }
 
     /** Retirar a un lector: lo que identifica se va, la conversación se queda sin nombre, y el boletín lo olvida. */
-    public function test_retirar_a_un_lector_borra_lo_que_identifica_y_deja_sus_comentarios_sin_nombre(): void
+    public function test_removing_a_reader_erases_identifying_data_and_leaves_their_comments_anonymous(): void
     {
         $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
         $marta->assignRole('director');
         $this->actingAs($marta, 'sanctum');
-        $vecina = $this->lector('vecina@lectores.example', 'Vecina Curiosa');
-        $pieza = $this->pieza('Plan');
-        $this->comentario($vecina, $pieza, 'Hola', 'approved');
-        $this->comentario($vecina, $pieza, 'Pendiente', 'pending');
+        $neighbour = $this->reader('vecina@lectores.example', 'Vecina Curiosa');
+        $post = $this->makePost('Plan');
+        $this->comment($neighbour, $post, 'Hola', 'approved');
+        $this->comment($neighbour, $post, 'Pendiente', 'pending');
         SnkKilkanaSubscriberModel::create(['email' => 'vecina@lectores.example', 'status' => 'confirmed', 'consent_source' => 'public_form']);
 
-        $this->assertSame(200, $this->lectores()->anonymize($vecina->id)->getStatusCode());
+        $this->assertSame(200, $this->readers()->anonymize($neighbour->id)->getStatusCode());
 
-        $retirada = $vecina->fresh();
-        $this->assertSame('Reader', $retirada->name);
-        $this->assertNull($retirada->full_name);
-        $this->assertStringStartsWith('retired-', $retirada->email);
-        $this->assertNotNull($retirada->suspended_at);
-        $this->assertSame(2, SnkKilkanaCommentModel::query()->where('user_id', $vecina->id)->count(), 'Los comentarios se quedan.');
+        $retired = $neighbour->fresh();
+        $this->assertSame('Lector', $retired->name);
+        $this->assertNull($retired->lastname);
+        $this->assertStringStartsWith('retired-', $retired->email);
+        $this->assertNotNull($retired->suspended_at);
+        $this->assertSame(2, SnkKilkanaCommentModel::query()->where('user_id', $neighbour->id)->count(), 'Los comentarios se quedan.');
         $this->assertSame('rejected', SnkKilkanaCommentModel::query()->where('body', 'Pendiente')->first()->status->value);
         $this->assertSame(0, SnkKilkanaSubscriberModel::query()->where('email', 'vecina@lectores.example')->count());
-        $this->assertSame(404, $this->lectores()->anonymize(999)->getStatusCode());
+        $this->assertSame(404, $this->readers()->anonymize(999)->getStatusCode());
     }
 }

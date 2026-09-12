@@ -20,7 +20,7 @@ use Packages\Kilkana\Services\SnkKilkanaActivityService;
 #[Group('Output gate')]
 class SnkKilkanaGateController extends CoreBaseApiController
 {
-    public function __construct(private readonly SnkKilkanaActivityService $registro) {}
+    public function __construct(private readonly SnkKilkanaActivityService $activityLog) {}
 
     protected string $modelClass = SnkKilkanaGateResultModel::class;
 
@@ -40,13 +40,13 @@ class SnkKilkanaGateController extends CoreBaseApiController
             return response()->json(['failing' => SnkKilkanaGateResultModel::failingCount()]);
         }
 
-        $filas = SnkKilkanaGateResultModel::query()->orderBy('id')->get();
-        $failing = $filas->filter(fn (SnkKilkanaGateResultModel $r) => $r->failing())->count();
+        $rows = SnkKilkanaGateResultModel::query()->orderBy('id')->get();
+        $failing = $rows->filter(fn (SnkKilkanaGateResultModel $r) => $r->failing())->count();
 
         return response()->json([
-            'data' => SnkKilkanaGateResultResource::collection($filas),
+            'data' => SnkKilkanaGateResultResource::collection($rows),
             'failing' => $failing,
-            'last_run_at' => $filas->max('checked_at')?->toIso8601String(),
+            'last_run_at' => $rows->max('checked_at')?->toIso8601String(),
         ]);
     }
 
@@ -68,26 +68,26 @@ class SnkKilkanaGateController extends CoreBaseApiController
             'results.*.passing.*' => 'boolean',
         ]);
 
-        $ahora = now();
-        DB::transaction(function () use ($data, $ahora) {
+        $now = now();
+        DB::transaction(function () use ($data, $now) {
             SnkKilkanaGateResultModel::query()->delete();
-            foreach ($data['results'] as $fila) {
+            foreach ($data['results'] as $row) {
                 SnkKilkanaGateResultModel::create([
-                    'url' => $fila['url'],
-                    'kind' => $fila['kind'],
-                    'passing' => $fila['passing'] ?? null,
-                    'checked_at' => isset($fila['passing']) ? $ahora : null,
+                    'url' => $row['url'],
+                    'kind' => $row['kind'],
+                    'passing' => $row['passing'] ?? null,
+                    'checked_at' => isset($row['passing']) ? $now : null,
                 ]);
             }
         });
 
-        $filas = SnkKilkanaGateResultModel::query()->get();
-        $failing = $filas->filter(fn (SnkKilkanaGateResultModel $r) => $r->failing())->count();
-        $auditadas = $filas->whereNotNull('checked_at')->count();
+        $rows = SnkKilkanaGateResultModel::query()->get();
+        $failing = $rows->filter(fn (SnkKilkanaGateResultModel $r) => $r->failing())->count();
+        $audited = $rows->whereNotNull('checked_at')->count();
         if ($failing > 0) {
-            $this->registro->log('gate', 'deploy_blocked', '', '/output-gate', ['params' => ['failing' => $failing, 'total' => $auditadas]]);
+            $this->activityLog->log('gate', 'deploy_blocked', '', '/output-gate', ['params' => ['failing' => $failing, 'total' => $audited]]);
         } else {
-            $this->registro->log('gate', 'gate_passed', '', '/output-gate', ['params' => ['total' => $auditadas]]);
+            $this->activityLog->log('gate', 'gate_passed', '', '/output-gate', ['params' => ['total' => $audited]]);
         }
 
         return $this->index();

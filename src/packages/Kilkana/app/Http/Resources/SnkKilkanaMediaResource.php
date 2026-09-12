@@ -11,8 +11,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * Fuera quedan `path`, `disk` y `url_hash`, que son exactamente los dos campos con los que se
  * borra un fichero del disco más el índice de dedup. Leerlos no borra nada; publicarlos es
  * contarle a cualquiera con sesión cómo está montado el almacenamiento del inquilino, y no hay
- * una sola pantalla que los pinte. Antes lo garantizaba `FILA_DE_LA_BIBLIOTECA` con un
- * `setVisible()`; ahora es que no están declarados.
+ * una sola pantalla que los pinte. Por eso no están declarados aquí.
  *
  * **Sirve a dos puertas con techos distintos y no hay un `if` que las distinga.** La mediateca
  * carga la fila entera y ve las veintinueve; la calle selecciona las suyas y ve menos. Lo caro

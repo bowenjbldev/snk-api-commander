@@ -32,8 +32,7 @@ class SnkKilkanaCategoryResource extends JsonResource
             'last_published_at' => $this->whenHas('last_published_at'),
             'retired_slugs' => $this->whenLoaded('retiredSlugs'),
 
-            // La madre, por lo que se pinta de ella. Salían de un `$appends` sobre una relación
-            // que el modelo cargaba siempre; ahora salen si se ha incluido.
+            // La madre, por lo que se pinta de ella: sale solo si la relación se ha incluido.
             'parent_slug' => $this->whenLoaded('parent', fn () => $this->resource->parent?->slug),
             'parent_name' => $this->whenLoaded('parent', fn () => $this->resource->parent?->name),
         ];

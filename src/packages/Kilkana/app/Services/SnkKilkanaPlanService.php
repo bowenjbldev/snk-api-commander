@@ -113,9 +113,9 @@ class SnkKilkanaPlanService
      */
     private function quotas(CommanderInstanceModel $instance, ?int $subscriptionId): Collection
     {
-        $de = fn (string $columna, ?int $id) => $id === null
+        $quotasBy = fn (string $column, ?int $id) => $id === null
             ? collect()
-            : CommanderQuotaModel::query()->with('metric')->where($columna, $id)->get();
+            : CommanderQuotaModel::query()->with('metric')->where($column, $id)->get();
 
         // **Y solo las de métricas vivas.** `CommanderQuotaMeasurerService` salta las inactivas
         // —deja de medirlas y deja de aplicarlas—, así que su `current_value` se queda congelado
@@ -123,8 +123,8 @@ class SnkKilkanaPlanService
         // acota: una cifra rancia que solo se dibujaba mal ahora enciende un aviso que promete una
         // suspensión que no puede ocurrir. Lo que se aplica y lo que se informa tienen que
         // decidirse con la misma condición.
-        return $de('instance_id', $instance->getKey())
-            ->concat($de('subscription_id', $subscriptionId))
+        return $quotasBy('instance_id', $instance->getKey())
+            ->concat($quotasBy('subscription_id', $subscriptionId))
             ->filter(fn (CommanderQuotaModel $quota) => $quota->metric?->status === 'active');
     }
 
@@ -137,13 +137,13 @@ class SnkKilkanaPlanService
      */
     private function next(CommanderPlanModel $plan): ?array
     {
-        $siguiente = CommanderPlanModel::query()
+        $next = CommanderPlanModel::query()
             ->where('application_id', $plan->application_id)
             ->where('status', 'active')
             ->where('price_monthly', '>', $plan->price_monthly)
             ->orderBy('price_monthly')
             ->first();
 
-        return $siguiente === null ? null : ['slug' => $siguiente->slug, 'name' => $siguiente->name];
+        return $next === null ? null : ['slug' => $next->slug, 'name' => $next->name];
     }
 }

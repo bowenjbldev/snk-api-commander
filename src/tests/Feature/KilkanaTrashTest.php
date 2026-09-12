@@ -29,10 +29,10 @@ class KilkanaTrashTest extends TestCase
         parent::setUp();
 
         DB::setDefaultConnection('tenant');
-        foreach (['Core', 'Kilkana'] as $paquete) {
+        foreach (['Core', 'Kilkana'] as $package) {
             $this->artisan('migrate', [
                 '--database' => 'tenant',
-                '--path' => "packages/{$paquete}/database/migrations",
+                '--path' => "packages/{$package}/database/migrations",
             ])->run();
         }
 
@@ -42,114 +42,114 @@ class KilkanaTrashTest extends TestCase
         DB::statement('PRAGMA foreign_keys = ON');
     }
 
-    public function test_una_pieza_tirada_reserva_su_url_y_vuelve_como_borrador(): void
+    public function test_a_trashed_post_keeps_its_url_and_returns_as_draft(): void
     {
-        $marta = $this->cuenta('marta@eldiario.example', 'Marta Beneyto', 'director');
+        $marta = $this->account('marta@eldiario.example', 'Marta Beneyto', 'director');
         $this->actingAs($marta, 'sanctum');
-        $pieza = $this->pieza('Plan de aparcamientos');
-        $ruta = $pieza->url_path;
+        $post = $this->makePost('Plan de aparcamientos');
+        $path = $post->url_path;
 
-        $pieza->delete();
+        $post->delete();
 
-        $this->assertNull(SnkKilkanaPostModel::query()->find($pieza->id), 'El panel no la ve.');
+        $this->assertNull(SnkKilkanaPostModel::query()->find($post->id), 'El panel no la ve.');
         $this->assertNull(app(SnkKilkanaPublicService::class)->post('2026', '07', '01', 'plan-de-aparcamientos'), 'La calle tampoco.');
-        $this->assertSame($marta->id, SnkKilkanaPostModel::withTrashed()->find($pieza->id)->deleted_by);
+        $this->assertSame($marta->id, SnkKilkanaPostModel::withTrashed()->find($post->id)->deleted_by);
         $this->assertTrue(SnkKilkanaPostModel::pathTaken('2026-07-01', 'plan-de-aparcamientos'), 'La URL sigue reservada.');
 
-        $lista = $this->papelera()->index()->getData(true);
-        $this->assertSame(['post'], array_column($lista['data'], 'kind'));
-        $this->assertEquals(['who' => 'Marta Beneyto', 'days_left' => 30, 'path' => '/'.$ruta], array_intersect_key($lista['data'][0], ['who' => 1, 'days_left' => 1, 'path' => 1]));
+        $listing = $this->trash()->index()->getData(true);
+        $this->assertSame(['post'], array_column($listing['data'], 'kind'));
+        $this->assertEquals(['who' => 'Marta Beneyto', 'days_left' => 30, 'path' => '/'.$path], array_intersect_key($listing['data'][0], ['who' => 1, 'days_left' => 1, 'path' => 1]));
 
-        $this->assertSame(200, $this->papelera()->restore('post', $pieza->id)->getStatusCode());
-        $vuelta = SnkKilkanaPostModel::query()->find($pieza->id);
-        $this->assertSame('draft', $vuelta->status->value, 'Vuelve como borrador, no publicada.');
-        $this->assertSame($ruta, $vuelta->url_path, 'Con la misma URL.');
-        $this->assertNull($vuelta->deleted_by);
+        $this->assertSame(200, $this->trash()->restore('post', $post->id)->getStatusCode());
+        $restored = SnkKilkanaPostModel::query()->find($post->id);
+        $this->assertSame('draft', $restored->status->value, 'Vuelve como borrador, no publicada.');
+        $this->assertSame($path, $restored->url_path, 'Con la misma URL.');
+        $this->assertNull($restored->deleted_by);
         $this->assertSame(['deleted', 'restored_from_trash'], SnkKilkanaActivityModel::query()->where('kind', '<>', 'category')->where('kind', '<>', 'edit')->orderBy('id')->pluck('verb')->all());
     }
 
-    public function test_un_medio_tirado_dice_que_piezas_lo_llevan_y_purgar_se_lo_lleva(): void
+    public function test_trashed_media_lists_the_posts_using_it_and_purging_removes_it(): void
     {
-        $this->actingAs($this->cuenta('marta@eldiario.example', 'Marta Beneyto', 'director'), 'sanctum');
-        $foto = SnkKilkanaMediaModel::create(['url' => 'https://cdn.example/a.jpg', 'url_hash' => sha1('a'), 'title' => 'Plaza mayor', 'width' => 1600, 'height' => 900, 'size_bytes' => 120000]);
-        $portada = $this->pieza('Plan de aparcamientos', ['cover_media_id' => $foto->id]);
-        $this->pieza('Fiestas de agosto', ['body_blocks' => [['type' => 'image', 'config' => ['media_id' => $foto->id]]]]);
-        $this->pieza('Un borrador', ['status' => 'draft', 'cover_media_id' => $foto->id]);
-        $foto->delete();
+        $this->actingAs($this->account('marta@eldiario.example', 'Marta Beneyto', 'director'), 'sanctum');
+        $photo = SnkKilkanaMediaModel::create(['url' => 'https://cdn.example/a.jpg', 'url_hash' => sha1('a'), 'title' => 'Plaza mayor', 'width' => 1600, 'height' => 900, 'size_bytes' => 120000]);
+        $coveredPost = $this->makePost('Plan de aparcamientos', ['cover_media_id' => $photo->id]);
+        $this->makePost('Fiestas de agosto', ['body_blocks' => [['type' => 'image', 'config' => ['media_id' => $photo->id]]]]);
+        $this->makePost('Un borrador', ['status' => 'draft', 'cover_media_id' => $photo->id]);
+        $photo->delete();
 
-        $fila = $this->papelera()->index()->getData(true)['data'][0];
-        $this->assertSame('media', $fila['kind']);
-        $this->assertSame('1600 × 900', $fila['path']);
-        $this->assertSame(['Fiestas de agosto', 'Plan de aparcamientos', 'Un borrador'], collect($fila['refs'])->sort()->values()->all(), 'Un borrador pierde la foto igual: cuenta.');
+        $row = $this->trash()->index()->getData(true)['data'][0];
+        $this->assertSame('media', $row['kind']);
+        $this->assertSame('1600 × 900', $row['path']);
+        $this->assertSame(['Fiestas de agosto', 'Plan de aparcamientos', 'Un borrador'], collect($row['refs'])->sort()->values()->all(), 'Un borrador pierde la foto igual: cuenta.');
 
-        $this->assertSame(200, $this->papelera()->purge('media', $foto->id)->getStatusCode());
-        $this->assertNull(SnkKilkanaMediaModel::withTrashed()->find($foto->id));
-        $this->assertNull($portada->fresh()->cover_media_id, 'La portada se queda sin foto: eso es lo que purgar rompe.');
-        $this->assertSame(404, $this->papelera()->purge('media', $foto->id)->getStatusCode());
+        $this->assertSame(200, $this->trash()->purge('media', $photo->id)->getStatusCode());
+        $this->assertNull(SnkKilkanaMediaModel::withTrashed()->find($photo->id));
+        $this->assertNull($coveredPost->fresh()->cover_media_id, 'La portada se queda sin foto: eso es lo que purgar rompe.');
+        $this->assertSame(404, $this->trash()->purge('media', $photo->id)->getStatusCode());
     }
 
-    public function test_vaciar_purga_y_la_purga_nocturna_respeta_el_plazo(): void
+    public function test_emptying_purges_and_the_nightly_purge_respects_the_retention(): void
     {
-        $this->actingAs($this->cuenta('marta@eldiario.example', 'Marta Beneyto', 'director'), 'sanctum');
-        $vieja = $this->pieza('Vieja');
-        $nueva = $this->pieza('Nueva');
-        $vieja->delete();
-        $nueva->delete();
-        SnkKilkanaPostModel::withTrashed()->whereKey($vieja->id)->update(['deleted_at' => now()->subDays(31)]);
+        $this->actingAs($this->account('marta@eldiario.example', 'Marta Beneyto', 'director'), 'sanctum');
+        $old = $this->makePost('Vieja');
+        $recent = $this->makePost('Nueva');
+        $old->delete();
+        $recent->delete();
+        SnkKilkanaPostModel::withTrashed()->whereKey($old->id)->update(['deleted_at' => now()->subDays(31)]);
 
         $this->assertSame(1, app(SnkKilkanaTrashService::class)->purgeExpired());
-        $this->assertNull(SnkKilkanaPostModel::withTrashed()->find($vieja->id));
-        $this->assertNotNull(SnkKilkanaPostModel::withTrashed()->find($nueva->id), 'La reciente sigue esperando.');
+        $this->assertNull(SnkKilkanaPostModel::withTrashed()->find($old->id));
+        $this->assertNotNull(SnkKilkanaPostModel::withTrashed()->find($recent->id), 'La reciente sigue esperando.');
 
-        $this->assertSame(['purged' => 1, 'kinds' => ['post', 'media']], $this->papelera()->empty()->getData(true));
+        $this->assertSame(['purged' => 1, 'kinds' => ['post', 'media']], $this->trash()->empty()->getData(true));
         $this->assertSame(0, SnkKilkanaPostModel::withTrashed()->count());
     }
 
     /** Cada clase entra con el permiso de borrarla: la mesa de edición ve piezas y medios; la moderación, nada. */
-    public function test_cada_clase_entra_con_el_permiso_de_borrarla(): void
+    public function test_each_kind_requires_the_permission_to_delete_it(): void
     {
-        $director = $this->cuenta('marta@eldiario.example', 'Marta Beneyto', 'director');
+        $director = $this->account('marta@eldiario.example', 'Marta Beneyto', 'director');
         $this->actingAs($director, 'sanctum');
-        $this->pieza('Plan de aparcamientos')->delete();
+        $this->makePost('Plan de aparcamientos')->delete();
 
-        $this->actingAs($this->cuenta('elena@eldiario.example', 'Elena Vara', 'moderador'), 'sanctum');
-        $this->assertSame(403, $this->papelera()->index()->getStatusCode());
-        $this->assertSame(403, $this->papelera()->empty()->getStatusCode());
+        $this->actingAs($this->account('elena@eldiario.example', 'Elena Vara', 'moderador'), 'sanctum');
+        $this->assertSame(403, $this->trash()->index()->getStatusCode());
+        $this->assertSame(403, $this->trash()->empty()->getStatusCode());
 
-        $this->actingAs($this->cuenta('ruben@eldiario.example', 'Rubén Nieto', 'colaborador'), 'sanctum');
-        $this->assertSame(403, $this->papelera()->index()->getStatusCode());
+        $this->actingAs($this->account('ruben@eldiario.example', 'Rubén Nieto', 'colaborador'), 'sanctum');
+        $this->assertSame(403, $this->trash()->index()->getStatusCode());
 
         $this->actingAs($director, 'sanctum');
-        $this->assertSame(404, $this->papelera()->restore('banana', 1)->getStatusCode());
-        $this->assertSame(1, $this->papelera(['counts' => '1'])->index()->getData(true)['count']);
+        $this->assertSame(404, $this->trash()->restore('banana', 1)->getStatusCode());
+        $this->assertSame(1, $this->trash(['counts' => '1'])->index()->getData(true)['count']);
     }
 
-    private function papelera(array $query = []): SnkKilkanaTrashController
+    private function trash(array $query = []): SnkKilkanaTrashController
     {
         request()->query->replace($query);
 
         return app(SnkKilkanaTrashController::class);
     }
 
-    private function cuenta(string $email, string $nombre, string $rol): CoreUserModel
+    private function account(string $email, string $name, string $role): CoreUserModel
     {
-        $user = CoreUserModel::create(['name' => $nombre, 'email' => $email, 'password' => 'secret1234']);
-        $user->assignRole($rol);
+        $user = CoreUserModel::create(['name' => $name, 'email' => $email, 'password' => 'secret1234']);
+        $user->assignRole($role);
 
         return $user;
     }
 
-    private function pieza(string $titulo, array $extra = []): SnkKilkanaPostModel
+    private function makePost(string $title, array $extra = []): SnkKilkanaPostModel
     {
-        $seccion = SnkKilkanaCategoryModel::firstOrCreate(['slug' => 'local'], ['name' => 'Local', 'status' => 'live', 'position' => 0]);
-        $firma = SnkKilkanaAuthorModel::firstOrCreate(['slug' => 'redaccion'], ['alias' => 'Redacción']);
+        $section = SnkKilkanaCategoryModel::firstOrCreate(['slug' => 'local'], ['name' => 'Local', 'status' => 'live', 'position' => 0]);
+        $byline = SnkKilkanaAuthorModel::firstOrCreate(['slug' => 'redaccion'], ['alias' => 'Redacción']);
 
         return SnkKilkanaPostModel::create([
-            'title' => $titulo,
-            'slug' => str($titulo)->slug()->value(),
+            'title' => $title,
+            'slug' => str($title)->slug()->value(),
             'url_date' => '2026-07-01',
-            'category_id' => $seccion->id,
-            'author_id' => $firma->id,
+            'category_id' => $section->id,
+            'author_id' => $byline->id,
             'status' => 'published',
             'publish_at' => '2026-07-01 08:00:00',
             'excerpt' => 'Una entradilla.',

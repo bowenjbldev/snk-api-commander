@@ -168,9 +168,9 @@ abstract class CoreBaseApiController extends Controller
             return [];
         }
 
-        $asked = array_filter(array_map('trim', explode(',', $raw)));
+        $requested = array_filter(array_map('trim', explode(',', $raw)));
 
-        return array_values(array_intersect($asked, $this->allowedSummary));
+        return array_values(array_intersect($requested, $this->allowedSummary));
     }
 
     protected function wants(string $block): bool
@@ -187,9 +187,9 @@ abstract class CoreBaseApiController extends Controller
      */
     protected function perPage(): int
     {
-        $asked = (int) request()->query('per_page', (string) $this->perPageDefault);
+        $requested = (int) request()->query('per_page', (string) $this->perPageDefault);
 
-        return $asked < 1 ? $this->perPageDefault : min($asked, $this->perPageMax);
+        return $requested < 1 ? $this->perPageDefault : min($requested, $this->perPageMax);
     }
 
     /** @return array{current_page: int, per_page: int, total: int, last_page: int} */

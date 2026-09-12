@@ -44,13 +44,13 @@ return new class extends Migration
      */
     public function down(): void
     {
-        $ocultas = DB::table('kilkana_categories')
+        $hiddenCount = DB::table('kilkana_categories')
             ->where('status', SnkKilkanaCategoryStatusEnum::Hidden->value)
             ->count();
 
-        if ($ocultas > 0) {
+        if ($hiddenCount > 0) {
             throw new RuntimeException(
-                "There are {$ocultas} hidden section(s); set them to live or draft before rolling back."
+                "There are {$hiddenCount} hidden section(s); set them to live or draft before rolling back."
             );
         }
 

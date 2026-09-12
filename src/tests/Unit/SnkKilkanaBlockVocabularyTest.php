@@ -21,7 +21,7 @@ use PHPUnit\Framework\TestCase;
  */
 class SnkKilkanaBlockVocabularyTest extends TestCase
 {
-    public function test_los_diez_tipos_de_bloque_son_los_que_compone_el_editor(): void
+    public function test_the_ten_block_types_are_the_ones_the_editor_composes(): void
     {
         $this->assertSame([
             'paragraph',
@@ -37,7 +37,7 @@ class SnkKilkanaBlockVocabularyTest extends TestCase
         ], SnkKilkanaBlockTypeEnum::values());
     }
 
-    public function test_publicar_y_programar_son_los_que_sacan_la_pieza_a_la_calle(): void
+    public function test_publish_and_schedule_are_the_statuses_that_put_a_post_on_the_street(): void
     {
         // De aqui sale el `required_if` de la entradilla y la fecha: un borrador nace sin
         // ellas, y publicarlo asi es publicar media pieza.
@@ -56,9 +56,9 @@ class SnkKilkanaBlockVocabularyTest extends TestCase
      * `media_id` es el unico campo que cambia de nombre entre los dos lados, y a proposito:
      * aqui es la PK de `kilkana_media` y alli todavia es el id de la mediateca de la fixture.
      */
-    public function test_la_forma_de_un_bloque_es_id_type_y_config(): void
+    public function test_a_block_shape_is_id_type_and_config(): void
     {
-        $contrato = [
+        $contract = [
             'paragraph' => ['text'],
             'heading' => ['text'],
             'image' => ['caption', 'media_id'],
@@ -85,25 +85,25 @@ class SnkKilkanaBlockVocabularyTest extends TestCase
             'reads' => 1200,
         ];
 
-        foreach (SnkKilkanaDemoBodyFactory::blocks($post, 9) as $bloque) {
-            $this->assertSame(['id', 'type', 'config'], array_keys($bloque));
-            $this->assertArrayHasKey($bloque['type'], $contrato);
+        foreach (SnkKilkanaDemoBodyFactory::blocks($post, 9) as $block) {
+            $this->assertSame(['id', 'type', 'config'], array_keys($block));
+            $this->assertArrayHasKey($block['type'], $contract);
 
-            $claves = array_keys($bloque['config']);
-            sort($claves);
+            $keys = array_keys($block['config']);
+            sort($keys);
             $this->assertSame(
                 [],
-                array_diff($claves, $contrato[$bloque['type']]),
-                "el bloque «{$bloque['type']}» trae una clave que el contrato no tiene",
+                array_diff($keys, $contract[$block['type']]),
+                "el bloque «{$block['type']}» trae una clave que el contrato no tiene",
             );
         }
     }
 
-    public function test_la_accion_masiva_se_traduce_a_un_estado(): void
+    public function test_a_bulk_action_maps_to_a_status(): void
     {
-        $mapa = [];
-        foreach (['publish', 'draft', 'review', 'scheduled', 'delete'] as $accion) {
-            $mapa[$accion] = SnkKilkanaPostStatusEnum::fromBulkAction($accion)?->value;
+        $map = [];
+        foreach (['publish', 'draft', 'review', 'scheduled', 'delete'] as $action) {
+            $map[$action] = SnkKilkanaPostStatusEnum::fromBulkAction($action)?->value;
         }
 
         $this->assertSame([
@@ -113,6 +113,6 @@ class SnkKilkanaBlockVocabularyTest extends TestCase
             'scheduled' => 'scheduled',
             // Borrar no mueve de estado, asi que no tiene ninguno que devolver.
             'delete' => null,
-        ], $mapa);
+        ], $map);
     }
 }

@@ -75,21 +75,22 @@ Tablas: prefijo del paquete + plural snake_case (`kilkana_post_revisions`). Pivo
 (`kilkana_post_tag`). FKs `*_id`; auditoría `created_by` / `updated_by`, nunca `user_id`.
 Rutas kebab-case y plural, sin nombre salvo cuando `URL::signedRoute` lo exige.
 
-**Idioma.** Clases, métodos, columnas, permisos y mensajes de la API en **inglés**. Docblocks,
-comentarios y nombres de test en **español**. Las variables locales de dominio van en español sin
-complejo, y conviven con los tecnicismos en inglés:
+**Idioma.** Todo identificador en **inglés** —clases, métodos, variables locales de dominio,
+constantes y nombres de test—; docblocks, comentarios y mensajes de aserción en **español**. La
+regla entera, lo que no se renombra y cómo se traduce por significado están en
+[`docs/code-language.md`](../../../../docs/code-language.md):
 
 ```php
-$estado, $ajustes, $tema, $dias, $reglas, $seccionViva, $alPublicar, $catalogo
+$status, $settings, $theme, $days, $rules, $liveSection, $onPublish, $catalog
 $query, $data, $post, $media, $user, $count, $page
 ```
 
 Hasta las closures se nombran por lo que son:
 
 ```php
-$query->where(fn (Builder $todo) => $todo
+$query->where(fn (Builder $any) => $any
     ->where('title', 'like', $like)
-    ->orWhereHas('author', fn (Builder $firma) => $this->matchesByline($firma, $like)));
+    ->orWhereHas('author', fn (Builder $byline) => $this->matchesByline($byline, $like)));
 ```
 
 ---

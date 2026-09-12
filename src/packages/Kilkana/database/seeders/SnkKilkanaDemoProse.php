@@ -15,11 +15,11 @@ namespace Packages\Kilkana\Database\Seeders;
 final class SnkKilkanaDemoProse
 {
     /**
-     * @var array<string, array{prosa: string[], intertitulos: string[], citas: array{0: string, 1: string}[], cierres: string[]}>
+     * @var array<string, array{prose: string[], subheadings: string[], quotes: array{0: string, 1: string}[], closings: string[]}>
      */
     public const MATERIAL = [
         'local' => [
-            'prosa' => [
+            'prose' => [
                 'La sesión se alargó más de lo previsto y el punto no se votó hasta bien entrada la tarde, con los dos grupos de la oposición pidiendo que el expediente volviera a comisión.',
                 'El área responsable calcula que los trabajos afectarán al tráfico durante nueve semanas, con desvíos señalizados en las tres calles perpendiculares y un servicio de refuerzo los sábados por la mañana.',
                 'Los vecinos llevaban dos años reclamando una respuesta y en la última asamblea de barrio recogieron cuatrocientas firmas, que registraron en el ayuntamiento en marzo.',
@@ -85,7 +85,7 @@ final class SnkKilkanaDemoProse
                 'El servicio de transporte a la demanda para los pueblos pequeños empieza en marzo con dos furgonetas y reserva por teléfono, y sustituye a la línea de autobús que iba casi vacía.',
                 'La asociación de comerciantes estrena una campaña de bonos con descuento del veinte por ciento financiados por el ayuntamiento, con un tope de sesenta euros por vecino.',
             ],
-            'intertitulos' => [
+            'subheadings' => [
                 'Qué cambia a partir de octubre',
                 'Los vecinos piden plazos',
                 'Cómo se financia la obra',
@@ -95,7 +95,7 @@ final class SnkKilkanaDemoProse
                 'Comercios y terrazas, con reservas',
                 'Un tramo que llevaba diez años esperando',
             ],
-            'citas' => [
+            'quotes' => [
                 ['No vamos a dejar a nadie sin alternativa a menos de trescientos metros', 'la concejala del área, en el pleno'],
                 ['Llevamos dos años oyendo lo mismo y la calle sigue igual', 'la portavoz de la asociación de vecinos'],
                 ['Si la obra pilla la campaña de Navidad, la mitad del comercio de la calle no la cuenta', 'el presidente de la asociación de comerciantes'],
@@ -105,7 +105,7 @@ final class SnkKilkanaDemoProse
                 ['Pedimos un paso seguro para los niños desde el primer día, no cuando pase algo', 'la directora del colegio'],
                 ['La ronda absorbe el tráfico de paso; el centro tiene que ser para quien vive y compra en él', 'el redactor del plan de movilidad'],
             ],
-            'cierres' => [
+            'closings' => [
                 'La calle volverá a abrirse al tráfico de residentes, según el calendario municipal, en la primera quincena de diciembre.',
                 'El ayuntamiento ha habilitado un correo y un teléfono para las incidencias de la obra, y promete contestar en cuarenta y ocho horas.',
                 'La asociación de vecinos volverá a reunirse con los técnicos cuando termine la primera fase para revisar los plazos de la segunda.',
@@ -116,8 +116,8 @@ final class SnkKilkanaDemoProse
                 'Queda por decidir el destino de la parcela de la estación, donde se acopian los materiales, cuando acaben los trabajos.',
             ],
         ],
-        'politica' => [
-            'prosa' => [
+        'politics' => [
+            'prose' => [
                 'La votación salió adelante por un solo voto y el grupo que se abstuvo dejó claro que su apoyo no se repetirá en el pleno de presupuestos.',
                 'El acuerdo llega después de tres reuniones a puerta cerrada en las que, según las dos partes, se descartó una comisión de investigación a cambio de auditar el contrato.',
                 'La oposición anunció que llevará el expediente al órgano de cuentas y pidió que comparezca el responsable técnico que firmó el informe.',
@@ -143,7 +143,7 @@ final class SnkKilkanaDemoProse
                 'El portavoz insistió en que la propuesta no es nueva y que ya figuraba en el programa con el que su grupo concurrió a las últimas elecciones.',
                 'La comparecencia duró cerca de dos horas y el concejal contestó a las veintitrés preguntas registradas, aunque remitió cuatro de ellas a un informe pendiente.',
             ],
-            'intertitulos' => [
+            'subheadings' => [
                 'Los números del acuerdo',
                 'Qué dice la oposición',
                 'Una votación al límite',
@@ -153,7 +153,7 @@ final class SnkKilkanaDemoProse
                 'Un pacto con fecha de caducidad',
                 'Qué pasa ahora con el expediente',
             ],
-            'citas' => [
+            'quotes' => [
                 ['Este acuerdo no compra nada, ordena lo que llevaba diez años sin ordenarse', 'el portavoz del equipo de gobierno'],
                 ['Que se vote hoy no significa que esté cerrado', 'la portavoz de la oposición'],
                 ['No se puede gobernar un pueblo a golpe de modificación de crédito', 'el concejal de hacienda de la oposición'],
@@ -163,7 +163,7 @@ final class SnkKilkanaDemoProse
                 ['Si el expediente está bien, que lo mire quien tiene que mirarlo', 'el concejal que pidió la auditoría'],
                 ['El pacto sigue vivo, pero hoy nadie ha salido contento de esa sala', 'fuentes del equipo de gobierno'],
             ],
-            'cierres' => [
+            'closings' => [
                 'El pleno ordinario de presupuestos está previsto para la última semana del mes, y ningún grupo ha adelantado el sentido de su voto.',
                 'La oposición ha anunciado que registrará esta semana la petición de comparecencia y que recurrirá al juzgado si no se atiende.',
                 'El acuerdo tendrá que ratificarse en pleno, y el gobierno cuenta con llevarlo a la sesión de octubre.',
@@ -174,8 +174,8 @@ final class SnkKilkanaDemoProse
                 'Queda pendiente la designación del nuevo portavoz, que el grupo decidirá en su reunión de la semana que viene.',
             ],
         ],
-        'economia' => [
-            'prosa' => [
+        'economy' => [
+            'prose' => [
                 'Las cifras que maneja la patronal comarcal apuntan a que el efecto se notará en el primer trimestre, con una caída de pedidos que ya arrastran los proveedores desde el verano.',
                 'El sector emplea a algo más de mil doscientas personas en la comarca, la mayoría con contratos de campaña, y la temporada corta arranca este año dos semanas antes.',
                 'La línea de ayudas se abre en septiembre y exige mantener la plantilla dos años, una condición que las empresas más pequeñas ya han advertido que no podrán cumplir.',
@@ -225,7 +225,7 @@ final class SnkKilkanaDemoProse
                 'El precio del alquiler de los locales del centro ha bajado un cinco por ciento en el último año, la primera bajada desde que la asociación de comerciantes lo mide.',
                 'La feria agrícola de primavera cierra con ciento ochenta expositores y un volumen de negocio de dos millones, según la organización, que ya prepara la edición de otoño.',
             ],
-            'intertitulos' => [
+            'subheadings' => [
                 'El impacto en la comarca',
                 'Las cuentas del sector',
                 'Quién cobra y quién paga',
@@ -235,7 +235,7 @@ final class SnkKilkanaDemoProse
                 'Las ayudas, con condiciones',
                 'Relevo, la palabra que falta',
             ],
-            'citas' => [
+            'quotes' => [
                 ['Con estos precios no se cubre ni el coste de recogida', 'un productor de la cooperativa'],
                 ['El problema no es la campaña de este año, es que no hay relevo', 'el secretario de la patronal comarcal'],
                 ['Mantener plantilla dos años es fácil de escribir en una orden y muy difícil de cumplir en un almacén', 'la gerente de una empresa familiar'],
@@ -245,7 +245,7 @@ final class SnkKilkanaDemoProse
                 ['Modernizar el regadío es la única inversión que devuelve agua', 'el presidente de la comunidad de regantes'],
                 ['Hemos contratado menos gente porque hay menos fruta, no porque haya menos trabajo', 'el responsable de recursos humanos de la cooperativa'],
             ],
-            'cierres' => [
+            'closings' => [
                 'La asamblea de la cooperativa se reúne en noviembre para aprobar las cuentas y decidir si se renueva el contrato con la comercializadora.',
                 'El plazo para solicitar las ayudas se abre el uno de septiembre y se cierra el treinta, a través de la sede electrónica de la consejería.',
                 'La patronal presentará su informe de coyuntura del segundo semestre en la feria comercial de octubre.',
@@ -256,8 +256,8 @@ final class SnkKilkanaDemoProse
                 'La comunidad de regantes espera la resolución de la confederación sobre el proyecto de modernización para principios del año que viene.',
             ],
         ],
-        'deportes' => [
-            'prosa' => [
+        'sports' => [
+            'prose' => [
                 'El equipo llegó al último cuarto de hora con un jugador menos y aun así tuvo dos ocasiones claras, las dos en la misma jugada de estrategia que llevaba semanas ensayando.',
                 'La plantilla arrastra tres bajas por lesión y el cuerpo técnico ha tirado del filial en las últimas cuatro jornadas, con dos debutantes de menos de veinte años.',
                 'La afición llevaba nueve temporadas esperando y llenó el campo por primera vez desde el ascenso anterior, con mil doscientos desplazados en la grada visitante.',
@@ -307,7 +307,7 @@ final class SnkKilkanaDemoProse
                 'El polideportivo estrena una pista de skate diseñada con los usuarios, que llevaban cinco años pidiendo un sitio donde no molestar en la plaza.',
                 'El club de ajedrez, con cuarenta socios, organiza un torneo abierto en la plaza durante las fiestas y consigue por primera vez la participación de un maestro internacional.',
             ],
-            'intertitulos' => [
+            'subheadings' => [
                 'Cómo se decidió el partido',
                 'Lo que viene ahora',
                 'Un vestuario con bajas',
@@ -317,7 +317,7 @@ final class SnkKilkanaDemoProse
                 'La cantera empuja',
                 'Una temporada en dos partes',
             ],
-            'citas' => [
+            'quotes' => [
                 ['Hemos competido con lo que teníamos y eso vale más que el resultado', 'el entrenador, en la sala de prensa'],
                 ['Esto es de la gente, que lleva nueve años viniendo cuando no había nada', 'el capitán, tras el partido'],
                 ['Con once contra once habríamos ganado; con diez, hemos merecido no perder', 'el segundo entrenador'],
@@ -327,7 +327,7 @@ final class SnkKilkanaDemoProse
                 ['La pista nueva se pidió cuando yo era cadete; hoy la estreno como entrenador', 'el responsable de la escuela de atletismo'],
                 ['Trece temporadas dan para mucho; me voy porque quiero que me recuerden jugando', 'la capitana, en la despedida'],
             ],
-            'cierres' => [
+            'closings' => [
                 'El equipo vuelve a jugar el domingo a las doce, en casa, contra el segundo clasificado.',
                 'La federación fijará esta semana el calendario de la fase de ascenso, que empieza a mediados de mayo.',
                 'El club abre la campaña de abonados el lunes, con los mismos precios que la temporada pasada.',
@@ -338,8 +338,8 @@ final class SnkKilkanaDemoProse
                 'El homenaje a la capitana será en el último partido de liga en casa, con la presencia de las jugadoras de la primera plantilla del club.',
             ],
         ],
-        'cultura' => [
-            'prosa' => [
+        'culture' => [
+            'prose' => [
                 'La pieza estaba catalogada desde los años setenta pero nunca se había expuesto: llevaba cuatro décadas en el depósito, envuelta y sin ficha, hasta que la revisión del inventario la sacó.',
                 'El programa reúne a doce compañías, la mitad de la comarca, y mantiene la entrada libre en las funciones de tarde gracias al convenio con la diputación.',
                 'La restauración ha durado catorce meses y ha obligado a desmontar el retablo pieza a pieza, con un andamio interior que ha tenido la nave cerrada al culto desde enero.',
@@ -389,7 +389,7 @@ final class SnkKilkanaDemoProse
                 'El ayuntamiento declara la antigua imprenta como bien local protegido y estudia convertirla en museo de las artes gráficas con la maquinaria original.',
                 'El festival de jazz de la comarca celebra su décima edición con cuatro conciertos en el claustro y una jam abierta a los músicos de las escuelas de música.',
             ],
-            'intertitulos' => [
+            'subheadings' => [
                 'Qué se puede ver',
                 'El proceso de restauración',
                 'Veinte años de festival',
@@ -399,7 +399,7 @@ final class SnkKilkanaDemoProse
                 'Una sala para la comarca',
                 'Cómo se financia',
             ],
-            'citas' => [
+            'quotes' => [
                 ['Lo teníamos delante y no lo habíamos mirado con calma en cuarenta años', 'la responsable de colección'],
                 ['Sin el convenio esto no sale adelante ni un año más', 'el director del festival'],
                 ['Un retablo se desmonta en una semana y se vuelve a montar en un año', 'el restaurador jefe'],
@@ -409,7 +409,7 @@ final class SnkKilkanaDemoProse
                 ['Cien años tocando en la plaza es cien años de gente que quiso quedarse', 'el presidente de la banda'],
                 ['Un órgano callado treinta años es un edificio con la boca cerrada', 'la organista invitada al concierto de reapertura'],
             ],
-            'cierres' => [
+            'closings' => [
                 'La exposición puede visitarse hasta el treinta de octubre, de martes a domingo, con entrada gratuita.',
                 'Las entradas para las funciones de fin de semana están a la venta en la taquilla del teatro y en la web del ayuntamiento.',
                 'El festival cierra su edición el domingo con el concierto de la banda en la plaza mayor, a las diez de la noche.',
@@ -420,8 +420,8 @@ final class SnkKilkanaDemoProse
                 'El museo mantendrá la nueva sala abierta en horario de tarde durante los meses de verano.',
             ],
         ],
-        'sucesos' => [
-            'prosa' => [
+        'crime' => [
+            'prose' => [
                 'El aviso entró en el 112 a las siete y cuarto de la mañana y hasta el lugar se desplazaron dos dotaciones de bomberos, una ambulancia y una patrulla, que cortó el tráfico en los dos sentidos.',
                 'La investigación sigue abierta y por el momento no se descarta ninguna hipótesis, según fuentes del instituto armado, que pide prudencia hasta que se complete el atestado.',
                 'No hubo que lamentar heridos de gravedad: dos personas fueron atendidas en el lugar por inhalación de humo y una tercera quedó en observación hasta media mañana.',
@@ -447,7 +447,7 @@ final class SnkKilkanaDemoProse
                 'La policía local ha identificado a los autores de las pintadas gracias a las cámaras del aparcamiento, y el ayuntamiento reclamará el coste de la limpieza.',
                 'Los bomberos tardaron cuarenta minutos en apagar el fuego del contenedor, que se había propagado a dos vehículos aparcados y a la persiana de un comercio.',
             ],
-            'intertitulos' => [
+            'subheadings' => [
                 'Cómo ocurrió',
                 'La investigación',
                 'Cronología de la madrugada',
@@ -457,7 +457,7 @@ final class SnkKilkanaDemoProse
                 'Lo que se sabe y lo que no',
                 'Un tramo con antecedentes',
             ],
-            'citas' => [
+            'quotes' => [
                 ['Se ha actuado rápido y eso ha evitado que pasara a la nave contigua', 'el jefe de la dotación'],
                 ['Hasta que no esté el atestado no vamos a aventurar nada', 'fuentes de la investigación'],
                 ['Oímos el golpe y cuando salimos ya estaba el coche en la cuneta', 'un vecino de la travesía'],
@@ -467,7 +467,7 @@ final class SnkKilkanaDemoProse
                 ['No ha sido suerte, ha sido que estaba en el sitio donde tenía que estar', 'el coordinador de protección civil, sobre el voluntario'],
                 ['La planta no arranca hasta que sepamos qué pasó', 'el gerente de la empresa'],
             ],
-            'cierres' => [
+            'closings' => [
                 'La guardia civil mantiene abierta la investigación y ha pedido la colaboración de quien pudiera haber visto algo.',
                 'El ayuntamiento ha abierto un expediente para determinar los daños y valorar la reclamación a la aseguradora.',
                 'La carretera quedó reabierta al tráfico a última hora de la tarde, una vez retirado el vehículo y limpiada la calzada.',
@@ -479,7 +479,7 @@ final class SnkKilkanaDemoProse
             ],
         ],
         'opinion' => [
-            'prosa' => [
+            'prose' => [
                 'Conviene recordar que esto no empezó esta legislatura. Empezó cuando se decidió que era más barato aplazarlo, y aplazarlo salió, como siempre, mucho más caro.',
                 'Hay una diferencia entre no tener recursos y no tener criterio, y llevamos demasiados años usando lo primero para no hablar de lo segundo.',
                 'Se puede discutir el calendario, el coste y hasta la oportunidad. Lo que ya no se puede es seguir discutiendo si hacía falta.',
@@ -505,7 +505,7 @@ final class SnkKilkanaDemoProse
                 'Que un niño pueda ir andando al colegio sin que su madre cruce los dedos no es una política de movilidad. Es lo mínimo.',
                 'Este periódico ha publicado esta semana una noticia incómoda. Lo seguirá haciendo. Es lo único que justifica que exista.',
             ],
-            'intertitulos' => [
+            'subheadings' => [
                 'Una cuestión de prioridades',
                 'Lo que no se dice',
                 'El precio de aplazar',
@@ -515,7 +515,7 @@ final class SnkKilkanaDemoProse
                 'La velocidad lenta',
                 'Un elogio, por una vez',
             ],
-            'citas' => [
+            'quotes' => [
                 ['Lo urgente lleva veinte años comiéndose a lo importante', 'de la tribuna de esta semana'],
                 ['No es un problema de dinero, es un problema de orden', 'de la tribuna de esta semana'],
                 ['Aplazar es la forma más cara de decir que no', 'de la columna del sábado'],
@@ -525,7 +525,7 @@ final class SnkKilkanaDemoProse
                 ['Lo que no se cuenta en el periódico se cuenta en el bar, y peor', 'del editorial'],
                 ['Cuando la oposición acierta hay que decirlo', 'de la columna del sábado'],
             ],
-            'cierres' => [
+            'closings' => [
                 'El pleno del mes que viene dirá si lo aprobado esta semana era un principio o un titular.',
                 'Volveremos sobre esto cuando haya cifras, que es cuando las opiniones dejan de ser gratis.',
                 'Mientras tanto, la acera sigue rota. Que conste.',
@@ -536,8 +536,8 @@ final class SnkKilkanaDemoProse
                 'Y si el lector no está de acuerdo, mejor: para eso se escribe.',
             ],
         ],
-        'ambiente' => [
-            'prosa' => [
+        'environment' => [
+            'prose' => [
                 'Las estaciones de medida de la comarca registran el tercer verano consecutivo por encima de la media de la serie histórica, que arranca en 1961.',
                 'El plan prevé renaturalizar dos kilómetros de cauce y retirar los tres azudes que quedan sin uso, una obra que la confederación tiene presupuestada para el próximo ejercicio.',
                 'La población censada se ha estabilizado después de una década a la baja, aunque los técnicos advierten de que dos temporadas buenas no revierten una tendencia.',
@@ -563,7 +563,7 @@ final class SnkKilkanaDemoProse
                 'La colonia de murciélagos de la cueva ha crecido hasta los ocho mil ejemplares, la mayor de la provincia, y el acceso quedará cerrado durante la cría.',
                 'El plan de residuos fija para 2030 un objetivo de reciclaje del sesenta y cinco por ciento; la comarca está hoy en el cuarenta y uno.',
             ],
-            'intertitulos' => [
+            'subheadings' => [
                 'Lo que dicen los datos',
                 'El plan, paso a paso',
                 'Un verano más por encima de la media',
@@ -573,7 +573,7 @@ final class SnkKilkanaDemoProse
                 'Las alegaciones al proyecto',
                 'Reciclar, la cuenta pendiente',
             ],
-            'citas' => [
+            'quotes' => [
                 ['Dos años buenos no son una recuperación, son dos años buenos', 'el técnico responsable del seguimiento'],
                 ['Si no se actúa sobre el cauce, lo demás es cosmética', 'la portavoz del grupo ecologista'],
                 ['Con el embalse al treinta y ocho por ciento no hay campaña que no se resienta', 'el presidente de la comunidad de regantes'],
@@ -583,7 +583,7 @@ final class SnkKilkanaDemoProse
                 ['Nueve de doce en la zona es un buen dato; en dos años sabremos si crían', 'la bióloga del programa de reintroducción'],
                 ['Plantar un árbol en un patio de colegio es la única inversión que da sombra en diez años', 'el concejal de medio ambiente'],
             ],
-            'cierres' => [
+            'closings' => [
                 'La confederación publicará el balance del año hidrológico en octubre, y con él la previsión de restricciones para la próxima campaña.',
                 'El censo de aves se repetirá en invierno, con la llegada de las especies migratorias.',
                 'El periodo de alegaciones al proyecto se cierra a final de mes, y la resolución se espera para el año que viene.',

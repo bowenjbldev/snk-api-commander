@@ -27,7 +27,7 @@ class CommanderUsageRollupService
     public function rollup(string $period): int
     {
         if (! in_array($period, ['hour', 'day'], true)) {
-            throw new \InvalidArgumentException("Periodo invalido [$period]: usa hour|day.");
+            throw new \InvalidArgumentException("Invalid period [$period]: use hour|day.");
         }
 
         $start = $this->windowStart($period);

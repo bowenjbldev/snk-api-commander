@@ -265,7 +265,8 @@ recupera los defaults, no la portada, ni los ajustes del tema, ni la identidad.
 Y arrastra algo que no está en estas tablas: **`--fresh` vacía también `users`**, y el admin del
 periódico lo crea el provisioning, no el seeder.
 
-Con **datos demo y en local o testing** el seeder de Kilkana lo repone si falta, y solo entonces:
+Con **cuentas de demo y en local o testing** —un perfil con `demo` o con `accounts`— el seeder de
+Kilkana lo repone si falta, y solo entonces:
 nace con `secret1234`, que **no es la contraseña del alta**. Es el agujero de recrear la base a
 mano, y está cubierto a propósito.
 

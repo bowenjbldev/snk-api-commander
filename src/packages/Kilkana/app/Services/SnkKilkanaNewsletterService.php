@@ -33,13 +33,13 @@ class SnkKilkanaNewsletterService
     /** La ventana de las cifras de salud de la lista. */
     public const WINDOW_DAYS = 90;
 
-    public function __construct(private readonly SnkKilkanaActivityService $registro) {}
+    public function __construct(private readonly SnkKilkanaActivityService $activityLog) {}
 
     /** Un borrador nuevo, arriba. */
     public function create(?int $userId): SnkKilkanaNewsletterIssueModel
     {
         return SnkKilkanaNewsletterIssueModel::create([
-            'subject' => 'Untitled issue',
+            'subject' => 'Número sin título',
             'preheader' => null,
             'status' => SnkKilkanaNewsletterIssueModel::DRAFT,
             'created_by' => $userId,
@@ -51,43 +51,43 @@ class SnkKilkanaNewsletterService
      *
      * @return Collection<int, SnkKilkanaPostModel>
      */
-    public function pieces(SnkKilkanaNewsletterIssueModel $issue): Collection
+    public function postsOf(SnkKilkanaNewsletterIssueModel $issue): Collection
     {
-        return $this->piecesFor(collect([$issue]))->first();
+        return $this->postsForIssues(collect([$issue]))->first();
     }
 
     /**
      * Lo mismo para varios números y en su misma posición, en tres consultas como mucho en vez
-     * de una por número: el panel los pinta todos a la vez y antes preguntaba uno a uno.
+     * de una por número: el panel los pinta todos a la vez.
      *
      * @param  Collection<int, SnkKilkanaNewsletterIssueModel>  $issues
      * @return Collection<int, Collection<int, SnkKilkanaPostModel>>
      */
-    public function piecesFor(Collection $issues): Collection
+    public function postsForIssues(Collection $issues): Collection
     {
-        $numeros = $issues->values();
-        $elegidas = $numeros->map(fn (SnkKilkanaNewsletterIssueModel $i) => is_array($i->post_ids) ? array_values(array_filter($i->post_ids)) : []);
-        $ids = fn (bool $enviado) => $elegidas
-            ->filter(fn (array $suyas, int $p) => $numeros[$p]->sent() === $enviado)
+        $ordered = $issues->values();
+        $picked = $ordered->map(fn (SnkKilkanaNewsletterIssueModel $i) => is_array($i->post_ids) ? array_values(array_filter($i->post_ids)) : []);
+        $ids = fn (bool $isSent) => $picked
+            ->filter(fn (array $picks, int $p) => $ordered[$p]->sent() === $isSent)
             ->flatten()->unique()->values()->all();
-        $porId = fn (Builder $consulta, array $suyos) => $suyos === []
+        $byId = fn (Builder $query, array $wanted) => $wanted === []
             ? collect()
-            : $this->fila($consulta)->whereKey($suyos)->get()->keyBy('id');
+            : $this->row($query)->whereKey($wanted)->get()->keyBy('id');
 
         // Un número enviado enseña lo que llevó, aunque una pieza se haya tirado después; un
         // borrador con piezas elegidas enseña las que sigan publicadas, en el orden elegido.
         // Son dos consultas distintas, pero dos para todos los números, no dos por número.
-        $delArchivo = $porId(SnkKilkanaPostModel::withTrashed(), $ids(true));
-        $publicadas = $porId(SnkKilkanaPostModel::query()->published(), $ids(false));
-        $ultimas = null;
+        $archived = $byId(SnkKilkanaPostModel::withTrashed(), $ids(true));
+        $published = $byId(SnkKilkanaPostModel::query()->published(), $ids(false));
+        $latest = null;
 
-        return $numeros->map(function (SnkKilkanaNewsletterIssueModel $issue, int $p) use ($elegidas, $delArchivo, $publicadas, &$ultimas) {
-            if ($elegidas[$p] === []) {
-                return $ultimas ??= $this->recent(SnkKilkanaNewsletterIssueModel::PIECES);
+        return $ordered->map(function (SnkKilkanaNewsletterIssueModel $issue, int $p) use ($picked, $archived, $published, &$latest) {
+            if ($picked[$p] === []) {
+                return $latest ??= $this->recent(SnkKilkanaNewsletterIssueModel::POSTS_PER_ISSUE);
             }
-            $pool = $issue->sent() ? $delArchivo : $publicadas;
+            $pool = $issue->sent() ? $archived : $published;
 
-            return collect($elegidas[$p])->map(fn ($id) => $pool->get($id))->filter()->values();
+            return collect($picked[$p])->map(fn ($id) => $pool->get($id))->filter()->values();
         });
     }
 
@@ -99,7 +99,7 @@ class SnkKilkanaNewsletterService
      */
     public function recent(int $limit): Collection
     {
-        return $this->fila(SnkKilkanaPostModel::query()->published())
+        return $this->row(SnkKilkanaPostModel::query()->published())
             ->orderByDesc('publish_at')->orderByDesc('id')->limit($limit)->get();
     }
 
@@ -109,9 +109,9 @@ class SnkKilkanaNewsletterService
      * así que las cuatro relaciones que `$with` carga sola eran cuatro consultas por llamada
      * para nada.
      */
-    private function fila(Builder $consulta): Builder
+    private function row(Builder $query): Builder
     {
-        return $consulta->select(['id', 'title', 'excerpt', 'url_date', 'slug'])
+        return $query->select(['id', 'title', 'excerpt', 'url_date', 'slug'])
             ->without(['category', 'author', 'coverMedia', 'tags']);
     }
 
@@ -121,7 +121,7 @@ class SnkKilkanaNewsletterService
      */
     public function sendDue(string $database, string $client): int
     {
-        $enviados = 0;
+        $sent = 0;
         $ids = SnkKilkanaNewsletterIssueModel::query()
             ->where('status', SnkKilkanaNewsletterIssueModel::DRAFT)
             ->whereNotNull('scheduled_at')
@@ -130,7 +130,7 @@ class SnkKilkanaNewsletterService
             ->pluck('id');
 
         foreach ($ids as $id) {
-            $enviado = DB::transaction(function () use ($id, $database, $client) {
+            $isSent = DB::transaction(function () use ($id, $database, $client) {
                 $issue = SnkKilkanaNewsletterIssueModel::query()->whereKey($id)->lockForUpdate()->first();
                 if ($issue === null || $issue->sent()) {
                     return false;
@@ -139,10 +139,10 @@ class SnkKilkanaNewsletterService
 
                 return true;
             });
-            $enviados += $enviado ? 1 : 0;
+            $sent += $isSent ? 1 : 0;
         }
 
-        return $enviados;
+        return $sent;
     }
 
     /**
@@ -160,17 +160,17 @@ class SnkKilkanaNewsletterService
         DB::transaction(function () use ($issue, $ids) {
             $issue->forceFill([
                 'status' => SnkKilkanaNewsletterIssueModel::SENT,
-                'post_ids' => $this->pieces($issue)->pluck('id')->map(fn ($id) => (int) $id)->all(),
+                'post_ids' => $this->postsOf($issue)->pluck('id')->map(fn ($id) => (int) $id)->all(),
                 'sent_at' => now(),
                 'recipients_count' => $ids->count(),
             ])->save();
         });
 
-        foreach ($ids->chunk(self::BATCH) as $tanda) {
-            SnkKilkanaNewsletterSendJob::dispatch($database, $client, (int) $issue->getKey(), $tanda->values()->all());
+        foreach ($ids->chunk(self::BATCH) as $batch) {
+            SnkKilkanaNewsletterSendJob::dispatch($database, $client, (int) $issue->getKey(), $batch->values()->all());
         }
 
-        $this->registro->log('newsletter', 'issue_sent', $issue->subject, '/newsletter');
+        $this->activityLog->log('newsletter', 'issue_sent', $issue->subject, '/newsletter');
 
         return $ids->count();
     }
@@ -182,41 +182,41 @@ class SnkKilkanaNewsletterService
         if ($issue === null || ! $issue->sent()) {
             return 0;
         }
-        $periodico = $this->newspaper();
-        $piezas = $this->pieces($issue);
-        $enviados = 0;
-        foreach (SnkKilkanaSubscriberModel::query()->whereKey($subscriberIds)->get() as $suscriptor) {
+        $newspaper = $this->newspaper();
+        $posts = $this->postsOf($issue);
+        $sent = 0;
+        foreach (SnkKilkanaSubscriberModel::query()->whereKey($subscriberIds)->get() as $subscriber) {
             // Solo a quien sigue confirmado: una baja entre el «Send» y la tanda no recibe nada.
-            if ($suscriptor->status !== SnkKilkanaSubscriberStatusEnum::Confirmed) {
+            if ($subscriber->status !== SnkKilkanaSubscriberStatusEnum::Confirmed) {
                 continue;
             }
             // Y solo una vez: el worker se reinicia por diseño y una tanda en vuelo se vuelve a
             // ejecutar entera. La marca va ANTES del correo, por suscriptor: un boletín
             // duplicado cuesta bajas, y un correo perdido por un fallo entre la marca y el
             // envío es el lado bueno por el que equivocarse.
-            if (! SnkKilkanaNewsletterEventModel::record((int) $issue->getKey(), (int) $suscriptor->getKey(), SnkKilkanaNewsletterEventModel::SENT)) {
+            if (! SnkKilkanaNewsletterEventModel::record((int) $issue->getKey(), (int) $subscriber->getKey(), SnkKilkanaNewsletterEventModel::SENT)) {
                 continue;
             }
             try {
-                Mail::to($suscriptor->email)->send($this->mail($issue, $piezas, $periodico, $client, $suscriptor));
-                $enviados++;
+                Mail::to($subscriber->email)->send($this->mail($issue, $posts, $newspaper, $client, $subscriber));
+                $sent++;
             } catch (\Throwable $e) {
-                Log::error('kilkana: no se pudo enviar el boletín', ['issue' => $issueId, 'subscriber' => $suscriptor->id, 'error' => $e->getMessage()]);
+                Log::error('kilkana: could not send the newsletter', ['issue' => $issueId, 'subscriber' => $subscriber->id, 'error' => $e->getMessage()]);
             }
         }
 
-        return $enviados;
+        return $sent;
     }
 
     /** Una copia a una dirección, sin píxel ni baja de nadie: es una prueba. */
     public function sendTest(SnkKilkanaNewsletterIssueModel $issue, string $to, string $client): void
     {
-        $piezas = $this->pieces($issue);
+        $posts = $this->postsOf($issue);
         $mail = new SnkKilkanaNewsletterMail(
             $this->newspaper(),
             $issue->subject,
             $issue->preheader,
-            $piezas->map(fn (SnkKilkanaPostModel $p) => ['title' => $p->title, 'excerpt' => (string) $p->excerpt, 'url' => $this->articleUrl($p)])->all(),
+            $posts->map(fn (SnkKilkanaPostModel $p) => ['title' => $p->title, 'excerpt' => (string) $p->excerpt, 'url' => $this->articleUrl($p)])->all(),
             null,
             $this->siteUrl().'/',
         );
@@ -247,25 +247,25 @@ class SnkKilkanaNewsletterService
         if ($issueIds === []) {
             return [];
         }
-        $clase = [
+        $eventKinds = [
             SnkKilkanaNewsletterEventModel::OPEN => 'opens',
             SnkKilkanaNewsletterEventModel::CLICK => 'clicks',
             SnkKilkanaNewsletterEventModel::UNSUB => 'unsubs',
         ];
-        $porNumero = array_fill_keys($issueIds, ['opens' => 0, 'clicks' => 0, 'unsubs' => 0]);
+        $byIssue = array_fill_keys($issueIds, ['opens' => 0, 'clicks' => 0, 'unsubs' => 0]);
 
-        $filas = SnkKilkanaNewsletterEventModel::query()
+        $rows = SnkKilkanaNewsletterEventModel::query()
             ->whereIn('issue_id', $issueIds)
-            ->whereIn('kind', array_keys($clase))
+            ->whereIn('kind', array_keys($eventKinds))
             ->selectRaw('issue_id, kind, count(distinct subscriber_id) as total')
             ->groupBy('issue_id', 'kind')
             ->get();
 
-        foreach ($filas as $fila) {
-            $porNumero[(int) $fila->issue_id][$clase[$fila->kind]] = (int) $fila->total;
+        foreach ($rows as $row) {
+            $byIssue[(int) $row->issue_id][$eventKinds[$row->kind]] = (int) $row->total;
         }
 
-        return $porNumero;
+        return $byIssue;
     }
 
     /** Cuántos borradores esperan, que es la cifra del raíl. */
@@ -281,48 +281,48 @@ class SnkKilkanaNewsletterService
      */
     public function listStats(): array
     {
-        $porEstado = SnkKilkanaSubscriberModel::query()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
-        $porOrigen = SnkKilkanaSubscriberModel::query()->selectRaw('consent_source, count(*) as total')->groupBy('consent_source')->pluck('total', 'consent_source');
-        $desde = now()->subDays(self::WINDOW_DAYS);
-        $enviados = SnkKilkanaNewsletterIssueModel::query()->where('status', SnkKilkanaNewsletterIssueModel::SENT)->where('sent_at', '>=', $desde)->get(['id', 'recipients_count']);
-        $aperturas = $enviados->isEmpty() ? 0 : SnkKilkanaNewsletterEventModel::query()
-            ->whereIn('issue_id', $enviados->modelKeys())->where('kind', SnkKilkanaNewsletterEventModel::OPEN)
+        $byStatus = SnkKilkanaSubscriberModel::query()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
+        $bySource = SnkKilkanaSubscriberModel::query()->selectRaw('consent_source, count(*) as total')->groupBy('consent_source')->pluck('total', 'consent_source');
+        $windowStart = now()->subDays(self::WINDOW_DAYS);
+        $sent = SnkKilkanaNewsletterIssueModel::query()->where('status', SnkKilkanaNewsletterIssueModel::SENT)->where('sent_at', '>=', $windowStart)->get(['id', 'recipients_count']);
+        $opens = $sent->isEmpty() ? 0 : SnkKilkanaNewsletterEventModel::query()
+            ->whereIn('issue_id', $sent->modelKeys())->where('kind', SnkKilkanaNewsletterEventModel::OPEN)
             ->count();
-        $destinatarios = (int) $enviados->sum('recipients_count');
-        $bajas = SnkKilkanaSubscriberModel::query()->where('status', SnkKilkanaSubscriberStatusEnum::Unsubscribed)->where('updated_at', '>=', $desde)->count();
-        $semana = SnkKilkanaSubscriberModel::query()->where('status', SnkKilkanaSubscriberStatusEnum::Confirmed)->where('consent_at', '>=', now()->subDays(7))->count();
+        $recipients = (int) $sent->sum('recipients_count');
+        $unsubscribed = SnkKilkanaSubscriberModel::query()->where('status', SnkKilkanaSubscriberStatusEnum::Unsubscribed)->where('updated_at', '>=', $windowStart)->count();
+        $thisWeek = SnkKilkanaSubscriberModel::query()->where('status', SnkKilkanaSubscriberStatusEnum::Confirmed)->where('consent_at', '>=', now()->subDays(7))->count();
 
         return [
-            'confirmed' => (int) $porEstado->get(SnkKilkanaSubscriberStatusEnum::Confirmed->value, 0),
-            'pending' => (int) $porEstado->get(SnkKilkanaSubscriberStatusEnum::Pending->value, 0),
-            'unsubscribed' => (int) $porEstado->get(SnkKilkanaSubscriberStatusEnum::Unsubscribed->value, 0),
-            'confirmed_this_week' => $semana,
-            'open_rate' => $destinatarios > 0 ? round($aperturas / $destinatarios, 3) : null,
-            'unsubscribed_in_window' => $bajas,
+            'confirmed' => (int) $byStatus->get(SnkKilkanaSubscriberStatusEnum::Confirmed->value, 0),
+            'pending' => (int) $byStatus->get(SnkKilkanaSubscriberStatusEnum::Pending->value, 0),
+            'unsubscribed' => (int) $byStatus->get(SnkKilkanaSubscriberStatusEnum::Unsubscribed->value, 0),
+            'confirmed_this_week' => $thisWeek,
+            'open_rate' => $recipients > 0 ? round($opens / $recipients, 3) : null,
+            'unsubscribed_in_window' => $unsubscribed,
             'window_days' => self::WINDOW_DAYS,
             'sources' => [
-                'public_form' => (int) $porOrigen->get(SnkKilkanaConsentSourceEnum::PublicForm->value, 0),
-                'import' => (int) $porOrigen->get(SnkKilkanaConsentSourceEnum::Import->value, 0),
-                'admin' => (int) $porOrigen->get(SnkKilkanaConsentSourceEnum::Admin->value, 0),
+                'public_form' => (int) $bySource->get(SnkKilkanaConsentSourceEnum::PublicForm->value, 0),
+                'import' => (int) $bySource->get(SnkKilkanaConsentSourceEnum::Import->value, 0),
+                'admin' => (int) $bySource->get(SnkKilkanaConsentSourceEnum::Admin->value, 0),
             ],
         ];
     }
 
-    private function mail(SnkKilkanaNewsletterIssueModel $issue, Collection $piezas, string $periodico, string $client, SnkKilkanaSubscriberModel $suscriptor): SnkKilkanaNewsletterMail
+    private function mail(SnkKilkanaNewsletterIssueModel $issue, Collection $posts, string $newspaper, string $client, SnkKilkanaSubscriberModel $subscriber): SnkKilkanaNewsletterMail
     {
-        $firmado = fn (string $ruta, array $params) => URL::signedRoute($ruta, ['client' => $client, ...$params]);
+        $signedUrl = fn (string $path, array $params) => URL::signedRoute($path, ['client' => $client, ...$params]);
 
         return new SnkKilkanaNewsletterMail(
-            $periodico,
+            $newspaper,
             $issue->subject,
             $issue->preheader,
-            $piezas->map(fn (SnkKilkanaPostModel $p) => [
+            $posts->map(fn (SnkKilkanaPostModel $p) => [
                 'title' => $p->title,
                 'excerpt' => (string) $p->excerpt,
-                'url' => $firmado('kilkana.newsletter.click', ['issue' => $issue->getKey(), 'subscriber' => $suscriptor->getKey(), 'post' => $p->getKey()]),
+                'url' => $signedUrl('kilkana.newsletter.click', ['issue' => $issue->getKey(), 'subscriber' => $subscriber->getKey(), 'post' => $p->getKey()]),
             ])->all(),
-            $firmado('kilkana.newsletter.open', ['issue' => $issue->getKey(), 'subscriber' => $suscriptor->getKey()]),
-            $firmado('kilkana.subscribe.unsubscribe', ['subscriber' => $suscriptor->getKey(), 'issue' => $issue->getKey()]),
+            $signedUrl('kilkana.newsletter.open', ['issue' => $issue->getKey(), 'subscriber' => $subscriber->getKey()]),
+            $signedUrl('kilkana.subscribe.unsubscribe', ['subscriber' => $subscriber->getKey(), 'issue' => $issue->getKey()]),
         );
     }
 

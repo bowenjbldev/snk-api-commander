@@ -26,7 +26,7 @@ Route::middleware(['api'])->group(function () {
         Route::get('auth/me', [CommanderAuthController::class, 'me']);
         Route::post('auth/logout', [CommanderAuthController::class, 'logout']);
 
-        // Platform registry
+        // Registro de la plataforma
         Route::apiResource('users', CommanderUsersController::class);
         Route::apiResource('accounts', CommanderAccountsController::class);
         Route::apiResource('clients', CommanderClientsController::class);
@@ -41,10 +41,12 @@ Route::middleware(['api'])->group(function () {
         Route::apiResource('quotas', CommanderQuotasController::class)->only(['index', 'show', 'store', 'update']);
         Route::apiResource('activity', CommanderActivityController::class)->only(['index', 'show']);
 
-        // Platform usage (aggregate of the local snapshot cache) for the Dashboard/Usage charts
+        // Uso de toda la plataforma para las gráficas de Dashboard/Usage: suma `commander_usage_rollups`
+        // al vuelo por instancia y bucket.
         Route::get('usage/platform', [CommanderUsageController::class, 'platform']);
 
-        // Platform-wide request logs (all packages), with optional deployment/method/status filters.
+        // Logs de request de toda la plataforma (todos los packages), filtrables por aplicación,
+        // instancia, cuenta, fecha, método y clase de status.
         Route::get('logs', [CommanderRequestLogsController::class, 'index']);
 
         Route::get('commits', [CommanderApplicationsController::class, 'commits']);
@@ -62,7 +64,7 @@ Route::middleware(['api'])->group(function () {
         Route::get('instances/{instance}/logs', [CommanderInstancesController::class, 'logs'])->whereNumber('instance');
         Route::delete('instances/{instance}', [CommanderInstancesController::class, 'destroy'])->whereNumber('instance');
 
-        // Operator profile + platform preferences (singleton). default_grace_hours feeds the real grace.
+        // Perfil del operador y preferencias de la plataforma (una sola fila).
         Route::get('settings', [CommanderSettingsController::class, 'show'])->middleware('can:show settings');
         Route::put('settings', [CommanderSettingsController::class, 'update'])->middleware('can:update settings');
     });

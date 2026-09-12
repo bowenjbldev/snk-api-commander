@@ -8,15 +8,13 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * La forma de una pieza, declarada aquí y **decidida por la consulta**.
  *
- * Cada campo va con `whenHas()`, que es `array_key_exists($campo, $modelo->getAttributes())`:
- * lo que la consulta no seleccionó sale **ausente**, no `null`. Esa diferencia es la que hacía
- * falta — con la lista blanca de `setVisible()` que esto sustituye, quien lee no distinguía
- * «no lo pedí» de «está vacío», y seis campos del listado llegaron a viajar como `undefined`
- * sin que fallara nada en ninguno de los dos lados.
+ * Cada campo va con `whenHas()`, que es `array_key_exists($field, $model->getAttributes())`:
+ * lo que la consulta no seleccionó sale **ausente**, no `null`. Esa diferencia es la que deja
+ * a quien lee distinguir «no lo pedí» de «está vacío».
  *
  * De aquí se sigue que **no hay una lista de campos por defecto**: la elige quien llama con
- * `?fields=`, dentro del techo que el controlador declara en `$allowedFields`. Antes la elegía
- * `FILA_DEL_LISTADO`, una constante del servidor que el frontend tenía que adivinar.
+ * `?fields=`, dentro del techo que el controlador declara en `$allowedFields`, y el frontend no
+ * tiene que adivinar una lista escrita en el servidor.
  */
 class SnkKilkanaPostResource extends JsonResource
 {

@@ -1,13 +1,14 @@
 <?php
 
 /**
- * CORS for direct browser calls to the API. Origins come from CORS_ALLOWED_ORIGINS as a
- * comma-separated list. Bearer tokens are used instead of cookies, so credentials stay disabled.
+ * CORS para las llamadas directas del navegador a la API. Los orígenes salen de
+ * CORS_ALLOWED_ORIGINS, una lista separada por comas. Se autentica con bearer tokens y no con
+ * cookies, así que las credenciales siguen desactivadas.
  *
- * Note: Core also ships packages/Core/config/cors.php, which the package loader detects as the
- * global `cors` key (because this app file exists) and merges ON TOP of this one via
- * array_replace_recursive — so for any key Core defines, Core's value wins. There is no `core.cors`
- * key (config('core.cors') is null). Keep the two files in sync.
+ * Core trae también packages/Core/config/cors.php, que el cargador de packages detecta como la
+ * clave global `cors` (porque existe este fichero de la app) y mergea ENCIMA de este con
+ * array_replace_recursive: en toda clave que Core defina, gana el valor de Core. No hay clave
+ * `core.cors` (config('core.cors') es null). Los dos ficheros se mantienen alineados.
  */
 $origins = array_values(array_filter(array_map(
     'trim',

@@ -74,7 +74,7 @@ class SnkKilkanaAuthorModel extends Model
      * revienta. Es la misma regla que el resto de relaciones incluidas —quien pide una, pide su
      * llave—, solo que aquí la relación la pide el modelo y no quien consulta.
      */
-    protected $with = ['user:id,name'];
+    protected $with = ['user:id,name,lastname'];
 
     /**
      * Ni la relación ni la clave que la nombra.
@@ -100,7 +100,7 @@ class SnkKilkanaAuthorModel extends Model
     {
         $alias = trim((string) ($this->attributes['alias'] ?? ''));
 
-        return $alias !== '' ? $alias : (string) ($this->user?->name ?? '');
+        return $alias !== '' ? $alias : (string) ($this->user?->full_name ?? '');
     }
 
     /**
@@ -167,17 +167,15 @@ class SnkKilkanaAuthorModel extends Model
     /**
      * URL pública de una firma nueva, cuando nadie la ha escrito.
      *
-     * Dos periodistas pueden llamarse igual, y `slug` es UNIQUE: derivar a secas reventaba
-     * el alta de la segunda cuenta con un 1062. La cascada usa lo que una redacción usa de
-     * verdad —el segundo apellido, que ya vive en `users.full_name`— y **se para ahí**:
+     * Sale del nombre completo de la cuenta —o del alias, que es lo que firma— y **siempre
+     * devuelve una**: dos periodistas pueden llamarse igual y `slug` es UNIQUE, así que la
+     * segunda lleva cuatro cifras al azar, y un nombre sin letras latinas cae en `firma-NNNN`.
      *
-     *     jorge-bowen  →  jorge-bowen-lopez  →  la elige una persona
+     *     jorge-bowen-lopez  →  jorge-bowen-lopez-4821
      *
-     * Sin `-2`. Un sufijo automático fija para siempre una URL que nadie eligió y que nadie
-     * vuelve a mirar; Discord lo tuvo ocho años (`jorge#4821`) y lo retiró por eso mismo.
-     * Cuando las dos candidatas están ocupadas —o el nombre no deja slug latino— esto lanza
-     * un 422 sobre `slug`: el alta manual lo pinta como «esa URL ya está en uso» y la
-     * automática (`SnkKilkanaUsersController::ensureByline`) lo convierte en un aviso.
+     * La URL con cifras no se sella: la ficha de la firma la deja cambiar y la anterior queda
+     * redirigida (`SnkKilkanaRetiredSlugsSupport`). Es lo que permite que una cuenta que
+     * puede escribir tenga firma sin que nadie tenga que intervenir.
      *
      * `getNameAttribute` no vale aquí: la relación no está cargada en una fila que aún no
      * existe, así que se pide la cuenta.
@@ -187,19 +185,18 @@ class SnkKilkanaAuthorModel extends Model
         $alias = trim((string) ($author->attributes['alias'] ?? ''));
         $user = $author->user_id === null
             ? null
-            : CoreUserModel::query()->whereKey($author->user_id)->first(['name', 'full_name']);
+            : CoreUserModel::query()->whereKey($author->user_id)->first(['name', 'lastname']);
 
-        // Con seudónimo no hay segunda vuelta: el nombre de su cuenta no es el que firma.
-        $candidatas = $alias !== ''
-            ? [Str::slug($alias)]
-            : [Str::slug((string) ($user?->name ?? '')), Str::slug((string) ($user?->full_name ?? ''))];
+        $base = Str::slug($alias !== '' ? $alias : (string) ($user?->full_name ?? '')) ?: 'firma';
 
-        foreach (array_unique(array_filter($candidatas)) as $slug) {
-            if (! self::query()->where('slug', $slug)->exists()) {
-                return $slug;
-            }
+        if (! self::query()->where('slug', $base)->exists()) {
+            return $base;
         }
 
-        throw ValidationException::withMessages(['slug' => 'Byline URL already taken; choose one.']);
+        do {
+            $slug = $base.'-'.random_int(1000, 9999);
+        } while (self::query()->where('slug', $slug)->exists());
+
+        return $slug;
     }
 }

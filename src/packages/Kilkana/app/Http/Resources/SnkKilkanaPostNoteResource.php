@@ -18,7 +18,7 @@ class SnkKilkanaPostNoteResource extends JsonResource
             'created_at' => $this->whenHas('created_at'),
             'user' => $this->whenLoaded('user', fn () => [
                 'id' => $this->resource->user?->getKey(),
-                'name' => $this->resource->user?->name,
+                'name' => $this->resource->user?->full_name,
             ]),
         ];
     }

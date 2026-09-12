@@ -18,11 +18,11 @@ trait CorePackageDatabaseSupport
         }
 
         if (! $hasClient) {
-            $options[] = ['client', null, InputOption::VALUE_REQUIRED, 'Cliente del paquete (e.g. Acme). Requiere --package.'];
+            $options[] = ['client', null, InputOption::VALUE_REQUIRED, 'Package client (e.g. Acme). Requires --package.'];
         }
 
         if (! $hasPackage) {
-            $options[] = ['package', null, InputOption::VALUE_REQUIRED, 'Paquete dentro del cliente (e.g. Shop). Requiere --client.'];
+            $options[] = ['package', null, InputOption::VALUE_REQUIRED, 'Package inside the client (e.g. Shop). Requires --client.'];
         }
 
         return $options;
@@ -39,7 +39,7 @@ trait CorePackageDatabaseSupport
         $rawPackage = $this->option('package');
 
         if (! is_string($rawClient) || trim($rawClient) === '' || ! is_string($rawPackage) || trim($rawPackage) === '') {
-            $this->fail('--client y --package son obligatorios (e.g. --client=acme --package=Shop).');
+            $this->fail('--client and --package are required (e.g. --client=acme --package=Shop).');
         }
 
         $client = Str::studly(trim($rawClient));

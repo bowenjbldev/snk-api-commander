@@ -53,13 +53,10 @@ class SnkKilkanaPublicService
     /**
      * El techo de `?fields=` en la calle, y **es más estrecho que el del panel a propósito**.
      *
-     * Esto era `SnkKilkanaPostModel::PUBLIC_FIELDS` —una constante en el modelo— más
-     * `FILA_PUBLICA` aquí, más el mapa `COLUMNS_FOR` para saber de qué columnas dependía cada
-     * campo que no lo era. Tres listas para una decisión: qué puede leer un anónimo.
-     *
-     * Ahora es una: la lista blanca de esta puerta. Lo que no está no se puede pedir, y lo que
-     * no se pide no viaja. Fuera quedan `created_by`, `updated_by`, `deleted_at`, `deleted_by` y
-     * `featured`: dicen quién escribió, quién editó y quién tiró una pieza.
+     * Es la única lista que decide qué puede leer un anónimo: la lista blanca de esta puerta.
+     * Lo que no está no se puede pedir, y lo que no se pide no viaja. Fuera quedan `created_by`,
+     * `updated_by`, `deleted_at`, `deleted_by` y `featured`: dicen quién escribió, quién editó y
+     * quién tiró una pieza.
      *
      * `body_blocks` tampoco: el cuerpo de la calle lo sirve `publicBodyBlocks()`, que aplica el
      * muro de pago. Un listado que lo pudiera pedir se saltaría el muro y además arrastraría
@@ -86,9 +83,9 @@ class SnkKilkanaPublicService
     ];
 
     /** Las columnas propias del techo, sin las de las relaciones incluidas. */
-    private static function columnas(): array
+    private static function columns(): array
     {
-        return array_values(array_filter(self::FIELDS, fn (string $campo) => ! str_contains($campo, '.')));
+        return array_values(array_filter(self::FIELDS, fn (string $field) => ! str_contains($field, '.')));
     }
 
     /**
@@ -120,7 +117,7 @@ class SnkKilkanaPublicService
         // Va antes que los agregados a propósito: `select()` reemplaza la lista de columnas,
         // y `withSum()`/`withCount()` cuelgan la suya encima.
         if (! request()->filled('fields')) {
-            $query->select(self::columnas());
+            $query->select(self::columns());
         }
 
         $query
@@ -190,21 +187,21 @@ class SnkKilkanaPublicService
             // Si quien abre viene con su cuenta, la lectura medida es suya y se le apunta al
             // mes. La ruta no exige sesion —la calle es publica— pero un token de lector que
             // viaje en la peticion se resuelve igual, y sin el no hay a quien apuntarsela.
-            $lector = $request->user('sanctum');
-            if ($lector !== null) {
-                SnkKilkanaReaderReadModel::record((int) $lector->getAuthIdentifier(), $post);
+            $reader = $request->user('sanctum');
+            if ($reader !== null) {
+                SnkKilkanaReaderReadModel::record((int) $reader->getAuthIdentifier(), $post);
             }
 
             return true;
         }
 
-        $visitante = sha1($request->ip().$request->userAgent().config('app.key').now()->toDateString());
+        $visitor = sha1($request->ip().$request->userAgent().config('app.key').now()->toDateString());
         // La cache es de la instalacion y cada periodico tiene su base: el nombre de la base
         // es lo que separa a un lector de `demo` del mismo lector en otro inquilino.
         $tenant = sha1(DB::connection()->getDatabaseName());
-        $primera = Cache::add("kilkana:reader:{$tenant}:{$postId}:{$visitante}", true, now()->endOfDay());
+        $firstRead = Cache::add("kilkana:reader:{$tenant}:{$postId}:{$visitor}", true, now()->endOfDay());
 
-        SnkKilkanaPostViewModel::record($postId, 'engaged', ...($primera ? ['readers'] : []));
+        SnkKilkanaPostViewModel::record($postId, 'engaged', ...($firstRead ? ['readers'] : []));
 
         return true;
     }
@@ -316,13 +313,13 @@ class SnkKilkanaPublicService
             return $category;
         }
 
-        $retirada = SnkKilkanaCategorySlugModel::query()->where('path', $slug)->first();
-        if (! $retirada) {
+        $retired = SnkKilkanaCategorySlugModel::query()->where('path', $slug)->first();
+        if (! $retired) {
             return null;
         }
 
         return SnkKilkanaCategoryModel::query()
-            ->whereKey($retirada->category_id)
+            ->whereKey($retired->category_id)
             ->reachable()
             ->value('slug');
     }
@@ -341,10 +338,10 @@ class SnkKilkanaPublicService
             ->first();
 
         if (! $author) {
-            $retirada = SnkKilkanaAuthorSlugModel::query()->where('path', $slug)->first();
+            $retired = SnkKilkanaAuthorSlugModel::query()->where('path', $slug)->first();
 
-            return $retirada
-                ? SnkKilkanaAuthorModel::query()->whereKey($retirada->author_id)->value('slug')
+            return $retired
+                ? SnkKilkanaAuthorModel::query()->whereKey($retired->author_id)->value('slug')
                 : null;
         }
 
@@ -397,7 +394,7 @@ class SnkKilkanaPublicService
         return SnkKilkanaCommentModel::query()
             ->where('post_id', $postId)
             ->approved()
-            ->with('user:id,name')
+            ->with('user:id,name,lastname')
             ->orderBy('created_at')
             ->get(['id', 'post_id', 'user_id', 'parent_id', 'body', 'created_at']);
     }
@@ -414,7 +411,7 @@ class SnkKilkanaPublicService
 
     public function subscribe(string $email, Request $request): void
     {
-        $consentimiento = [
+        $consent = [
             'consent_source' => SnkKilkanaConsentSourceEnum::PublicForm,
             'consent_at' => now(),
         ];
@@ -422,26 +419,26 @@ class SnkKilkanaPublicService
         // `status` explícito aunque la columna tenga default: `firstOrCreate` no relee la fila,
         // así que el default de la base no llega al objeto y el recién creado se quedaría con
         // `status` nulo — justo el que hay que mirar tres líneas más abajo.
-        $suscriptor = SnkKilkanaSubscriberModel::firstOrCreate(
+        $subscriber = SnkKilkanaSubscriberModel::firstOrCreate(
             ['email' => strtolower($email)],
-            $consentimiento + ['status' => SnkKilkanaSubscriberStatusEnum::Pending],
+            $consent + ['status' => SnkKilkanaSubscriberStatusEnum::Pending],
         );
 
         // Quien se dio de baja y vuelve a rellenar el formulario está pidiendo volver, y eso
         // es consentimiento nuevo: se le devuelve a `pending` para que reconfirme. Sin esto
         // `firstOrCreate` encontraba la fila, no tocaba nada y respondía 202: el alta parecía
         // funcionar y la persona seguía dada de baja para siempre.
-        if ($suscriptor->status === SnkKilkanaSubscriberStatusEnum::Unsubscribed) {
-            $suscriptor->update($consentimiento + ['status' => SnkKilkanaSubscriberStatusEnum::Pending]);
+        if ($subscriber->status === SnkKilkanaSubscriberStatusEnum::Unsubscribed) {
+            $subscriber->update($consent + ['status' => SnkKilkanaSubscriberStatusEnum::Pending]);
         }
 
         // A quien ya está dentro no se le manda nada: no hay nada que confirmar, y devolverlo a
         // `pending` sería una baja de facto por rellenar el formulario dos veces.
-        if ($suscriptor->status === SnkKilkanaSubscriberStatusEnum::Confirmed) {
+        if ($subscriber->status === SnkKilkanaSubscriberStatusEnum::Confirmed) {
             return;
         }
 
-        $this->sendConfirmation($suscriptor, $request);
+        $this->sendConfirmation($subscriber, $request);
     }
 
     /**
@@ -450,13 +447,13 @@ class SnkKilkanaPublicService
      * Un enlace viejo de confirmación NO puede resucitar a quien luego se dio de baja: sería
      * devolver a la lista a alguien que pidió salir, y el enlace vive en su buzón para siempre.
      */
-    public function confirm(SnkKilkanaSubscriberModel $suscriptor, Request $request): void
+    public function confirm(SnkKilkanaSubscriberModel $subscriber, Request $request): void
     {
-        if ($suscriptor->status !== SnkKilkanaSubscriberStatusEnum::Pending) {
+        if ($subscriber->status !== SnkKilkanaSubscriberStatusEnum::Pending) {
             return;
         }
 
-        $suscriptor->update([
+        $subscriber->update([
             'status' => SnkKilkanaSubscriberStatusEnum::Confirmed,
             // El clic desde el buzón es el acto que PRUEBA el consentimiento y sustituye al de
             // rellenar el formulario, así que pisa la fecha en vez de guardar una segunda. Un
@@ -470,21 +467,21 @@ class SnkKilkanaPublicService
      * Baja. La fila SE QUEDA: es la prueba de que pidió no recibir más, y sin ella la siguiente
      * importación volvería a escribirle.
      */
-    public function unsubscribe(SnkKilkanaSubscriberModel $suscriptor): void
+    public function unsubscribe(SnkKilkanaSubscriberModel $subscriber): void
     {
-        if ($suscriptor->status === SnkKilkanaSubscriberStatusEnum::Unsubscribed) {
+        if ($subscriber->status === SnkKilkanaSubscriberStatusEnum::Unsubscribed) {
             return;
         }
 
-        $suscriptor->update(['status' => SnkKilkanaSubscriberStatusEnum::Unsubscribed]);
+        $subscriber->update(['status' => SnkKilkanaSubscriberStatusEnum::Unsubscribed]);
     }
 
     /** A dónde vuelve el lector después de pulsar. Null si el periódico no tiene URL puesta. */
-    public function subscriptionLanding(string $desenlace): ?string
+    public function subscriptionLanding(string $outcome): ?string
     {
-        $sitio = SnkKilkanaSettingModel::query()->find(1)?->tenant_url;
+        $siteUrl = SnkKilkanaSettingModel::query()->find(1)?->tenant_url;
 
-        return $sitio ? rtrim($sitio, '/')."/subscribe/{$desenlace}" : null;
+        return $siteUrl ? rtrim($siteUrl, '/')."/subscribe/{$outcome}" : null;
     }
 
     /**
@@ -497,19 +494,19 @@ class SnkKilkanaPublicService
      * Envío síncrono: con la bandeja local son milisegundos. El día que haya un proveedor de
      * verdad esto quiere cola —y hoy el único worker consume `--queue=provisioning`.
      */
-    private function sendConfirmation(SnkKilkanaSubscriberModel $suscriptor, Request $request): void
+    private function sendConfirmation(SnkKilkanaSubscriberModel $subscriber, Request $request): void
     {
-        $periodico = SnkKilkanaSettingModel::query()->find(1)?->tenant_name ?: config('app.name');
+        $newspaper = SnkKilkanaSettingModel::query()->find(1)?->tenant_name ?: config('app.name');
 
         try {
-            Mail::to($suscriptor->email)->send(new SnkKilkanaSubscriptionConfirmMail(
-                $periodico,
-                $this->signedSubscriberUrl('kilkana.subscribe.confirm', $suscriptor, $request),
-                $this->signedSubscriberUrl('kilkana.subscribe.unsubscribe', $suscriptor, $request),
+            Mail::to($subscriber->email)->send(new SnkKilkanaSubscriptionConfirmMail(
+                $newspaper,
+                $this->signedSubscriberUrl('kilkana.subscribe.confirm', $subscriber, $request),
+                $this->signedSubscriberUrl('kilkana.subscribe.unsubscribe', $subscriber, $request),
             ));
         } catch (\Throwable $e) {
-            Log::error('kilkana: no se pudo enviar la confirmación de suscripción', [
-                'subscriber' => $suscriptor->id,
+            Log::error('kilkana: could not send the subscription confirmation', [
+                'subscriber' => $subscriber->id,
                 'error' => $e->getMessage(),
             ]);
         }
@@ -524,11 +521,11 @@ class SnkKilkanaPublicService
      * Sin caducidad: el de baja tiene que seguir funcionando dos años después, y un mecanismo
      * es más fácil de sostener que dos.
      */
-    private function signedSubscriberUrl(string $ruta, SnkKilkanaSubscriberModel $suscriptor, Request $request): string
+    private function signedSubscriberUrl(string $path, SnkKilkanaSubscriberModel $subscriber, Request $request): string
     {
-        return URL::signedRoute($ruta, [
+        return URL::signedRoute($path, [
             'client' => CorePackageSelectorSupport::subdomainFromHost($request->getHost()),
-            'subscriber' => $suscriptor->id,
+            'subscriber' => $subscriber->id,
         ]);
     }
 
@@ -549,9 +546,9 @@ class SnkKilkanaPublicService
     /** Lo que firma un enlace de previa: la pieza, la caducidad y el periódico, con la llave de la instalación. */
     public function previewSignature(int $id, int $until): string
     {
-        $periodico = (string) config('database.connections.tenant.database');
+        $newspaper = (string) config('database.connections.tenant.database');
 
-        return hash_hmac('sha256', "preview:{$periodico}:{$id}:{$until}", (string) config('app.key'));
+        return hash_hmac('sha256', "preview:{$newspaper}:{$id}:{$until}", (string) config('app.key'));
     }
 
     /**
@@ -609,27 +606,27 @@ class SnkKilkanaPublicService
      */
     public function site(): array
     {
-        $ajustes = SnkKilkanaSettingModel::query()->with('theme')->find(1);
+        $settings = SnkKilkanaSettingModel::query()->with('theme')->find(1);
 
         return [
             'tenant' => [
-                'name' => $ajustes?->tenant_name,
-                'tagline' => $ajustes?->tenant_tagline,
-                'city' => $ajustes?->tenant_city,
-                'url' => $ajustes?->tenant_url,
+                'name' => $settings?->tenant_name,
+                'tagline' => $settings?->tenant_tagline,
+                'city' => $settings?->tenant_city,
+                'url' => $settings?->tenant_url,
             ],
             // Lo que la hoja necesita para hablar como el periódico: su idioma y su reloj, si se
             // deja encontrar, y quién es y dónde está en las redes para el JSON-LD.
-            'lang' => $ajustes?->lang ?? SnkKilkanaSettingModel::DEFAULT_LANG,
-            'tz' => $ajustes?->tz ?? SnkKilkanaSettingModel::DEFAULT_TZ,
-            'search_visible' => $ajustes === null || (bool) $ajustes->search_visible,
+            'lang' => $settings?->lang ?? SnkKilkanaSettingModel::DEFAULT_LANG,
+            'tz' => $settings?->tz ?? SnkKilkanaSettingModel::DEFAULT_TZ,
+            'search_visible' => $settings === null || (bool) $settings->search_visible,
             // Nulo mientras no haya abierto: la calle sirve entonces la página de «pronto».
-            'launched_at' => $ajustes?->launched_at?->toIso8601String(),
-            'legal' => SnkKilkanaSettingService::group($ajustes?->legal, SnkKilkanaSettingModel::LEGAL),
-            'social' => SnkKilkanaSettingService::group($ajustes?->social, SnkKilkanaSettingModel::SOCIAL),
+            'launched_at' => $settings?->launched_at?->toIso8601String(),
+            'legal' => SnkKilkanaSettingService::group($settings?->legal, SnkKilkanaSettingModel::LEGAL),
+            'social' => SnkKilkanaSettingService::group($settings?->social, SnkKilkanaSettingModel::SOCIAL),
             // La variante resuelta: `base_slug` para buscar en código lo que no baja a la base
             // —layouts, cabecera, lenguaje de bloques— y encima lo que tocó la redacción.
-            'theme' => $ajustes?->themePayload(),
+            'theme' => $settings?->themePayload(),
         ];
     }
 

@@ -1,6 +1,7 @@
 {
  "clients": ["diario-norte"],
  "demo": false,
+ "accounts": true,
  "tenant": {
   "name": "Diario Norte",
   "tagline": "El norte, cada mañana · Edición digital",

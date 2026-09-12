@@ -77,7 +77,7 @@ final class CorePackageDiscoverySupport
             $fileKey = pathinfo($path, PATHINFO_FILENAME);
             $moduleKey = $this->moduleConfigKey($path); // core | acme.shop
 
-            // Core/config/core.php is merged explicitly by CoreServiceProvider.
+            // Core/config/core.php lo mergea CoreServiceProvider de forma explícita.
             if ($moduleKey === 'core' && $fileKey === 'core') {
                 continue;
             }
@@ -337,7 +337,7 @@ final class CorePackageDiscoverySupport
     }
 
     /**
-     * Detect Laravel skeleton/framework config keys dynamically.
+     * Detecta en tiempo de ejecución las claves de config del esqueleto y del framework de Laravel.
      *
      * @return string[]
      */

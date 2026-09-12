@@ -30,47 +30,47 @@ class SnkKilkanaCommentService
      * al mapeo de la fila; aquí es lo que es —una consulta— y la forma la declara
      * `SnkKilkanaCommentResource`.
      *
-     * @param  Collection<int, SnkKilkanaCommentModel>  $comentarios
+     * @param  Collection<int, SnkKilkanaCommentModel>  $comments
      * @return Collection<int, SnkKilkanaCommentModel>
      */
-    public function withAuthorHistory(Collection $comentarios): Collection
+    public function withAuthorHistory(Collection $comments): Collection
     {
-        $cuentas = $comentarios->pluck('user')->filter()->unique(fn ($u) => $u->getKey());
-        if ($cuentas->isEmpty()) {
-            return $comentarios;
+        $accounts = $comments->pluck('user')->filter()->unique(fn ($u) => $u->getKey());
+        if ($accounts->isEmpty()) {
+            return $comments;
         }
 
-        $historial = [];
+        $history = [];
         SnkKilkanaCommentModel::query()
-            ->whereIn('user_id', $cuentas->map->getKey()->all())
+            ->whereIn('user_id', $accounts->map->getKey()->all())
             ->selectRaw('user_id, status, count(*) as total')
             ->groupBy('user_id', 'status')
             ->get()
-            ->each(function ($fila) use (&$historial) {
-                $historial[$fila->user_id] ??= ['total' => 0, 'rejected' => 0];
-                $historial[$fila->user_id]['total'] += (int) $fila->total;
-                if ($fila->status === SnkKilkanaCommentStatusEnum::Rejected) {
-                    $historial[$fila->user_id]['rejected'] += (int) $fila->total;
+            ->each(function ($row) use (&$history) {
+                $history[$row->user_id] ??= ['total' => 0, 'rejected' => 0];
+                $history[$row->user_id]['total'] += (int) $row->total;
+                if ($row->status === SnkKilkanaCommentStatusEnum::Rejected) {
+                    $history[$row->user_id]['rejected'] += (int) $row->total;
                 }
             });
 
-        $cuentas->each(function ($cuenta) use ($historial) {
-            $cuenta->setAttribute('comments_total', $historial[$cuenta->getKey()]['total'] ?? 0);
-            $cuenta->setAttribute('comments_rejected', $historial[$cuenta->getKey()]['rejected'] ?? 0);
+        $accounts->each(function ($account) use ($history) {
+            $account->setAttribute('comments_total', $history[$account->getKey()]['total'] ?? 0);
+            $account->setAttribute('comments_rejected', $history[$account->getKey()]['rejected'] ?? 0);
         });
 
-        return $comentarios;
+        return $comments;
     }
 
     public function countsByStatus(): array
     {
-        $porEstado = SnkKilkanaCommentModel::query()
+        $byStatus = SnkKilkanaCommentModel::query()
             ->selectRaw('status, count(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status');
         $counts = [];
-        foreach (SnkKilkanaCommentStatusEnum::cases() as $caso) {
-            $counts[$caso->value] = (int) $porEstado->get($caso->value, 0);
+        foreach (SnkKilkanaCommentStatusEnum::cases() as $case) {
+            $counts[$case->value] = (int) $byStatus->get($case->value, 0);
         }
         $counts['all'] = array_sum($counts);
 
@@ -112,8 +112,8 @@ class SnkKilkanaCommentService
             return $count;
         }
 
-        $estado = self::STATUS_OF[$action] ?? SnkKilkanaCommentStatusEnum::from($action);
+        $status = self::STATUS_OF[$action] ?? SnkKilkanaCommentStatusEnum::from($action);
 
-        return $query->update(['status' => $estado]);
+        return $query->update(['status' => $status]);
     }
 }

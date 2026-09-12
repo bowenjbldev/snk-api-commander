@@ -42,7 +42,7 @@ class SnkKilkanaSyncPermissionsCommand extends Command
     public function handle(): int
     {
         $run = $this->tenants->each(function (string $database) {
-            $resumen = $this->catalog->sync();
+            $summary = $this->catalog->sync();
 
             // La caché de permisos de Spatie está en `array` en consola —por proceso, y se
             // tira al salir—, así que olvidarla aquí no le dice nada a los FPM vivos: ellos
@@ -51,7 +51,7 @@ class SnkKilkanaSyncPermissionsCommand extends Command
             // el periódico sigue repartiendo el reparto viejo hasta que caduque.
             Cache::forget(CorePackageSelectorSupport::permissionCacheKey($database));
 
-            return $resumen;
+            return $summary;
         });
 
         foreach ($run['errors'] as $database => $message) {

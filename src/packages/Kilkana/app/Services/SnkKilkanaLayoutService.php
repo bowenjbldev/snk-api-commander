@@ -63,7 +63,7 @@ class SnkKilkanaLayoutService
 
         return SnkKilkanaLayoutRevisionModel::query()
             ->where('layout_id', $layoutId ?? 0)
-            ->with('user:id,name')
+            ->with('user:id,name,lastname')
             ->orderByDesc('created_at')
             ->get();
     }

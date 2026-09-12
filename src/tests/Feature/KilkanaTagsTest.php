@@ -28,10 +28,10 @@ class KilkanaTagsTest extends TestCase
         parent::setUp();
 
         DB::setDefaultConnection('tenant');
-        foreach (['Core', 'Kilkana'] as $paquete) {
+        foreach (['Core', 'Kilkana'] as $package) {
             $this->artisan('migrate', [
                 '--database' => 'tenant',
-                '--path' => "packages/{$paquete}/database/migrations",
+                '--path' => "packages/{$package}/database/migrations",
             ])->run();
         }
 
@@ -45,24 +45,24 @@ class KilkanaTagsTest extends TestCase
     }
 
     /** Lo que la pantalla lee de cada fila sin abrirla. */
-    public function test_el_listado_trae_el_uso_y_la_ultima_vez(): void
+    public function test_the_list_includes_usage_and_last_used(): void
     {
-        $movilidad = SnkKilkanaTagModel::create(['name' => 'movilidad']);
-        $sequia = SnkKilkanaTagModel::create(['name' => 'sequia']);
+        $mobility = SnkKilkanaTagModel::create(['name' => 'movilidad']);
+        $drought = SnkKilkanaTagModel::create(['name' => 'sequia']);
 
-        $this->pieza('Pleno de julio', '2026-07-01 08:00:00')->tags()->attach($movilidad);
-        $this->pieza('Carril bici', '2026-07-09 10:00:00')->tags()->attach($movilidad);
+        $this->makePost('Pleno de julio', '2026-07-01 08:00:00')->tags()->attach($mobility);
+        $this->makePost('Carril bici', '2026-07-09 10:00:00')->tags()->attach($mobility);
         // Un borrador CUENTA como uso —hay que moverlo al fundir— pero no fecha el vocabulario:
         // una intencion de hoy no es que el tema siga vivo.
-        $this->pieza('Sin publicar', '2026-08-30 09:00:00', 'draft')->tags()->attach($movilidad);
+        $this->makePost('Sin publicar', '2026-08-30 09:00:00', 'draft')->tags()->attach($mobility);
 
-        $filas = collect($this->listado())->keyBy('name');
+        $rows = collect($this->tagRows())->keyBy('name');
 
-        $this->assertSame(3, $filas['movilidad']['posts_count']);
-        $this->assertStringStartsWith('2026-07-09', (string) $filas['movilidad']['last_used_at']);
-        $this->assertSame(0, $filas['sequia']['posts_count']);
-        $this->assertNull($filas['sequia']['last_used_at'], 'Una etiqueta sin usar no tiene fecha que enseñar.');
-        $this->assertSame(['movilidad', 'sequia'], collect($this->listado())->pluck('name')->all());
+        $this->assertSame(3, $rows['movilidad']['posts_count']);
+        $this->assertStringStartsWith('2026-07-09', (string) $rows['movilidad']['last_used_at']);
+        $this->assertSame(0, $rows['sequia']['posts_count']);
+        $this->assertNull($rows['sequia']['last_used_at'], 'Una etiqueta sin usar no tiene fecha que enseñar.');
+        $this->assertSame(['movilidad', 'sequia'], collect($this->tagRows())->pluck('name')->all());
     }
 
     /**
@@ -71,22 +71,22 @@ class KilkanaTagsTest extends TestCase
      * Es lo que separa fundir de borrar: la cifra de la superviviente tiene que seguir cuadrando
      * con las piezas que la llevan, y una pieza que llevara las dos no puede contarse dos veces.
      */
-    public function test_fundir_mueve_las_piezas_y_no_duplica_la_que_llevaba_las_dos(): void
+    public function test_merging_moves_posts_and_does_not_duplicate_one_that_had_both(): void
     {
-        $urbana = SnkKilkanaTagModel::create(['name' => 'movilidad urbana']);
-        $movilidad = SnkKilkanaTagModel::create(['name' => 'movilidad']);
+        $urban = SnkKilkanaTagModel::create(['name' => 'movilidad urbana']);
+        $mobility = SnkKilkanaTagModel::create(['name' => 'movilidad']);
 
-        $solo = $this->pieza('Carril bici', '2026-07-09 10:00:00');
-        $ambas = $this->pieza('Zona de bajas emisiones', '2026-07-10 10:00:00');
-        $solo->tags()->attach($urbana);
-        $ambas->tags()->attach([$urbana->id, $movilidad->id]);
+        $urbanOnly = $this->makePost('Carril bici', '2026-07-09 10:00:00');
+        $both = $this->makePost('Zona de bajas emisiones', '2026-07-10 10:00:00');
+        $urbanOnly->tags()->attach($urban);
+        $both->tags()->attach([$urban->id, $mobility->id]);
 
-        $respuesta = $this->comoDirector()->merge(Request::create('/', 'POST', ['into' => $movilidad->id]), $urbana->id);
+        $response = $this->asDirector()->merge(Request::create('/', 'POST', ['into' => $mobility->id]), $urban->id);
 
-        $this->assertSame(200, $respuesta->getStatusCode());
-        $this->assertSame(2, $respuesta->getData(true)['moved']);
-        $this->assertNull(SnkKilkanaTagModel::query()->find($urbana->id), 'La fundida desaparece.');
-        $this->assertSame(2, $movilidad->posts()->count(), 'Y la superviviente se queda con las dos piezas, una vez cada una.');
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame(2, $response->getData(true)['moved']);
+        $this->assertNull(SnkKilkanaTagModel::query()->find($urban->id), 'La fundida desaparece.');
+        $this->assertSame(2, $mobility->posts()->count(), 'Y la superviviente se queda con las dos piezas, una vez cada una.');
     }
 
     /**
@@ -96,29 +96,29 @@ class KilkanaTagsTest extends TestCase
      * `cascadeOnDelete`, y aqui se puede afirmar porque el `setUp` enciende las claves foraneas
      * de esta conexion.
      */
-    public function test_borrar_dice_a_cuantas_piezas_ha_desetiquetado(): void
+    public function test_deleting_reports_how_many_posts_were_untagged(): void
     {
-        $pleno = SnkKilkanaTagModel::create(['name' => 'pleno']);
-        $this->pieza('Pleno de julio', '2026-07-01 08:00:00')->tags()->attach($pleno);
+        $plenary = SnkKilkanaTagModel::create(['name' => 'pleno']);
+        $this->makePost('Pleno de julio', '2026-07-01 08:00:00')->tags()->attach($plenary);
 
-        $respuesta = $this->comoDirector()->destroy($pleno->id);
+        $response = $this->asDirector()->destroy($plenary->id);
 
-        $this->assertSame(1, $respuesta->getData(true)['detached']);
-        $this->assertNull(SnkKilkanaTagModel::query()->find($pleno->id));
+        $this->assertSame(1, $response->getData(true)['detached']);
+        $this->assertNull(SnkKilkanaTagModel::query()->find($plenary->id));
         $this->assertSame(0, DB::table('kilkana_post_tag')->count(), 'El pivote se va con ella.');
     }
 
     /** Fundir una etiqueta consigo misma la borraria sin mover nada: se rechaza antes. */
-    public function test_no_se_funde_una_etiqueta_en_si_misma(): void
+    public function test_a_tag_cannot_be_merged_into_itself(): void
     {
-        $una = SnkKilkanaTagModel::create(['name' => 'movilidad']);
+        $one = SnkKilkanaTagModel::create(['name' => 'movilidad']);
 
         $this->expectException(ValidationException::class);
 
         try {
-            $this->comoDirector()->merge(Request::create('/', 'POST', ['into' => $una->id]), $una->id);
+            $this->asDirector()->merge(Request::create('/', 'POST', ['into' => $one->id]), $one->id);
         } finally {
-            $this->assertNotNull(SnkKilkanaTagModel::query()->find($una->id), 'Y sigue ahi.');
+            $this->assertNotNull(SnkKilkanaTagModel::query()->find($one->id), 'Y sigue ahi.');
         }
     }
 
@@ -128,76 +128,76 @@ class KilkanaTagsTest extends TestCase
      * Un redactor puede crear etiquetas —las teclea al escribir— y ahi se acaba: dejarle fundir
      * seria dejarle borrar una etiqueta del periodico por la puerta de al lado.
      */
-    public function test_quien_no_puede_borrar_no_puede_fundir(): void
+    public function test_whoever_cannot_delete_cannot_merge(): void
     {
-        $una = SnkKilkanaTagModel::create(['name' => 'movilidad']);
-        $otra = SnkKilkanaTagModel::create(['name' => 'movilidad urbana']);
+        $one = SnkKilkanaTagModel::create(['name' => 'movilidad']);
+        $other = SnkKilkanaTagModel::create(['name' => 'movilidad urbana']);
 
-        $redactor = CoreUserModel::create(['name' => 'Iván', 'email' => 'ivan@eldiario.example', 'password' => 'secret1234']);
-        $redactor->assignRole('redactor');
-        $this->actingAs($redactor, 'sanctum');
+        $writer = CoreUserModel::create(['name' => 'Iván', 'email' => 'ivan@eldiario.example', 'password' => 'secret1234']);
+        $writer->assignRole('redactor');
+        $this->actingAs($writer, 'sanctum');
 
-        $respuesta = (new SnkKilkanaTagsController)->merge(Request::create('/', 'POST', ['into' => $otra->id]), $una->id);
+        $response = (new SnkKilkanaTagsController)->merge(Request::create('/', 'POST', ['into' => $other->id]), $one->id);
 
-        $this->assertSame(403, $respuesta->getStatusCode());
-        $this->assertNotNull(SnkKilkanaTagModel::query()->find($una->id), 'Y sigue ahí.');
+        $this->assertSame(403, $response->getStatusCode());
+        $this->assertNotNull(SnkKilkanaTagModel::query()->find($one->id), 'Y sigue ahí.');
     }
 
-    private function comoDirector(): SnkKilkanaTagsController
+    private function asDirector(): SnkKilkanaTagsController
     {
-        $usuario = CoreUserModel::firstOrCreate(
+        $user = CoreUserModel::firstOrCreate(
             ['email' => 'marta@eldiario.example'],
             ['name' => 'Marta', 'password' => 'secret1234']
         );
-        $usuario->assignRole('director');
-        $this->actingAs($usuario, 'sanctum');
+        $user->assignRole('director');
+        $this->actingAs($user, 'sanctum');
 
         return new SnkKilkanaTagsController;
     }
 
     /** `?fields=` recorta la fila y las dos cifras siguen saliendo: se cuelgan después del recorte. */
-    public function test_pedir_campos_recorta_la_fila_y_conserva_las_cifras(): void
+    public function test_requesting_fields_trims_the_row_and_keeps_the_counts(): void
     {
-        $this->pieza('Pleno', '2026-07-01 08:00:00')->tags()->attach(SnkKilkanaTagModel::create(['name' => 'movilidad']));
+        $this->makePost('Pleno', '2026-07-01 08:00:00')->tags()->attach(SnkKilkanaTagModel::create(['name' => 'movilidad']));
         $this->app['request']->query->set('fields', 'name');
 
-        $fila = $this->listado()[0];
+        $row = $this->tagRows()[0];
 
-        $this->assertEqualsCanonicalizing(['id', 'name', 'posts_count', 'last_used_at'], array_keys($fila));
-        $this->assertSame(1, $fila['posts_count']);
+        $this->assertEqualsCanonicalizing(['id', 'name', 'posts_count', 'last_used_at'], array_keys($row));
+        $this->assertSame(1, $row['posts_count']);
     }
 
     /** @return array<int, array<string, mixed>> */
-    private function listado(): array
+    private function tagRows(): array
     {
-        $controlador = new class extends SnkKilkanaTagsController
+        $controller = new class extends SnkKilkanaTagsController
         {
             /** @return array<int, array<string, mixed>> */
-            public function filas(): array
+            public function rows(): array
             {
                 return $this->queryBuilder()->get()->toArray();
             }
         };
 
-        return $controlador->filas();
+        return $controller->rows();
     }
 
-    private function pieza(string $titulo, string $fecha, string $estado = 'published'): SnkKilkanaPostModel
+    private function makePost(string $title, string $date, string $status = 'published'): SnkKilkanaPostModel
     {
-        $seccion = SnkKilkanaCategoryModel::firstOrCreate(
+        $section = SnkKilkanaCategoryModel::firstOrCreate(
             ['slug' => 'local'],
             ['name' => 'Local', 'status' => 'live', 'position' => 0]
         );
-        $firma = SnkKilkanaAuthorModel::firstOrCreate(['slug' => 'redaccion'], ['alias' => 'Redacción']);
+        $byline = SnkKilkanaAuthorModel::firstOrCreate(['slug' => 'redaccion'], ['alias' => 'Redacción']);
 
         return SnkKilkanaPostModel::create([
-            'title' => $titulo,
-            'slug' => str($titulo)->slug()->value(),
-            'url_date' => substr($fecha, 0, 10),
-            'category_id' => $seccion->id,
-            'author_id' => $firma->id,
-            'status' => $estado,
-            'publish_at' => $fecha,
+            'title' => $title,
+            'slug' => str($title)->slug()->value(),
+            'url_date' => substr($date, 0, 10),
+            'category_id' => $section->id,
+            'author_id' => $byline->id,
+            'status' => $status,
+            'publish_at' => $date,
         ]);
     }
 }

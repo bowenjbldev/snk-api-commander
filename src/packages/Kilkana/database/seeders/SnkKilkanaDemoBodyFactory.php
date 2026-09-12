@@ -35,15 +35,15 @@ final class SnkKilkanaDemoBodyFactory
      * diferencia. Una seccion que no este aqui cae en `local`, que es la mesa de un diario
      * comarcal y el relleno menos llamativo.
      */
-    public const FAMILIA = [
+    public const FAMILY_OF = [
         'local' => 'local', 'comarca' => 'local', 'municipios' => 'local', 'barrios' => 'local',
-        'politica' => 'politica',
-        'economia' => 'economia', 'agricultura' => 'economia', 'empleo' => 'economia',
-        'deportes' => 'deportes', 'futbol' => 'deportes', 'polideportivo' => 'deportes',
-        'cultura' => 'cultura', 'patrimonio' => 'cultura', 'agenda' => 'cultura',
-        'sucesos' => 'sucesos',
+        'politica' => 'politics',
+        'economia' => 'economy', 'agricultura' => 'economy', 'empleo' => 'economy',
+        'deportes' => 'sports', 'futbol' => 'sports', 'polideportivo' => 'sports',
+        'cultura' => 'culture', 'patrimonio' => 'culture', 'agenda' => 'culture',
+        'sucesos' => 'crime',
         'opinion' => 'opinion',
-        'medio-ambiente' => 'ambiente',
+        'medio-ambiente' => 'environment',
     ];
 
     /**
@@ -55,89 +55,89 @@ final class SnkKilkanaDemoBodyFactory
      */
     public static function blocks(array $post, ?int $coverId): array
     {
-        $familia = self::familyOf((string) $post['cat']);
-        $material = SnkKilkanaDemoProse::MATERIAL[$familia];
+        $family = self::familyOf((string) $post['cat']);
+        $material = SnkKilkanaDemoProse::MATERIAL[$family];
         $hash = crc32((string) $post['slug']);
-        $pick = fn (array $pool, int $desfase) => $pool[intdiv($hash, $desfase) % count($pool)];
+        $pick = fn (array $pool, int $offset) => $pool[intdiv($hash, $offset) % count($pool)];
 
         // Siete parrafos distintos de la familia, recorridos desde un arranque y con un paso
         // primos entre si con el tamaño del pozo: asi no se repite ninguno dentro de la pieza y
         // dos slugs distintos arrancan en sitios distintos. Siete y no menos porque con la
         // entradilla y el cierre salen unas trescientas palabras, que es un articulo corto.
-        $prosa = self::distintos($material['prosa'], $hash, 7);
-        [$intertitulo, $segundoIntertitulo] = self::distintos($material['intertitulos'], intdiv($hash, 3), 2);
-        [$cita, $quien] = $pick($material['citas'], 1);
+        $prose = self::pickDistinct($material['prose'], $hash, 7);
+        [$subheading, $secondSubheading] = self::pickDistinct($material['subheadings'], intdiv($hash, 3), 2);
+        [$quote, $who] = $pick($material['quotes'], 1);
 
-        $bloques = [
+        $blocks = [
             // La entradilla ES el primer parrafo. En un periodico lo es: el resumen que se lee en
             // la portada y la entrada de la pieza son el mismo texto, y separarlos aqui habria
             // obligado a escribir 522 arranques que dijeran lo mismo con otras palabras.
-            self::texto('paragraph', $post['excerpt']),
-            self::texto('paragraph', $prosa[0]),
-            self::texto('paragraph', $prosa[1]),
-            self::texto('heading', $intertitulo),
+            self::textBlock('paragraph', $post['excerpt']),
+            self::textBlock('paragraph', $prose[0]),
+            self::textBlock('paragraph', $prose[1]),
+            self::textBlock('heading', $subheading),
         ];
 
         if ($coverId !== null) {
-            $bloques[] = ['type' => 'image', 'config' => [
+            $blocks[] = ['type' => 'image', 'config' => [
                 'media_id' => $coverId,
                 // El pie es la primera frase de la entradilla: describe lo que la foto
                 // acompaña sin repetir el titular que está dos líneas más arriba.
-                'caption' => self::primeraFrase($post['excerpt']),
+                'caption' => self::firstSentence($post['excerpt']),
             ]];
         }
 
-        $bloques[] = self::texto('paragraph', $prosa[2]);
-        $bloques[] = ['type' => 'quote', 'config' => ['text' => $cita, 'source' => $quien]];
-        $bloques[] = self::texto('paragraph', $prosa[3]);
+        $blocks[] = self::textBlock('paragraph', $prose[2]);
+        $blocks[] = ['type' => 'quote', 'config' => ['text' => $quote, 'source' => $who]];
+        $blocks[] = self::textBlock('paragraph', $prose[3]);
 
         // Una de cada tres lleva recuadro de claves, y solo si tiene de que hacerlo: las
         // etiquetas de la pieza. Ponerlo en todas lo convertiria en decoracion fija, y la
         // audiencia no entra: ningun periodico imprime sus analiticas dentro del articulo.
         if ($hash % 3 === 0 && count($post['tags'] ?? []) >= 2) {
-            $bloques[] = self::texto('factbox', 'Claves · '.implode(' · ', array_map(ucfirst(...), array_slice($post['tags'], 0, 3))));
+            $blocks[] = self::textBlock('factbox', 'Claves · '.implode(' · ', array_map(ucfirst(...), array_slice($post['tags'], 0, 3))));
         }
 
-        $bloques[] = self::texto('paragraph', $prosa[4]);
-        $bloques[] = self::texto('heading', $segundoIntertitulo);
-        $bloques[] = self::texto('paragraph', $prosa[5]);
-        $bloques[] = self::texto('paragraph', $prosa[6]);
+        $blocks[] = self::textBlock('paragraph', $prose[4]);
+        $blocks[] = self::textBlock('heading', $secondSubheading);
+        $blocks[] = self::textBlock('paragraph', $prose[5]);
+        $blocks[] = self::textBlock('paragraph', $prose[6]);
         // El cierre es de la familia y no una plantilla con la etiqueta dentro: «El seguimiento
         // de fiestas continúa» se leía en 522 piezas.
-        $bloques[] = self::texto('paragraph', $pick($material['cierres'], 5));
+        $blocks[] = self::textBlock('paragraph', $pick($material['closings'], 5));
 
         // El muro va DENTRO del cuerpo y no al final, que es lo unico que lo hace significar algo:
         // `publicBodyBlocks()` corta ahi, asi que su posicion es literalmente cuanto se lee gratis.
         // Una pieza `locked` ensena el arranque; una `metered`, casi toda menos el remate.
-        $corte = match ($post['content_tier']) {
+        $cutoff = match ($post['content_tier']) {
             'locked' => 3,
-            'metered' => count($bloques) - 1,
+            'metered' => count($blocks) - 1,
             default => null,
         };
-        if ($corte !== null) {
-            array_splice($bloques, $corte, 0, [['type' => 'paywall', 'config' => []]]);
+        if ($cutoff !== null) {
+            array_splice($blocks, $cutoff, 0, [['type' => 'paywall', 'config' => []]]);
         }
 
         // Los relacionados rematan la pieza, y solo la publicada: en un borrador no hay archivo
         // al que enlazar todavia.
         if ($post['status'] === 'published') {
-            $bloques[] = ['type' => 'divider', 'config' => []];
-            $bloques[] = ['type' => 'related', 'config' => []];
+            $blocks[] = ['type' => 'divider', 'config' => []];
+            $blocks[] = ['type' => 'related', 'config' => []];
         }
 
         // Los ids se numeran al final y no al construir: insertar el muro por el medio habria
         // dejado la numeracion saltada, y el editor arranca su contador detras del mayor id.
         return array_values(array_map(
-            fn (array $bloque, int $n) => ['id' => 'b'.($n + 1)] + $bloque,
-            $bloques,
-            array_keys($bloques),
+            fn (array $block, int $n) => ['id' => 'b'.($n + 1)] + $block,
+            $blocks,
+            array_keys($blocks),
         ));
     }
 
     /** La familia de prosa de una seccion; una que no este en la tabla cae en `local`. */
     public static function familyOf(string $cat): string
     {
-        return self::FAMILIA[$cat] ?? 'local';
+        return self::FAMILY_OF[$cat] ?? 'local';
     }
 
     /**
@@ -154,35 +154,35 @@ final class SnkKilkanaDemoBodyFactory
      * @param  string[]  $pool
      * @return string[]
      */
-    private static function distintos(array $pool, int $hash, int $n): array
+    private static function pickDistinct(array $pool, int $hash, int $n): array
     {
-        $tamano = count($pool);
-        if ($tamano <= $n) {
+        $size = count($pool);
+        if ($size <= $n) {
             return array_values($pool);
         }
-        $pasos = array_values(array_filter([5, 7, 11, 13, 17, 19], fn (int $p) => $tamano % $p !== 0));
-        $paso = $pasos[intdiv($hash, 97) % count($pasos)];
-        $inicio = $hash % $tamano;
+        $steps = array_values(array_filter([5, 7, 11, 13, 17, 19], fn (int $p) => $size % $p !== 0));
+        $step = $steps[intdiv($hash, 97) % count($steps)];
+        $start = $hash % $size;
 
-        $salida = [];
+        $output = [];
         for ($k = 0; $k < $n; $k++) {
-            $salida[] = $pool[($inicio + $k * $paso) % $tamano];
+            $output[] = $pool[($start + $k * $step) % $size];
         }
 
-        return $salida;
+        return $output;
     }
 
     /** Hasta el primer punto, con el punto. Una entradilla sin punto se usa entera. */
-    private static function primeraFrase(string $texto): string
+    private static function firstSentence(string $text): string
     {
-        $corte = mb_strpos($texto, '. ');
+        $cutoff = mb_strpos($text, '. ');
 
-        return $corte === false ? trim($texto) : mb_substr($texto, 0, $corte + 1);
+        return $cutoff === false ? trim($text) : mb_substr($text, 0, $cutoff + 1);
     }
 
     /** @return array{type: string, config: array{text: string}} */
-    private static function texto(string $tipo, string $texto): array
+    private static function textBlock(string $type, string $text): array
     {
-        return ['type' => $tipo, 'config' => ['text' => $texto]];
+        return ['type' => $type, 'config' => ['text' => $text]];
     }
 }

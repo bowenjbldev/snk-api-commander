@@ -16,18 +16,18 @@ class CorePackageSelectorSupportTest extends TestCase
      * por eso se comprueba: es lo unico que separa «el panel va mas rapido» de «el redactor de
      * un periodico manda en otro».
      */
-    public function test_cada_base_tiene_su_propia_clave_de_permisos(): void
+    public function test_each_database_has_its_own_permission_cache_key(): void
     {
-        $norte = CorePackageSelectorSupport::permissionCacheKey('diario_norte_kilkana');
-        $sur = CorePackageSelectorSupport::permissionCacheKey('diario_sur_kilkana');
+        $north = CorePackageSelectorSupport::permissionCacheKey('diario_norte_kilkana');
+        $south = CorePackageSelectorSupport::permissionCacheKey('diario_sur_kilkana');
 
-        $this->assertNotSame($norte, $sur);
-        $this->assertStringContainsString('diario_norte_kilkana', $norte);
-        $this->assertStringContainsString('diario_sur_kilkana', $sur);
+        $this->assertNotSame($north, $south);
+        $this->assertStringContainsString('diario_norte_kilkana', $north);
+        $this->assertStringContainsString('diario_sur_kilkana', $south);
     }
 
     /** Un nombre de base que no valida no puede fabricar la clave de nadie. */
-    public function test_una_base_con_nombre_invalido_no_produce_clave(): void
+    public function test_a_database_with_an_invalid_name_produces_no_key(): void
     {
         $this->expectException(\RuntimeException::class);
         CorePackageSelectorSupport::permissionCacheKey('otra`; DROP');

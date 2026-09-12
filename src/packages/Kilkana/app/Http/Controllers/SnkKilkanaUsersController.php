@@ -30,12 +30,12 @@ class SnkKilkanaUsersController extends CoreUsersController
     public function __construct(
         private readonly SnkKilkanaBylineService $bylines,
         private readonly SnkKilkanaAccountLinkService $links,
-        private readonly SnkKilkanaActivityService $registro,
+        private readonly SnkKilkanaActivityService $activityLog,
     ) {
         // Un puesto del panel: ni lector ni cuenta de servicio entran por aquí.
-        $sinAsiento = 'not_in:'.implode(',', SnkKilkanaRoleCatalogService::WITHOUT_SEAT);
-        $this->validationRulesStore['role'] .= "|{$sinAsiento}";
-        $this->validationRulesUpdate['role'] .= "|{$sinAsiento}";
+        $seatless = 'not_in:'.implode(',', SnkKilkanaRoleCatalogService::WITHOUT_SEAT);
+        $this->validationRulesStore['role'] .= "|{$seatless}";
+        $this->validationRulesUpdate['role'] .= "|{$seatless}";
     }
 
     /**
@@ -65,7 +65,7 @@ class SnkKilkanaUsersController extends CoreUsersController
             ->orderBy('name')
             ->get();
 
-        $piezas = SnkKilkanaPostModel::query()
+        $posts = SnkKilkanaPostModel::query()
             ->join('kilkana_authors', 'kilkana_authors.id', '=', 'kilkana_posts.author_id')
             ->whereIn('kilkana_authors.user_id', $users->modelKeys())
             ->groupBy('kilkana_authors.user_id')
@@ -74,7 +74,7 @@ class SnkKilkanaUsersController extends CoreUsersController
 
         // El recuento se cuelga de la fila: viene de una consulta agrupada para toda la lista,
         // no de un `withCount` por cuenta, porque cruza `kilkana_authors` por el camino.
-        $users->each(fn (CoreUserModel $user) => $user->setAttribute('posts_count', (int) $piezas->get($user->getKey(), 0)));
+        $users->each(fn (CoreUserModel $user) => $user->setAttribute('posts_count', (int) $posts->get($user->getKey(), 0)));
 
         return response()->json(SnkKilkanaUserResource::collection($users));
     }
@@ -95,13 +95,15 @@ class SnkKilkanaUsersController extends CoreUsersController
 
         $data = $request->validate([
             'email' => $this->validationRulesStore['email'],
-            'full_name' => $this->validationRulesStore['full_name'],
+            'name' => $this->validationRulesStore['name'],
+            'lastname' => $this->validationRulesStore['lastname'],
             'role' => $this->validationRulesStore['role'],
         ]);
 
         $user = new CoreUserModel([
             'email' => $data['email'],
-            'full_name' => $data['full_name'],
+            'name' => $data['name'],
+            'lastname' => $data['lastname'],
             'password' => Str::password(40),
         ]);
         $user->forceFill(['invited_at' => now()])->save();
@@ -109,17 +111,19 @@ class SnkKilkanaUsersController extends CoreUsersController
 
         try {
             $this->links->send($user, SnkKilkanaAccountLinkService::INVITE, $request);
-        } catch (\Throwable $fallo) {
-            report($fallo);
+        } catch (\Throwable $error) {
+            report($error);
             $user->delete();
 
             return response()->json(['error' => 'Invitation could not be sent'], 502);
         }
 
         $user->load('roles:id,name');
-        $this->registro->log('seat', 'seat_invited', $data['email'], '/roles', ['params' => ['role' => $data['role']]]);
+        $this->activityLog->log('seat', 'seat_invited', $data['email'], '/roles', ['params' => ['role' => $data['role']]]);
 
-        return $this->flagPendingByline(response()->json(new SnkKilkanaUserResource($user), 201), (int) $user->getKey());
+        $this->bylines->ensureForUser((int) $user->getKey());
+
+        return response()->json(new SnkKilkanaUserResource($user), 201);
     }
 
     /** El mismo enlace otra vez, solo mientras la cuenta siga invitada. */
@@ -184,7 +188,7 @@ class SnkKilkanaUsersController extends CoreUsersController
 
         $user->forceFill(['suspended_at' => now()])->save();
         $user->tokens()->delete();
-        $this->registro->log('seat', 'seat_suspended', $user->full_name ?: $user->name, '/roles');
+        $this->activityLog->log('seat', 'seat_suspended', $user->full_name, '/roles');
 
         return response()->json(new SnkKilkanaUserResource($user->load('roles:id,name')));
     }
@@ -202,17 +206,17 @@ class SnkKilkanaUsersController extends CoreUsersController
         }
 
         $user->forceFill(['suspended_at' => null])->save();
-        $this->registro->log('seat', 'seat_restored', $user->full_name ?: $user->name, '/roles');
+        $this->activityLog->log('seat', 'seat_restored', $user->full_name, '/roles');
 
         return response()->json(new SnkKilkanaUserResource($user->load('roles:id,name')));
     }
 
-    /** Alta con rol de escritura = alta con firma. Ver `ensureByline`. */
+    /** Alta con rol de escritura = alta con firma. Ver `SnkKilkanaBylineService::ensureForUser`. */
     public function store(Request $request): JsonResponse
     {
         $response = parent::store($request);
         if ($response->getStatusCode() === 201) {
-            return $this->flagPendingByline($response, (int) ($response->getData(true)['id'] ?? 0));
+            $this->bylines->ensureForUser((int) ($response->getData(true)['id'] ?? 0));
         }
 
         return $response;
@@ -232,7 +236,7 @@ class SnkKilkanaUsersController extends CoreUsersController
 
         $response = parent::update($request, $id);
         if ($response->getStatusCode() === 200) {
-            return $this->flagPendingByline($response, (int) $id);
+            $this->bylines->ensureForUser((int) $id);
         }
 
         return $response;
@@ -257,18 +261,18 @@ class SnkKilkanaUsersController extends CoreUsersController
             return $response;
         }
 
-        $firma = SnkKilkanaAuthorModel::query()->where('user_id', $id)->first(['id', 'slug']);
-        if ($firma) {
+        $byline = SnkKilkanaAuthorModel::query()->where('user_id', $id)->first(['id', 'slug']);
+        if ($byline) {
             return response()->json([
-                'error' => 'Account still signs',
-                'byline' => ['id' => $firma->id, 'slug' => $firma->slug],
+                'error' => 'Account still has a byline',
+                'byline' => ['id' => $byline->id, 'slug' => $byline->slug],
             ], 409);
         }
 
         try {
             return parent::destroy($id);
         } catch (QueryException) {
-            return response()->json(['error' => 'Account still signs'], 409);
+            return response()->json(['error' => 'Account still has a byline'], 409);
         }
     }
 
@@ -281,10 +285,10 @@ class SnkKilkanaUsersController extends CoreUsersController
             ->first();
     }
 
-    private function notSelf($id, string $motivo): ?JsonResponse
+    private function notSelf($id, string $reason): ?JsonResponse
     {
         return (int) $id === (int) auth()->id()
-            ? response()->json(['error' => $motivo], 409)
+            ? response()->json(['error' => $reason], 409)
             : null;
     }
 
@@ -293,29 +297,12 @@ class SnkKilkanaUsersController extends CoreUsersController
     {
         try {
             $this->links->send($user, $kind, $request);
-        } catch (\Throwable $fallo) {
-            report($fallo);
+        } catch (\Throwable $error) {
+            report($error);
 
             return response()->json(['error' => 'Email could not be sent'], 502);
         }
 
         return response()->json(['sent_at' => now()->toIso8601String()]);
-    }
-
-    /**
-     * La cuenta se guarda igual, pero DICE si se ha quedado sin firma.
-     *
-     * Sin esto el aviso no existe: la cuenta aparece en el listado como cualquier otra y solo
-     * al ir a atribuirle un artículo se descubre que no puede firmar. `byline_pending` viaja
-     * en la respuesta del guardado —no es estado, es lo que acaba de pasar— para que el consumidor
-     * pueda avisar de la firma pendiente.
-     */
-    private function flagPendingByline(JsonResponse $response, int $userId): JsonResponse
-    {
-        if (! $this->bylines->ensureForUser($userId)) {
-            return $response;
-        }
-
-        return $response->setData($response->getData(true) + ['byline_pending' => true]);
     }
 }

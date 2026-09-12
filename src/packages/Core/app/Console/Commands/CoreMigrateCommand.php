@@ -23,8 +23,8 @@ use Packages\Core\Support\CorePackageSelectorSupport;
 class CoreMigrateCommand extends Command
 {
     protected $signature = 'core:migrate
-        {--client= : Cliente (slug) del TENANT. Requiere --package. Deriva la BD snake(client)_snake(package).}
-        {--package= : Package de negocio del TENANT (StudlyCase). Requiere --client.}
+        {--client= : Tenant client (slug). Requires --package. The database is derived as snake(client)_snake(package).}
+        {--package= : Tenant business package (StudlyCase). Requires --client.}
         {--all-tenants : Migrate every provisioned tenant after a deploy. With --fresh (never in production), rebuild them all.}
         {--seed : Run seeders after migrating. With --all-tenants, only together with --fresh.}
         {--fresh : Drop all tables and re-run all migrations}
@@ -42,15 +42,15 @@ class CoreMigrateCommand extends Command
 
         if ($allTenants) {
             if ($client !== null || $package !== null || $this->option('rollback')) {
-                $this->fail('--all-tenants no se combina con --client, --package ni --rollback.');
+                $this->fail('--all-tenants cannot be combined with --client, --package or --rollback.');
             }
             if ($this->option('seed') && ! $this->option('fresh')) {
-                $this->fail('--all-tenants solo siembra con --fresh: un despliegue no vuelve a sembrar.');
+                $this->fail('--all-tenants only seeds with --fresh: a deploy does not seed again.');
             }
             // Vaciar todos los periódicos de una vez es de desarrollo: un deploy con el flag de
             // más no puede borrar la redacción de nadie.
             if ($this->option('fresh') && app()->isProduction()) {
-                $this->fail('--all-tenants --fresh vacía todos los periódicos y no se usa en producción.');
+                $this->fail('--all-tenants --fresh wipes every newspaper and cannot run in production.');
             }
 
             return $this->migrateAllTenants();
@@ -58,12 +58,12 @@ class CoreMigrateCommand extends Command
 
         if ($client !== null || $package !== null) {
             if ($client === null || $package === null) {
-                $this->fail('TENANT requiere --client Y --package (la BD se deriva snake(client)_snake(package)). Sin ambos => commander.');
+                $this->fail('TENANT requires --client AND --package (the database is derived as snake(client)_snake(package)). Without both => commander.');
             }
 
             $discovery = $this->discovery();
             if (! $discovery->hasImplementation($client, $package)) {
-                $this->fail("No existe código compartido ni específico para [{$client}/{$package}].");
+                $this->fail("No shared or client-specific implementation exists for [{$client}/{$package}].");
             }
 
             $connection = 'tenant';
@@ -129,7 +129,7 @@ class CoreMigrateCommand extends Command
         foreach ($instances as $instance) {
             if (! $instance->client?->slug || ! $instance->application?->package_name || ! $instance->database
                 || ! $instance->database_username || ! $instance->database_password) {
-                $this->error("Tenant [{$instance->id}] tiene un registro de provisioning incompleto.");
+                $this->error("Tenant [{$instance->id}] has an incomplete provisioning record.");
 
                 return self::FAILURE;
             }
@@ -141,7 +141,7 @@ class CoreMigrateCommand extends Command
                 return self::FAILURE;
             }
             if (! $discovery->hasImplementation($instance->client->slug, $instance->application->package_name)) {
-                $this->error("Tenant [{$instance->id}] no tiene código compartido ni específico desplegado.");
+                $this->error("Tenant [{$instance->id}] has no shared or client-specific implementation deployed.");
 
                 return self::FAILURE;
             }

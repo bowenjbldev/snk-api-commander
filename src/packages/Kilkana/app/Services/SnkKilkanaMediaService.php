@@ -171,22 +171,22 @@ class SnkKilkanaMediaService
 
         // La cabecera antes que nada: lo que no cabe en memoria se rechaza aquí, con mensaje,
         // y no dentro de GD con un error fatal.
-        $cabecera = $this->images->inspect($file->getRealPath());
+        $header = $this->images->inspect($file->getRealPath());
         $dir = 'media/'.DB::connection()->getDatabaseName();
         $path = $file->store($dir, 'public');
-        [$width, $height] = $cabecera ? [$cabecera['width'], $cabecera['height']] : $this->dimensions($file->getRealPath(), $data);
-        $master = $cabecera && $this->images->isImage($cabecera['mime'])
+        [$width, $height] = $header ? [$header['width'], $header['height']] : $this->dimensions($file->getRealPath(), $data);
+        $master = $header && $this->images->isImage($header['mime'])
             ? $this->images->master($file->getRealPath(), $dir, pathinfo($path, PATHINFO_FILENAME))
             : null;
         $duration = $data['duration'] ?? null;
         $posterAt = null;
         // Vídeo y audio: lo que dice el fichero manda sobre lo que declaró quien subió, y un
         // vídeo gana un fotograma de portada que es su máster, con derivadas como una foto.
-        if (! $cabecera && $this->images->isMedia($file->getMimeType())) {
-            $sonda = $this->images->probe($file->getRealPath());
-            $duration = $sonda['duration'] ?? $duration;
-            $width = $sonda['width'] ?? $width;
-            $height = $sonda['height'] ?? $height;
+        if (! $header && $this->images->isMedia($file->getMimeType())) {
+            $probe = $this->images->probe($file->getRealPath());
+            $duration = $probe['duration'] ?? $duration;
+            $width = $probe['width'] ?? $width;
+            $height = $probe['height'] ?? $height;
             if (str_starts_with((string) $file->getMimeType(), 'video/')) {
                 $posterAt = SnkKilkanaImageService::defaultPosterAt($duration);
                 $master = $this->images->poster($file->getRealPath(), $dir, pathinfo($path, PATHINFO_FILENAME), $posterAt);
@@ -198,7 +198,7 @@ class SnkKilkanaMediaService
                 'url' => '/storage/'.$path,
                 'original_name' => $file->getClientOriginalName(),
                 'title' => pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
-                'mime' => $cabecera['mime'] ?? $file->getMimeType(),
+                'mime' => $header['mime'] ?? $file->getMimeType(),
                 'width' => $width,
                 'height' => $height,
                 'duration' => $duration,
@@ -226,15 +226,15 @@ class SnkKilkanaMediaService
             if ($master) {
                 Storage::disk('public')->delete($master['path']);
             }
-            $ganadora = SnkKilkanaMediaModel::withTrashed()->where('content_hash', $hash)->first();
+            $winner = SnkKilkanaMediaModel::withTrashed()->where('content_hash', $hash)->first();
 
             // Sin fila que devolver el choque era de otra columna, y eso no es un duplicado:
             // se relanza para que se vea en vez de contarlo como «ya estaba».
-            if (! $ganadora) {
+            if (! $winner) {
                 throw new RuntimeException('media upload clashed on something other than its content hash');
             }
 
-            return ['media' => $this->serialize($ganadora), 'duplicate' => true];
+            return ['media' => $this->serialize($winner), 'duplicate' => true];
         }
 
         return ['media' => $this->serialize($media), 'duplicate' => false];
@@ -263,24 +263,24 @@ class SnkKilkanaMediaService
         // Ahora se escribe el nuevo, la fila pasa a apuntarlo, y SOLO entonces se borra el
         // viejo. Si algo revienta por el camino, lo peor que queda es un fichero huerfano en
         // disco, que es basura y no una perdida.
-        $anteriorDisk = $media->disk;
-        $anteriorPath = $media->path;
-        $anteriorMaster = $media->master_path;
+        $previousDisk = $media->disk;
+        $previousPath = $media->path;
+        $previousMaster = $media->master_path;
 
-        $cabecera = $this->images->inspect($file->getRealPath());
+        $header = $this->images->inspect($file->getRealPath());
         $dir = 'media/'.DB::connection()->getDatabaseName();
         $path = $file->store($dir, 'public');
-        [$width, $height] = $cabecera ? [$cabecera['width'], $cabecera['height']] : $this->dimensions($file->getRealPath(), $data);
-        $master = $cabecera && $this->images->isImage($cabecera['mime'])
+        [$width, $height] = $header ? [$header['width'], $header['height']] : $this->dimensions($file->getRealPath(), $data);
+        $master = $header && $this->images->isImage($header['mime'])
             ? $this->images->master($file->getRealPath(), $dir, pathinfo($path, PATHINFO_FILENAME))
             : null;
         $duration = $data['duration'] ?? null;
         $posterAt = null;
-        if (! $cabecera && $this->images->isMedia($file->getMimeType())) {
-            $sonda = $this->images->probe($file->getRealPath());
-            $duration = $sonda['duration'] ?? $duration;
-            $width = $sonda['width'] ?? $width;
-            $height = $sonda['height'] ?? $height;
+        if (! $header && $this->images->isMedia($file->getMimeType())) {
+            $probe = $this->images->probe($file->getRealPath());
+            $duration = $probe['duration'] ?? $duration;
+            $width = $probe['width'] ?? $width;
+            $height = $probe['height'] ?? $height;
             if (str_starts_with((string) $file->getMimeType(), 'video/')) {
                 $posterAt = SnkKilkanaImageService::defaultPosterAt($duration);
                 $master = $this->images->poster($file->getRealPath(), $dir, pathinfo($path, PATHINFO_FILENAME), $posterAt);
@@ -289,7 +289,7 @@ class SnkKilkanaMediaService
 
         $media->update([
             'url' => '/storage/'.$path,
-            'mime' => $cabecera['mime'] ?? $file->getMimeType(),
+            'mime' => $header['mime'] ?? $file->getMimeType(),
             'width' => $width,
             'height' => $height,
             'duration' => $duration,
@@ -303,14 +303,14 @@ class SnkKilkanaMediaService
             'poster_at' => $master ? ($posterAt ?? null) : null,
         ]);
         $this->warm($media);
-        if ($anteriorMaster && $anteriorMaster !== ($master['path'] ?? null)) {
-            Storage::disk('public')->delete($anteriorMaster);
+        if ($previousMaster && $previousMaster !== ($master['path'] ?? null)) {
+            Storage::disk('public')->delete($previousMaster);
         }
 
         // Ya no lo referencia nadie. La comparacion cubre el caso de que el nombre generado
         // coincidiera con el anterior: borrarlo seria borrar el que se acaba de escribir.
-        if ($anteriorDisk && $anteriorPath && $anteriorPath !== $path) {
-            Storage::disk($anteriorDisk)->delete($anteriorPath);
+        if ($previousDisk && $previousPath && $previousPath !== $path) {
+            Storage::disk($previousDisk)->delete($previousPath);
         }
 
         return ['media' => $this->serialize($media), 'duplicate' => false];
@@ -325,15 +325,15 @@ class SnkKilkanaMediaService
         if (! str_starts_with((string) $media->mime, 'video/') || ! $media->path) {
             return null;
         }
-        $anterior = $media->master_path;
+        $previous = $media->master_path;
         $disk = Storage::disk($media->disk ?: 'public');
         $master = $this->images->poster($disk->path($media->path), dirname($media->path), pathinfo($media->path, PATHINFO_FILENAME), $at);
         if ($master === null) {
             return null;
         }
         $media->forceFill(['master_path' => $master['path'], 'master_width' => $master['width'], 'master_height' => $master['height'], 'poster_at' => $at, 'poster_media_id' => null])->save();
-        if ($anterior && $anterior !== $master['path']) {
-            Storage::disk('public')->delete($anterior);
+        if ($previous && $previous !== $master['path']) {
+            Storage::disk('public')->delete($previous);
         }
         $this->warm($media);
 
@@ -351,7 +351,7 @@ class SnkKilkanaMediaService
             return null;
         }
         $disk = Storage::disk('public');
-        $anterior = $media->master_path;
+        $previous = $media->master_path;
         $path = dirname($media->path).'/m/'.pathinfo($media->path, PATHINFO_FILENAME).'-m'.$photo->getKey().'.jpg';
         if (! $disk->exists($photo->master_path) || ! $disk->copy($photo->master_path, $path)) {
             return null;
@@ -363,8 +363,8 @@ class SnkKilkanaMediaService
             'poster_at' => null,
             'poster_media_id' => $photo->getKey(),
         ])->save();
-        if ($anterior && $anterior !== $path) {
-            $disk->delete($anterior);
+        if ($previous && $previous !== $path) {
+            $disk->delete($previous);
         }
         $this->warm($media);
 
@@ -393,7 +393,7 @@ class SnkKilkanaMediaService
         $query = QueryBuilder::for(SnkKilkanaMediaModel::query(), $request)
             ->allowedFields(...self::FIELDS)
             ->with(['tags', 'collections'])
-            ->withCount(SnkKilkanaMediaModel::USOS);
+            ->withCount(SnkKilkanaMediaModel::USES);
 
         if ($request->filled('fields')) {
             $query->addSelect(self::PLUMBING);
@@ -496,30 +496,30 @@ class SnkKilkanaMediaService
      *
      * @return array{image: int, video: int, audio: int, bytes: int}
      */
-    private function porFamilia(?Builder $dentro = null): array
+    private function byFamily(?Builder $inside = null): array
     {
-        $conteo = ['image' => 0, 'video' => 0, 'audio' => 0, 'bytes' => 0];
+        $tally = ['image' => 0, 'video' => 0, 'audio' => 0, 'bytes' => 0];
 
         // Se agrupa por el `mime` entero y la familia se parte aqui: `SUBSTRING_INDEX` es de
         // MariaDB y las pruebas corren sobre SQLite, asi que un SQL que solo funciona en
         // produccion es un fallo que no se ve hasta produccion. Los mimes distintos son una
         // docena, no una fila por foto.
-        $filas = SnkKilkanaMediaModel::query()
-            ->selectRaw('mime, COUNT(*) AS piezas, COALESCE(SUM(size_bytes), 0) AS peso')
-            ->when($dentro, fn (Builder $query) => $query
-                ->whereIn('kilkana_media.id', $dentro->reorder()->select('kilkana_media.id')))
+        $rows = SnkKilkanaMediaModel::query()
+            ->selectRaw('mime, COUNT(*) AS items, COALESCE(SUM(size_bytes), 0) AS bytes')
+            ->when($inside, fn (Builder $query) => $query
+                ->whereIn('kilkana_media.id', $inside->reorder()->select('kilkana_media.id')))
             ->groupBy('mime')
             ->get();
 
-        foreach ($filas as $fila) {
-            $conteo['bytes'] += (int) $fila->peso;
-            $familia = explode('/', (string) $fila->mime)[0];
-            if (array_key_exists($familia, $conteo)) {
-                $conteo[$familia] += (int) $fila->piezas;
+        foreach ($rows as $row) {
+            $tally['bytes'] += (int) $row->bytes;
+            $family = explode('/', (string) $row->mime)[0];
+            if (array_key_exists($family, $tally)) {
+                $tally[$family] += (int) $row->items;
             }
         }
 
-        return $conteo;
+        return $tally;
     }
 
     /**
@@ -532,16 +532,16 @@ class SnkKilkanaMediaService
      */
     private function scope(Request $request): array
     {
-        $sinTipo = $request->duplicate(Arr::except($request->query->all(), ['kind']));
+        $withoutKind = $request->duplicate(Arr::except($request->query->all(), ['kind']));
         // El Eloquent de debajo, sin el envoltorio de spatie: `whereIn` sabe anidar un `Builder`,
         // no un `QueryBuilder`, y la subconsulta reescribe el `select` de todos modos.
-        $familias = $this->porFamilia($this->filtered($sinTipo)->getEloquentBuilder());
+        $families = $this->byFamily($this->filtered($withoutKind)->getEloquentBuilder());
 
         return [
-            'all' => $this->filtered($sinTipo)->count(),
-            'image' => $familias['image'],
-            'video' => $familias['video'],
-            'audio' => $familias['audio'],
+            'all' => $this->filtered($withoutKind)->count(),
+            'image' => $families['image'],
+            'video' => $families['video'],
+            'audio' => $families['audio'],
         ];
     }
 
@@ -550,7 +550,7 @@ class SnkKilkanaMediaService
         $soon = Carbon::today()->addDays(30)->toDateString();
 
         return [
-            ...$this->porFamilia(),
+            ...$this->byFamily(),
             'all' => SnkKilkanaMediaModel::query()->count(),
             'review' => SnkKilkanaMediaModel::query()->where('rights_status', SnkKilkanaMediaRightsEnum::Unknown)->count(),
             'unused' => SnkKilkanaMediaModel::query()->unused()->count(),
@@ -586,7 +586,7 @@ class SnkKilkanaMediaService
                 continue;
             }
 
-            $deUnsplash = str_contains((string) $media->source_url, 'unsplash.com');
+            $fromUnsplash = str_contains((string) $media->source_url, 'unsplash.com');
             $changes = [];
 
             // El nombre que trae el fichero descargado no es un titulo: `photo-1a2b3c`.
@@ -600,12 +600,12 @@ class SnkKilkanaMediaService
                 $changes['caption'] = $post->excerpt;
             }
             if (! $media->description) {
-                $changes['description'] = "Editorial cover for: {$post->title}";
+                $changes['description'] = "Portada editorial de: {$post->title}";
             }
-            if ($deUnsplash && $media->rights_status->needsReview()) {
+            if ($fromUnsplash && $media->rights_status->needsReview()) {
                 $changes['rights_status'] = SnkKilkanaMediaRightsEnum::Licensed;
             }
-            if ($deUnsplash && ! $media->license) {
+            if ($fromUnsplash && ! $media->license) {
                 $changes['license'] = 'Unsplash License';
             }
 
@@ -621,7 +621,7 @@ class SnkKilkanaMediaService
     /**
      * Quien usa este fichero, por su nombre y diciendo como.
      *
-     * Las tres formas de estar en uso son las de `SnkKilkanaMediaModel::USOS`, y salen de ahi
+     * Las tres formas de estar en uso son las de `SnkKilkanaMediaModel::USES`, y salen de ahi
      * para que una cuarta clave foranea hacia un medio aparezca aqui sola en vez de dejar una
      * lista corta que parece completa.
      *
@@ -631,37 +631,37 @@ class SnkKilkanaMediaService
      *
      * @return list<array{kind: string, id: int, title: string}>
      */
-    public function uses(SnkKilkanaMediaModel $media, int $porRelacion = 8): array
+    public function uses(SnkKilkanaMediaModel $media, int $perRelation = 8): array
     {
-        $titulo = [
+        $title = [
             'coveredPosts' => 'title',
             'socialPosts' => 'title',
             'avatarAuthors' => 'name',
         ];
 
-        $usos = [];
-        foreach (SnkKilkanaMediaModel::USOS as $relacion) {
-            foreach ($media->{$relacion}()->limit($porRelacion)->get() as $fila) {
-                $usos[] = [
-                    'kind' => $relacion,
-                    'id' => (int) $fila->id,
-                    'title' => (string) $fila->{$titulo[$relacion]},
+        $uses = [];
+        foreach (SnkKilkanaMediaModel::USES as $relation) {
+            foreach ($media->{$relation}()->limit($perRelation)->get() as $row) {
+                $uses[] = [
+                    'kind' => $relation,
+                    'id' => (int) $row->id,
+                    'title' => (string) $row->{$title[$relation]},
                 ];
             }
         }
 
-        return $usos;
+        return $uses;
     }
 
     /**
      * La ficha recien escrita, con la MISMA forma que trae el listado.
      *
-     * Update, restore, upload y reemplazo devuelven una fila que el panel mete en la lista que
+     * Actualizar, restaurar, subir y reemplazar devuelven una fila que el panel mete en la lista que
      * ya tiene delante. Si esa fila viniera con mas campos que las demas, la lista dejaria de
      * ser homogenea justo en la fila que se acaba de tocar.
      */
     public function serialize(SnkKilkanaMediaModel $media): SnkKilkanaMediaModel
     {
-        return $media->fresh(['tags', 'collections'])->loadCount(SnkKilkanaMediaModel::USOS);
+        return $media->fresh(['tags', 'collections'])->loadCount(SnkKilkanaMediaModel::USES);
     }
 }

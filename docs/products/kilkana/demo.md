@@ -5,7 +5,9 @@
 `demo.kilkana.test` es el periódico con el que se enseña el producto, y por eso el seeder no
 produce «datos de prueba»: produce un diario comarcal que tiene que aguantar la mirada de quien va
 a comprarlo. Lo siembra `SnkKilkanaDatabaseSeeder` sobre el perfil `data/profiles/eldiario.json`
-(cliente `demo`, `demo: true`); `diario-norte` es el segundo inquilino y va vacío a propósito.
+(cliente `demo`, `demo: true`); `diario-norte` es el segundo inquilino y va vacío a propósito,
+con `accounts: true`: sin archivo y sin abrir, pero con el administrador local y el lector de demo
+para entrar a recorrer su puesta en marcha.
 
 Ese host es el frontend del producto. La API de la misma instancia usa
 `https://demo.commander.test/api/v1/kilkana`: cliente `demo`, dominio de plataforma
@@ -16,7 +18,7 @@ Ese host es el frontend del producto. La API de la misma instancia usa
 | Bloque | Fuente | Lo que tiene que parecer |
 |---|---|---|
 | Secciones | `CATEGORIES` en el seeder | Diecisiete secciones con estados reales: una oculta del menú, una en preparación sin piezas. |
-| Redacción y firmas | `REDACCION`, `FIRMAS_EXTERNAS` | Seis de plantilla, una agencia, la firma colectiva, un columnista y una colaboradora, con bio, cargo, redes y retrato. |
+| Redacción y firmas | `STAFF`, `EXTERNAL_BYLINES` | Seis de plantilla, una agencia, la firma colectiva, un columnista y una colaboradora, con bio, cargo, redes y retrato. |
 | Piezas | `data/posts.json`, 532 | Titulares y entradillas escritos a mano; el cuerpo lo compone `SnkKilkanaDemoBodyFactory`. |
 | Fotos | `data/media/`, 60 JPEG de 1920 × 1080 con licencia Unsplash; autor y página en `sources.json` | La mediateca con crédito, alt, pie y estante por mesa, y derivadas de 160 a 1920. |
 | Lecturas | `seedViews()` | Una curva por edad de la pieza sobre `reads` del snapshot. |

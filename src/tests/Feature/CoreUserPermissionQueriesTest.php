@@ -27,7 +27,7 @@ class CoreUserPermissionQueriesTest extends TestCase
         Role::create(['name' => 'editor', 'guard_name' => 'sanctum'])->givePermissionTo($permission);
     }
 
-    public function test_un_permiso_que_da_el_rol_cuesta_solo_la_consulta_de_los_roles(): void
+    public function test_a_permission_granted_by_a_role_costs_only_the_roles_query(): void
     {
         $user = $this->user('editor@tenant.test');
         $user->assignRole('editor');
@@ -35,7 +35,7 @@ class CoreUserPermissionQueriesTest extends TestCase
         $this->assertSame(['model_has_roles'], $this->tablesQueriedBy($user, 'index tags', true));
     }
 
-    public function test_sin_el_rol_se_miran_los_directos_y_un_directo_sigue_valiendo(): void
+    public function test_without_the_role_direct_permissions_are_checked_and_still_apply(): void
     {
         $user = $this->user('nobody@tenant.test');
         $this->assertSame(['model_has_roles', 'model_has_permissions'], $this->tablesQueriedBy($user, 'index tags', false));

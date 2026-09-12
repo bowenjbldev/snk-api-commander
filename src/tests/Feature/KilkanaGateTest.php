@@ -23,54 +23,54 @@ class KilkanaGateTest extends TestCase
         parent::setUp();
 
         DB::setDefaultConnection('tenant');
-        foreach (['Core', 'Kilkana'] as $paquete) {
+        foreach (['Core', 'Kilkana'] as $package) {
             $this->artisan('migrate', [
                 '--database' => 'tenant',
-                '--path' => "packages/{$paquete}/database/migrations",
+                '--path' => "packages/{$package}/database/migrations",
             ])->run();
         }
 
         app(SnkKilkanaRoleCatalogService::class)->sync();
     }
 
-    public function test_una_pasada_sustituye_la_anterior_y_una_ruta_sin_construir_no_falla(): void
+    public function test_a_new_run_replaces_the_previous_one_and_an_unbuilt_route_does_not_fail(): void
     {
-        $this->actingAs($this->cuenta('marta@eldiario.example', 'director'), 'sanctum');
-        $nueve = array_fill(0, 9, true);
-        $conFallo = $nueve;
-        $conFallo[6] = false;
+        $this->actingAs($this->account('marta@eldiario.example', 'director'), 'sanctum');
+        $allPassing = array_fill(0, 9, true);
+        $withFailure = $allPassing;
+        $withFailure[6] = false;
 
-        $primera = $this->gate()->store($this->pasada([
-            ['url' => '/', 'kind' => 'front page', 'passing' => $nueve],
-            ['url' => '/2026/07/01/plan', 'kind' => 'post', 'passing' => $conFallo],
+        $first = $this->gate()->store($this->gateRun([
+            ['url' => '/', 'kind' => 'front page', 'passing' => $allPassing],
+            ['url' => '/2026/07/01/plan', 'kind' => 'post', 'passing' => $withFailure],
             ['url' => '/rss.xml', 'kind' => 'xml', 'passing' => null],
         ]))->getData(true);
 
-        $this->assertSame(1, $primera['failing']);
-        $this->assertCount(3, $primera['data']);
-        $this->assertNull($primera['data'][2]['passing']);
-        $this->assertNull($primera['data'][2]['checked_at']);
-        $this->assertNotNull($primera['last_run_at']);
+        $this->assertSame(1, $first['failing']);
+        $this->assertCount(3, $first['data']);
+        $this->assertNull($first['data'][2]['passing']);
+        $this->assertNull($first['data'][2]['checked_at']);
+        $this->assertNotNull($first['last_run_at']);
         $this->assertSame('deploy_blocked', SnkKilkanaActivityModel::query()->where('kind', 'gate')->value('verb'));
 
-        $segunda = $this->gate()->store($this->pasada([
-            ['url' => '/', 'kind' => 'front page', 'passing' => $nueve],
+        $second = $this->gate()->store($this->gateRun([
+            ['url' => '/', 'kind' => 'front page', 'passing' => $allPassing],
         ]))->getData(true);
 
-        $this->assertCount(1, $segunda['data'], 'La pasada nueva sustituye la anterior entera.');
-        $this->assertSame(0, $segunda['failing']);
+        $this->assertCount(1, $second['data'], 'La pasada nueva sustituye la anterior entera.');
+        $this->assertSame(0, $second['failing']);
         $this->assertSame(['failing' => 0], $this->gate(['counts' => '1'])->index()->getData(true));
     }
 
-    public function test_correrlo_es_de_quien_publica_y_leerlo_de_quien_abre_el_panel(): void
+    public function test_running_it_needs_publish_rights_and_reading_it_needs_panel_access(): void
     {
-        $this->actingAs($this->cuenta('ana@eldiario.example', 'redactor'), 'sanctum');
+        $this->actingAs($this->account('ana@eldiario.example', 'redactor'), 'sanctum');
         $this->assertSame(200, $this->gate()->index()->getStatusCode());
-        $this->assertSame(403, $this->gate()->store($this->pasada([['url' => '/', 'kind' => 'front page', 'passing' => null]]))->getStatusCode());
+        $this->assertSame(403, $this->gate()->store($this->gateRun([['url' => '/', 'kind' => 'front page', 'passing' => null]]))->getStatusCode());
         $this->assertSame(0, SnkKilkanaGateResultModel::query()->count());
     }
 
-    private function pasada(array $results): Request
+    private function gateRun(array $results): Request
     {
         return Request::create('/api/v1/kilkana/gate', 'PUT', ['results' => $results]);
     }
@@ -82,10 +82,10 @@ class KilkanaGateTest extends TestCase
         return app(SnkKilkanaGateController::class);
     }
 
-    private function cuenta(string $email, string $rol): CoreUserModel
+    private function account(string $email, string $role): CoreUserModel
     {
         $user = CoreUserModel::create(['name' => 'Alguien', 'email' => $email, 'password' => 'secret1234']);
-        $user->assignRole($rol);
+        $user->assignRole($role);
 
         return $user;
     }

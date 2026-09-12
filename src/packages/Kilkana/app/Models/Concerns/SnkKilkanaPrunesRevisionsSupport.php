@@ -35,19 +35,19 @@ trait SnkKilkanaPrunesRevisionsSupport
     protected static function bootSnkKilkanaPrunesRevisionsSupport(): void
     {
         static::created(function (Model $revision) {
-            $clave = static::revisionOwnerKey();
+            $key = static::revisionOwnerKey();
 
             // Por `id` y no por `created_at`: dos guardados del mismo segundo empatan en la
             // fecha, y un empate ahi decide mal cual se tira.
-            $sobrantes = static::query()
-                ->where($clave, $revision->{$clave})
+            $surplus = static::query()
+                ->where($key, $revision->{$key})
                 ->orderByDesc('id')
                 ->offset(static::revisionsKept())
                 ->limit(PHP_INT_MAX)
                 ->pluck('id');
 
-            if ($sobrantes->isNotEmpty()) {
-                static::query()->whereIn('id', $sobrantes)->delete();
+            if ($surplus->isNotEmpty()) {
+                static::query()->whereIn('id', $surplus)->delete();
             }
         });
     }

@@ -6,7 +6,7 @@ use Carbon\CarbonImmutable;
 
 /**
  * Un commit ya acotado al path de un package: líneas +/- y ficheros tocados son SOLO los de ese path.
- * Lo produce un PackageGitSource y lo persiste CommanderGitSyncService por aplicación.
+ * Lo produce un CommanderPackageGitSource y lo persiste CommanderGitSyncService por aplicación.
  */
 final readonly class CommanderGitCommitData
 {

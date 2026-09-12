@@ -38,8 +38,8 @@ class CoreRouteServiceProvider extends ServiceProvider
 
     private function configureRateLimiting(): void
     {
-        // API consumers may fan out several requests, so the per-user budget is generous and
-        // environment-tunable.
+        // Un consumidor de la API puede lanzar varias peticiones a la vez, así que el cupo por
+        // usuario es generoso y se ajusta por entorno.
         RateLimiter::for('api', function (Request $request) {
             $tenant = $this->app->make(CoreActiveInstanceSupport::class)->id() ?? 'control';
             $actor = $request->user()?->getAuthIdentifier() ?? $request->ip();

@@ -16,7 +16,7 @@ use PHPUnit\Framework\TestCase;
 class SnkKilkanaDemoBodyFactoryTest extends TestCase
 {
     /** @return array<string, mixed> */
-    private function pieza(string $slug, string $cat = 'local', string $tier = 'free'): array
+    private function makePost(string $slug, string $cat = 'local', string $tier = 'free'): array
     {
         return [
             'slug' => $slug,
@@ -29,60 +29,60 @@ class SnkKilkanaDemoBodyFactoryTest extends TestCase
         ];
     }
 
-    private function parrafos(array $bloques): array
+    private function paragraphs(array $blocks): array
     {
         return array_values(array_map(
             fn (array $b) => $b['config']['text'],
-            array_filter($bloques, fn (array $b) => $b['type'] === 'paragraph'),
+            array_filter($blocks, fn (array $b) => $b['type'] === 'paragraph'),
         ));
     }
 
-    public function test_ningun_parrafo_se_repite_dentro_de_la_pieza(): void
+    public function test_no_paragraph_repeats_within_a_post(): void
     {
         foreach (['a-b-c', 'pleno-de-julio', 'la-feria-vuelve', 'obras-en-la-ronda', 'x'] as $slug) {
-            foreach (array_keys(SnkKilkanaDemoProse::MATERIAL) as $familia) {
-                $cat = array_search($familia, SnkKilkanaDemoBodyFactory::FAMILIA, true);
-                $parrafos = $this->parrafos(SnkKilkanaDemoBodyFactory::blocks($this->pieza($slug, $cat), 7));
+            foreach (array_keys(SnkKilkanaDemoProse::MATERIAL) as $family) {
+                $cat = array_search($family, SnkKilkanaDemoBodyFactory::FAMILY_OF, true);
+                $paragraphs = $this->paragraphs(SnkKilkanaDemoBodyFactory::blocks($this->makePost($slug, $cat), 7));
 
-                $this->assertSame(count($parrafos), count(array_unique($parrafos)), "{$familia}/{$slug} repite un parrafo.");
-                $this->assertGreaterThanOrEqual(9, count($parrafos));
+                $this->assertSame(count($paragraphs), count(array_unique($paragraphs)), "{$family}/{$slug} repite un parrafo.");
+                $this->assertGreaterThanOrEqual(9, count($paragraphs));
             }
         }
     }
 
-    public function test_dos_piezas_de_la_misma_seccion_no_son_la_misma(): void
+    public function test_two_posts_from_the_same_section_differ(): void
     {
-        $una = $this->parrafos(SnkKilkanaDemoBodyFactory::blocks($this->pieza('el-pleno-aprueba-el-plan'), 7));
-        $otra = $this->parrafos(SnkKilkanaDemoBodyFactory::blocks($this->pieza('los-vecinos-piden-plazos'), 7));
+        $one = $this->paragraphs(SnkKilkanaDemoBodyFactory::blocks($this->makePost('el-pleno-aprueba-el-plan'), 7));
+        $other = $this->paragraphs(SnkKilkanaDemoBodyFactory::blocks($this->makePost('los-vecinos-piden-plazos'), 7));
 
         // La entradilla es la misma en la prueba; lo demas casi no coincide.
-        $comunes = count(array_intersect($una, $otra)) - 1;
-        $this->assertLessThanOrEqual(3, $comunes, 'Dos piezas seguidas comparten como mucho tres parrafos de nueve.');
+        $shared = count(array_intersect($one, $other)) - 1;
+        $this->assertLessThanOrEqual(3, $shared, 'Dos piezas seguidas comparten como mucho tres parrafos de nueve.');
     }
 
-    public function test_el_cierre_no_lleva_la_etiqueta_dentro_y_la_pieza_es_larga(): void
+    public function test_the_closing_does_not_contain_the_tag_and_the_post_is_long(): void
     {
-        $bloques = SnkKilkanaDemoBodyFactory::blocks($this->pieza('slug-de-prueba'), 7);
-        $texto = implode(' ', $this->parrafos($bloques));
+        $blocks = SnkKilkanaDemoBodyFactory::blocks($this->makePost('slug-de-prueba'), 7);
+        $text = implode(' ', $this->paragraphs($blocks));
 
-        $this->assertStringNotContainsString('El seguimiento de pleno', $texto);
-        $this->assertGreaterThan(200, count(preg_split('/\s+/u', trim($texto))), 'Un articulo, no un titular con dos frases.');
+        $this->assertStringNotContainsString('El seguimiento de pleno', $text);
+        $this->assertGreaterThan(200, count(preg_split('/\s+/u', trim($text))), 'Un articulo, no un titular con dos frases.');
 
-        $pie = collect($bloques)->firstWhere('type', 'image')['config']['caption'];
-        $this->assertSame('Primera frase de la entradilla.', $pie);
+        $caption = collect($blocks)->firstWhere('type', 'image')['config']['caption'];
+        $this->assertSame('Primera frase de la entradilla.', $caption);
 
-        $recuadro = collect($bloques)->firstWhere('type', 'factbox');
-        if ($recuadro !== null) {
-            $this->assertStringNotContainsString('lecturas', $recuadro['config']['text']);
+        $factbox = collect($blocks)->firstWhere('type', 'factbox');
+        if ($factbox !== null) {
+            $this->assertStringNotContainsString('lecturas', $factbox['config']['text']);
         }
     }
 
     /** El muro corta donde se lee gratis: una `locked` ensena entradilla y un parrafo. */
-    public function test_el_muro_va_dentro_del_cuerpo(): void
+    public function test_the_paywall_sits_inside_the_body(): void
     {
-        $bloques = SnkKilkanaDemoBodyFactory::blocks($this->pieza('slug', 'local', 'locked'), 7);
-        $tipos = array_column($bloques, 'type');
+        $blocks = SnkKilkanaDemoBodyFactory::blocks($this->makePost('slug', 'local', 'locked'), 7);
+        $types = array_column($blocks, 'type');
 
-        $this->assertSame(3, array_search('paywall', $tipos, true));
+        $this->assertSame(3, array_search('paywall', $types, true));
     }
 }

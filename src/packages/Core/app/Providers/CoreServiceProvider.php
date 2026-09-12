@@ -21,11 +21,11 @@ class CoreServiceProvider extends ServiceProvider
 
     public function register(): void
     {
-        // 1. Active package config must exist before any discovery runs.
+        // La configuración del package activo debe existir antes de descubrir nada.
         $this->mergeConfigFrom(base_path('packages/Core/config/core.php'), 'core');
 
-        // Per-request active instance (set by CoreResolveInstanceFromHostMiddleware), shared by
-        // the state service, metering and quota measurer. Singleton = one value per request.
+        // Instancia activa por petición (la fija CoreResolveInstanceFromHostMiddleware), compartida
+        // por el servicio de estado, el metering y el medidor de cuota. Singleton = un valor por petición.
         $this->app->singleton(CoreActiveInstanceSupport::class);
         // Cola de metering por proceso: en Octane vive lo que vive el worker y escribe en lote.
         $this->app->singleton(CoreMeteringBufferSupport::class);
@@ -35,7 +35,7 @@ class CoreServiceProvider extends ServiceProvider
         // otra conexion; 'array' fuerza recargar de la conexion activa en cada request.
         config(['permission.cache.store' => 'array']);
 
-        // 2. Core Framework Overrides
+        // Overrides del framework Core.
         $this->app->afterResolving(ExceptionHandlerContract::class, function (ExceptionHandlerContract $handler): void {
             if (! $handler instanceof ExceptionHandler) {
                 return;
@@ -46,7 +46,7 @@ class CoreServiceProvider extends ServiceProvider
             });
         });
 
-        // 3. Discover and Merge Package Configurations
+        // Descubrimiento y mezcla de configuraciones de packages.
         foreach ($this->discoverPackageConfigFiles() as $key => $paths) {
             foreach (Arr::wrap($paths) as $path) {
                 if ($this->isGlobalConfigKey($key)) {
@@ -59,12 +59,12 @@ class CoreServiceProvider extends ServiceProvider
             }
         }
 
-        // 4. Register Internal Core Providers
+        // Providers internos de Core.
         $this->app->register(CoreScrambleServiceProvider::class);
         $this->app->register(CoreRouteServiceProvider::class);
         $this->app->register(CoreConsoleServiceProvider::class);
 
-        // 5. Register External Package Providers
+        // Providers de packages externos.
         foreach ($this->discoverPackageProviders() as $provider) {
             $this->app->register($provider);
         }

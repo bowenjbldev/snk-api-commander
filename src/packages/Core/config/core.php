@@ -23,9 +23,9 @@ return [
     | Commander (el control plane del tenant)
     |--------------------------------------------------------------------------
     |
-    | Whether this deploy runs the commander control plane: metering, kill-switch
-    | y quotas (default on). Apagable con CORE_COMMANDER=false en deploys que no
-    | deban medir ni aplicar cuotas.
+    | Si este deploy ejecuta el control plane del commander: metering, kill-switch
+    | y cuotas (encendido por defecto). Se apaga con CORE_COMMANDER=false en los
+    | deploys que no deban medir ni aplicar cuotas.
     |
     */
 

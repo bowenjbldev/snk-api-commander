@@ -26,10 +26,10 @@ class KilkanaSubscribersListTest extends TestCase
         parent::setUp();
 
         DB::setDefaultConnection('tenant');
-        foreach (['Core', 'Kilkana'] as $paquete) {
+        foreach (['Core', 'Kilkana'] as $package) {
             $this->artisan('migrate', [
                 '--database' => 'tenant',
-                '--path' => "packages/{$paquete}/database/migrations",
+                '--path' => "packages/{$package}/database/migrations",
             ])->run();
         }
         app(SnkKilkanaRoleCatalogService::class)->sync();
@@ -39,7 +39,7 @@ class KilkanaSubscribersListTest extends TestCase
         $this->actingAs($marta, 'sanctum');
     }
 
-    public function test_importar_marca_el_origen_salta_a_quien_ya_esta_y_cuenta_lo_invalido(): void
+    public function test_import_marks_the_source_skips_existing_subscribers_and_counts_invalid_rows(): void
     {
         SnkKilkanaSubscriberModel::create(['email' => 'baja@lectores.example', 'status' => 'unsubscribed', 'consent_source' => 'public_form']);
 
@@ -50,9 +50,9 @@ class KilkanaSubscribersListTest extends TestCase
             ."pepe@lectores.example,pending,\n"
             ."ana@lectores.example,confirmed,\n";
 
-        $resultado = $this->importar($csv)->getData(true);
+        $result = $this->import($csv)->getData(true);
 
-        $this->assertSame(['imported' => 2, 'skipped' => 1, 'invalid' => 1], $resultado);
+        $this->assertSame(['imported' => 2, 'skipped' => 1, 'invalid' => 1], $result);
         $ana = SnkKilkanaSubscriberModel::query()->where('email', 'ana@lectores.example')->firstOrFail();
         $this->assertSame('import', $ana->consent_source->value);
         $this->assertSame('confirmed', $ana->status->value);
@@ -62,16 +62,16 @@ class KilkanaSubscribersListTest extends TestCase
         $this->assertSame(1, DB::table('kilkana_activity')->where('verb', 'subscribers_imported')->count());
     }
 
-    public function test_sin_cabecera_vale_y_sin_consentimiento_declarado_no_entra_nada(): void
+    public function test_a_file_without_header_works_and_without_declared_consent_nothing_is_imported(): void
     {
-        $this->importar("uno@lectores.example\ndos@lectores.example\n");
+        $this->import("uno@lectores.example\ndos@lectores.example\n");
         $this->assertSame(2, SnkKilkanaSubscriberModel::query()->where('consent_source', 'import')->count());
 
         $this->expectException(ValidationException::class);
-        $this->importar("tres@lectores.example\n", consented: false);
+        $this->import("tres@lectores.example\n", consented: false);
     }
 
-    public function test_exportar_lleva_correo_estado_origen_y_sello(): void
+    public function test_export_includes_email_status_source_and_timestamp(): void
     {
         SnkKilkanaSubscriberModel::create(['email' => 'ana@lectores.example', 'status' => 'confirmed', 'consent_source' => 'public_form', 'consent_at' => '2026-01-02 03:04:05']);
 
@@ -89,34 +89,34 @@ class KilkanaSubscribersListTest extends TestCase
      * La lista se pagina. Es el único listado del paquete que crece sin techo, y devolverla
      * entera son megabytes de JSON para pintar una página de veinticinco.
      */
-    public function test_la_lista_se_pagina_y_el_tope_por_pagina_no_lo_elige_quien_llama(): void
+    public function test_the_list_paginates_and_the_per_page_cap_is_not_chosen_by_the_caller(): void
     {
         for ($i = 0; $i < 30; $i++) {
             SnkKilkanaSubscriberModel::create(['email' => "s{$i}@lectores.example", 'status' => 'confirmed', 'consent_source' => 'public_form']);
         }
 
-        $primera = $this->listar()->getData(true);
+        $firstPage = $this->list()->getData(true);
 
-        $this->assertCount(25, $primera['data']);
-        $this->assertSame(['current_page' => 1, 'per_page' => 25, 'total' => 30, 'last_page' => 2], $primera['meta']);
-        $this->assertSame('s29@lectores.example', $primera['data'][0]['email'], 'La última alta, arriba.');
+        $this->assertCount(25, $firstPage['data']);
+        $this->assertSame(['current_page' => 1, 'per_page' => 25, 'total' => 30, 'last_page' => 2], $firstPage['meta']);
+        $this->assertSame('s29@lectores.example', $firstPage['data'][0]['email'], 'La última alta, arriba.');
 
-        $segunda = $this->listar(['page' => '2'])->getData(true);
-        $this->assertCount(5, $segunda['data']);
-        $this->assertSame([], array_intersect(array_column($primera['data'], 'id'), array_column($segunda['data'], 'id')), 'Ninguna dirección sale en las dos páginas.');
+        $secondPage = $this->list(['page' => '2'])->getData(true);
+        $this->assertCount(5, $secondPage['data']);
+        $this->assertSame([], array_intersect(array_column($firstPage['data'], 'id'), array_column($secondPage['data'], 'id')), 'Ninguna dirección sale en las dos páginas.');
 
         // Llevarse la lista entera tiene su puerta, y es `export`, no un `per_page` gigante.
-        $this->assertSame(100, $this->listar(['per_page' => '100000'])->getData(true)['meta']['per_page']);
+        $this->assertSame(100, $this->list(['per_page' => '100000'])->getData(true)['meta']['per_page']);
     }
 
-    private function listar(array $query = [])
+    private function list(array $query = [])
     {
         request()->query->replace($query);
 
         return app(SnkKilkanaSubscribersController::class)->index();
     }
 
-    private function importar(string $csv, bool $consented = true)
+    private function import(string $csv, bool $consented = true)
     {
         $request = Request::create('/', 'POST', $consented ? ['consented' => '1'] : [], [], [
             'file' => UploadedFile::fake()->createWithContent('lista.csv', $csv),

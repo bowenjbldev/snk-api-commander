@@ -23,7 +23,8 @@ class CoreUserResource extends JsonResource
         return [
             'id' => $this->whenHas('id'),
             'name' => $this->whenHas('name'),
-            'full_name' => $this->whenHas('full_name'),
+            'lastname' => $this->whenHas('lastname'),
+            'full_name' => $this->resource->full_name,
             'email' => $this->whenHas('email'),
             'company' => $this->whenHas('company'),
             'phone' => $this->whenHas('phone'),

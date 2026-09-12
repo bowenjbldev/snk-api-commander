@@ -28,7 +28,7 @@ class SnkKilkanaActivityController extends CoreBaseApiController
 
     private const EXPORT_MAX = 5000;
 
-    public function __construct(private readonly SnkKilkanaActivityService $registro) {}
+    public function __construct(private readonly SnkKilkanaActivityService $activityLog) {}
 
     /**
      * `people` es el desplegable de quién aparece —todo el registro visible, no lo filtrado— y
@@ -52,28 +52,28 @@ class SnkKilkanaActivityController extends CoreBaseApiController
         $request = request();
         $tab = (string) $request->query('tab', 'all');
         $who = trim((string) $request->query('who', ''));
-        // `bell` y no `count`: se llamaba así y significaba «cuántas filas del adelanto»,
-        // mientras `counts` en otros recursos significa «solo las cifras». Dos ideas separadas
-        // por una letra, y nadie las lee con calma a las tres de la mañana.
-        $adelanto = (int) $request->query('bell', '0');
+        // `bell` y no `count`: es «cuántas filas del adelanto», y `counts` en otros recursos
+        // significa «solo las cifras». Dos ideas separadas por una letra no se leen con calma
+        // a las tres de la mañana.
+        $bell = (int) $request->query('bell', '0');
 
-        $visible = $this->registro->visible();
-        $filtrado = (clone $visible)
+        $visible = $this->activityLog->visible();
+        $filtered = (clone $visible)
             ->when(isset(SnkKilkanaActivityModel::TABS[$tab]), fn (Builder $q) => $q->whereIn('kind', SnkKilkanaActivityModel::TABS[$tab]))
             ->when($who !== '', fn (Builder $q) => $q->where('actor_name', $who));
 
         // Un adelanto —la campana— es solo filas: la gente y las cifras son cinco consultas
         // más que el armazón pagaría en cada carga para no pintarlas.
-        if ($adelanto > 0) {
-            return response()->json($this->registro->bell($adelanto, $filtrado));
+        if ($bell > 0) {
+            return response()->json($this->activityLog->bell($bell, $filtered));
         }
         // Un export se lleva lo filtrado entero, hasta el techo.
         if ($request->boolean('all')) {
-            return response()->json(['data' => SnkKilkanaActivityResource::collection($filtrado->limit(self::EXPORT_MAX)->get())]);
+            return response()->json(['data' => SnkKilkanaActivityResource::collection($filtered->limit(self::EXPORT_MAX)->get())]);
         }
 
-        $page = $filtrado->paginate($this->perPage());
-        $semana = now()->subDays(7);
+        $page = $filtered->paginate($this->perPage());
+        $weekAgo = now()->subDays(7);
 
         return response()->json([
             'data' => SnkKilkanaActivityResource::collection($page->getCollection()),
@@ -85,7 +85,7 @@ class SnkKilkanaActivityController extends CoreBaseApiController
             ...$this->wants('stats') ? [
                 'stats' => [
                     'today' => (clone $visible)->where('created_at', '>=', now()->startOfDay())->count(),
-                    'active_people' => (clone $visible)->where('created_at', '>=', $semana)->whereNotNull('user_id')->distinct()->count('user_id'),
+                    'active_people' => (clone $visible)->where('created_at', '>=', $weekAgo)->whereNotNull('user_id')->distinct()->count('user_id'),
                     'went_out' => (clone $visible)->whereIn('kind', ['publish', 'schedule'])->whereIn('verb', ['published', 'scheduled'])->count(),
                     'gate' => (clone $visible)->where('kind', 'gate')->count(),
                 ],

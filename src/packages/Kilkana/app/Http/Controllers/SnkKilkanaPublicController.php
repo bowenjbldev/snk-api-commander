@@ -25,7 +25,7 @@ use Packages\Kilkana\Services\SnkKilkanaPublicService;
 #[Group('Public')]
 class SnkKilkanaPublicController extends Controller
 {
-    public function __construct(private readonly SnkKilkanaPublicService $public) {}
+    public function __construct(private readonly SnkKilkanaPublicService $street) {}
 
     public function posts(Request $request): JsonResponse
     {
@@ -34,9 +34,8 @@ class SnkKilkanaPublicController extends Controller
             'author' => 'nullable|string|max:255',
             'tag' => 'nullable|string|max:64',
             'q' => 'nullable|string|min:2|max:128',
-            // `per_page`, como el resto de la API. Se llamaba `count`, y `count` es lo que
-            // otros recursos usan para «cuántas filas del adelanto»: dos ideas separadas por
-            // una letra de `counts`, que es «solo las cifras». Un nombre para cada cosa.
+            // `per_page`, como el resto de la API, y no `count`: dos ideas separadas por una
+            // letra de `counts`, que es «solo las cifras». Un nombre para cada cosa.
             'per_page' => 'nullable|integer|min:1|max:'.SnkKilkanaPublicService::PER_PAGE_MAX,
             'page' => 'nullable|integer|min:1|max:1000',
         ]);
@@ -44,13 +43,13 @@ class SnkKilkanaPublicController extends Controller
         // Los campos y las relaciones los lee el paquete de la query, dentro del techo que
         // declara el servicio. Aquí solo viajan los filtros de la calle, que sí se validan:
         // `q` con menos de dos letras recorre la tabla entera.
-        return response()->json(SnkKilkanaPostResource::collection($this->public->posts($data)));
+        return response()->json(SnkKilkanaPostResource::collection($this->street->posts($data)));
     }
 
     /** Una etiqueta por su slug: lo que `/tag/{slug}` necesita para rotularse. */
     public function tag(string $slug): JsonResponse
     {
-        $tag = $this->public->tag($slug);
+        $tag = $this->street->tag($slug);
 
         return $tag === null
             ? response()->json(['error' => 'Not found'], 404)
@@ -60,12 +59,12 @@ class SnkKilkanaPublicController extends Controller
     /** Todas las direcciones indexables del periódico, para el sitemap de la calle. */
     public function sitemap(): JsonResponse
     {
-        return response()->json($this->public->sitemap());
+        return response()->json($this->street->sitemap());
     }
 
     public function categories(): JsonResponse
     {
-        return response()->json(SnkKilkanaCategoryResource::collection($this->public->categories()));
+        return response()->json(SnkKilkanaCategoryResource::collection($this->street->categories()));
     }
 
     /**
@@ -82,7 +81,7 @@ class SnkKilkanaPublicController extends Controller
     {
         $data = $request->validate(['event' => 'required|in:open,read']);
 
-        return $this->public->recordView($year, $month, $day, $slug, $data['event'], $request)
+        return $this->street->recordView($year, $month, $day, $slug, $data['event'], $request)
             ? response()->json(['ok' => true], 202)
             : response()->json(['error' => 'Not found'], 404);
     }
@@ -90,7 +89,7 @@ class SnkKilkanaPublicController extends Controller
     /** Una sección, o la redirección si la URL pedida es una que dejó atrás. */
     public function category(string $slug): JsonResponse
     {
-        $category = $this->public->category($slug);
+        $category = $this->street->category($slug);
         if (is_string($category)) {
             return response()->json(['redirect_to' => $category]);
         }
@@ -110,7 +109,7 @@ class SnkKilkanaPublicController extends Controller
      */
     public function author(string $slug): JsonResponse
     {
-        $author = $this->public->author($slug);
+        $author = $this->street->author($slug);
         // Cadena = la firma cambió de URL y esta es la de ahora, igual que en `post()`.
         if (is_string($author)) {
             return response()->json(['redirect_to' => $author]);
@@ -124,7 +123,7 @@ class SnkKilkanaPublicController extends Controller
 
     public function post(string $year, string $month, string $day, string $slug): JsonResponse
     {
-        $post = $this->public->post($year, $month, $day, $slug);
+        $post = $this->street->post($year, $month, $day, $slug);
         if (is_string($post)) {
             return response()->json(['redirect_to' => $post]);
         }
@@ -137,17 +136,17 @@ class SnkKilkanaPublicController extends Controller
     /** La previa por enlace: la pieza entera si la firma vale y no ha caducado; si no, como si no existiera. */
     public function preview(Request $request, int $post): JsonResponse
     {
-        $pieza = $this->public->preview($post, (int) $request->query('until', '0'), (string) $request->query('sig', ''));
+        $post = $this->street->preview($post, (int) $request->query('until', '0'), (string) $request->query('sig', ''));
 
-        return $pieza
-            ? response()->json(new SnkKilkanaPostResource($pieza))
+        return $post
+            ? response()->json(new SnkKilkanaPostResource($post))
             : response()->json(['error' => 'Not found'], 404);
     }
 
     /** Comentarios aprobados de un artículo publicado (planos; parent_id arma el hilo). */
     public function comments(string $year, string $month, string $day, string $slug): JsonResponse
     {
-        $comments = $this->public->comments($year, $month, $day, $slug);
+        $comments = $this->street->comments($year, $month, $day, $slug);
 
         return $comments === null
             ? response()->json(['error' => 'Not found'], 404)
@@ -156,14 +155,14 @@ class SnkKilkanaPublicController extends Controller
 
     public function layout(string $layout): JsonResponse
     {
-        return response()->json($this->public->layout($layout));
+        return response()->json($this->street->layout($layout));
     }
 
     /** Alta pública al boletín: idempotente por email; el estado nace pending y sale el correo. */
     public function subscribe(Request $request): JsonResponse
     {
         $data = $request->validate(['email' => 'required|email|max:255']);
-        $this->public->subscribe($data['email'], $request);
+        $this->street->subscribe($data['email'], $request);
 
         // Respuesta uniforme exista o no: no revela si un email está suscrito.
         return response()->json(['ok' => true], 202);
@@ -180,7 +179,7 @@ class SnkKilkanaPublicController extends Controller
      */
     public function confirmSubscription(SnkKilkanaSubscriberModel $subscriber, Request $request): Response|RedirectResponse
     {
-        $this->public->confirm($subscriber, $request);
+        $this->street->confirm($subscriber, $request);
 
         return $this->subscriptionLanding('confirmed', 'Subscription confirmed. Thanks for reading.');
     }
@@ -188,7 +187,7 @@ class SnkKilkanaPublicController extends Controller
     /** Baja desde el enlace del correo. Idempotente: pulsar dos veces aterriza igual. */
     public function unsubscribe(SnkKilkanaSubscriberModel $subscriber, Request $request): Response|RedirectResponse
     {
-        $this->public->unsubscribe($subscriber);
+        $this->street->unsubscribe($subscriber);
         // Si el enlace venía dentro de un número, ese número se apunta la baja: es la cifra
         // que decide si el siguiente sale con el mismo tono.
         if ($request->query('issue') !== null && SnkKilkanaNewsletterIssueModel::query()->whereKey((int) $request->query('issue'))->exists()) {
@@ -217,10 +216,10 @@ class SnkKilkanaPublicController extends Controller
         if (SnkKilkanaNewsletterIssueModel::query()->whereKey($issue)->exists()) {
             SnkKilkanaNewsletterEventModel::record($issue, $subscriber, SnkKilkanaNewsletterEventModel::CLICK, $post);
         }
-        $pieza = SnkKilkanaPostModel::query()->published()->find($post);
+        $post = SnkKilkanaPostModel::query()->published()->find($post);
         $newsletter = app(SnkKilkanaNewsletterService::class);
 
-        return redirect()->away($pieza ? $newsletter->articleUrl($pieza) : $newsletter->siteUrl().'/');
+        return redirect()->away($post ? $newsletter->articleUrl($post) : $newsletter->siteUrl().'/');
     }
 
     /**
@@ -229,18 +228,18 @@ class SnkKilkanaPublicController extends Controller
      * Quien pulsa está en un navegador, así que un JSON sería una respuesta a la cara; y una
      * redirección a la nada es peor que una frase que confirma lo que acaba de pasar.
      */
-    private function subscriptionLanding(string $desenlace, string $mensaje): Response|RedirectResponse
+    private function subscriptionLanding(string $outcome, string $message): Response|RedirectResponse
     {
-        $destino = $this->public->subscriptionLanding($desenlace);
+        $target = $this->street->subscriptionLanding($outcome);
 
-        return $destino
-            ? redirect()->away($destino)
-            : response($mensaje)->header('Content-Type', 'text/plain; charset=utf-8');
+        return $target
+            ? redirect()->away($target)
+            : response($message)->header('Content-Type', 'text/plain; charset=utf-8');
     }
 
     /** Identidad + tema, lo mínimo para renderizar la salida pública. */
     public function site(): JsonResponse
     {
-        return response()->json($this->public->site());
+        return response()->json($this->street->site());
     }
 }

@@ -34,7 +34,7 @@ trait CoreInteractsWithPackageOptionSupport
         }
 
         if (!$hasClient || !$hasPackage) {
-            $this->fail('Un paquete anidado requiere --client Y --package (packages/<Client>/<Package>).');
+            $this->fail('A nested package requires --client AND --package (packages/<Client>/<Package>).');
         }
 
         $this->coreClientName = $this->coreStudlyName((string) $rawClient, 'client');
@@ -105,11 +105,11 @@ trait CoreInteractsWithPackageOptionSupport
         }
 
         if (!$hasClient) {
-            $options[] = ['client', null, InputOption::VALUE_REQUIRED, 'Cliente del paquete anidado (e.g. Acme). Requiere --package.'];
+            $options[] = ['client', null, InputOption::VALUE_REQUIRED, 'Client of the nested package (e.g. Acme). Requires --package.'];
         }
 
         if (!$hasPackage) {
-            $options[] = ['package', null, InputOption::VALUE_REQUIRED, 'Paquete dentro del cliente (e.g. Shop). Requiere --client.'];
+            $options[] = ['package', null, InputOption::VALUE_REQUIRED, 'Package inside the client (e.g. Shop). Requires --client.'];
         }
 
         return $options;

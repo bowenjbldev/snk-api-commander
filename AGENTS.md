@@ -63,6 +63,9 @@ multi-tenant. Antes de cambiar código, lee [el índice documental](docs/README.
 
 ## Convenciones
 
+- El código habla inglés y la prosa, español: identificadores y nombres de test en inglés,
+  comentarios y docs en español. Qué entra en cada lado, lo que no se renombra y cómo se traduce
+  están en [Idioma del código](docs/code-language.md).
 - La lógica vive en `src/packages`, no en `src/app`.
 - Namespace compartido Kilkana: `Packages\Kilkana`. Sus clases conservan el prefijo histórico
   `SnkKilkana*`.

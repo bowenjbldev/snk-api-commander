@@ -20,20 +20,20 @@ use PHPUnit\Framework\TestCase;
  */
 class SnkKilkanaPostWindowTest extends TestCase
 {
-    public function test_la_ventana_de_lecturas_solo_admite_siete_y_treinta(): void
+    public function test_the_reads_window_only_allows_seven_and_thirty(): void
     {
         $this->assertSame(7, SnkKilkanaPostService::readsWindow('7'));
         $this->assertSame(30, SnkKilkanaPostService::readsWindow(30));
 
-        foreach (['1000', 'banana', '0', '', null, '-7'] as $pedida) {
+        foreach (['1000', 'banana', '0', '', null, '-7'] as $requested) {
             $this->assertNull(
-                SnkKilkanaPostService::readsWindow($pedida),
-                'Lo que no es una de las dos ventanas es «desde siempre»: '.var_export($pedida, true),
+                SnkKilkanaPostService::readsWindow($requested),
+                'Lo que no es una de las dos ventanas es «desde siempre»: '.var_export($requested, true),
             );
         }
     }
 
-    public function test_las_claves_del_mapa_de_orden_son_el_vocabulario_de_sort(): void
+    public function test_the_sort_map_keys_are_the_sort_vocabulary(): void
     {
         $this->assertSame(['date', 'title', 'reads'], array_keys(SnkKilkanaPostService::SORTS));
         $this->assertSame('views_total', SnkKilkanaPostService::SORTS['reads'], 'El alias del `withSum`.');

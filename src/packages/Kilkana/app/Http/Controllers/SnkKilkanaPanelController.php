@@ -21,14 +21,14 @@ class SnkKilkanaPanelController extends Controller
 {
     public function __construct(private readonly SnkKilkanaPanelService $panel) {}
 
-    /** El armazón: los tres catálogos y las seis cifras del raíl, donde antes iban nueve llamadas. */
+    /** El armazón: los tres catálogos y las seis cifras del raíl, en una llamada y no en nueve. */
     public function bootstrap(): JsonResponse
     {
         return response()->json($this->panel->bootstrap());
     }
 
     /**
-     * El tablero, donde antes iban cinco.
+     * El tablero, en una llamada y no en cinco.
      *
      * `reads` es la ventana de «lo más leído», y se lee como en el listado editorial: solo
      * siete o treinta, y cualquier otra cosa cae a «desde siempre». Una ventana libre invita a
@@ -48,14 +48,14 @@ class SnkKilkanaPanelController extends Controller
      */
     public function locale(Request $request): JsonResponse
     {
-        $datos = $request->validate([
+        $data = $request->validate([
             'locale' => ['present', 'nullable', Rule::in(SnkKilkanaPanelService::PANEL_LOCALES)],
         ]);
 
-        $usuario = $request->user();
-        $usuario->panel_locale = $datos['locale'];
-        $usuario->save();
+        $user = $request->user();
+        $user->panel_locale = $data['locale'];
+        $user->save();
 
-        return response()->json(['locale' => $usuario->panel_locale]);
+        return response()->json(['locale' => $user->panel_locale]);
     }
 }

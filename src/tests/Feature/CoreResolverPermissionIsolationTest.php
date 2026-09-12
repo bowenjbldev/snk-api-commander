@@ -122,7 +122,7 @@ class CoreResolverPermissionIsolationTest extends TestCase
             $model->update([$column => $blocked]);
             try {
                 $read();
-                $this->fail('A stale registry entry was routed.');
+                $this->fail('Se ha enrutado una entrada del registro que ya no es válida.');
             } catch (NotFoundHttpException $error) {
                 $this->assertSame(404, $error->getStatusCode());
             }

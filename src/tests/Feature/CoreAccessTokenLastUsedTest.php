@@ -40,7 +40,7 @@ class CoreAccessTokenLastUsedTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_una_marca_de_hace_menos_de_un_minuto_no_se_reescribe(): void
+    public function test_a_stamp_under_a_minute_old_is_not_rewritten(): void
     {
         $this->markLastUsed('2026-09-06 11:59:30');
         $this->authenticate();
@@ -48,7 +48,7 @@ class CoreAccessTokenLastUsedTest extends TestCase
         $this->assertSame('2026-09-06 11:59:30', $this->lastUsed());
     }
 
-    public function test_una_marca_de_hace_mas_de_un_minuto_se_reescribe(): void
+    public function test_a_stamp_over_a_minute_old_is_rewritten(): void
     {
         $this->markLastUsed('2026-09-06 11:58:00');
         $this->authenticate();
@@ -56,7 +56,7 @@ class CoreAccessTokenLastUsedTest extends TestCase
         $this->assertSame('2026-09-06 12:00:00', $this->lastUsed());
     }
 
-    public function test_la_primera_marca_siempre_se_escribe(): void
+    public function test_the_first_stamp_is_always_written(): void
     {
         $this->authenticate();
 

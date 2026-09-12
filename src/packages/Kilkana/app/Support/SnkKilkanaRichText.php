@@ -30,11 +30,10 @@ class SnkKilkanaRichText
     /**
      * Recorre body_blocks y sanea el `config.html` de cualquier bloque que lo traiga.
      *
-     * **Por tener HTML, no por ser de un tipo.** Antes solo miraba el bloque de texto, y eso
-     * ataba la seguridad al vocabulario: el dia que el editor compone una cita, un recuadro de
-     * datos o un intertitulo con marcado, ese HTML entraba sin pasar por aqui y nadie lo veia
-     * hasta que alguien lo emitiera. Saneando por presencia del campo, un tipo nuevo nace
-     * cubierto.
+     * **Por tener HTML, no por ser de un tipo.** Mirar solo el bloque de texto ataria la
+     * seguridad al vocabulario: el dia que el editor compone una cita, un recuadro de datos o
+     * un intertitulo con marcado, ese HTML entraria sin pasar por aqui. Saneando por presencia
+     * del campo, un tipo nuevo nace cubierto.
      */
     public static function cleanBlocks(?array $blocks): ?array
     {

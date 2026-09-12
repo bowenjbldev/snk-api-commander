@@ -34,12 +34,12 @@ class SnkKilkanaNewsletterEventModel extends Model
     public static function record(int $issueId, int $subscriberId, string $kind, int $postId = 0): bool
     {
         try {
-            $fila = self::query()->firstOrCreate(
+            $row = self::query()->firstOrCreate(
                 ['issue_id' => $issueId, 'subscriber_id' => $subscriberId, 'kind' => $kind, 'post_id' => $postId],
                 ['created_at' => now()],
             );
 
-            return $fila->wasRecentlyCreated;
+            return $row->wasRecentlyCreated;
         } catch (QueryException) {
             return false;
         }

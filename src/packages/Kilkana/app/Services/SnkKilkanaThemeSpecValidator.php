@@ -178,21 +178,21 @@ class SnkKilkanaThemeSpecValidator
         $version = $spec['specVersion'] ?? null;
         if ($version !== self::SPEC_VERSION) {
             return [sprintf(
-                'specVersion: se esperaba %d y llegó %s. Un tema de otra versión no se interpreta, se migra',
+                'specVersion: expected %d and got %s. A theme from another version is not interpreted, it is migrated',
                 self::SPEC_VERSION,
-                is_scalar($version) ? var_export($version, true) : 'nada'
+                is_scalar($version) ? var_export($version, true) : 'nothing'
             )];
         }
 
-        $errores = [];
+        $errors = [];
 
         if (! in_array($spec['masthead'] ?? null, self::MASTHEADS, true)) {
-            $errores[] = 'masthead: debe ser uno de '.implode(', ', self::MASTHEADS);
+            $errors[] = 'masthead: must be one of '.implode(', ', self::MASTHEADS);
         }
 
         $tokens = $this->arr($spec, 'tokens');
-        $errores = [
-            ...$errores,
+        $errors = [
+            ...$errors,
             ...$this->checkTokens($tokens),
             ...$this->checkGrid($this->arr($spec, 'grid')),
             ...$this->checkType($this->arr($spec, 'type')),
@@ -204,33 +204,33 @@ class SnkKilkanaThemeSpecValidator
 
         // El contraste va al final y solo si los colores son válidos: un hex mal escrito ya se
         // reportó arriba y calcular su luminancia solo añadiría ruido sobre el mismo fallo.
-        $colorRoto = array_filter($errores, fn (string $e) => str_starts_with($e, 'tokens.'));
-        if ($colorRoto === []) {
-            $errores = [...$errores, ...$this->checkContrast($tokens)];
+        $brokenColours = array_filter($errors, fn (string $e) => str_starts_with($e, 'tokens.'));
+        if ($brokenColours === []) {
+            $errors = [...$errors, ...$this->checkContrast($tokens)];
         }
 
-        return array_values($errores);
+        return array_values($errors);
     }
 
     private function checkTokens(array $tokens): array
     {
-        $errores = [];
+        $errors = [];
 
-        foreach (SnkKilkanaSettingModel::COLOR_KEYS as $clave) {
-            if (! $this->isHex($tokens[$clave] ?? null)) {
-                $errores[] = "tokens.{$clave}: falta o no es un hex de seis dígitos";
+        foreach (SnkKilkanaSettingModel::COLOR_KEYS as $key) {
+            if (! $this->isHex($tokens[$key] ?? null)) {
+                $errors[] = "tokens.{$key}: missing or not a six-digit hex";
             }
         }
 
-        $errores = [...$errores, ...$this->checkPx($tokens['pageRadius'] ?? null, 'tokens.pageRadius', 'pageRadius')];
+        $errors = [...$errors, ...$this->checkPx($tokens['pageRadius'] ?? null, 'tokens.pageRadius', 'pageRadius')];
 
         // El marco es opcional —lo tiene El Chapuzas, que compone sobre un fondo oscuro— y si
         // viene tiene que ser un color de verdad, no una clave del tema: pinta fuera de la hoja.
         if (array_key_exists('frame', $tokens) && ! $this->isHex($tokens['frame'])) {
-            $errores[] = 'tokens.frame: no es un hex de seis dígitos';
+            $errors[] = 'tokens.frame: not a six-digit hex';
         }
 
-        return $errores;
+        return $errors;
     }
 
     /**
@@ -243,31 +243,31 @@ class SnkKilkanaThemeSpecValidator
     private function checkGrid(array $grid): array
     {
         if ($grid === []) {
-            return ['grid: falta'];
+            return ['grid: missing'];
         }
 
-        $errores = [];
+        $errors = [];
 
         if (! $this->inRange($grid['sheet'] ?? null, 'sheet')) {
-            $errores[] = 'grid.sheet: entre 320 y 1600 px';
+            $errors[] = 'grid.sheet: between 320 and 1600 px';
         }
 
-        $tieneColumnas = is_int($grid['columns'] ?? null);
-        $tieneTracks = is_array($grid['tracks'] ?? null);
+        $hasColumns = is_int($grid['columns'] ?? null);
+        $hasTracks = is_array($grid['tracks'] ?? null);
 
-        if ($tieneColumnas === $tieneTracks) {
-            $errores[] = 'grid: declara `columns` O `tracks`, exactamente uno';
+        if ($hasColumns === $hasTracks) {
+            $errors[] = 'grid: declare `columns` OR `tracks`, exactly one';
         }
-        if ($tieneColumnas && ! $this->inRange($grid['columns'], 'columns')) {
-            $errores[] = 'grid.columns: entre 1 y 24';
+        if ($hasColumns && ! $this->inRange($grid['columns'], 'columns')) {
+            $errors[] = 'grid.columns: between 1 and 24';
         }
-        if ($tieneTracks) {
+        if ($hasTracks) {
             if ($grid['tracks'] === []) {
-                $errores[] = 'grid.tracks: no puede ir vacío';
+                $errors[] = 'grid.tracks: cannot be empty';
             }
-            foreach ($grid['tracks'] as $ancho) {
-                if (! $this->inRange($ancho, 'sheet')) {
-                    $errores[] = 'grid.tracks: anchos en px';
+            foreach ($grid['tracks'] as $width) {
+                if (! $this->inRange($width, 'sheet')) {
+                    $errors[] = 'grid.tracks: widths in px';
 
                     break;
                 }
@@ -275,99 +275,99 @@ class SnkKilkanaThemeSpecValidator
         }
 
         $n = $this->gridSize($grid);
-        $calle = $grid['gutter'] ?? null;
+        $gutters = $grid['gutter'] ?? null;
 
-        if (is_array($calle)) {
+        if (is_array($gutters)) {
             // Un medianil por calle: ¡HOLA! usa 32 px dentro de la hoja estrecha y 48 en la ancha.
-            $esperadas = max(0, $n - 1);
-            if (count($calle) !== $esperadas) {
-                $errores[] = "grid.gutter: {$esperadas} calles para {$n} columnas";
+            $expected = max(0, $n - 1);
+            if (count($gutters) !== $expected) {
+                $errors[] = "grid.gutter: {$expected} gutters for {$n} columns";
             }
-            foreach ($calle as $ancho) {
-                if (! $this->inRange($ancho, 'gutter')) {
-                    $errores[] = 'grid.gutter: entre 0 y 80 px';
+            foreach ($gutters as $width) {
+                if (! $this->inRange($width, 'gutter')) {
+                    $errors[] = 'grid.gutter: between 0 and 80 px';
 
                     break;
                 }
             }
-        } elseif (! $this->inRange($calle, 'gutter')) {
-            $errores[] = 'grid.gutter: entre 0 y 80 px';
+        } elseif (! $this->inRange($gutters, 'gutter')) {
+            $errors[] = 'grid.gutter: between 0 and 80 px';
         }
 
         // El filete vertical del medianil: tres de trece lo tienen y es media identidad
         // «periódico». Nulo es no tenerlo, que es lo normal.
-        $filete = $grid['rule'] ?? null;
-        if (is_array($filete)) {
-            if (! $this->inRange($filete['width'] ?? null, 'gutter')) {
-                $errores[] = 'grid.rule.width: en px';
+        $rule = $grid['rule'] ?? null;
+        if (is_array($rule)) {
+            if (! $this->inRange($rule['width'] ?? null, 'gutter')) {
+                $errors[] = 'grid.rule.width: in px';
             }
-            if (! $this->isColor($filete['color'] ?? null)) {
-                $errores[] = 'grid.rule.color: hex o clave del tema';
+            if (! $this->isColor($rule['color'] ?? null)) {
+                $errors[] = 'grid.rule.color: hex or theme key';
             }
-            if (! in_array($filete['style'] ?? null, ['solid', 'dashed', 'dotted'], true)) {
-                $errores[] = 'grid.rule.style: solid, dashed o dotted';
+            if (! in_array($rule['style'] ?? null, ['solid', 'dashed', 'dotted'], true)) {
+                $errors[] = 'grid.rule.style: solid, dashed or dotted';
             }
         }
 
-        return $errores;
+        return $errors;
     }
 
     private function checkType(array $type): array
     {
         if ($type === []) {
-            return ['type: falta'];
+            return ['type: missing'];
         }
 
-        $errores = [];
+        $errors = [];
 
-        foreach (['display', 'text'] as $clave) {
-            if (! is_string($type[$clave] ?? null) || trim($type[$clave]) === '') {
-                $errores[] = "type.{$clave}: falta la familia";
+        foreach (['display', 'text'] as $key) {
+            if (! is_string($type[$key] ?? null) || trim($type[$key]) === '') {
+                $errors[] = "type.{$key}: missing font family";
             }
         }
 
-        $peldanos = is_array($type['steps'] ?? null) ? $type['steps'] : [];
+        $steps = is_array($type['steps'] ?? null) ? $type['steps'] : [];
 
-        foreach (self::TYPE_STEPS as $nombre) {
-            $peldano = $peldanos[$nombre] ?? null;
-            if (! is_array($peldano)) {
-                $errores[] = "type.steps.{$nombre}: falta";
+        foreach (self::TYPE_STEPS as $name) {
+            $step = $steps[$name] ?? null;
+            if (! is_array($step)) {
+                $errors[] = "type.steps.{$name}: missing";
 
                 continue;
             }
 
-            $donde = "type.steps.{$nombre}";
+            $where = "type.steps.{$name}";
 
-            if (! $this->inRange($peldano['size'] ?? null, 'size')) {
-                $errores[] = "{$donde}.size: entre 8 y 120 px";
+            if (! $this->inRange($step['size'] ?? null, 'size')) {
+                $errors[] = "{$where}.size: between 8 and 120 px";
             }
 
-            $peso = $peldano['weight'] ?? null;
-            if (! $this->inRange($peso, 'weight') || $peso % 100 !== 0) {
-                $errores[] = "{$donde}.weight: centenas entre 100 y 900";
+            $weight = $step['weight'] ?? null;
+            if (! $this->inRange($weight, 'weight') || $weight % 100 !== 0) {
+                $errors[] = "{$where}.weight: hundreds between 100 and 900";
             }
 
-            if (! $this->inRange($peldano['leading'] ?? null, 'leading')) {
-                $errores[] = "{$donde}.leading: entre 0.9 y 2";
+            if (! $this->inRange($step['leading'] ?? null, 'leading')) {
+                $errors[] = "{$where}.leading: between 0.9 and 2";
             }
 
-            $errores = [...$errores, ...$this->checkEm($peldano['tracking'] ?? null, "{$donde}.tracking")];
+            $errors = [...$errors, ...$this->checkEm($step['tracking'] ?? null, "{$where}.tracking")];
 
-            if (array_key_exists('color', $peldano) && ! $this->isColor($peldano['color'])) {
-                $errores[] = "{$donde}.color: hex o clave del tema";
+            if (array_key_exists('color', $step) && ! $this->isColor($step['color'])) {
+                $errors[] = "{$where}.color: hex or theme key";
             }
         }
 
         // Sin esto, un tema puede declarar la apertura más pequeña que la tarjeta y no se ve
         // hasta abrir la portada. El Chapuzas las tiene IGUALES a propósito —eso vale—, pero
         // una apertura menor que su tarjeta es siempre un error de tecleo.
-        $apertura = $peldanos['hero']['size'] ?? null;
-        $tarjeta = $peldanos['card']['size'] ?? null;
-        if (is_numeric($apertura) && is_numeric($tarjeta) && $apertura < $tarjeta) {
-            $errores[] = "type.steps.hero: {$apertura}px es menor que la tarjeta ({$tarjeta}px)";
+        $lead = $steps['hero']['size'] ?? null;
+        $card = $steps['card']['size'] ?? null;
+        if (is_numeric($lead) && is_numeric($card) && $lead < $card) {
+            $errors[] = "type.steps.hero: {$lead}px is smaller than the card ({$card}px)";
         }
 
-        return $errores;
+        return $errors;
     }
 
     /**
@@ -379,39 +379,39 @@ class SnkKilkanaThemeSpecValidator
      */
     private function checkMedia(array $media): array
     {
-        $errores = [];
+        $errors = [];
 
-        foreach (self::RATIO_KEYS as $clave) {
-            $valor = $media[$clave] ?? null;
-            if (! is_string($valor) || ! preg_match('/^\d+(\.\d+)?\/\d+(\.\d+)?$/', $valor)) {
-                $errores[] = "media.{$clave}: falta o no tiene forma «ancho/alto»";
+        foreach (self::RATIO_KEYS as $key) {
+            $value = $media[$key] ?? null;
+            if (! is_string($value) || ! preg_match('/^\d+(\.\d+)?\/\d+(\.\d+)?$/', $value)) {
+                $errors[] = "media.{$key}: missing or not in «width/height» form";
             }
         }
 
-        return $errores;
+        return $errors;
     }
 
     /** El aire, en px y como número: la unidad la pone quien emite el CSS, no el tema. */
     private function checkDensity(array $density): array
     {
         if ($density === []) {
-            return ['density: falta'];
+            return ['density: missing'];
         }
 
-        $errores = [];
+        $errors = [];
 
-        foreach (['rowGap', 'blockGap'] as $clave) {
-            if (! $this->inRange($density[$clave] ?? null, 'gap')) {
-                $errores[] = "density.{$clave}: entre 0 y 240 px";
+        foreach (['rowGap', 'blockGap'] as $key) {
+            if (! $this->inRange($density[$key] ?? null, 'gap')) {
+                $errors[] = "density.{$key}: between 0 and 240 px";
             }
         }
-        foreach (['padX', 'padY'] as $clave) {
-            if (! $this->inRange($density[$clave] ?? null, 'pad')) {
-                $errores[] = "density.{$clave}: entre 0 y 80 px";
+        foreach (['padX', 'padY'] as $key) {
+            if (! $this->inRange($density[$key] ?? null, 'pad')) {
+                $errors[] = "density.{$key}: between 0 and 80 px";
             }
         }
 
-        return $errores;
+        return $errors;
     }
 
     /**
@@ -422,23 +422,23 @@ class SnkKilkanaThemeSpecValidator
      */
     private function checkChrome(array $chrome): array
     {
-        $errores = [];
+        $errors = [];
 
-        foreach (['kicker' => 3, 'card' => 5] as $grupo => $minimo) {
-            $mapa = $chrome[$grupo] ?? null;
-            if (! is_array($mapa) || count($mapa) < $minimo) {
-                $errores[] = "chrome.{$grupo}: faltan claves (se esperan {$minimo})";
+        foreach (['kicker' => 3, 'card' => 5] as $group => $minimum) {
+            $map = $chrome[$group] ?? null;
+            if (! is_array($map) || count($map) < $minimum) {
+                $errors[] = "chrome.{$group}: missing keys (expected {$minimum})";
 
                 continue;
             }
-            foreach ($mapa as $clave => $valor) {
-                if (! is_string($valor)) {
-                    $errores[] = "chrome.{$grupo}.{$clave}: debe ser una cadena CSS";
+            foreach ($map as $key => $value) {
+                if (! is_string($value)) {
+                    $errors[] = "chrome.{$group}.{$key}: must be a CSS string";
                 }
             }
         }
 
-        return $errores;
+        return $errors;
     }
 
     /**
@@ -451,128 +451,128 @@ class SnkKilkanaThemeSpecValidator
      */
     private function checkLayouts(array $spec): array
     {
-        $errores = [];
+        $errors = [];
         // Los que una redacción compone, y por tanto los que la base guarda.
-        $obligatorios = SnkKilkanaLayoutEnum::values();
+        $required = SnkKilkanaLayoutEnum::values();
         // Más el de arranque, que es del TEMA y no se guarda: sirve para que un periódico
         // recién montado no reciba una composición con más huecos vacíos que artículos, y
         // en cuanto se aplica deja de existir. Por eso no está en el enum.
-        $conocidos = [...$obligatorios, 'starter'];
+        $known = [...$required, 'starter'];
         $total = $this->gridSize($this->arr($spec, 'grid'));
         $layouts = $this->arr($spec, 'layouts');
 
-        foreach ($obligatorios as $documento) {
-            if (! is_array($layouts[$documento] ?? null)) {
-                $errores[] = "layouts.{$documento}: falta la plantilla de arranque";
+        foreach ($required as $layout) {
+            if (! is_array($layouts[$layout] ?? null)) {
+                $errors[] = "layouts.{$layout}: missing the starter template";
             }
         }
 
-        foreach ($layouts as $documento => $filas) {
-            if (! in_array($documento, $conocidos, true)) {
-                $errores[] = "layouts.{$documento}: no es un documento componible";
+        foreach ($layouts as $layout => $rows) {
+            if (! in_array($layout, $known, true)) {
+                $errors[] = "layouts.{$layout}: not a composable document";
 
                 continue;
             }
 
             // El presupuesto se cuenta mientras se recorre, que es el único recorrido que hay:
             // contarlo aparte sería recorrer dos veces lo mismo para decir lo mismo.
-            $bloques = 0;
-            $fotos = 0;
-            $pliegue = 0;
+            $blocks = 0;
+            $photos = 0;
+            $aboveFold = 0;
 
-            foreach ((array) $filas as $i => $fila) {
-                $donde = "layouts.{$documento}[{$i}]";
-                $columnas = is_array($fila) && is_array($fila['cols'] ?? null) ? $fila['cols'] : [];
+            foreach ((array) $rows as $i => $row) {
+                $where = "layouts.{$layout}[{$i}]";
+                $columns = is_array($row) && is_array($row['cols'] ?? null) ? $row['cols'] : [];
 
-                if ($columnas === []) {
-                    $errores[] = "{$donde}: una fila necesita al menos una columna";
+                if ($columns === []) {
+                    $errors[] = "{$where}: a row needs at least one column";
 
                     continue;
                 }
 
                 // La suma tiene que cuadrar: una fila que no llena la rejilla deja un hueco que
                 // nadie pidió, y una que se pasa desborda la hoja sin aviso.
-                $suma = array_sum(array_map(fn ($c) => is_array($c) ? ($c['span'] ?? 0) : 0, $columnas));
-                if ($total > 0 && $suma !== $total) {
-                    $errores[] = "{$donde}: los span suman {$suma} y la rejilla tiene {$total}";
+                $sum = array_sum(array_map(fn ($c) => is_array($c) ? ($c['span'] ?? 0) : 0, $columns));
+                if ($total > 0 && $sum !== $total) {
+                    $errors[] = "{$where}: the spans add up to {$sum} and the grid has {$total}";
                 }
 
-                foreach ($columnas as $columna) {
-                    $lista = is_array($columna) && is_array($columna['blocks'] ?? null) ? $columna['blocks'] : [];
-                    if ($lista === []) {
-                        $errores[] = "{$donde}: una columna necesita al menos un bloque";
+                foreach ($columns as $column) {
+                    $columnBlocks = is_array($column) && is_array($column['blocks'] ?? null) ? $column['blocks'] : [];
+                    if ($columnBlocks === []) {
+                        $errors[] = "{$where}: a column needs at least one block";
 
                         continue;
                     }
 
-                    foreach ($lista as $bloque) {
-                        $tipo = is_array($bloque) ? ($bloque['type'] ?? null) : null;
-                        if (! in_array($tipo, self::BLOCK_TYPES, true)) {
-                            $errores[] = "{$donde}: «".(is_scalar($tipo) ? $tipo : '?').'» no es un bloque del editor';
+                    foreach ($columnBlocks as $block) {
+                        $blockType = is_array($block) ? ($block['type'] ?? null) : null;
+                        if (! in_array($blockType, self::BLOCK_TYPES, true)) {
+                            $errors[] = "{$where}: «".(is_scalar($blockType) ? $blockType : '?').'» is not an editor block';
 
                             continue;
                         }
 
-                        $bloques++;
-                        $n = $this->imagesIn($bloque);
-                        $fotos += $n;
+                        $blocks++;
+                        $n = $this->imagesIn($block);
+                        $photos += $n;
                         // Las dos primeras bandas son lo que se ve sin desplazar, y ahí está el
                         // LCP: lo que cargue por encima del pliegue compite con él.
                         if ($i < 2) {
-                            $pliegue += $n;
+                            $aboveFold += $n;
                         }
 
-                        $errores = [
-                            ...$errores,
+                        $errors = [
+                            ...$errors,
                             ...$this->checkSection(
-                                $bloque['config']['data']['section'] ?? null,
-                                "{$donde}.blocks.data.section"
+                                $block['config']['data']['section'] ?? null,
+                                "{$where}.blocks.data.section"
                             ),
-                            ...$this->checkMin($bloque, $donde),
+                            ...$this->checkMin($block, $where),
                         ];
                     }
                 }
 
-                $errores = [...$errores, ...$this->checkSection($fila['section'] ?? null, "{$donde}.section")];
+                $errors = [...$errors, ...$this->checkSection($row['section'] ?? null, "{$where}.section")];
 
-                $rotulo = is_array($fila['header'] ?? null) ? $fila['header'] : null;
-                if ($rotulo !== null) {
+                $header = is_array($row['header'] ?? null) ? $row['header'] : null;
+                if ($header !== null) {
                     // Un rótulo derivado necesita de dónde derivarlo. En el documento de
                     // sección la fuente es la que se estrena; en la portada la declara la fila,
                     // o el rótulo sale vacío y la banda pierde la mitad de lo que la separa de
                     // la de al lado.
-                    if (($rotulo['from'] ?? null) === 'section') {
-                        if ($documento !== 'section' && ! isset($fila['section'])) {
-                            $errores[] = "{$donde}.header: deriva de la sección y la fila no declara ninguna";
+                    if (($header['from'] ?? null) === 'section') {
+                        if ($layout !== 'section' && ! isset($row['section'])) {
+                            $errors[] = "{$where}.header: derives from the section and the row declares none";
                         }
-                    } elseif (trim((string) ($rotulo['text'] ?? '')) === '') {
-                        $errores[] = "{$donde}.header: el rótulo no puede ir vacío";
+                    } elseif (trim((string) ($header['text'] ?? '')) === '') {
+                        $errors[] = "{$where}.header: the label cannot be empty";
                     }
                 }
 
-                foreach ((array) ($fila['skin'] ?? []) as $clave => $valor) {
-                    if ($clave !== 'bleed' && ! $this->isColor($valor)) {
-                        $errores[] = "{$donde}.skin.{$clave}: hex o clave del tema";
+                foreach ((array) ($row['skin'] ?? []) as $key => $value) {
+                    if ($key !== 'bleed' && ! $this->isColor($value)) {
+                        $errors[] = "{$where}.skin.{$key}: hex or theme key";
                     }
                 }
             }
 
-            $errores = [
-                ...$errores,
-                ...$this->overBudget($documento, 'bandas', count((array) $filas), 'bands', 'DOM size'),
-                ...$this->overBudget($documento, 'bloques', $bloques, 'blocks', 'DOM size y TBT'),
-                ...$this->overBudget($documento, 'fotos', $fotos, 'images', 'peso de la página'),
-                ...$this->overBudget($documento, 'fotos por encima del pliegue', $pliegue, 'fold', 'LCP'),
+            $errors = [
+                ...$errors,
+                ...$this->overBudget($layout, 'bands', count((array) $rows), 'bands', 'DOM size'),
+                ...$this->overBudget($layout, 'blocks', $blocks, 'blocks', 'DOM size and TBT'),
+                ...$this->overBudget($layout, 'photos', $photos, 'images', 'page weight'),
+                ...$this->overBudget($layout, 'photos above the fold', $aboveFold, 'fold', 'LCP'),
             ];
         }
 
-        return $errores;
+        return $errors;
     }
 
-    private function overBudget(string $documento, string $que, int $tiene, string $tope, string $metrica): array
+    private function overBudget(string $layout, string $what, int $count, string $cap, string $metric): array
     {
-        return $tiene > self::BUDGET[$tope]
-            ? ["layouts.{$documento}: {$que} {$tiene}, el presupuesto es ".self::BUDGET[$tope]." ({$metrica})"]
+        return $count > self::BUDGET[$cap]
+            ? ["layouts.{$layout}: {$what} {$count}, the budget is ".self::BUDGET[$cap]." ({$metric})"]
             : [];
     }
 
@@ -585,7 +585,7 @@ class SnkKilkanaThemeSpecValidator
      * sección viva, en el orden del menú del propio periódico, y un menú no llega a
      * veinticuatro entradas.
      */
-    private function checkSection(mixed $ref, string $donde): array
+    private function checkSection(mixed $ref, string $where): array
     {
         if ($ref === null) {
             return [];
@@ -595,7 +595,7 @@ class SnkKilkanaThemeSpecValidator
 
         return is_int($nth) && $this->inRange($nth, 'columns')
             ? []
-            : ["{$donde}.nth: entero entre 1 y 24, uno-indexado"];
+            : ["{$where}.nth: integer between 1 and 24, one-indexed"];
     }
 
     /**
@@ -607,60 +607,60 @@ class SnkKilkanaThemeSpecValidator
      * por omisión es una, que es lo que hace que el primer artículo de un periódico salga en
      * portada.
      */
-    private function checkMin(array $bloque, string $donde): array
+    private function checkMin(array $block, string $where): array
     {
-        $min = $bloque['config']['min'] ?? null;
+        $min = $block['config']['min'] ?? null;
         if ($min === null) {
             return [];
         }
 
-        $rango = self::BLOCK_SLOTS[$bloque['type']] ?? null;
-        $piezas = 0;
-        if ($rango !== null) {
-            [$tope, $base] = $rango;
-            $pedidas = $bloque['config']['data']['count'] ?? null;
-            $piezas = is_int($pedidas) && $pedidas > 0 ? min($pedidas, $tope) : $base;
+        $range = self::BLOCK_SLOTS[$block['type']] ?? null;
+        $posts = 0;
+        if ($range !== null) {
+            [$cap, $base] = $range;
+            $requested = $block['config']['data']['count'] ?? null;
+            $posts = is_int($requested) && $requested > 0 ? min($requested, $cap) : $base;
         }
 
-        return is_int($min) && $min >= 1 && $min <= $piezas
+        return is_int($min) && $min >= 1 && $min <= $posts
             ? []
-            : ["{$donde}: «{$bloque['type']}» pide un mínimo de {$min} y dibuja {$piezas} piezas"];
+            : ["{$where}: «{$block['type']}» asks for a minimum of {$min} and draws {$posts} posts"];
     }
 
     /** Cuántas fotos dibuja un bloque, con lo que el tema haya pedido encima. */
-    private function imagesIn(array $bloque): int
+    private function imagesIn(array $block): int
     {
-        $rango = self::BLOCK_IMAGES[$bloque['type']] ?? null;
-        if ($rango === null) {
+        $range = self::BLOCK_IMAGES[$block['type']] ?? null;
+        if ($range === null) {
             return 0;
         }
 
-        $config = is_array($bloque['config'] ?? null) ? $bloque['config'] : [];
+        $config = is_array($block['config'] ?? null) ? $block['config'] : [];
         if (($config['photo'] ?? null) === false) {
             return 0;
         }
 
-        [$tope, $base] = $rango;
-        $pedidas = is_array($config['data'] ?? null) ? ($config['data']['count'] ?? null) : null;
+        [$cap, $base] = $range;
+        $requested = is_array($config['data'] ?? null) ? ($config['data']['count'] ?? null) : null;
 
-        return is_int($pedidas) && $pedidas > 0 ? min($pedidas, $tope) : $base;
+        return is_int($requested) && $requested > 0 ? min($requested, $cap) : $base;
     }
 
     private function checkContrast(array $tokens): array
     {
-        $errores = [];
+        $errors = [];
 
-        foreach (self::CONTRAST_PAIRS as [$frente, $fondo]) {
-            $ratio = $this->contrast((string) $tokens[$frente], (string) $tokens[$fondo]);
+        foreach (self::CONTRAST_PAIRS as [$foreground, $background]) {
+            $ratio = $this->contrast((string) $tokens[$foreground], (string) $tokens[$background]);
             if ($ratio < self::AA_RATIO) {
-                $errores[] = sprintf(
-                    'contraste %s sobre %s: %.2f:1, por debajo del mínimo AA de %.1f:1 (%s / %s)',
-                    $frente, $fondo, $ratio, self::AA_RATIO, $tokens[$frente], $tokens[$fondo]
+                $errors[] = sprintf(
+                    'contrast %s on %s: %.2f:1, below the AA minimum of %.1f:1 (%s / %s)',
+                    $foreground, $background, $ratio, self::AA_RATIO, $tokens[$foreground], $tokens[$background]
                 );
             }
         }
 
-        return $errores;
+        return $errors;
     }
 
     /** Ratio de contraste WCAG 2.x entre dos colores. */
@@ -668,23 +668,23 @@ class SnkKilkanaThemeSpecValidator
     {
         $la = $this->luminance($a);
         $lb = $this->luminance($b);
-        [$claro, $oscuro] = $la >= $lb ? [$la, $lb] : [$lb, $la];
+        [$lighter, $darker] = $la >= $lb ? [$la, $lb] : [$lb, $la];
 
-        return ($claro + 0.05) / ($oscuro + 0.05);
+        return ($lighter + 0.05) / ($darker + 0.05);
     }
 
     /** Luminancia relativa WCAG: cada canal se linealiza antes de pesarlo. */
     private function luminance(string $hex): float
     {
         $hex = ltrim($hex, '#');
-        $canales = [];
+        $channels = [];
 
-        foreach ([0, 2, 4] as $desplazamiento) {
-            $valor = hexdec(substr($hex, $desplazamiento, 2)) / 255;
-            $canales[] = $valor <= 0.03928 ? $valor / 12.92 : (($valor + 0.055) / 1.055) ** 2.4;
+        foreach ([0, 2, 4] as $offset) {
+            $value = hexdec(substr($hex, $offset, 2)) / 255;
+            $channels[] = $value <= 0.03928 ? $value / 12.92 : (($value + 0.055) / 1.055) ** 2.4;
         }
 
-        return 0.2126 * $canales[0] + 0.7152 * $canales[1] + 0.0722 * $canales[2];
+        return 0.2126 * $channels[0] + 0.7152 * $channels[1] + 0.0722 * $channels[2];
     }
 
     /** Cuántas columnas tiene esta rejilla, venga por `columns` o por `tracks`. */
@@ -697,61 +697,61 @@ class SnkKilkanaThemeSpecValidator
         return is_int($grid['columns'] ?? null) ? $grid['columns'] : 0;
     }
 
-    private function arr(array $fuente, string $clave): array
+    private function arr(array $source, string $key): array
     {
-        return is_array($fuente[$clave] ?? null) ? $fuente[$clave] : [];
+        return is_array($source[$key] ?? null) ? $source[$key] : [];
     }
 
-    private function isHex(mixed $valor): bool
+    private function isHex(mixed $value): bool
     {
-        return is_string($valor) && preg_match('/^#[0-9a-f]{6}$/i', $valor) === 1;
+        return is_string($value) && preg_match('/^#[0-9a-f]{6}$/i', $value) === 1;
     }
 
     /** Un color del tema puede escribirse en hex o nombrando una clave de `tokens`. */
-    private function isColor(mixed $valor): bool
+    private function isColor(mixed $value): bool
     {
-        return $this->isHex($valor)
-            || (is_string($valor) && in_array($valor, SnkKilkanaSettingModel::COLOR_KEYS, true));
+        return $this->isHex($value)
+            || (is_string($value) && in_array($value, SnkKilkanaSettingModel::COLOR_KEYS, true));
     }
 
-    private function inRange(mixed $valor, string $rango): bool
+    private function inRange(mixed $value, string $range): bool
     {
-        if (! is_int($valor) && ! is_float($valor)) {
+        if (! is_int($value) && ! is_float($value)) {
             return false;
         }
 
-        [$min, $max] = self::RANGES[$rango];
+        [$min, $max] = self::RANGES[$range];
 
-        return $valor >= $min && $valor <= $max;
+        return $value >= $min && $value <= $max;
     }
 
     /** Un número seguido de `px`, dentro del rango declarado. */
-    private function checkPx(mixed $valor, string $donde, string $rango): array
+    private function checkPx(mixed $value, string $where, string $range): array
     {
-        if (! is_string($valor) || ! preg_match('/^(-?\d+(?:\.\d+)?)px$/', $valor, $partes)) {
-            return ["{$donde}: falta o no es un número seguido de px"];
+        if (! is_string($value) || ! preg_match('/^(-?\d+(?:\.\d+)?)px$/', $value, $parts)) {
+            return ["{$where}: missing or not a number followed by px"];
         }
 
-        [$min, $max] = self::RANGES[$rango];
-        $numero = (float) $partes[1];
+        [$min, $max] = self::RANGES[$range];
+        $number = (float) $parts[1];
 
-        return $numero < $min || $numero > $max
-            ? ["{$donde}: {$valor} fuera de {$min}px–{$max}px"]
+        return $number < $min || $number > $max
+            ? ["{$where}: {$value} outside {$min}px–{$max}px"]
             : [];
     }
 
     /** Un número seguido de `em`, dentro del rango de tracking. */
-    private function checkEm(mixed $valor, string $donde): array
+    private function checkEm(mixed $value, string $where): array
     {
-        if (! is_string($valor) || ! preg_match('/^(-?\d+(?:\.\d+)?)em$/', $valor, $partes)) {
-            return ["{$donde}: debe ir en em"];
+        if (! is_string($value) || ! preg_match('/^(-?\d+(?:\.\d+)?)em$/', $value, $parts)) {
+            return ["{$where}: must be in em"];
         }
 
         [$min, $max] = self::RANGES['tracking'];
-        $numero = (float) $partes[1];
+        $number = (float) $parts[1];
 
-        return $numero < $min || $numero > $max
-            ? ["{$donde}: entre {$min} y {$max} em"]
+        return $number < $min || $number > $max
+            ? ["{$where}: between {$min} and {$max} em"]
             : [];
     }
 }

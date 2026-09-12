@@ -72,11 +72,11 @@ class SnkKilkanaSettingsController extends Controller
     public function reset(): JsonResponse
     {
         try {
-            $fila = $this->settings->resetSetup();
+            $row = $this->settings->resetSetup();
         } catch (RuntimeException $e) {
             return response()->json(['error' => $e->getMessage()], 403);
         }
 
-        return response()->json($this->settings->payload($fila) + $this->settings->facts());
+        return response()->json($this->settings->payload($row) + $this->settings->facts());
     }
 }

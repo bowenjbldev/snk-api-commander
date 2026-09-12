@@ -6,10 +6,10 @@ use Packages\Commander\Models\CommanderApplicationRepoModel;
 use Packages\Commander\Support\CommanderGitCommitData;
 
 /**
- * Origen del historial git de un package para los insights. Implementaciones intercambiables
- * (CommanderLocalGitSource = `git log` del .git montado; CommanderRemoteGitSource = API del proveedor
- * git, futuro) que escriben siempre las MISMAS tablas via CommanderGitSyncService. El proveedor
- * concreto solo se nombra en la columna `provider`; el resto es agnostico.
+ * Origen del historial git de un package para los insights. El contenedor enlaza
+ * CommanderLocalGitSource (`git log` sobre el .git montado), y CommanderGitSyncService escribe lo
+ * que devuelva la implementación enlazada en las mismas tablas. El proveedor concreto solo se nombra
+ * en la columna `provider`; el resto es agnóstico.
  */
 interface CommanderPackageGitSource
 {

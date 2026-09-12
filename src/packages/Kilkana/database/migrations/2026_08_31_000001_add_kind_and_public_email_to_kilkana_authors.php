@@ -43,11 +43,11 @@ return new class extends Migration
         // Volver atras exige que ninguna firma se haya quedado sin cuenta, o la columna no
         // puede recuperar el NOT NULL. No se inventa una: quien revierte decide a quien
         // enlazarlas, igual que decide el estado de una seccion oculta.
-        $huerfanas = DB::table('kilkana_authors')->whereNull('user_id')->count();
+        $bylinesWithoutAccount = DB::table('kilkana_authors')->whereNull('user_id')->count();
 
-        if ($huerfanas > 0) {
+        if ($bylinesWithoutAccount > 0) {
             throw new RuntimeException(
-                "There are {$huerfanas} byline(s) without an account; link them to a user before rolling back."
+                "There are {$bylinesWithoutAccount} byline(s) without an account; link them to a user before rolling back."
             );
         }
 

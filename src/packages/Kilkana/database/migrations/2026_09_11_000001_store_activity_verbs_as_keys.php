@@ -34,16 +34,16 @@ return new class extends Migration
         DB::table('kilkana_activity')
             ->where(fn ($q) => $q->whereIn('verb', array_keys(SnkKilkanaActivityService::LEGACY))->orWhere('verb', 'like', '% on'))
             ->orderBy('id')
-            ->chunkById(500, function ($filas) {
-                foreach ($filas as $fila) {
-                    $clave = SnkKilkanaActivityService::fromLegacy($fila->verb, $fila->what, $fila->after);
-                    if ($clave === null) {
+            ->chunkById(500, function ($rows) {
+                foreach ($rows as $row) {
+                    $key = SnkKilkanaActivityService::fromLegacy($row->verb, $row->what, $row->after);
+                    if ($key === null) {
                         continue;
                     }
-                    DB::table('kilkana_activity')->where('id', $fila->id)->update([
-                        'verb' => $clave['verb'],
-                        'what' => $clave['what'],
-                        'params' => $clave['params'] === null ? null : json_encode($clave['params']),
+                    DB::table('kilkana_activity')->where('id', $row->id)->update([
+                        'verb' => $key['verb'],
+                        'what' => $key['what'],
+                        'params' => $key['params'] === null ? null : json_encode($key['params']),
                     ]);
                 }
             });

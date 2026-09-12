@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaPostsController;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
@@ -32,54 +33,66 @@ class KilkanaPostsWriteTest extends TestCase
         parent::setUp();
 
         DB::setDefaultConnection('tenant');
-        foreach (['Core', 'Kilkana'] as $paquete) {
+        foreach (['Core', 'Kilkana'] as $package) {
             $this->artisan('migrate', [
                 '--database' => 'tenant',
-                '--path' => "packages/{$paquete}/database/migrations",
+                '--path' => "packages/{$package}/database/migrations",
             ])->run();
         }
 
         app(SnkKilkanaRoleCatalogService::class)->sync();
-        $this->mundo();
+        $this->seedWorld();
     }
 
-    public function test_el_alta_devuelve_la_pieza_y_lo_que_falla_va_en_la_raiz(): void
+    public function test_creating_returns_the_post_and_validation_errors_come_at_the_root(): void
     {
-        $this->como('director');
+        $this->asRole('director');
 
-        $alta = $this->controlador()->store($this->peticion(['title' => 'El pleno aprueba el presupuesto']));
+        $creation = $this->controller()->store($this->makeRequest(['title' => 'El pleno aprueba el presupuesto']));
 
-        $this->assertSame(201, $alta->getStatusCode());
-        $this->assertSame('El pleno aprueba el presupuesto', $alta->getData(true)['title']);
+        $this->assertSame(201, $creation->getStatusCode());
+        $this->assertSame('El pleno aprueba el presupuesto', $creation->getData(true)['title']);
 
-        $rota = $this->controlador()->store($this->peticion(['title' => '', 'category' => 'no-existe']));
+        $broken = $this->controller()->store($this->makeRequest(['title' => '', 'category' => 'no-existe']));
 
-        $this->assertSame(422, $rota->getStatusCode());
-        $cuerpo = $rota->getData(true);
-        $this->assertArrayHasKey('title', $cuerpo, 'Los errores van en la raíz, no anidados.');
-        $this->assertArrayHasKey('category', $cuerpo);
-        $this->assertArrayNotHasKey('errors', $cuerpo, 'Ni envueltos: el panel lee la raíz.');
-        $this->assertArrayNotHasKey('message', $cuerpo);
+        $this->assertSame(422, $broken->getStatusCode());
+        $body = $broken->getData(true);
+        $this->assertArrayHasKey('title', $body, 'Los errores van en la raíz, no anidados.');
+        $this->assertArrayHasKey('category', $body);
+        $this->assertArrayNotHasKey('errors', $body, 'Ni envueltos: el panel lee la raíz.');
+        $this->assertArrayNotHasKey('message', $body);
+    }
+
+    public function test_without_a_chosen_byline_the_creator_signs(): void
+    {
+        $writer = $this->asRole('redactor');
+
+        $creation = $this->controller()->store($this->makeRequest(['title' => 'Sin firma elegida', 'author_id' => null]));
+
+        $this->assertSame(201, $creation->getStatusCode());
+        $byline = SnkKilkanaAuthorModel::query()->where('user_id', $writer->id)->first();
+        $this->assertNotNull($byline, 'La cuenta que crea tiene firma, aunque no la tuviera antes.');
+        $this->assertSame($byline->id, $creation->getData(true)['author_id']);
     }
 
     /** El muro entre escribir y publicar, en sus tres puertas. */
-    public function test_publicar_no_lo_decide_quien_escribe(): void
+    public function test_publishing_is_not_decided_by_the_writer(): void
     {
-        $redactor = $this->como('redactor');
-        $suya = $this->pieza('Lo mío', $redactor->id);
+        $writer = $this->asRole('redactor');
+        $own = $this->makePost('Lo mío', $writer->id);
         $version = SnkKilkanaPostRevisionModel::create([
-            'post_id' => $suya->id,
-            'user_id' => $redactor->id,
+            'post_id' => $own->id,
+            'user_id' => $writer->id,
             'payload' => ['title' => 'Lo mío', 'status' => 'published'],
         ]);
 
-        $alta = $this->controlador()->store($this->peticion(['title' => 'Sale ya', 'status' => 'published', 'excerpt' => 'E.', 'publish_at' => '2026-07-01 10:00:00']));
-        $guardado = $this->controlador()->update($this->peticion(['status' => 'published']), $suya->id);
-        $restaurado = $this->controlador()->restore($suya->id, $version->id);
+        $creation = $this->controller()->store($this->makeRequest(['title' => 'Sale ya', 'status' => 'published', 'excerpt' => 'E.', 'publish_at' => '2026-07-01 10:00:00']));
+        $saved = $this->controller()->update($this->makeRequest(['status' => 'published']), $own->id);
+        $restored = $this->controller()->restore($own->id, $version->id);
 
-        foreach (['alta' => $alta, 'guardado' => $guardado, 'restauración' => $restaurado] as $puerta => $respuesta) {
-            $this->assertSame(403, $respuesta->getStatusCode(), "La {$puerta} tiene que parar sin `publish posts`.");
-            $this->assertSame('publish posts', $respuesta->getData(true)['permission'], "Y decir cuál falta ({$puerta}).");
+        foreach (['alta' => $creation, 'guardado' => $saved, 'restauración' => $restored] as $gate => $response) {
+            $this->assertSame(403, $response->getStatusCode(), "La {$gate} tiene que parar sin `publish posts`.");
+            $this->assertSame('publish posts', $response->getData(true)['permission'], "Y decir cuál falta ({$gate}).");
         }
     }
 
@@ -89,110 +102,125 @@ class KilkanaPostsWriteTest extends TestCase
      * Un borrador no tiene `publish_at` —se sella al salir—, así que validar solo el cuerpo
      * hacía que `required_if` rechazase: desde el editor no se podía publicar una pieza.
      */
-    public function test_publicar_un_borrador_no_pide_ni_la_fecha_ni_la_entradilla(): void
+    public function test_publishing_a_draft_needs_neither_a_date_nor_an_excerpt(): void
     {
-        $marta = $this->como('director');
-        $borrador = $this->pieza('Sin fecha', $marta->id);
+        $marta = $this->asRole('director');
+        $draft = $this->makePost('Sin fecha', $marta->id);
 
-        $guardado = $this->controlador()->update($this->peticion(['status' => 'published']), $borrador->id);
+        $saved = $this->controller()->update($this->makeRequest(['status' => 'published']), $draft->id);
 
-        $this->assertSame(200, $guardado->getStatusCode(), $guardado->getContent());
-        $this->assertNotNull($borrador->fresh()->publish_at, 'Se sella al salir.');
-        $this->assertSame('published', $borrador->fresh()->status->value);
+        $this->assertSame(200, $saved->getStatusCode(), $saved->getContent());
+        $this->assertNotNull($draft->fresh()->publish_at, 'Se sella al salir.');
+        $this->assertSame('published', $draft->fresh()->status->value);
     }
 
     /** Una pieza ajena no existe: 404, y no 403, que confirmaría cuántas hay. */
-    public function test_una_pieza_ajena_no_existe_para_quien_no_puede_tocarla(): void
+    public function test_someone_elses_post_does_not_exist_for_whoever_cannot_touch_it(): void
     {
-        $marta = $this->como('director');
-        $suya = $this->pieza('De la jefa', $marta->id);
-        $this->como('redactor');
+        $marta = $this->asRole('director');
+        $own = $this->makePost('De la jefa', $marta->id);
+        $this->asRole('redactor');
 
-        $this->assertSame(404, $this->controlador()->update($this->peticion(['title' => 'Mía ahora']), $suya->id)->getStatusCode());
-        $this->assertSame(404, $this->controlador()->revisions($suya->id)->getStatusCode());
-        $this->assertSame('De la jefa', $suya->fresh()->title, 'Y no la toca.');
+        $this->assertSame(404, $this->controller()->update($this->makeRequest(['title' => 'Mía ahora']), $own->id)->getStatusCode());
+        $this->assertSame(404, $this->controller()->revisions($own->id)->getStatusCode());
+        $this->assertSame('De la jefa', $own->fresh()->title, 'Y no la toca.');
     }
 
-    public function test_el_lote_pide_el_permiso_de_lo_que_hace_y_dice_cuantas_movio(): void
+    public function test_the_batch_requires_the_permission_for_its_action_and_reports_how_many_moved(): void
     {
-        $redactor = $this->como('redactor');
-        $una = $this->pieza('Una', $redactor->id);
-        $otra = $this->pieza('Otra', $redactor->id);
-        $ids = [$una->id, $otra->id];
+        $writer = $this->asRole('redactor');
+        $one = $this->makePost('Una', $writer->id);
+        $other = $this->makePost('Otra', $writer->id);
+        $ids = [$one->id, $other->id];
 
-        $movidas = $this->controlador()->bulk(Request::create('/', 'POST', ['ids' => $ids, 'action' => 'review']));
+        $moved = $this->controller()->bulk(Request::create('/', 'POST', ['ids' => $ids, 'action' => 'review']));
 
-        $this->assertSame(['ok' => true, 'count' => 2], $movidas->getData(true));
-        $this->assertSame('review', $una->fresh()->status->value);
+        $this->assertSame(['ok' => true, 'count' => 2], $moved->getData(true));
+        $this->assertSame('review', $one->fresh()->status->value);
 
-        $publicar = $this->controlador()->bulk(Request::create('/', 'POST', ['ids' => $ids, 'action' => 'publish']));
+        $publish = $this->controller()->bulk(Request::create('/', 'POST', ['ids' => $ids, 'action' => 'publish']));
 
-        $this->assertSame(403, $publicar->getStatusCode(), 'Publicar en tanda es publicar.');
-        $this->assertSame('publish posts', $publicar->getData(true)['permission']);
+        $this->assertSame(403, $publish->getStatusCode(), 'Publicar en tanda es publicar.');
+        $this->assertSame('publish posts', $publish->getData(true)['permission']);
     }
 
-    public function test_el_historial_se_lee_con_las_llaves_de_la_pieza_y_restaurar_la_devuelve(): void
+    /** Eliminar en tanda es la papelera; programar en tanda no existe, porque un lote no trae fecha. */
+    public function test_the_batch_sends_to_the_trash_and_does_not_schedule(): void
     {
-        $marta = $this->como('director');
-        $pieza = $this->pieza('Titular viejo', $marta->id);
-        $this->controlador()->update($this->peticion(['title' => 'Titular nuevo']), $pieza->id);
+        $marta = $this->asRole('director');
+        $one = $this->makePost('Una', $marta->id);
 
-        $historial = $this->controlador()->revisions($pieza->id)->getData(true);
+        $deleted = $this->controller()->bulk(Request::create('/', 'POST', ['ids' => [$one->id], 'action' => 'delete']));
 
-        $this->assertCount(1, $historial, 'Guardar deja una versión.');
-        $this->assertSame(404, $this->controlador()->revisions($pieza->id + 99)->getStatusCode());
+        $this->assertSame(['ok' => true, 'count' => 1], $deleted->getData(true));
+        $this->assertSoftDeleted($one);
 
-        $vuelta = $this->controlador()->restore($pieza->id, $historial[0]['id']);
+        $this->expectException(ValidationException::class);
+        $this->controller()->bulk(Request::create('/', 'POST', ['ids' => [$one->id], 'action' => 'scheduled']));
+    }
 
-        $this->assertSame(200, $vuelta->getStatusCode(), $vuelta->getContent());
-        $this->assertSame('Titular viejo', $pieza->fresh()->title, 'Restaurar devuelve el titular de esa versión.');
+    public function test_revisions_are_listed_per_post_and_restoring_one_brings_back_its_title(): void
+    {
+        $marta = $this->asRole('director');
+        $post = $this->makePost('Titular viejo', $marta->id);
+        $this->controller()->update($this->makeRequest(['title' => 'Titular nuevo']), $post->id);
+
+        $history = $this->controller()->revisions($post->id)->getData(true);
+
+        $this->assertCount(1, $history, 'Guardar deja una versión.');
+        $this->assertSame(404, $this->controller()->revisions($post->id + 99)->getStatusCode());
+
+        $reverted = $this->controller()->restore($post->id, $history[0]['id']);
+
+        $this->assertSame(200, $reverted->getStatusCode(), $reverted->getContent());
+        $this->assertSame('Titular viejo', $post->fresh()->title, 'Restaurar devuelve el titular de esa versión.');
         $this->assertSame(1, DB::table('kilkana_activity')->where('verb', 'version_restored')->count());
     }
 
-    private function controlador(): SnkKilkanaPostsController
+    private function controller(): SnkKilkanaPostsController
     {
         return app(SnkKilkanaPostsController::class);
     }
 
     /** El cuerpo mínimo que el alta acepta, con lo que se le quiera cambiar encima. */
-    private function peticion(array $cambios = []): Request
+    private function makeRequest(array $changes = []): Request
     {
         return Request::create('/', 'PUT', [
             'title' => 'Un titular',
             'category' => 'local',
             'author_id' => SnkKilkanaAuthorModel::query()->toBase()->value('id'),
             'status' => 'draft',
-            ...$cambios,
+            ...$changes,
         ]);
     }
 
-    private function como(string $rol): CoreUserModel
+    private function asRole(string $role): CoreUserModel
     {
-        $cuenta = CoreUserModel::create([
-            'name' => ucfirst($rol),
-            'email' => "{$rol}@eldiario.example",
+        $account = CoreUserModel::create([
+            'name' => ucfirst($role),
+            'email' => "{$role}@eldiario.example",
             'password' => 'secret1234',
         ]);
-        $cuenta->assignRole($rol);
-        $this->actingAs($cuenta, 'sanctum');
+        $account->assignRole($role);
+        $this->actingAs($account, 'sanctum');
 
-        return $cuenta;
+        return $account;
     }
 
-    private function pieza(string $titular, int $de): SnkKilkanaPostModel
+    private function makePost(string $headline, int $authorId): SnkKilkanaPostModel
     {
         return SnkKilkanaPostModel::create([
-            'title' => $titular,
+            'title' => $headline,
             'excerpt' => 'Entradilla.',
             'category_id' => SnkKilkanaCategoryModel::query()->value('id'),
             'author_id' => SnkKilkanaAuthorModel::query()->toBase()->value('id'),
             'status' => 'draft',
-            'created_by' => $de,
-            'updated_by' => $de,
+            'created_by' => $authorId,
+            'updated_by' => $authorId,
         ]);
     }
 
-    private function mundo(): void
+    private function seedWorld(): void
     {
         SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
         SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);

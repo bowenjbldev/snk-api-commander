@@ -24,7 +24,7 @@ class SnkKilkanaTrashService
 
     public function __construct(
         private readonly SnkKilkanaMediaService $media,
-        private readonly SnkKilkanaActivityService $registro,
+        private readonly SnkKilkanaActivityService $activityLog,
     ) {}
 
     /**
@@ -35,14 +35,14 @@ class SnkKilkanaTrashService
      */
     public function rows(array $kinds): array
     {
-        $filas = [];
+        $rows = [];
         if (in_array('post', $kinds, true)) {
             $posts = SnkKilkanaPostModel::onlyTrashed()
                 ->withSum('views as reads', 'engaged')
                 ->orderByDesc('deleted_at')
                 ->get();
             foreach ($posts as $post) {
-                $filas[] = [
+                $rows[] = [
                     ...$this->common('post', $post->getKey(), $post->title, $post->deleted_at, $post->deleted_by),
                     'path' => $post->url_path ? '/'.$post->url_path : null,
                     'reach' => (int) $post->reads,
@@ -52,21 +52,21 @@ class SnkKilkanaTrashService
             }
         }
         if (in_array('media', $kinds, true)) {
-            $medios = SnkKilkanaMediaModel::onlyTrashed()->orderByDesc('deleted_at')->get();
-            foreach ($medios as $medio) {
-                $filas[] = [
+            $trashedMedia = SnkKilkanaMediaModel::onlyTrashed()->orderByDesc('deleted_at')->get();
+            foreach ($trashedMedia as $item) {
+                $rows[] = [
                     // Sin título ni nombre va vacío: el rótulo lo pone el panel en su idioma.
-                    ...$this->common('media', $medio->getKey(), $medio->title ?: ($medio->original_name ?: ''), $medio->deleted_at, $medio->deleted_by),
-                    'path' => $medio->width && $medio->height ? "{$medio->width} × {$medio->height}" : null,
-                    'reach' => (int) $medio->size_bytes,
+                    ...$this->common('media', $item->getKey(), $item->title ?: ($item->original_name ?: ''), $item->deleted_at, $item->deleted_by),
+                    'path' => $item->width && $item->height ? "{$item->width} × {$item->height}" : null,
+                    'reach' => (int) $item->size_bytes,
                     'excerpt' => null,
-                    'refs' => $this->mediaRefs($medio),
+                    'refs' => $this->mediaRefs($item),
                 ];
             }
         }
-        usort($filas, fn (array $a, array $b) => strcmp($b['deleted_at'], $a['deleted_at']));
+        usort($rows, fn (array $a, array $b) => strcmp($b['deleted_at'], $a['deleted_at']));
 
-        return $this->withNames($filas);
+        return $this->withNames($rows);
     }
 
     /** Devuelve una pieza como borrador, o un medio a la biblioteca. `false` si no estaba en la papelera. */
@@ -79,23 +79,23 @@ class SnkKilkanaTrashService
             }
             // Como borrador: no vuelve publicada a su URL sin que nadie la mire. La URL sigue
             // sellada, así que al republicarla sale por la misma.
-            $this->registro->quiet(function () use ($post) {
+            $this->activityLog->quiet(function () use ($post) {
                 if ($post->status->requiresPublishPermission()) {
                     $post->forceFill(['status' => SnkKilkanaPostStatusEnum::Draft])->save();
                 }
                 $post->forceFill(['deleted_by' => null])->restore();
             });
-            $this->registro->log('restore', 'restored_from_trash', $post->title, '/posts');
+            $this->activityLog->log('restore', 'restored_from_trash', $post->title, '/posts');
 
             return true;
         }
 
-        $medio = SnkKilkanaMediaModel::onlyTrashed()->find($id);
-        if ($medio === null) {
+        $item = SnkKilkanaMediaModel::onlyTrashed()->find($id);
+        if ($item === null) {
             return false;
         }
-        $this->registro->quiet(fn () => $medio->forceFill(['deleted_by' => null])->restore());
-        $this->registro->log('restore', 'restored_from_trash', $medio->title ?: ($medio->original_name ?: ''), '/media');
+        $this->activityLog->quiet(fn () => $item->forceFill(['deleted_by' => null])->restore());
+        $this->activityLog->log('restore', 'restored_from_trash', $item->title ?: ($item->original_name ?: ''), '/media');
 
         return true;
     }
@@ -113,11 +113,11 @@ class SnkKilkanaTrashService
             return true;
         }
 
-        $medio = SnkKilkanaMediaModel::onlyTrashed()->find($id);
-        if ($medio === null) {
+        $item = SnkKilkanaMediaModel::onlyTrashed()->find($id);
+        if ($item === null) {
             return false;
         }
-        $this->media->forceDestroy($medio);
+        $this->media->forceDestroy($item);
 
         return true;
     }
@@ -132,8 +132,8 @@ class SnkKilkanaTrashService
         $total = 0;
         foreach ($kinds as $kind) {
             $query = $kind === 'post' ? SnkKilkanaPostModel::onlyTrashed() : SnkKilkanaMediaModel::onlyTrashed();
-            foreach ($query->get() as $fila) {
-                $total += (int) $this->purge($kind, (int) $fila->getKey());
+            foreach ($query->get() as $row) {
+                $total += (int) $this->purge($kind, (int) $row->getKey());
             }
         }
 
@@ -143,13 +143,13 @@ class SnkKilkanaTrashService
     /** Lo que lleva más de treinta días: se purga solo. Devuelve cuántas cosas se fueron. */
     public function purgeExpired(): int
     {
-        $limite = now()->subDays(self::RETENTION_DAYS);
+        $cutoff = now()->subDays(self::RETENTION_DAYS);
         $total = 0;
-        foreach (SnkKilkanaPostModel::onlyTrashed()->where('deleted_at', '<', $limite)->get() as $post) {
+        foreach (SnkKilkanaPostModel::onlyTrashed()->where('deleted_at', '<', $cutoff)->get() as $post) {
             $total += (int) $this->purge('post', (int) $post->getKey());
         }
-        foreach (SnkKilkanaMediaModel::onlyTrashed()->where('deleted_at', '<', $limite)->get() as $medio) {
-            $total += (int) $this->purge('media', (int) $medio->getKey());
+        foreach (SnkKilkanaMediaModel::onlyTrashed()->where('deleted_at', '<', $cutoff)->get() as $item) {
+            $total += (int) $this->purge('media', (int) $item->getKey());
         }
 
         return $total;
@@ -195,7 +195,7 @@ class SnkKilkanaTrashService
     /** @return array<string, mixed> */
     private function common(string $kind, int $id, string $title, $deletedAt, ?int $deletedBy): array
     {
-        $purga = $deletedAt->copy()->addDays(self::RETENTION_DAYS);
+        $purgesAt = $deletedAt->copy()->addDays(self::RETENTION_DAYS);
 
         return [
             'id' => (string) $id,
@@ -203,8 +203,8 @@ class SnkKilkanaTrashService
             'title' => $title,
             'deleted_by_id' => $deletedBy,
             'deleted_at' => $deletedAt->toIso8601String(),
-            'purges_at' => $purga->toIso8601String(),
-            'days_left' => max(0, (int) ceil(now()->diffInSeconds($purga, false) / 86400)),
+            'purges_at' => $purgesAt->toIso8601String(),
+            'days_left' => max(0, (int) ceil(now()->diffInSeconds($purgesAt, false) / 86400)),
         ];
     }
 
@@ -220,9 +220,9 @@ class SnkKilkanaTrashService
      *
      * @return list<string>
      */
-    private function mediaRefs(SnkKilkanaMediaModel $medio): array
+    private function mediaRefs(SnkKilkanaMediaModel $item): array
     {
-        $id = (int) $medio->getKey();
+        $id = (int) $item->getKey();
 
         return SnkKilkanaPostModel::query()
             ->where(fn (Builder $q) => $q
@@ -239,20 +239,20 @@ class SnkKilkanaTrashService
     /**
      * Quién lo tiró, por nombre y en una consulta para la lista entera.
      *
-     * @param  list<array<string, mixed>>  $filas
+     * @param  list<array<string, mixed>>  $rows
      * @return list<array<string, mixed>>
      */
-    private function withNames(array $filas): array
+    private function withNames(array $rows): array
     {
-        $ids = array_values(array_unique(array_filter(array_column($filas, 'deleted_by_id'))));
-        $nombres = $ids === [] ? collect() : CoreUserModel::query()->whereKey($ids)->get(['id', 'name', 'full_name'])
-            ->mapWithKeys(fn (CoreUserModel $u) => [$u->getKey() => $u->full_name ?: $u->name]);
+        $ids = array_values(array_unique(array_filter(array_column($rows, 'deleted_by_id'))));
+        $names = $ids === [] ? collect() : CoreUserModel::query()->whereKey($ids)->get(['id', 'name', 'lastname'])
+            ->mapWithKeys(fn (CoreUserModel $u) => [$u->getKey() => $u->full_name]);
 
-        return array_map(function (array $fila) use ($nombres) {
-            $fila['who'] = $fila['deleted_by_id'] === null ? null : $nombres->get($fila['deleted_by_id']);
-            unset($fila['deleted_by_id']);
+        return array_map(function (array $row) use ($names) {
+            $row['who'] = $row['deleted_by_id'] === null ? null : $names->get($row['deleted_by_id']);
+            unset($row['deleted_by_id']);
 
-            return $fila;
-        }, $filas);
+            return $row;
+        }, $rows);
     }
 }

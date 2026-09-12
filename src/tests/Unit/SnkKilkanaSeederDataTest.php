@@ -19,14 +19,14 @@ use PHPUnit\Framework\TestCase;
 class SnkKilkanaSeederDataTest extends TestCase
 {
     /** Las secciones que declara el seeder. Duplicadas a mano: si divergen, esto se pone rojo. */
-    private const CATEGORIAS = [
+    private const CATEGORIES = [
         'local', 'comarca', 'municipios', 'barrios', 'politica', 'economia', 'agricultura',
         'empleo', 'deportes', 'futbol', 'polideportivo', 'cultura', 'patrimonio', 'agenda',
         'sucesos', 'opinion', 'medio-ambiente',
     ];
 
     /** Las firmas resolubles: plantilla mas las tres que no lo son. */
-    private const FIRMAS = [
+    private const BYLINES = [
         'Marta Beneyto', 'Ramón Clavel', 'Iván Sagredo', 'Nuria Espí', 'Lucía Ferrándiz',
         'Óscar Tomás', 'Redacción', 'Agencia EFE', 'Josep Miralles',
     ];
@@ -41,7 +41,7 @@ class SnkKilkanaSeederDataTest extends TestCase
         );
     }
 
-    public function test_snapshot_de_posts_de_kilkana_es_sembrable_y_completo(): void
+    public function test_the_posts_snapshot_is_seedable_and_complete(): void
     {
         $posts = $this->snapshot();
 
@@ -83,11 +83,11 @@ class SnkKilkanaSeederDataTest extends TestCase
      * no este en ningun mapa es peor porque NO revienta: `authorFor` le inventa una cuenta
      * `@eldiario.example` con rol de redactora, y la demo se llena de plantilla fantasma.
      */
-    public function test_cada_pieza_apunta_a_una_seccion_y_a_una_firma_que_existen(): void
+    public function test_each_post_points_to_an_existing_section_and_byline(): void
     {
         foreach ($this->snapshot() as $post) {
-            $this->assertContains($post['cat'], self::CATEGORIAS, "sección desconocida en «{$post['slug']}»");
-            $this->assertContains($post['author'], self::FIRMAS, "firma desconocida en «{$post['slug']}»");
+            $this->assertContains($post['cat'], self::CATEGORIES, "sección desconocida en «{$post['slug']}»");
+            $this->assertContains($post['author'], self::BYLINES, "firma desconocida en «{$post['slug']}»");
         }
     }
 
@@ -98,7 +98,7 @@ class SnkKilkanaSeederDataTest extends TestCase
      * no se arregla despues sin dejar un 301 detras. La regla la escribe `slugify` en el
      * frontend y esta prueba comprueba el RESULTADO, que es lo unico que comparten los dos lados.
      */
-    public function test_ningun_slug_corta_una_palabra_por_la_mitad(): void
+    public function test_no_slug_cuts_a_word_in_half(): void
     {
         foreach ($this->snapshot() as $post) {
             $this->assertLessThanOrEqual(52, strlen($post['slug']));
@@ -106,23 +106,17 @@ class SnkKilkanaSeederDataTest extends TestCase
 
             // Reconstruir el slug largo y comprobar que el corte cayo en un guion: si el
             // caracter siguiente no lo es, se partio una palabra.
-            $completo = $this->slugLargo($post['title']);
-            if (strlen($completo) > strlen($post['slug'])) {
+            $full = $this->longSlug($post['title']);
+            if (strlen($full) > strlen($post['slug'])) {
                 $this->assertSame(
                     '-',
-                    $completo[strlen($post['slug'])],
-                    "«{$post['slug']}» corta «{$completo}» a media palabra",
+                    $full[strlen($post['slug'])],
+                    "«{$post['slug']}» corta «{$full}» a media palabra",
                 );
             }
         }
     }
 
-    /**
-     * El cuerpo que se compone encima del snapshot es sembrable y significa algo.
-     *
-     * Sin esta prueba, F-2 volveria a pasar en verde: 522 piezas sin cuerpo son 522 articulos en
-     * blanco y un `content_tier` que no corta por ningun sitio.
-     */
     /**
      * La fototeca de la demo sale del disco, y el disco tiene que estar completo.
      *
@@ -132,20 +126,20 @@ class SnkKilkanaSeederDataTest extends TestCase
      * DNS, TLS y una cookie ajena por cada foto. Aqui se mira el material ANTES de sembrar:
      * que cada JPEG este, que se pueda leer y que diga sus medidas.
      */
-    public function test_la_fototeca_de_la_demo_esta_entera_y_da_medidas(): void
+    public function test_the_demo_photo_library_is_complete_and_has_dimensions(): void
     {
-        $fototeca = new SnkKilkanaDemoMediaLibrary;
+        $photoLibrary = new SnkKilkanaDemoMediaLibrary;
 
-        $this->assertSame(60, $fototeca->size(), 'faltan fotos en database/seeders/data/media');
+        $this->assertSame(60, $photoLibrary->size(), 'faltan fotos en database/seeders/data/media');
 
-        foreach (glob(__DIR__.'/../../packages/Kilkana/database/seeders/data/media/*.jpg') ?: [] as $fichero) {
-            $medidas = @getimagesize($fichero);
-            $nombre = basename($fichero);
+        foreach (glob(__DIR__.'/../../packages/Kilkana/database/seeders/data/media/*.jpg') ?: [] as $file) {
+            $dimensions = @getimagesize($file);
+            $name = basename($file);
 
-            $this->assertNotFalse($medidas, "«{$nombre}» no se lee como imagen");
-            $this->assertGreaterThan(0, $medidas[0], "«{$nombre}» no declara ancho");
-            $this->assertGreaterThan(0, $medidas[1], "«{$nombre}» no declara alto");
-            $this->assertSame('image/jpeg', $medidas['mime'], "«{$nombre}» no es un JPEG");
+            $this->assertNotFalse($dimensions, "«{$name}» no se lee como imagen");
+            $this->assertGreaterThan(0, $dimensions[0], "«{$name}» no declara ancho");
+            $this->assertGreaterThan(0, $dimensions[1], "«{$name}» no declara alto");
+            $this->assertSame('image/jpeg', $dimensions['mime'], "«{$name}» no es un JPEG");
         }
     }
 
@@ -157,77 +151,83 @@ class SnkKilkanaSeederDataTest extends TestCase
      * que puede salir mal —una direccion que no encuentre fichero— y que el reparto deje de ser
      * determinista, que se veria como una mediateca distinta despues de cada `--fresh`.
      */
-    public function test_cada_portada_cae_en_una_foto_que_existe_y_siempre_en_la_misma(): void
+    public function test_each_cover_lands_on_an_existing_photo_and_always_the_same_one(): void
     {
-        $fototeca = new SnkKilkanaDemoMediaLibrary;
+        $photoLibrary = new SnkKilkanaDemoMediaLibrary;
         $urls = array_values(array_unique(array_filter(array_column($this->snapshot(), 'image'))));
 
         $this->assertSame(186, count($urls));
 
-        $usadas = [];
+        $used = [];
         foreach ($urls as $url) {
-            $fichero = $fototeca->fileFor($url);
+            $file = $photoLibrary->fileFor($url);
 
-            $this->assertNotNull($fichero, "«{$url}» no encuentra foto");
-            $this->assertFileExists($fichero);
-            $this->assertSame($fichero, $fototeca->fileFor($url), 'el reparto no es determinista');
-            $usadas[$fichero] = true;
+            $this->assertNotNull($file, "«{$url}» no encuentra foto");
+            $this->assertFileExists($file);
+            $this->assertSame($file, $photoLibrary->fileFor($url), 'el reparto no es determinista');
+            $used[$file] = true;
         }
 
         // Sesenta ficheros para 176 direcciones: cuatro fotos se quedan sin reclamar. Entran en
         // la biblioteca igual (`seedAll`), y son las que dan filas a las dos vistas que existen
         // para encontrar trabajo pendiente: «sin usar» y «Missing alt».
-        $this->assertSame(56, count($usadas));
-        $this->assertSame(60, $fototeca->size());
+        $this->assertSame(56, count($used));
+        $this->assertSame(60, $photoLibrary->size());
     }
 
-    public function test_el_cuerpo_generado_habla_el_vocabulario_del_contrato(): void
+    /**
+     * El cuerpo que se compone encima del snapshot es sembrable y significa algo.
+     *
+     * Sin esta prueba, F-2 volveria a pasar en verde: 522 piezas sin cuerpo son 522 articulos en
+     * blanco y un `content_tier` que no corta por ningun sitio.
+     */
+    public function test_the_generated_body_uses_the_contract_vocabulary(): void
     {
-        $tipos = SnkKilkanaBlockTypeEnum::values();
-        $conMuro = 0;
+        $types = SnkKilkanaBlockTypeEnum::values();
+        $withPaywall = 0;
 
         foreach ($this->snapshot() as $post) {
-            $bloques = SnkKilkanaDemoBodyFactory::blocks($post, 7);
+            $blocks = SnkKilkanaDemoBodyFactory::blocks($post, 7);
 
-            $this->assertNotEmpty($bloques, "«{$post['slug']}» se quedó sin cuerpo");
+            $this->assertNotEmpty($blocks, "«{$post['slug']}» se quedó sin cuerpo");
             $this->assertSame(
-                array_map(fn (int $n) => 'b'.($n + 1), array_keys($bloques)),
-                array_column($bloques, 'id'),
+                array_map(fn (int $n) => 'b'.($n + 1), array_keys($blocks)),
+                array_column($blocks, 'id'),
                 "los ids de «{$post['slug']}» no son correlativos",
             );
 
-            $muros = 0;
-            foreach ($bloques as $bloque) {
-                $this->assertContains($bloque['type'], $tipos, "tipo fuera del contrato en «{$post['slug']}»");
-                $this->assertIsArray($bloque['config']);
-                $muros += (int) ($bloque['type'] === 'paywall');
+            $paywalls = 0;
+            foreach ($blocks as $block) {
+                $this->assertContains($block['type'], $types, "tipo fuera del contrato en «{$post['slug']}»");
+                $this->assertIsArray($block['config']);
+                $paywalls += (int) ($block['type'] === 'paywall');
             }
 
             // Un articulo corta por un solo sitio: dos muros no son dos cortes, son un cuerpo
             // que no se sabe donde acaba de estar abierto.
-            $this->assertLessThanOrEqual(1, $muros, "«{$post['slug']}» lleva dos muros");
+            $this->assertLessThanOrEqual(1, $paywalls, "«{$post['slug']}» lleva dos muros");
 
             if ($post['content_tier'] === 'free') {
-                $this->assertSame(0, $muros, "una pieza abierta no lleva muro: «{$post['slug']}»");
+                $this->assertSame(0, $paywalls, "una pieza abierta no lleva muro: «{$post['slug']}»");
             } else {
-                $this->assertSame(1, $muros, "«{$post['slug']}» es {$post['content_tier']} y no tiene muro");
-                $conMuro++;
+                $this->assertSame(1, $paywalls, "«{$post['slug']}» es {$post['content_tier']} y no tiene muro");
+                $withPaywall++;
             }
 
             // El muro tiene que dejar algo delante y algo detras, o no corta nada: sin teaser
             // la pieza publica sale vacia, y sin resto no habia nada que cerrar.
-            $at = array_search('paywall', array_column($bloques, 'type'), true);
+            $at = array_search('paywall', array_column($blocks, 'type'), true);
             if ($at !== false) {
                 $this->assertGreaterThan(0, $at, "el muro de «{$post['slug']}» no deja teaser");
-                $this->assertLessThan(count($bloques) - 1, $at, "el muro de «{$post['slug']}» no cierra nada");
+                $this->assertLessThan(count($blocks) - 1, $at, "el muro de «{$post['slug']}» no cierra nada");
             }
         }
 
-        $this->assertSame(143, $conMuro);
+        $this->assertSame(143, $withPaywall);
     }
 
     /** El mismo slug da el mismo cuerpo: dos siembras no pueden dar bases distintas. */
-    public function test_el_cuerpo_generado_es_determinista(): void
+    public function test_the_generated_body_is_deterministic(): void
     {
         $post = $this->snapshot()[0];
 
@@ -238,10 +238,10 @@ class SnkKilkanaSeederDataTest extends TestCase
     }
 
     /** La misma regla que `src/lib/data/slugify.ts`, sin el corte. */
-    private function slugLargo(string $titulo): string
+    private function longSlug(string $title): string
     {
-        $sin = preg_replace('/\p{Mn}+/u', '', \Normalizer::normalize(mb_strtolower($titulo), \Normalizer::FORM_D));
+        $plain = preg_replace('/\p{Mn}+/u', '', \Normalizer::normalize(mb_strtolower($title), \Normalizer::FORM_D));
 
-        return preg_replace('/\s+/', '-', trim(preg_replace('/[^a-z0-9 -]/', '', $sin)));
+        return preg_replace('/\s+/', '-', trim(preg_replace('/[^a-z0-9 -]/', '', $plain)));
     }
 }

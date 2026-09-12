@@ -17,10 +17,10 @@ class SnkKilkanaPostViewModel extends Model
     /**
      * Los contadores de la fila diaria. Nada fuera de esta lista se escribe.
      *
-     * `opens` y `reads` son dos hechos distintos y el valor está en el cociente: quien abre y
+     * `opens` y `engaged` son dos hechos distintos y el valor está en el cociente: quien abre y
      * se va a los dos segundos cuenta lo mismo que quien lee entero si solo hay un contador,
      * y entonces «lo más leído» premia al titular que mejor engaña. `readers` son visitantes
-     * distintos del día: contra `reads` dice si la pieza se relee.
+     * distintos del día: contra `engaged` dice si la pieza se relee.
      */
     public const COUNTERS = [
         'opens', 'engaged', 'readers',
@@ -43,26 +43,26 @@ class SnkKilkanaPostViewModel extends Model
      * Los nombres de columna se interpolan en esas expresiones, así que se filtran contra
      * `COUNTERS` antes: lo que no esté en la lista no llega a la consulta.
      */
-    public static function record(int $postId, string ...$contadores): void
+    public static function record(int $postId, string ...$counters): void
     {
-        $contadores = array_values(array_unique(array_filter(
-            $contadores,
-            fn (string $columna) => in_array($columna, self::COUNTERS, true),
+        $counters = array_values(array_unique(array_filter(
+            $counters,
+            fn (string $column) => in_array($column, self::COUNTERS, true),
         )));
 
-        if ($contadores === []) {
+        if ($counters === []) {
             return;
         }
 
         // `upsert` compila la suma sobre el valor existente en MariaDB y en sqlite, que es
         // donde corre la suite; las columnas vienen filtradas contra `COUNTERS`, asi que la
         // expresion cruda solo lleva nombres de la lista.
-        $sumas = array_combine($contadores, array_map(fn (string $c) => DB::raw("{$c} + 1"), $contadores));
+        $increments = array_combine($counters, array_map(fn (string $c) => DB::raw("{$c} + 1"), $counters));
 
         self::query()->upsert(
-            [['post_id' => $postId, 'date' => now()->toDateString()] + array_fill_keys($contadores, 1)],
+            [['post_id' => $postId, 'date' => now()->toDateString()] + array_fill_keys($counters, 1)],
             ['post_id', 'date'],
-            $sumas,
+            $increments,
         );
     }
 }

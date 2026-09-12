@@ -37,7 +37,7 @@ class SnkKilkanaPostNotesController extends CoreBaseApiController
 
         return response()->json(SnkKilkanaPostNoteResource::collection(SnkKilkanaPostNoteModel::query()
             ->where('post_id', $postId)
-            ->with('user:id,name')
+            ->with('user:id,name,lastname')
             ->orderByDesc('created_at')
             ->get()));
     }
@@ -55,14 +55,14 @@ class SnkKilkanaPostNotesController extends CoreBaseApiController
             'block' => 'nullable|string|max:128',
         ]);
 
-        $nota = SnkKilkanaPostNoteModel::create([
+        $note = SnkKilkanaPostNoteModel::create([
             'post_id' => (int) $postId,
             'user_id' => (int) auth()->id(),
             'block' => $data['block'] ?? null,
             'body' => $data['body'],
         ]);
 
-        return response()->json(new SnkKilkanaPostNoteResource($nota->load('user:id,name')), 201);
+        return response()->json(new SnkKilkanaPostNoteResource($note->load('user:id,name,lastname')), 201);
     }
 
     /** Resolver o reabrir: lo único que cambia de una nota después de escrita. */
@@ -71,13 +71,13 @@ class SnkKilkanaPostNotesController extends CoreBaseApiController
         if ($response = $this->requirePermission($this->updatePermission)) {
             return $response;
         }
-        $nota = SnkKilkanaPostNoteModel::query()->whereKey($noteId)->where('post_id', $postId)->first();
-        if ($nota === null) {
+        $note = SnkKilkanaPostNoteModel::query()->whereKey($noteId)->where('post_id', $postId)->first();
+        if ($note === null) {
             return response()->json(['error' => 'Record not found'], 404);
         }
         $data = $request->validate(['done' => 'required|boolean']);
-        $nota->update(['done' => $data['done']]);
+        $note->update(['done' => $data['done']]);
 
-        return response()->json(new SnkKilkanaPostNoteResource($nota->load('user:id,name')));
+        return response()->json(new SnkKilkanaPostNoteResource($note->load('user:id,name,lastname')));
     }
 }

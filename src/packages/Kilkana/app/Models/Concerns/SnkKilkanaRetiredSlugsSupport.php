@@ -42,18 +42,18 @@ trait SnkKilkanaRetiredSlugsSupport
      */
     public static function slugTaken(string $slug, ?int $ignoreId = null): bool
     {
-        $viva = static::query()
+        $takenByLive = static::query()
             ->where('slug', $slug)
             ->when($ignoreId, fn ($query) => $query->whereKeyNot($ignoreId))
             ->exists();
 
-        if ($viva) {
+        if ($takenByLive) {
             return true;
         }
 
-        $historial = static::retiredSlugModel();
+        $retiredSlugModel = static::retiredSlugModel();
 
-        return $historial::query()
+        return $retiredSlugModel::query()
             ->where('path', $slug)
             ->when($ignoreId, fn ($query) => $query->where(static::retiredSlugOwnerKey(), '!=', $ignoreId))
             ->exists();
@@ -61,28 +61,28 @@ trait SnkKilkanaRetiredSlugsSupport
 
     protected static function bootSnkKilkanaRetiredSlugsSupport(): void
     {
-        static::updating(function (Model $entidad) {
-            if ($entidad->isDirty('slug') && $entidad::slugTaken((string) $entidad->slug, $entidad->getKey())) {
+        static::updating(function (Model $model) {
+            if ($model->isDirty('slug') && $model::slugTaken((string) $model->slug, $model->getKey())) {
                 throw ValidationException::withMessages([
                     'slug' => 'That public URL is already in use, now or by a redirect; choose another.',
                 ]);
             }
         });
 
-        static::updated(function (Model $entidad) {
-            if (! $entidad->wasChanged('slug')) {
+        static::updated(function (Model $model) {
+            if (! $model->wasChanged('slug')) {
                 return;
             }
 
             // Dentro de `updated` el original todavia no se ha sincronizado: es el de antes.
-            $anterior = $entidad->getOriginal('slug');
-            if ($anterior) {
-                $entidad->retiredSlugs()->updateOrCreate(['path' => $anterior]);
+            $previousSlug = $model->getOriginal('slug');
+            if ($previousSlug) {
+                $model->retiredSlugs()->updateOrCreate(['path' => $previousSlug]);
             }
 
             // Y la que acaba de adoptar deja de ser redireccion, o apuntaria a si misma.
             // Acotado a las suyas: la de otro no se toca ni existiendo dato viejo.
-            $entidad->retiredSlugs()->where('path', $entidad->slug)->delete();
+            $model->retiredSlugs()->where('path', $model->slug)->delete();
         });
     }
 }

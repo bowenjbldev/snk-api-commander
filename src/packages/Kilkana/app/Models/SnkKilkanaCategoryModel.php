@@ -67,7 +67,7 @@ class SnkKilkanaCategoryModel extends Model
      */
     public function scopeInMenu(Builder $query): Builder
     {
-        return $query->whereIn('status', self::statuses(fn ($estado) => $estado->inMenu()));
+        return $query->whereIn('status', self::statuses(fn ($status) => $status->inMenu()));
     }
 
     /** Las que el lector puede abrir por su URL: las del menu y las retiradas de el. */
@@ -96,7 +96,7 @@ class SnkKilkanaCategoryModel extends Model
 
     public function scopeReachable(Builder $query): Builder
     {
-        return $query->whereIn('status', self::statuses(fn ($estado) => $estado->isPublic()));
+        return $query->whereIn('status', self::statuses(fn ($status) => $status->isPublic()));
     }
 
     /**
@@ -105,14 +105,14 @@ class SnkKilkanaCategoryModel extends Model
      * Los scopes preguntan y no enumeran a proposito: con la lista escrita aqui, un estado
      * nuevo entra en el enum y estos dos siguen contestando lo de ayer sin que nada falle.
      *
-     * @param  callable(SnkKilkanaCategoryStatusEnum): bool  $filtro
+     * @param  callable(SnkKilkanaCategoryStatusEnum): bool  $filter
      * @return list<string>
      */
-    private static function statuses(callable $filtro): array
+    private static function statuses(callable $filter): array
     {
         return array_values(array_map(
-            fn (SnkKilkanaCategoryStatusEnum $estado) => $estado->value,
-            array_filter(SnkKilkanaCategoryStatusEnum::cases(), $filtro)
+            fn (SnkKilkanaCategoryStatusEnum $status) => $status->value,
+            array_filter(SnkKilkanaCategoryStatusEnum::cases(), $filter)
         ));
     }
 
@@ -257,7 +257,7 @@ class SnkKilkanaCategoryModel extends Model
         // Las suyas Y las de sus subsecciones. Una madre sin piezas propias y con una hija
         // publicando pasaba a preparacion sin que nada la parara: la hija seguia alcanzable,
         // sus piezas publicas, y la pagina de la madre respondia 404.
-        $publicadas = SnkKilkanaPostModel::query()
+        $published = SnkKilkanaPostModel::query()
             ->whereIn('category_id', [
                 $category->id,
                 ...self::query()->where('parent_id', $category->id)->pluck('id')->all(),
@@ -265,9 +265,9 @@ class SnkKilkanaCategoryModel extends Model
             ->published()
             ->count();
 
-        if ($publicadas > 0) {
+        if ($published > 0) {
             throw ValidationException::withMessages([
-                'status' => "This section has {$publicadas} published article(s); move or unpublish them first.",
+                'status' => "This section has {$published} published article(s); move or unpublish them first.",
             ]);
         }
     }
@@ -294,28 +294,28 @@ class SnkKilkanaCategoryModel extends Model
             return;
         }
 
-        $suya = $category->status->visibility();
+        $ownVisibility = $category->status->visibility();
 
         if ($category->parent_id !== null) {
-            $campo = $category->isDirty('parent_id') ? 'parent_id' : 'status';
-            $madre = self::query()->whereKey($category->parent_id)->value('status');
-            $madre = $madre instanceof SnkKilkanaCategoryStatusEnum
-                ? $madre
-                : SnkKilkanaCategoryStatusEnum::tryFrom((string) $madre);
+            $field = $category->isDirty('parent_id') ? 'parent_id' : 'status';
+            $parent = self::query()->whereKey($category->parent_id)->value('status');
+            $parent = $parent instanceof SnkKilkanaCategoryStatusEnum
+                ? $parent
+                : SnkKilkanaCategoryStatusEnum::tryFrom((string) $parent);
 
             // Sin madre que mirar no se pasa: **falla cerrado**, como el resto de las puertas.
             // Un `parent_id` que apunta a una fila que no existe llega hasta aqui —la regla
             // `exists:` es del controlador, y el seeder y la consola no pasan por el—, y
             // `guardTree` tampoco lo caza: su consulta devuelve null igual que la de una raiz.
-            if ($madre === null) {
+            if ($parent === null) {
                 throw ValidationException::withMessages([
-                    $campo => 'That parent section does not exist.',
+                    $field => 'That parent section does not exist.',
                 ]);
             }
 
-            if ($suya > $madre->visibility()) {
+            if ($ownVisibility > $parent->visibility()) {
                 throw ValidationException::withMessages([
-                    $campo => "A {$category->status->value} section cannot hang from a {$madre->value} one; launch the parent first.",
+                    $field => "A {$category->status->value} section cannot hang from a {$parent->value} one; launch the parent first.",
                 ]);
             }
         }
@@ -324,15 +324,15 @@ class SnkKilkanaCategoryModel extends Model
             return;
         }
 
-        $masVisibles = self::query()
+        $moreVisible = self::query()
             ->where('parent_id', $category->id)
             ->get()
-            ->filter(fn (self $hija) => $hija->status->visibility() > $suya)
+            ->filter(fn (self $child) => $child->status->visibility() > $ownVisibility)
             ->count();
 
-        if ($masVisibles > 0) {
+        if ($moreVisible > 0) {
             throw ValidationException::withMessages([
-                'status' => "This section has {$masVisibles} subsection(s) more visible than {$category->status->value}; change them first.",
+                'status' => "This section has {$moreVisible} subsection(s) more visible than {$category->status->value}; change them first.",
             ]);
         }
     }
@@ -360,7 +360,7 @@ class SnkKilkanaCategoryModel extends Model
             return; // una raiz no tiene nada que comprobar
         }
 
-        $error = fn (string $mensaje) => throw ValidationException::withMessages(['parent_id' => $mensaje]);
+        $error = fn (string $message) => throw ValidationException::withMessages(['parent_id' => $message]);
 
         if ($category->exists && (int) $category->parent_id === (int) $category->id) {
             $error('A section cannot be its own parent.');

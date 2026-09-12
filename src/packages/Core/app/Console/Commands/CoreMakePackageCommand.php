@@ -17,8 +17,8 @@ use Packages\Core\Support\CoreTemplateRendererSupport;
 class CoreMakePackageCommand extends Command
 {
     protected $signature = 'make:package
-        {client : Cliente / paraguas (e.g. Acme)}
-        {package : Package dentro del cliente (e.g. Shop)}
+        {client : Client / umbrella folder (e.g. Acme)}
+        {package : Package inside the client (e.g. Shop)}
         {--force : Overwrite package if it already exists}
         {--no-dump : Skip the composer dump-autoload step}';
 
@@ -73,14 +73,15 @@ class CoreMakePackageCommand extends Command
         $slug = str_replace('_', '-', Str::snake($package));
         $sub = str_replace('_', '-', Str::snake($client));
         $this->info("Package {$class} created at {$targetPath}");
-        $this->line("Provisiónalo desde el Commander (cliente '{$sub}' + plan del package {$package}) para servirlo en {$sub}.<TENANT_BASE_DOMAIN>/api/v1/{$slug} (crea su BD).");
+        $this->line("Provision it from the Commander (client '{$sub}' + a plan for package {$package}) to serve it at {$sub}.<TENANT_BASE_DOMAIN>/api/v1/{$slug} (this creates its database).");
 
         return self::SUCCESS;
     }
 
     /**
-     * Regenerate the Composer autoloader so the new package's PSR-4 namespaces resolve immediately.
-     * Best-effort: the scaffold already succeeded, so a failing dump only warns (run it by hand then).
+     * Regenera el autoloader de Composer para que los namespaces PSR-4 del package recién creado
+     * resuelvan al momento. Sin garantías: el scaffold ya ha salido bien, así que un dump que falla
+     * solo avisa, y entonces se lanza a mano.
      */
     private function dumpAutoload(): void
     {

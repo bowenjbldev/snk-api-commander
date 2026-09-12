@@ -28,113 +28,113 @@ class KilkanaStreetTest extends TestCase
         parent::setUp();
 
         DB::setDefaultConnection('tenant');
-        foreach (['Core', 'Kilkana'] as $paquete) {
+        foreach (['Core', 'Kilkana'] as $package) {
             $this->artisan('migrate', [
                 '--database' => 'tenant',
-                '--path' => "packages/{$paquete}/database/migrations",
+                '--path' => "packages/{$package}/database/migrations",
             ])->run();
         }
 
         app(SnkKilkanaRoleCatalogService::class)->sync();
     }
 
-    public function test_el_sitio_trae_la_cabecera_aunque_no_haya_tema(): void
+    public function test_the_site_includes_the_masthead_even_without_a_theme(): void
     {
         SnkKilkanaSettingModel::create(['id' => 1, 'tenant_name' => 'El Diario', 'tenant_tagline' => 'La comarca, contada cada día']);
 
-        $sitio = app(SnkKilkanaPublicService::class)->site();
+        $site = app(SnkKilkanaPublicService::class)->site();
 
-        $this->assertSame('El Diario', $sitio['tenant']['name']);
-        $this->assertSame('La comarca, contada cada día', $sitio['tenant']['tagline']);
-        $this->assertNull($sitio['theme']);
+        $this->assertSame('El Diario', $site['tenant']['name']);
+        $this->assertSame('La comarca, contada cada día', $site['tenant']['tagline']);
+        $this->assertNull($site['theme']);
     }
 
-    public function test_una_pieza_publica_trae_las_fotos_de_su_cuerpo_resueltas(): void
+    public function test_a_public_post_includes_its_body_photos_resolved(): void
     {
-        $seccion = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
-        $firma = SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);
-        $foto = SnkKilkanaMediaModel::create(['url' => '/storage/a.jpg', 'url_hash' => sha1('a'), 'alt' => 'La plaza', 'caption' => 'Ayer', 'credit' => 'E. D.', 'width' => 1600, 'height' => 900]);
+        $section = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
+        $byline = SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);
+        $photo = SnkKilkanaMediaModel::create(['url' => '/storage/a.jpg', 'url_hash' => sha1('a'), 'alt' => 'La plaza', 'caption' => 'Ayer', 'credit' => 'E. D.', 'width' => 1600, 'height' => 900]);
         SnkKilkanaPostModel::create([
-            'title' => 'Plan', 'slug' => 'plan', 'url_date' => '2026-07-01', 'category_id' => $seccion->id, 'author_id' => $firma->id,
+            'title' => 'Plan', 'slug' => 'plan', 'url_date' => '2026-07-01', 'category_id' => $section->id, 'author_id' => $byline->id,
             'status' => 'published', 'publish_at' => '2026-07-01 08:00:00', 'excerpt' => 'Entradilla.',
             'body_blocks' => [
                 ['id' => 'p1', 'type' => 'paragraph', 'config' => ['text' => 'Hola']],
-                ['id' => 'i1', 'type' => 'image', 'config' => ['media_id' => $foto->id, 'caption' => 'Ayer']],
+                ['id' => 'i1', 'type' => 'image', 'config' => ['media_id' => $photo->id, 'caption' => 'Ayer']],
                 ['id' => 'i2', 'type' => 'image', 'config' => ['media_id' => 999]],
             ],
         ]);
 
-        $pieza = app(SnkKilkanaPublicService::class)->post('2026', '07', '01', 'plan')->toArray();
+        $post = app(SnkKilkanaPublicService::class)->post('2026', '07', '01', 'plan')->toArray();
 
         $this->assertSame([[
-            'id' => (string) $foto->id, 'url' => '/storage/a.jpg', 'alt' => 'La plaza', 'caption' => 'Ayer', 'credit' => 'E. D.', 'width' => 1600, 'height' => 900, 'variants' => null,
-        ]], $pieza['media'], 'Solo las que existen, y con lo que la calle pinta.');
-        $this->assertSame('image', $pieza['body_blocks'][1]['type']);
+            'id' => (string) $photo->id, 'url' => '/storage/a.jpg', 'alt' => 'La plaza', 'caption' => 'Ayer', 'credit' => 'E. D.', 'width' => 1600, 'height' => 900, 'variants' => null,
+        ]], $post['media'], 'Solo las que existen, y con lo que la calle pinta.');
+        $this->assertSame('image', $post['body_blocks'][1]['type']);
     }
 
     /** «Lo más leído» se ordena por lecturas, y una lectura es un `read`: si eso revienta, la cifra es cero para siempre. */
-    public function test_una_lectura_cuenta_y_el_mismo_visitante_es_un_solo_lector(): void
+    public function test_a_read_counts_and_the_same_visitor_is_a_single_reader(): void
     {
-        $seccion = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
-        $firma = SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);
-        $pieza = SnkKilkanaPostModel::create([
-            'title' => 'Plan', 'slug' => 'plan', 'url_date' => '2026-07-01', 'category_id' => $seccion->id, 'author_id' => $firma->id,
+        $section = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
+        $byline = SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);
+        $post = SnkKilkanaPostModel::create([
+            'title' => 'Plan', 'slug' => 'plan', 'url_date' => '2026-07-01', 'category_id' => $section->id, 'author_id' => $byline->id,
             'status' => 'published', 'publish_at' => '2026-07-01 08:00:00', 'excerpt' => 'Entradilla.', 'body_blocks' => [],
         ]);
-        $visitante = Request::create('/', 'POST', server: ['REMOTE_ADDR' => '10.0.0.7', 'HTTP_USER_AGENT' => 'lector']);
-        $servicio = app(SnkKilkanaPublicService::class);
+        $visitor = Request::create('/', 'POST', server: ['REMOTE_ADDR' => '10.0.0.7', 'HTTP_USER_AGENT' => 'lector']);
+        $service = app(SnkKilkanaPublicService::class);
 
-        $this->assertTrue($servicio->recordView('2026', '07', '01', 'plan', 'open', $visitante));
-        $this->assertTrue($servicio->recordView('2026', '07', '01', 'plan', 'read', $visitante));
-        $this->assertTrue($servicio->recordView('2026', '07', '01', 'plan', 'read', $visitante));
-        $this->assertFalse($servicio->recordView('2026', '07', '01', 'nadie', 'read', $visitante));
+        $this->assertTrue($service->recordView('2026', '07', '01', 'plan', 'open', $visitor));
+        $this->assertTrue($service->recordView('2026', '07', '01', 'plan', 'read', $visitor));
+        $this->assertTrue($service->recordView('2026', '07', '01', 'plan', 'read', $visitor));
+        $this->assertFalse($service->recordView('2026', '07', '01', 'nadie', 'read', $visitor));
 
-        $hoy = SnkKilkanaPostViewModel::query()->where('post_id', $pieza->id)->where('date', now()->toDateString())->first();
-        $this->assertSame(1, (int) $hoy->opens);
-        $this->assertSame(2, (int) $hoy->engaged);
-        $this->assertSame(1, (int) $hoy->readers, 'Dos lecturas del mismo visitante en el día son un lector.');
+        $today = SnkKilkanaPostViewModel::query()->where('post_id', $post->id)->where('date', now()->toDateString())->first();
+        $this->assertSame(1, (int) $today->opens);
+        $this->assertSame(2, (int) $today->engaged);
+        $this->assertSame(1, (int) $today->readers, 'Dos lecturas del mismo visitante en el día son un lector.');
     }
 
     /** La hemeroteca es la misma lista más atrás, y el sitemap solo lleva lo publicado e indexable. */
-    public function test_la_lista_publica_pagina_y_el_sitemap_lleva_lo_indexable(): void
+    public function test_the_public_list_paginates_and_the_sitemap_carries_what_is_indexable(): void
     {
-        $seccion = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
-        $firma = SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);
-        foreach ([['a', '2026-07-03', []], ['b', '2026-07-02', []], ['c', '2026-07-01', ['noindex' => true]], ['d', '2026-06-30', ['status' => 'draft']]] as [$slug, $dia, $extra]) {
+        $section = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
+        $byline = SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);
+        foreach ([['a', '2026-07-03', []], ['b', '2026-07-02', []], ['c', '2026-07-01', ['noindex' => true]], ['d', '2026-06-30', ['status' => 'draft']]] as [$slug, $day, $extra]) {
             SnkKilkanaPostModel::create($extra + [
-                'title' => $slug, 'slug' => $slug, 'url_date' => $dia, 'category_id' => $seccion->id, 'author_id' => $firma->id,
-                'status' => 'published', 'publish_at' => "{$dia} 08:00:00", 'excerpt' => 'E.', 'body_blocks' => [],
+                'title' => $slug, 'slug' => $slug, 'url_date' => $day, 'category_id' => $section->id, 'author_id' => $byline->id,
+                'status' => 'published', 'publish_at' => "{$day} 08:00:00", 'excerpt' => 'E.', 'body_blocks' => [],
             ]);
         }
-        $servicio = app(SnkKilkanaPublicService::class);
+        $service = app(SnkKilkanaPublicService::class);
 
-        $this->assertSame(['a', 'b'], $servicio->posts(['per_page' => 2])->pluck('slug')->all());
-        $this->assertSame(['c'], $servicio->posts(['per_page' => 2, 'page' => 2])->pluck('slug')->all());
-        $this->assertSame([], $servicio->posts(['per_page' => 2, 'page' => 3])->pluck('slug')->all());
+        $this->assertSame(['a', 'b'], $service->posts(['per_page' => 2])->pluck('slug')->all());
+        $this->assertSame(['c'], $service->posts(['per_page' => 2, 'page' => 2])->pluck('slug')->all());
+        $this->assertSame([], $service->posts(['per_page' => 2, 'page' => 3])->pluck('slug')->all());
 
-        $this->assertSame(['/2026/07/03/a', '/2026/07/02/b'], array_column($servicio->sitemap(), 'path'));
+        $this->assertSame(['/2026/07/03/a', '/2026/07/02/b'], array_column($service->sitemap(), 'path'));
     }
 
     /** Una etiqueta en la calle: su rótulo y sus piezas, y nada si no existe. */
-    public function test_la_lista_publica_filtra_por_etiqueta_y_la_etiqueta_se_rotula(): void
+    public function test_the_public_list_filters_by_tag_and_labels_the_tag(): void
     {
-        $seccion = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
-        $firma = SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);
-        $sequia = SnkKilkanaTagModel::create(['name' => 'Sequía', 'slug' => 'sequia']);
+        $section = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
+        $byline = SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);
+        $drought = SnkKilkanaTagModel::create(['name' => 'Sequía', 'slug' => 'sequia']);
         foreach (['a', 'b'] as $slug) {
-            $pieza = SnkKilkanaPostModel::create([
-                'title' => $slug, 'slug' => $slug, 'url_date' => '2026-07-01', 'category_id' => $seccion->id, 'author_id' => $firma->id,
+            $post = SnkKilkanaPostModel::create([
+                'title' => $slug, 'slug' => $slug, 'url_date' => '2026-07-01', 'category_id' => $section->id, 'author_id' => $byline->id,
                 'status' => 'published', 'publish_at' => '2026-07-01 08:00:00', 'excerpt' => 'E.', 'body_blocks' => [],
             ]);
             if ($slug === 'a') {
-                $pieza->tags()->attach($sequia->id);
+                $post->tags()->attach($drought->id);
             }
         }
-        $servicio = app(SnkKilkanaPublicService::class);
+        $service = app(SnkKilkanaPublicService::class);
 
-        $this->assertSame(['a'], $servicio->posts(['tag' => 'sequia'])->pluck('slug')->all());
-        $this->assertSame(['name' => 'Sequía', 'slug' => 'sequia'], $servicio->tag('sequia'));
-        $this->assertNull($servicio->tag('nada'));
+        $this->assertSame(['a'], $service->posts(['tag' => 'sequia'])->pluck('slug')->all());
+        $this->assertSame(['name' => 'Sequía', 'slug' => 'sequia'], $service->tag('sequia'));
+        $this->assertNull($service->tag('nada'));
     }
 
     /**
@@ -149,19 +149,19 @@ class KilkanaStreetTest extends TestCase
      * primero no se ve en la respuesta —el JSON salía igual con y sin el cuerpo— y el segundo
      * sí.
      */
-    public function test_el_listado_publico_no_trae_el_cuerpo_ni_suma_lo_que_nadie_pinta(): void
+    public function test_the_public_listing_skips_the_body_and_what_nobody_renders(): void
     {
-        $this->piezas(['a']);
+        $this->posts(['a']);
         // Lo que pide el frontend: sin `?fields=` la puerta sirve su techo, y las cuatro
         // relaciones se incluyen por su nombre.
         request()->query->replace(['include' => 'category,author,tags,coverMedia']);
 
         DB::flushQueryLog();
         DB::enableQueryLog();
-        $pieza = app(SnkKilkanaPublicService::class)->posts(['per_page' => 5])->first();
+        $post = app(SnkKilkanaPublicService::class)->posts(['per_page' => 5])->first();
         $sql = DB::getQueryLog()[0]['query'];
         DB::disableQueryLog();
-        $fila = json_decode(json_encode(new SnkKilkanaPostResource($pieza)), true);
+        $row = json_decode(json_encode(new SnkKilkanaPostResource($post)), true);
 
         $this->assertStringNotContainsString('body_blocks', $sql, 'El listado se trae el cuerpo entero de cada pieza.');
         $this->assertStringNotContainsString('views_day', $sql);
@@ -172,12 +172,12 @@ class KilkanaStreetTest extends TestCase
         // techo de más, esto se pone rojo antes de que el periódico pierda una portada.
         foreach (['id', 'title', 'excerpt', 'slug', 'status', 'content_tier', 'publish_at', 'unpublish_at',
             'updated_at', 'url_path', 'views_total', 'comments_count', 'cover', 'category', 'author', 'tags',
-            'noindex', 'seo_title', 'seo_description', 'og_title', 'og_description', 'og_image_id'] as $campo) {
-            $this->assertArrayHasKey($campo, $fila, "«{$campo}» lo lee la calle y ha dejado de viajar.");
+            'noindex', 'seo_title', 'seo_description', 'og_title', 'og_description', 'og_image_id'] as $field) {
+            $this->assertArrayHasKey($field, $row, "«{$field}» lo lee la calle y ha dejado de viajar.");
         }
         foreach (['body_blocks', 'created_by', 'updated_by', 'deleted_by', 'deleted_at',
-            'canonical_url', 'featured', 'views_day', 'views_week'] as $campo) {
-            $this->assertArrayNotHasKey($campo, $fila, "«{$campo}» es de dentro y no pinta nada en la calle.");
+            'canonical_url', 'featured', 'views_day', 'views_week'] as $field) {
+            $this->assertArrayNotHasKey($field, $row, "«{$field}» es de dentro y no pinta nada en la calle.");
         }
     }
 
@@ -190,19 +190,19 @@ class KilkanaStreetTest extends TestCase
      * carga solo. `url_path` ni siquiera es una columna, es un accesor: lo único que evitaba
      * un «Unknown column» era que el argumento se ignorase.
      */
-    public function test_el_sitemap_no_carga_relaciones_ni_columnas_que_no_devuelve(): void
+    public function test_the_sitemap_loads_no_relations_or_columns_it_does_not_return(): void
     {
-        $this->piezas(['a', 'b']);
+        $this->posts(['a', 'b']);
 
         DB::flushQueryLog();
         DB::enableQueryLog();
-        $mapa = app(SnkKilkanaPublicService::class)->sitemap();
-        $consultas = DB::getQueryLog();
+        $sitemap = app(SnkKilkanaPublicService::class)->sitemap();
+        $queries = DB::getQueryLog();
         DB::disableQueryLog();
 
-        $this->assertCount(1, $consultas, 'El sitemap carga relaciones que no devuelve.');
-        $this->assertStringNotContainsString('body_blocks', $consultas[0]['query']);
-        $this->assertSame(['path', 'updated_at'], array_keys($mapa[0]));
+        $this->assertCount(1, $queries, 'El sitemap carga relaciones que no devuelve.');
+        $this->assertStringNotContainsString('body_blocks', $queries[0]['query']);
+        $this->assertSame(['path', 'updated_at'], array_keys($sitemap[0]));
     }
 
     /**
@@ -213,17 +213,17 @@ class KilkanaStreetTest extends TestCase
      * lista se pagina con `forPage`, así que un orden inestable hace que la página 2 repita
      * una pieza y se salte otra.
      */
-    public function test_dos_piezas_del_mismo_minuto_salen_siempre_en_el_mismo_orden(): void
+    public function test_two_posts_from_the_same_minute_always_appear_in_the_same_order(): void
     {
-        $this->piezas(['a', 'b', 'c'], '2026-07-01 08:00:00');
-        $servicio = app(SnkKilkanaPublicService::class);
+        $this->posts(['a', 'b', 'c'], '2026-07-01 08:00:00');
+        $service = app(SnkKilkanaPublicService::class);
 
         DB::flushQueryLog();
         DB::enableQueryLog();
-        $primera = $servicio->posts(['per_page' => 2])->pluck('slug')->all();
+        $firstPage = $service->posts(['per_page' => 2])->pluck('slug')->all();
         $sql = DB::getQueryLog()[0]['query'];
         DB::disableQueryLog();
-        $segunda = $servicio->posts(['per_page' => 2, 'page' => 2])->pluck('slug')->all();
+        $secondPage = $service->posts(['per_page' => 2, 'page' => 2])->pluck('slug')->all();
 
         // Sobre el SQL y no solo sobre el resultado: con tres filas en sqlite los empates salen
         // estables por casualidad, así que comprobar el orden devuelto no fija nada. Lo que hay
@@ -234,16 +234,11 @@ class KilkanaStreetTest extends TestCase
             'El listado no desempata, así que su orden lo decide el plan de la consulta.',
         );
 
-        $this->assertCount(2, $primera);
-        $this->assertSame([], array_intersect($primera, $segunda), 'La página 2 repite una pieza de la página 1.');
-        $this->assertSame($primera, $servicio->posts(['per_page' => 2])->pluck('slug')->all(), 'La misma consulta da otro orden.');
+        $this->assertCount(2, $firstPage);
+        $this->assertSame([], array_intersect($firstPage, $secondPage), 'La página 2 repite una pieza de la página 1.');
+        $this->assertSame($firstPage, $service->posts(['per_page' => 2])->pluck('slug')->all(), 'La misma consulta da otro orden.');
     }
 
-    /**
-     * Piezas publicadas con cuerpo, para medir lo que cuesta traerlo.
-     *
-     * @param  list<string>  $slugs
-     */
     /**
      * Quien llama elige los campos, dentro del techo del servicio.
      *
@@ -252,11 +247,11 @@ class KilkanaStreetTest extends TestCase
      * —la trampa que ya pagó el sitemap—. Lo que no está en el techo se ignora, como el resto
      * de la query: nunca un 422, y nunca una columna que la calle no puede ver.
      */
-    public function test_la_calle_elige_los_campos_y_no_puede_pedir_los_que_no_son_suyos(): void
+    public function test_the_street_picks_fields_and_cannot_request_ones_that_are_not_its_own(): void
     {
-        $this->piezas(['una', 'otra']);
-        $fila = function (string $campos) {
-            request()->query->replace($campos === '' ? [] : ['fields' => $campos]);
+        $this->posts(['una', 'otra']);
+        $row = function (string $fields) {
+            request()->query->replace($fields === '' ? [] : ['fields' => $fields]);
 
             return json_decode(json_encode(new SnkKilkanaPostResource(
                 app(SnkKilkanaPublicService::class)->posts([])->first(),
@@ -266,25 +261,25 @@ class KilkanaStreetTest extends TestCase
         // Sin pedir nada, el techo: la lista blanca de la puerta, y **no la fila entera**.
         // El paquete, cuando nadie recorta, selecciona todo; en una puerta anónima eso sería
         // servir `body_blocks` con su muro de pago dentro a quien pida `/public/posts` a secas.
-        $entera = $fila('');
-        $this->assertArrayHasKey('seo_title', $entera);
-        $this->assertArrayNotHasKey('body_blocks', $entera, 'El cuerpo no sale de aquí ni por defecto.');
+        $complete = $row('');
+        $this->assertArrayHasKey('seo_title', $complete);
+        $this->assertArrayNotHasKey('body_blocks', $complete, 'El cuerpo no sale de aquí ni por defecto.');
 
         // Y elige de verdad: `url_path` no es una columna sino un derivado de `url_date` y
         // `slug`, así que se pide su columna y el Resource lo compone.
-        $minima = $fila('id,title,url_date,slug');
+        $minimal = $row('id,title,url_date,slug');
 
         $this->assertSame(
             ['id', 'title', 'slug', 'views_total', 'url_path', 'comments_count'],
-            array_keys($minima),
+            array_keys($minimal),
             'Ni una relación: el modelo dejó de cargarlas solo y aquí no se ha incluido ninguna.',
         );
-        $this->assertNotNull($minima['url_path'], 'El derivado sale con la columna de la que depende.');
+        $this->assertNotNull($minimal['url_path'], 'El derivado sale con la columna de la que depende.');
 
         // Cuatro columnas pedidas, `url_path` como derivado de `url_date`, y los dos agregados
         // que esta puerta cuelga siempre. Nada más.
-        foreach (['excerpt', 'seo_title', 'og_title', 'publish_at', 'noindex'] as $noPedida) {
-            $this->assertArrayNotHasKey($noPedida, $minima, "`{$noPedida}` no se pidió: no viaja.");
+        foreach (['excerpt', 'seo_title', 'og_title', 'publish_at', 'noindex'] as $notRequested) {
+            $this->assertArrayNotHasKey($notRequested, $minimal, "`{$notRequested}` no se pidió: no viaja.");
         }
 
         // El techo: lo que no es suyo lanza, que es lo único que `?fields=` no perdona —no
@@ -295,16 +290,21 @@ class KilkanaStreetTest extends TestCase
         app(SnkKilkanaPublicService::class)->posts([]);
     }
 
-    private function piezas(array $slugs, ?string $cuando = null): void
+    /**
+     * Piezas publicadas con cuerpo, para medir lo que cuesta traerlo.
+     *
+     * @param  list<string>  $slugs
+     */
+    private function posts(array $slugs, ?string $at = null): void
     {
-        $seccion = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
-        $firma = SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);
+        $section = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
+        $byline = SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);
 
         foreach ($slugs as $i => $slug) {
             SnkKilkanaPostModel::create([
                 'title' => $slug, 'slug' => $slug, 'url_date' => '2026-07-01',
-                'category_id' => $seccion->id, 'author_id' => $firma->id, 'status' => 'published',
-                'publish_at' => $cuando ?? '2026-07-0'.($i + 1).' 08:00:00', 'excerpt' => 'E.',
+                'category_id' => $section->id, 'author_id' => $byline->id, 'status' => 'published',
+                'publish_at' => $at ?? '2026-07-0'.($i + 1).' 08:00:00', 'excerpt' => 'E.',
                 'body_blocks' => [['id' => 'p1', 'type' => 'paragraph', 'config' => ['text' => str_repeat('x', 500)]]],
             ]);
         }

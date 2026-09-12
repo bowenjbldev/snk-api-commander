@@ -45,35 +45,35 @@ class KilkanaMediaLibraryTest extends TestCase
         $this->media = app(SnkKilkanaMediaService::class);
     }
 
-    public function test_la_ficha_no_publica_donde_vive_el_fichero(): void
+    public function test_the_record_does_not_expose_where_the_file_lives(): void
     {
-        $foto = $this->foto();
+        $photo = $this->photo();
 
-        $fila = json_decode(json_encode(new SnkKilkanaMediaResource($this->media->serialize($foto))), true);
+        $row = json_decode(json_encode(new SnkKilkanaMediaResource($this->media->serialize($photo))), true);
 
         // Por conjunto y no por orden: el orden del JSON lo pone el Resource, que se escribe
         // agrupado para leerse, y esta lista se escribe agrupada por lo que significa cada cosa.
-        $esperadas = [
+        $expected = [
             'id', 'url', 'original_name', 'title', 'mime', 'size_bytes', 'width', 'height',
             'duration', 'alt', 'caption', 'credit', 'license', 'rights_status', 'content_hash',
             'focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h', 'frames', 'variants',
             'poster_at', 'poster_media_id', 'created_at', 'deleted_at', 'usage_count',
             'tags', 'collections',
         ];
-        $publicadas = array_keys($fila);
-        sort($esperadas);
-        sort($publicadas);
+        $published = array_keys($row);
+        sort($expected);
+        sort($published);
 
-        $this->assertSame($esperadas, $publicadas, 'la ficha publica claves que esta lista no nombra');
+        $this->assertSame($expected, $published, 'la ficha publica claves que esta lista no nombra');
 
         // `caption` sale, y antes no: la lista blanca de la mediateca lo escondia mientras la
         // de la calle lo publicaba, asi que el pie de una foto lo veia un lector y no quien la
         // edita. Dos listas para el mismo dato es como se llega a eso.
         //
         // Los que no salen son los que llevan al fichero, y esos no dependen de la puerta.
-        $this->assertSame('public', $foto->disk);
-        foreach (['disk', 'path', 'url_hash', 'uploaded_by', 'description', 'source_url', 'rights_expires_at'] as $dentro) {
-            $this->assertArrayNotHasKey($dentro, $fila, "«{$dentro}» no lo pinta ninguna pantalla del panel");
+        $this->assertSame('public', $photo->disk);
+        foreach (['disk', 'path', 'url_hash', 'uploaded_by', 'description', 'source_url', 'rights_expires_at'] as $inside) {
+            $this->assertArrayNotHasKey($inside, $row, "«{$inside}» no lo pinta ninguna pantalla del panel");
         }
     }
 
@@ -83,18 +83,18 @@ class KilkanaMediaLibraryTest extends TestCase
      * `decimal` de MariaDB sale del JSON como «0.5000», y al otro lado un `x * ancho` con una
      * cadena concatena en vez de multiplicar. El punto ya lo casteaba; el marco entro despues.
      */
-    public function test_el_punto_y_el_marco_viajan_como_numeros(): void
+    public function test_the_focal_point_and_the_crop_travel_as_numbers(): void
     {
-        $foto = $this->foto();
-        $this->media->update($foto, ['focal_x' => 0.42, 'crop_w' => 0.5]);
+        $photo = $this->photo();
+        $this->media->update($photo, ['focal_x' => 0.42, 'crop_w' => 0.5]);
 
-        $fila = $this->media->serialize($foto->fresh())->toArray();
+        $row = $this->media->serialize($photo->fresh())->toArray();
 
-        foreach (['focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h'] as $campo) {
-            $this->assertIsFloat($fila[$campo], "«{$campo}» no llega como numero");
+        foreach (['focal_x', 'focal_y', 'crop_x', 'crop_y', 'crop_w', 'crop_h'] as $field) {
+            $this->assertIsFloat($row[$field], "«{$field}» no llega como numero");
         }
-        $this->assertSame(0.42, $fila['focal_x']);
-        $this->assertSame(0.5, $fila['crop_w']);
+        $this->assertSame(0.42, $row['focal_x']);
+        $this->assertSame(0.5, $row['crop_w']);
     }
 
     /**
@@ -105,26 +105,26 @@ class KilkanaMediaLibraryTest extends TestCase
      * borrarlas no rompia la base — dejaba al articulo sin imagen social y al periodista sin
      * cara, sin un solo error.
      */
-    public function test_used_in_nombra_las_tres_formas_de_estar_en_uso(): void
+    public function test_used_in_names_the_three_ways_of_being_in_use(): void
     {
-        $foto = $this->foto();
-        $categoria = SnkKilkanaCategoryModel::create([
+        $photo = $this->photo();
+        $category = SnkKilkanaCategoryModel::create([
             'name' => 'Local', 'slug' => 'local', 'status' => 'live', 'position' => 0,
         ]);
-        $firma = $this->firma('Marta Beneyto');
+        $byline = $this->byline('Marta Beneyto');
 
-        $this->pieza('Portada', $categoria, $firma, ['cover_media_id' => $foto->id]);
-        $this->pieza('Social', $categoria, $firma, ['og_image_id' => $foto->id]);
-        $firma->update(['avatar_media_id' => $foto->id]);
+        $this->makePost('Portada', $category, $byline, ['cover_media_id' => $photo->id]);
+        $this->makePost('Social', $category, $byline, ['og_image_id' => $photo->id]);
+        $byline->update(['avatar_media_id' => $photo->id]);
 
-        $usos = $this->media->uses($foto->fresh());
+        $uses = $this->media->uses($photo->fresh());
 
         $this->assertSame(
             ['coveredPosts', 'socialPosts', 'avatarAuthors'],
-            array_column($usos, 'kind'),
+            array_column($uses, 'kind'),
         );
-        $this->assertSame(['Portada', 'Social', 'Marta Beneyto'], array_column($usos, 'title'));
-        $this->assertSame(3, $foto->fresh()->usage_count);
+        $this->assertSame(['Portada', 'Social', 'Marta Beneyto'], array_column($uses, 'title'));
+        $this->assertSame(3, $photo->fresh()->usage_count);
     }
 
     /**
@@ -141,13 +141,13 @@ class KilkanaMediaLibraryTest extends TestCase
      * exactamente el hueco de la carrera. Sin eso, la prueba dependeria de que dos hilos se
      * crucen, que es como se escribe una prueba que pasa siempre y no comprueba nada.
      */
-    public function test_el_mismo_fichero_a_la_vez_vuelve_como_duplicado(): void
+    public function test_the_same_file_uploaded_concurrently_returns_as_duplicate(): void
     {
         Storage::fake('public');
         // PNG y no JPEG: la GD de esta imagen viene sin `imagejpeg`, y el generador de
         // Laravel lanza en vez de devolver un fichero. El formato da igual para lo que se prueba.
-        $fichero = UploadedFile::fake()->image('puerto.png', 800, 450);
-        $hash = hash_file('sha256', $fichero->getRealPath());
+        $file = UploadedFile::fake()->image('puerto.png', 800, 450);
+        $hash = hash_file('sha256', $file->getRealPath());
         $rival = null;
 
         SnkKilkanaMediaModel::creating(function () use ($hash, &$rival) {
@@ -164,13 +164,13 @@ class KilkanaMediaLibraryTest extends TestCase
         });
 
         try {
-            $resultado = $this->media->upload(['file' => $fichero], 1);
+            $result = $this->media->upload(['file' => $file], 1);
         } finally {
             SnkKilkanaMediaModel::flushEventListeners();
         }
 
-        $this->assertTrue($resultado['duplicate'], 'el choque se contó como fallo y no como duplicado');
-        $this->assertSame($rival, $resultado['media']->id, 'no devuelve la fila que ganó la carrera');
+        $this->assertTrue($result['duplicate'], 'el choque se contó como fallo y no como duplicado');
+        $this->assertSame($rival, $result['media']->id, 'no devuelve la fila que ganó la carrera');
         // Una sola fila con ese contenido: eso es lo que el indice unico existe para garantizar.
         $this->assertSame(1, SnkKilkanaMediaModel::withTrashed()->where('content_hash', $hash)->count());
         // Y sin dejar su copia en el disco, que es basura que nadie va a reclamar.
@@ -182,20 +182,20 @@ class KilkanaMediaLibraryTest extends TestCase
      * DENTRO de lo que ya se esta mirando: en una coleccion de una foto, «Images 1». `facets`
      * sigue contando el archivo entero, que es lo que mide la tira de estadisticas.
      */
-    public function test_las_cifras_de_las_pestanas_cuentan_dentro_del_filtro(): void
+    public function test_tab_counts_count_within_the_filter(): void
     {
-        $cultura = SnkKilkanaMediaCollectionModel::create(['name' => 'Cultura', 'slug' => 'cultura']);
-        $this->foto()->collections()->attach($cultura->id);
-        $this->foto('otra.jpg');
+        $culture = SnkKilkanaMediaCollectionModel::create(['name' => 'Cultura', 'slug' => 'cultura']);
+        $this->photo()->collections()->attach($culture->id);
+        $this->photo('otra.jpg');
 
-        $todo = $this->media->index(Request::create('/media'));
-        $this->assertSame(['all' => 2, 'image' => 2, 'video' => 0, 'audio' => 0], $todo['scope']);
+        $all = $this->media->index(Request::create('/media'));
+        $this->assertSame(['all' => 2, 'image' => 2, 'video' => 0, 'audio' => 0], $all['scope']);
 
-        $dentro = $this->media->index(Request::create('/media', 'GET', ['collection' => 'Cultura']));
+        $inside = $this->media->index(Request::create('/media', 'GET', ['collection' => 'Cultura']));
 
-        $this->assertSame(['all' => 1, 'image' => 1, 'video' => 0, 'audio' => 0], $dentro['scope']);
-        $this->assertSame(1, $dentro['meta']['total'], 'la lista y las pestanas cuentan lo mismo');
-        $this->assertSame(2, $dentro['facets']['all'], 'las estadisticas siguen midiendo el archivo entero');
+        $this->assertSame(['all' => 1, 'image' => 1, 'video' => 0, 'audio' => 0], $inside['scope']);
+        $this->assertSame(1, $inside['meta']['total'], 'la lista y las pestanas cuentan lo mismo');
+        $this->assertSame(2, $inside['facets']['all'], 'las estadisticas siguen midiendo el archivo entero');
 
         // Y el propio filtro de tipo no se cuenta a si mismo: con «Video» puesto, «Images»
         // tiene que seguir diciendo cuantas hay, no cero.
@@ -208,27 +208,27 @@ class KilkanaMediaLibraryTest extends TestCase
      * son columnas y salen igual, porque el servicio los cuelga después del recorte y añade por
      * su cuenta las cuatro de fontanería de las que se calculan las derivadas.
      */
-    public function test_pedir_campos_recorta_la_ficha_y_conserva_lo_que_pinta(): void
+    public function test_requesting_fields_trims_the_record_and_keeps_what_renders(): void
     {
-        $this->foto();
+        $this->photo();
 
-        $pagina = $this->media->index(Request::create('/media', 'GET', ['fields' => 'id,url,width,height']));
-        $fila = json_decode(json_encode($pagina['data']), true)[0];
+        $page = $this->media->index(Request::create('/media', 'GET', ['fields' => 'id,url,width,height']));
+        $row = json_decode(json_encode($page['data']), true)[0];
 
         $this->assertEqualsCanonicalizing(
             ['id', 'url', 'width', 'height', 'variants', 'usage_count', 'tags', 'collections'],
-            array_keys($fila),
+            array_keys($row),
         );
-        $this->assertSame(0, $fila['usage_count']);
+        $this->assertSame(0, $row['usage_count']);
     }
 
-    private function foto(string $nombre = 'foto.jpg'): SnkKilkanaMediaModel
+    private function photo(string $name = 'foto.jpg'): SnkKilkanaMediaModel
     {
-        return SnkKilkanaMediaModel::firstOrCreate(['content_hash' => hash('sha256', $nombre)], [
-            'url' => "/storage/media/pruebas/{$nombre}",
-            'original_name' => $nombre,
+        return SnkKilkanaMediaModel::firstOrCreate(['content_hash' => hash('sha256', $name)], [
+            'url' => "/storage/media/pruebas/{$name}",
+            'original_name' => $name,
             'disk' => 'public',
-            'path' => "media/pruebas/{$nombre}",
+            'path' => "media/pruebas/{$name}",
             'mime' => 'image/jpeg',
             'size_bytes' => 1024,
             'width' => 800,
@@ -236,24 +236,24 @@ class KilkanaMediaLibraryTest extends TestCase
         ]);
     }
 
-    private function firma(string $nombre): SnkKilkanaAuthorModel
+    private function byline(string $name): SnkKilkanaAuthorModel
     {
         $user = CoreUserModel::create([
-            'name' => $nombre,
-            'email' => str()->slug($nombre).'@eldiario.example',
+            'name' => $name,
+            'email' => str()->slug($name).'@eldiario.example',
             'password' => 'secret1234',
         ]);
 
-        return SnkKilkanaAuthorModel::create(['user_id' => $user->id, 'slug' => str()->slug($nombre)]);
+        return SnkKilkanaAuthorModel::create(['user_id' => $user->id, 'slug' => str()->slug($name)]);
     }
 
-    private function pieza(string $titulo, SnkKilkanaCategoryModel $categoria, SnkKilkanaAuthorModel $firma, array $extra): SnkKilkanaPostModel
+    private function makePost(string $title, SnkKilkanaCategoryModel $category, SnkKilkanaAuthorModel $byline, array $extra): SnkKilkanaPostModel
     {
         return SnkKilkanaPostModel::create([
-            'title' => $titulo,
+            'title' => $title,
             'excerpt' => 'Entradilla de prueba.',
-            'category_id' => $categoria->id,
-            'author_id' => $firma->id,
+            'category_id' => $category->id,
+            'author_id' => $byline->id,
             'status' => 'draft',
             'created_by' => 1,
             'updated_by' => 1,

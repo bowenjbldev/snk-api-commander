@@ -15,7 +15,7 @@ class SnkKilkanaLayoutModel extends Model
     {
         return [
             'layout' => SnkKilkanaLayoutEnum::class,
-            // LayoutSchema completo; la validacion estructural profunda vive en el cliente (normalizeLayoutSchema).
+            // El documento del builder entero; la validacion estructural profunda vive en el cliente.
             'schema' => 'array',
             'version' => 'integer',
         ];

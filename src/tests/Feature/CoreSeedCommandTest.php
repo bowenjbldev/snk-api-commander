@@ -13,10 +13,10 @@ use Tests\TestCase;
  */
 class CoreSeedCommandTest extends TestCase
 {
-    public function test_devuelve_la_conexion_tenant_como_estaba(): void
+    public function test_restores_the_tenant_connection_as_it_was(): void
     {
-        $antes = config('database.connections.tenant.database');
-        CoreSeedNoopStub::$baseDurante = null;
+        $before = config('database.connections.tenant.database');
+        CoreSeedNoopStub::$databaseDuringSeed = null;
 
         $this->artisan('core:seed', [
             '--client' => 'demo',
@@ -28,7 +28,7 @@ class CoreSeedCommandTest extends TestCase
         // Las dos aserciones son el par y ninguna vale sola: sin la primera, esto pasaria igual
         // con un comando que nunca hubiera configurado nada, que es la forma tonta de tener un
         // `finally` verde sobre un `try` que no hace nada.
-        $this->assertSame('demo_kilkana', CoreSeedNoopStub::$baseDurante, 'Durante la siembra apunta al inquilino.');
-        $this->assertSame($antes, config('database.connections.tenant.database'));
+        $this->assertSame('demo_kilkana', CoreSeedNoopStub::$databaseDuringSeed, 'Durante la siembra apunta al inquilino.');
+        $this->assertSame($before, config('database.connections.tenant.database'));
     }
 }

@@ -29,8 +29,8 @@ class KilkanaMediaVariantsTest extends TestCase
         parent::setUp();
 
         DB::setDefaultConnection('tenant');
-        foreach (['Core', 'Kilkana'] as $paquete) {
-            $this->artisan('migrate', ['--database' => 'tenant', '--path' => "packages/{$paquete}/database/migrations"])->run();
+        foreach (['Core', 'Kilkana'] as $package) {
+            $this->artisan('migrate', ['--database' => 'tenant', '--path' => "packages/{$package}/database/migrations"])->run();
         }
         Storage::fake('public');
         Queue::fake();
@@ -38,22 +38,22 @@ class KilkanaMediaVariantsTest extends TestCase
         $this->images = app(SnkKilkanaImageService::class);
     }
 
-    public function test_subir_deja_un_master_acotado_y_una_huella_y_calienta_por_cola(): void
+    public function test_upload_leaves_a_bounded_master_and_a_fingerprint_and_warms_via_the_queue(): void
     {
         config(['kilkana.kilkana.media.master' => 800]);
-        $subida = $this->media->upload(['file' => UploadedFile::fake()->image('puerto.jpg', 1600, 1000)], 1)['media'];
+        $uploaded = $this->media->upload(['file' => UploadedFile::fake()->image('puerto.jpg', 1600, 1000)], 1)['media'];
 
-        $this->assertNotNull($subida->master_path);
-        $this->assertSame([800, 500], [$subida->master_width, $subida->master_height], 'El máster se acota al lado mayor configurado.');
-        $this->assertTrue(Storage::disk('public')->exists($subida->master_path));
-        $this->assertTrue(Storage::disk('public')->exists($subida->path), 'Y el original se conserva.');
-        $this->assertMatchesRegularExpression('/^[0-9a-f]{8}$/', $subida->variants_key);
-        $this->assertSame([160, 320, 640], $subida->variants['widths'], 'Solo los anchos que caben en el máster.');
-        $this->assertSame(['width' => 800, 'height' => 450], $subida->variants['ratios']['hero']);
-        Queue::assertPushed(SnkKilkanaMediaWarmJob::class, fn ($job) => $job->mediaId === $subida->id);
+        $this->assertNotNull($uploaded->master_path);
+        $this->assertSame([800, 500], [$uploaded->master_width, $uploaded->master_height], 'El máster se acota al lado mayor configurado.');
+        $this->assertTrue(Storage::disk('public')->exists($uploaded->master_path));
+        $this->assertTrue(Storage::disk('public')->exists($uploaded->path), 'Y el original se conserva.');
+        $this->assertMatchesRegularExpression('/^[0-9a-f]{8}$/', $uploaded->variants_key);
+        $this->assertSame([160, 320, 640], $uploaded->variants['widths'], 'Solo los anchos que caben en el máster.');
+        $this->assertSame(['width' => 800, 'height' => 450], $uploaded->variants['ratios']['hero']);
+        Queue::assertPushed(SnkKilkanaMediaWarmJob::class, fn ($job) => $job->mediaId === $uploaded->id);
     }
 
-    public function test_una_derivada_nace_bajo_demanda_con_la_huella_vigente_y_solo_de_la_lista(): void
+    public function test_a_variant_is_built_on_demand_with_the_current_fingerprint_and_only_from_the_list(): void
     {
         config(['kilkana.kilkana.media.master' => 800]);
         $media = SnkKilkanaMediaModel::find($this->media->upload(['file' => UploadedFile::fake()->image('plaza.png', 1200, 800)], 1)['media']->id);
@@ -69,45 +69,45 @@ class KilkanaMediaVariantsTest extends TestCase
         $this->assertNull($this->images->variant($media, 'square', 320, 'gif'), 'Formato fuera de la lista.');
 
         // Un ancho mayor que la ventana no amplía: la derivada sale del tamaño de la ventana.
-        $grande = $this->images->variant($media, 'og', 1920, 'jpeg');
-        $this->assertNull($grande, 'Y un ancho que el máster no da tampoco existe.');
+        $large = $this->images->variant($media, 'og', 1920, 'jpeg');
+        $this->assertNull($large, 'Y un ancho que el máster no da tampoco existe.');
     }
 
-    public function test_reencuadrar_cambia_la_huella_y_la_purga_barre_la_vieja(): void
+    public function test_recropping_changes_the_fingerprint_and_the_purge_sweeps_the_old_one(): void
     {
         config(['kilkana.kilkana.media.master' => 800]);
         $media = SnkKilkanaMediaModel::find($this->media->upload(['file' => UploadedFile::fake()->image('retrato.jpg', 900, 1200)], 1)['media']->id);
-        $vieja = $media->variants_key;
-        $antes = $this->images->variant($media, 'card', 320, 'jpeg');
+        $oldKey = $media->variants_key;
+        $before = $this->images->variant($media, 'card', 320, 'jpeg');
 
         $this->media->update($media, ['focal_x' => 0.2, 'focal_y' => 0.1]);
         $media->refresh();
-        $this->assertNotSame($vieja, $media->variants_key);
+        $this->assertNotSame($oldKey, $media->variants_key);
         $this->media->update($media, ['alt' => 'La plaza']);
         $this->assertSame($media->fresh()->variants_key, $media->variants_key, 'Un cambio de alt no toca la huella.');
 
-        $this->assertTrue(Storage::disk('public')->exists($antes));
+        $this->assertTrue(Storage::disk('public')->exists($before));
         $this->assertSame(1, $this->images->purgeOrphans());
-        $this->assertFalse(Storage::disk('public')->exists($antes));
+        $this->assertFalse(Storage::disk('public')->exists($before));
     }
 
     /**
      * Un encuadre propio manda sobre el punto en SU proporción y en ninguna otra, entra en la
      * huella, y una proporción que la fábrica no produce no se guarda.
      */
-    public function test_un_encuadre_propio_mueve_solo_su_proporcion_y_cambia_la_huella(): void
+    public function test_a_custom_crop_moves_only_its_ratio_and_changes_the_fingerprint(): void
     {
         config(['kilkana.kilkana.media.master' => 800]);
         $media = SnkKilkanaMediaModel::find($this->media->upload(['file' => UploadedFile::fake()->image('plaza.jpg', 1600, 1000)], 1)['media']->id);
-        $antes = $media->variants_key;
-        $cardAntes = $media->variants['ratios']['card'];
+        $before = $media->variants_key;
+        $cardBefore = $media->variants['ratios']['card'];
 
         $this->media->update($media, ['frames' => ['portrait' => ['x' => 0.7, 'y' => 0.0, 'w' => 0.5, 'h' => 1.0], 'panorama' => ['x' => 0, 'y' => 0, 'w' => 1, 'h' => 1]]]);
         $media->refresh();
 
         $this->assertSame(['portrait'], array_keys($media->frames), 'Solo las proporciones de la fábrica.');
-        $this->assertNotSame($antes, $media->variants_key, 'El encuadre propio entra en la huella.');
-        $this->assertSame($cardAntes, $media->variants['ratios']['card'], 'Las demás proporciones no se mueven.');
+        $this->assertNotSame($before, $media->variants_key, 'El encuadre propio entra en la huella.');
+        $this->assertSame($cardBefore, $media->variants['ratios']['card'], 'Las demás proporciones no se mueven.');
 
         // 800 × 500 de máster: la caja pide la mitad del ancho (400) y su alto 2:3 (600) no cabe,
         // así que se acota al alto entero y el ancho baja a 333; y empieza donde la imagen acaba.
@@ -117,14 +117,14 @@ class KilkanaMediaVariantsTest extends TestCase
 
         // Y el recorte acota también al encuadre propio: con el marco en la mitad izquierda, la
         // ventana entra en él aunque se guardara pegada al borde derecho.
-        $acotada = SnkKilkanaImageService::window(800, 500, ['x' => 0.5, 'y' => 0.5], ['x' => 0, 'y' => 0, 'w' => 0.5, 'h' => 1], [2, 3], $media->frames['portrait']);
-        $this->assertSame(['x' => 67, 'y' => 0, 'w' => 333, 'h' => 500], $acotada);
+        $scoped = SnkKilkanaImageService::window(800, 500, ['x' => 0.5, 'y' => 0.5], ['x' => 0, 'y' => 0, 'w' => 0.5, 'h' => 1], [2, 3], $media->frames['portrait']);
+        $this->assertSame(['x' => 67, 'y' => 0, 'w' => 333, 'h' => 500], $scoped);
 
         $this->media->update($media, ['frames' => []]);
         $this->assertNull($media->fresh()->frames, 'Vaciar los encuadres propios deja nulo.');
     }
 
-    public function test_lo_que_no_cabe_en_memoria_se_rechaza_por_la_cabecera_con_mensaje(): void
+    public function test_what_does_not_fit_in_memory_is_rejected_from_the_header_with_a_message(): void
     {
         config(['kilkana.kilkana.media.max_megapixels' => 1]);
         try {
@@ -136,7 +136,7 @@ class KilkanaMediaVariantsTest extends TestCase
         $this->assertSame(0, SnkKilkanaMediaModel::query()->count(), 'Y no queda fila a medias.');
     }
 
-    public function test_el_avif_es_el_primer_formato_y_nace_bajo_demanda(): void
+    public function test_avif_is_the_first_format_and_is_built_on_demand(): void
     {
         config(['kilkana.kilkana.media.master' => 800]);
         $media = SnkKilkanaMediaModel::find($this->media->upload(['file' => UploadedFile::fake()->image('plaza.png', 1200, 800)], 1)['media']->id);
@@ -149,43 +149,43 @@ class KilkanaMediaVariantsTest extends TestCase
     }
 
     /** Un vídeo se mide con `ffprobe` y gana un fotograma de portada, que es su máster: derivadas como una foto. */
-    public function test_un_video_trae_su_duracion_y_un_fotograma_como_master(): void
+    public function test_a_video_includes_its_duration_and_a_frame_as_master(): void
     {
         config(['kilkana.kilkana.media.master' => 800]);
         $tmp = tempnam(sys_get_temp_dir(), 'kk-video-').'.mp4';
         shell_exec(sprintf('ffmpeg -v error -y -f lavfi -i testsrc=duration=3:size=320x240:rate=10 -pix_fmt yuv420p %s', escapeshellarg($tmp)));
         $this->assertGreaterThan(0, filesize($tmp), 'ffmpeg está en la imagen y sabe fabricar un vídeo.');
 
-        $subida = $this->media->upload(['file' => new UploadedFile($tmp, 'prueba.mp4', 'video/mp4', null, true)], 1)['media'];
+        $uploaded = $this->media->upload(['file' => new UploadedFile($tmp, 'prueba.mp4', 'video/mp4', null, true)], 1)['media'];
 
-        $this->assertSame(3, $subida->duration, 'La duración la dice el fichero.');
-        $this->assertSame([320, 240], [$subida->width, $subida->height]);
-        $this->assertNotNull($subida->master_path, 'El fotograma es el máster.');
-        $this->assertSame([320, 240], [$subida->master_width, $subida->master_height]);
-        $this->assertNotNull($subida->variants);
-        $this->assertNotNull($this->images->variant(SnkKilkanaMediaModel::find($subida->id), 'card', 320, 'jpeg'));
-        $this->assertSame(1, $subida->poster_at, 'La portada por defecto es el segundo uno.');
+        $this->assertSame(3, $uploaded->duration, 'La duración la dice el fichero.');
+        $this->assertSame([320, 240], [$uploaded->width, $uploaded->height]);
+        $this->assertNotNull($uploaded->master_path, 'El fotograma es el máster.');
+        $this->assertSame([320, 240], [$uploaded->master_width, $uploaded->master_height]);
+        $this->assertNotNull($uploaded->variants);
+        $this->assertNotNull($this->images->variant(SnkKilkanaMediaModel::find($uploaded->id), 'card', 320, 'jpeg'));
+        $this->assertSame(1, $uploaded->poster_at, 'La portada por defecto es el segundo uno.');
 
         // Elegir otro segundo: miniatura para verlo, y la portada nueva cambia máster y huella.
-        $video = SnkKilkanaMediaModel::find($subida->id);
+        $video = SnkKilkanaMediaModel::find($uploaded->id);
         $this->assertNotNull($this->images->frame($video, 2));
         $this->assertNull($this->images->frame($video, 9), 'Más allá de la duración no hay fotograma.');
-        $antes = [$video->master_path, $video->variants_key];
+        $before = [$video->master_path, $video->variants_key];
         $this->assertNotNull($this->media->poster($video, 2));
         $video->refresh();
         $this->assertSame(2, $video->poster_at);
-        $this->assertNotSame($antes[0], $video->master_path);
-        $this->assertNotSame($antes[1], $video->variants_key);
-        $this->assertFalse(Storage::disk('public')->exists($antes[0]), 'El máster viejo se va.');
+        $this->assertNotSame($before[0], $video->master_path);
+        $this->assertNotSame($before[1], $video->variants_key);
+        $this->assertFalse(Storage::disk('public')->exists($before[0]), 'El máster viejo se va.');
 
         // Una foto de la biblioteca como portada: el máster del vídeo pasa a ser una copia del suyo.
-        $foto = SnkKilkanaMediaModel::find($this->media->upload(['file' => UploadedFile::fake()->image('plaza.jpg', 1600, 1000)], 1)['media']->id);
-        $this->assertNotNull($this->media->posterFrom($video->fresh(), $foto));
+        $photo = SnkKilkanaMediaModel::find($this->media->upload(['file' => UploadedFile::fake()->image('plaza.jpg', 1600, 1000)], 1)['media']->id);
+        $this->assertNotNull($this->media->posterFrom($video->fresh(), $photo));
         $video->refresh();
-        $this->assertSame($foto->id, $video->poster_media_id);
+        $this->assertSame($photo->id, $video->poster_media_id);
         $this->assertNull($video->poster_at);
-        $this->assertSame([$foto->master_width, $foto->master_height], [$video->master_width, $video->master_height]);
-        $this->assertNotSame($foto->master_path, $video->master_path, 'Copia, no referencia.');
+        $this->assertSame([$photo->master_width, $photo->master_height], [$video->master_width, $video->master_height]);
+        $this->assertNotSame($photo->master_path, $video->master_path, 'Copia, no referencia.');
         $this->assertTrue(Storage::disk('public')->exists($video->master_path));
 
         // La purga barre los fotogramas de elegir que no son el vigente, y todos los de un vídeo que ya no está.

@@ -11,8 +11,9 @@ use Packages\Commander\Models\CommanderUsageRollupModel;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
 
 /**
- * Platform-wide usage read for the Dashboard/Usage charts. Aggregates `commander_usage_rollups`
- * on the fly (SUM by instance + bucket) so the charts render from one query — no derived cache table.
+ * Uso de toda la plataforma para las gráficas de Dashboard/Usage. Agrega `commander_usage_rollups`
+ * al vuelo (SUM por instancia y bucket), así que las gráficas salen de una sola consulta y no hay
+ * tabla derivada que mantener.
  */
 #[Group('Usage')]
 class CommanderUsageController extends CoreBaseApiController
@@ -25,7 +26,7 @@ class CommanderUsageController extends CoreBaseApiController
 
         $data = $request->validate([
             'period' => 'nullable|in:hour,day',
-            'hours' => 'nullable|integer|min:1|max:8784', // up to ~366 days (year range, daily period)
+            'hours' => 'nullable|integer|min:1|max:8784', // hasta ~366 días (rango de un año, periodo diario)
         ]);
 
         $period = $data['period'] ?? 'hour';

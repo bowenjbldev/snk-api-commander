@@ -15,8 +15,8 @@ es único y es lo que identifica a alguien**, no el nombre.
 | Columna                     | Tipo            | Nulo           | Qué es                                                                                                                                     |
 | --------------------------- | --------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `id`                        | bigint unsigned | no             | Clave primaria.                                                                                                                            |
-| `name`                      | varchar(255)    | no             | Nombre de trabajo y firma por defecto si no hay alias. Puede repetirse: dos personas pueden llamarse igual.                                |
-| `full_name`                 | varchar(255)    | sí             | Nombre completo, con los dos apellidos. Sirve para desempatar a dos homónimos.                                                             |
+| `name`                      | varchar(255)    | no             | Nombre de pila. Puede repetirse: dos personas pueden llamarse igual.                                                                       |
+| `lastname`                  | varchar(255)    | sí             | Apellidos. `full_name` no es columna: el modelo compone `name` + `lastname`, y de ahí sale la URL de la firma.                              |
 | `company`                   | varchar(255)    | sí             | Organización a la que pertenece. Para la plantilla, el propio periódico; para quien colabora desde fuera, la suya. **No sale al público.** |
 | `phone`                     | varchar(50)     | sí             | Teléfono de contacto interno.                                                                                                              |
 | `email`                     | varchar(255)    | no · **único** | La identidad.                                                                                                                              |
@@ -147,7 +147,7 @@ pueden asignar desde él (`not_in` en la validación del rol). Cada fila viaja c
 `state` —`active`, `invited` o `suspended`, derivado de las dos fechas—, `last_active_at` —la
 última vez que un token suyo se usó— y `posts_count` —lo que firma su cuenta—.
 
-- **`POST users/invite`** `{email, full_name, role}` crea la cuenta invitada con una contraseña
+- **`POST users/invite`** `{email, name, lastname, role}` crea la cuenta invitada con una contraseña
   que nadie conoce y manda el correo con el enlace a `/admin/password` del periódico. Si el
   correo no sale, la cuenta se borra y contesta 502: una invitada sin invitación es un asiento
   pagado al que nadie llega.

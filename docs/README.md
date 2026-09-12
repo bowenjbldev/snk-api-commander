@@ -14,6 +14,7 @@ implementado, los diseños futuros y la evidencia histórica.
 | Necesidad | Documento | Estado |
 |---|---|---|
 | routing, packages, overlays y aislamiento | [Arquitectura](architecture.md) | implementado |
+| nombres, comentarios y en qué idioma va cada cosa | [Idioma del código](code-language.md) | convención vigente |
 | cuentas, clientes, aplicaciones, planes e instancias | [Modelo de Commander](commander-model.md) | implementado |
 | conexiones, tablas y relaciones | [Base de datos](database.md) | implementado |
 | provisioning, estados, cuotas y baja | [Flujos](flows.md) | implementado |

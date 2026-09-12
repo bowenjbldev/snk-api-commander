@@ -12,6 +12,7 @@ use Packages\Kilkana\Enums\SnkKilkanaBlockTypeEnum;
 use Packages\Kilkana\Enums\SnkKilkanaContentTierEnum;
 use Packages\Kilkana\Enums\SnkKilkanaPostStatusEnum;
 use Packages\Kilkana\Http\Resources\SnkKilkanaPostResource;
+use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Models\SnkKilkanaTagModel;
 use Packages\Kilkana\Services\SnkKilkanaActivityService;
@@ -58,8 +59,8 @@ class SnkKilkanaPostsController extends CoreBaseApiController
      *
      * Con `$applyWith` va por `queryBuilder()`, que arranca de `newQuery()` —o sea, ya acotado
      * por propiedad— y encima aplica lo que la query pida. Es lo que hace que `?include=` y
-     * `?fields=` lleguen también a la ficha, y no solo al listado. Sin él, la ficha del editor
-     * salía sin relaciones en cuanto el modelo dejó de cargarlas solo.
+     * `?fields=` lleguen también a la ficha, y no solo al listado: el modelo no carga sus
+     * relaciones por su cuenta.
      */
     protected function findModel($id, bool $applyWith = false): ?Model
     {
@@ -76,8 +77,8 @@ class SnkKilkanaPostsController extends CoreBaseApiController
     /**
      * Saber que una pieza ajena existe, que **no es lo mismo que poder tocarla**.
      *
-     * Un solo permiso contestaba las dos preguntas, y por eso el sumario de la redaccion
-     * —cuanto hay sin publicar y en que fase— viajaba tambien a quien escribe desde fuera.
+     * Son dos permisos porque son dos preguntas: con uno solo, el sumario de la redaccion
+     * —cuanto hay sin publicar y en que fase— viajaria tambien a quien escribe desde fuera.
      * La linea no es «puede editar / no puede editar», es plantilla contra fuera: dentro de
      * la sala se sabe en que anda el resto.
      */
@@ -94,9 +95,9 @@ class SnkKilkanaPostsController extends CoreBaseApiController
      */
     private function deniesPublish(?string $status): bool
     {
-        $estado = SnkKilkanaPostStatusEnum::tryFrom((string) $status);
+        $status = SnkKilkanaPostStatusEnum::tryFrom((string) $status);
 
-        return $estado?->requiresPublishPermission() === true
+        return $status?->requiresPublishPermission() === true
             && ! auth()->user()?->can('publish posts');
     }
 
@@ -127,13 +128,13 @@ class SnkKilkanaPostsController extends CoreBaseApiController
      * Los tres por el constructor y no con `app()` dentro del método.
      *
      * `SnkKilkanaActivityService` es singleton, así que el `quiet()` y el `log()` de una
-     * restauración hablan del mismo objeto; pedirlo dos veces al contenedor funcionaba por eso
-     * y no porque estuviera escrito así a propósito.
+     * restauración hablan del mismo objeto, y el constructor lo deja escrito en vez de fiarlo
+     * a que el contenedor devuelva dos veces la misma instancia.
      */
     public function __construct(
         private readonly SnkKilkanaPostService $posts,
-        private readonly SnkKilkanaPublicService $calle,
-        private readonly SnkKilkanaActivityService $registro,
+        private readonly SnkKilkanaPublicService $street,
+        private readonly SnkKilkanaActivityService $activityLog,
     ) {
         $this->validationRulesStore['status'] = 'required|'.SnkKilkanaPostStatusEnum::rule();
         $this->validationRulesUpdate['status'] = 'sometimes|required|'.SnkKilkanaPostStatusEnum::rule();
@@ -141,22 +142,23 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         // Lo que hace falta para SALIR, no para existir. Un borrador se crea con el titular y
         // poco mas —el texto llega despues—, pero publicarlo sin entradilla ni fecha es
         // publicar media pieza. La lista de estados sale del propio enum.
-        $alPublicar = 'required_if:status,'.implode(',', SnkKilkanaPostStatusEnum::publishing());
+        $onPublish = 'required_if:status,'.implode(',', SnkKilkanaPostStatusEnum::publishing());
 
-        foreach (['validationRulesStore', 'validationRulesUpdate'] as $reglas) {
-            $this->{$reglas}['content_tier'] = 'nullable|'.SnkKilkanaContentTierEnum::rule();
-            $this->{$reglas}['body_blocks.*.type'] = 'required|'.SnkKilkanaBlockTypeEnum::rule();
-            $this->{$reglas}['excerpt'] = $alPublicar.'|nullable|string';
-            $this->{$reglas}['publish_at'] = $alPublicar.'|nullable|date';
+        foreach (['validationRulesStore', 'validationRulesUpdate'] as $property) {
+            $this->{$property}['content_tier'] = 'nullable|'.SnkKilkanaContentTierEnum::rule();
+            $this->{$property}['body_blocks.*.type'] = 'required|'.SnkKilkanaBlockTypeEnum::rule();
+            $this->{$property}['excerpt'] = $onPublish.'|nullable|string';
+            $this->{$property}['publish_at'] = $onPublish.'|nullable|date';
             // La retirada programada: nula es «no se retira»; con fecha, siempre por delante.
-            $this->{$reglas}['unpublish_at'] = 'sometimes|nullable|date|after:now';
+            $this->{$property}['unpublish_at'] = 'sometimes|nullable|date|after:now';
         }
     }
 
     protected array $validationRulesStore = [
         'title' => 'required|string|max:500',
         'category' => 'required|string|exists:kilkana_categories,slug',
-        'author_id' => 'required|integer|exists:kilkana_authors,id',
+        // Opcional: sin firma explícita, la pieza la firma la cuenta que la crea (`store`).
+        'author_id' => 'nullable|integer|exists:kilkana_authors,id',
         'cover_media_id' => 'nullable|integer|exists:kilkana_media,id',
         'body_blocks' => 'nullable|array',
         'body_blocks.*.id' => 'required|string|max:128',
@@ -242,14 +244,14 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         // parte de esta respuesta: son otra pregunta. Tres pantallas del panel piden este
         // listado solo para enseñar «lo último publicado» —secciones, etiquetas, firmas— y
         // pagaban el recuento sin usarlo.
-        $cifras = $this->wants('counts')
+        $counts = $this->wants('counts')
             ? $this->posts->countsByStatus((int) auth()->id(), $this->canEditOthers(), $this->canViewOthers())
             : null;
 
         return response()->json([
             'data' => $this->asResourceCollection($page->getCollection()),
             'meta' => $this->paginationMeta($page),
-            ...$cifras === null ? [] : ['counts' => $cifras['scoped'], 'counts_all' => $cifras['all']],
+            ...$counts === null ? [] : ['counts' => $counts['scoped'], 'counts_all' => $counts['all']],
         ]);
     }
 
@@ -266,15 +268,15 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         $category = trim((string) $request->query('category', ''));
 
         // **Un parámetro para una idea.** `sort=-date` es descendente y `sort=date`
-        // ascendente, que es como lo escriben JSON:API y el resto del gremio. Antes eran dos,
-        // `sort` y `dir`, y ninguno de los dos decía por sí solo cómo iba a salir la lista.
+        // ascendente, que es como lo escriben JSON:API y el resto del gremio: el parámetro dice
+        // por sí solo cómo va a salir la lista.
         //
         // La clave es un alias —`date`, `title`, `reads`— y no el nombre de la columna: lo que
         // impide que quien llama nombre columnas reales, que en un API multi-inquilino es justo
         // lo que no se quiere. Lo que no esté en el vocabulario cae al orden por defecto.
-        $pedido = (string) $request->query('sort', '');
-        $clave = ltrim($pedido, '-');
-        $conocida = array_key_exists($clave, SnkKilkanaPostService::SORTS);
+        $requested = (string) $request->query('sort', '');
+        $key = ltrim($requested, '-');
+        $known = array_key_exists($key, SnkKilkanaPostService::SORTS);
 
         return [
             'status' => SnkKilkanaPostStatusEnum::tryFrom((string) $request->query('status', ''))?->value,
@@ -283,8 +285,8 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             'category' => $category === '' ? null : $this->posts->knownCategory($category),
             // Con una sola letra la búsqueda no acota nada y recorre la tabla entera.
             'q' => mb_strlen($term) >= 2 ? mb_substr($term, 0, 128) : null,
-            'sort' => $conocida ? $clave : 'date',
-            'dir' => $conocida && ! str_starts_with($pedido, '-') ? 'asc' : 'desc',
+            'sort' => $known ? $key : 'date',
+            'dir' => $known && ! str_starts_with($requested, '-') ? 'asc' : 'desc',
         ];
     }
 
@@ -301,6 +303,12 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         $data = $validator->validated();
         if ($this->deniesPublish($data['status'] ?? null)) {
             return $this->forbidPublish();
+        }
+
+        // Sin firma elegida, la de la cuenta: toda cuenta que puede crear piezas la tiene
+        // (`SnkKilkanaBylineService::ensureForUser`), y si aún no, se crea aquí mismo.
+        if (empty($data['author_id'])) {
+            $data['author_id'] = SnkKilkanaAuthorModel::firstOrCreate(['user_id' => (int) auth()->id()])->getKey();
         }
 
         return response()->json($this->posts->create($data, (int) auth()->id()), 201);
@@ -335,10 +343,10 @@ class SnkKilkanaPostsController extends CoreBaseApiController
 
         // Una edición parcial que publica se valida contra el estado RESULTANTE, no contra lo que
         // llegó: la regla está en el servicio, que es donde se puede probar sin una petición.
-        $entrada = SnkKilkanaPostService::publishDefaults($post, $request->all());
+        $input = SnkKilkanaPostService::publishDefaults($post, $request->all());
 
         $rules = $this->interpolateRules($this->validationRulesUpdate, $id);
-        $validator = validator($entrada, $rules, $this->validationMessages);
+        $validator = validator($input, $rules, $this->validationMessages);
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
@@ -373,11 +381,11 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             // `save()` dentro de ella.
             'ids' => 'required|array|min:1|max:'.SnkKilkanaPostService::PER_PAGE_MAX,
             'ids.*' => 'integer',
-            // Los cinco que ofrece la barra de selección del panel, más los dos del
-            // reetiquetado. Faltaban `review` y `scheduled`, así que dos de sus botones no
-            // tenían endpoint y el panel habría tenido que mandar N peticiones — justo lo
-            // que este existe para evitar.
-            'action' => 'required|in:publish,draft,review,scheduled,delete,tag,untag',
+            // Los estados que mueve la barra de selección del panel, el borrado y los dos del
+            // reetiquetado. Sin `scheduled`: programar pide una fecha y un lote solo trae ids,
+            // así que la pieza sin fecha se quedaba programada para siempre y la de fecha
+            // pasada salía al minuto. Se programa desde el editor, pieza a pieza.
+            'action' => 'required|in:publish,draft,review,delete,tag,untag',
             // Nombres y no ids: es lo que el backend ya escribe (`firstOrCreateByName`) y lo
             // que un humano lee. Un id de etiqueta no significa nada fuera de esta base.
             'tags' => 'required_if:action,tag,untag|array|min:1|max:'.SnkKilkanaPostService::PER_PAGE_MAX,
@@ -392,7 +400,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             return $this->forbidPublish();
         }
 
-        $movidas = $this->posts->bulk(
+        $moved = $this->posts->bulk(
             $data['ids'],
             $data['action'],
             (int) auth()->id(),
@@ -400,7 +408,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             $data['tags'] ?? [],
         );
 
-        return response()->json(['ok' => true, 'count' => $movidas]);
+        return response()->json(['ok' => true, 'count' => $moved]);
     }
 
     /** Historial de versiones de un post (más reciente primero). */
@@ -435,12 +443,12 @@ class SnkKilkanaPostsController extends CoreBaseApiController
 
         // Un solo instante y no dos: con `now()->addWeek()` llamado dos veces, una petición que
         // cruce el segundo firma una caducidad y anuncia otra.
-        $caduca = now()->addWeek();
-        $firma = $this->calle->previewSignature((int) $id, $caduca->getTimestamp());
+        $expires = now()->addWeek();
+        $signature = $this->street->previewSignature((int) $id, $expires->getTimestamp());
 
         return response()->json([
-            'path' => "/preview/{$id}?until={$caduca->getTimestamp()}&sig={$firma}",
-            'expires_at' => $caduca->toIso8601String(),
+            'path' => "/preview/{$id}?until={$expires->getTimestamp()}&sig={$signature}",
+            'expires_at' => $expires->toIso8601String(),
         ]);
     }
 
@@ -463,9 +471,9 @@ class SnkKilkanaPostsController extends CoreBaseApiController
 
         // Callado: restaurar guarda la pieza, y «editó» no es lo que pasó. El servicio es
         // singleton, así que el `quiet()` y el `log()` de después hablan del mismo.
-        $restaurada = $this->registro->quiet(fn () => $this->posts->restore($post, $revision, (int) auth()->id()));
-        $this->registro->log('restore', 'version_restored', $post->title, '/posts');
+        $restored = $this->activityLog->quiet(fn () => $this->posts->restore($post, $revision, (int) auth()->id()));
+        $this->activityLog->log('restore', 'version_restored', $post->title, '/posts');
 
-        return response()->json($restaurada);
+        return response()->json($restored);
     }
 }

@@ -90,7 +90,7 @@ class SnkKilkanaMediaModel extends Model
      * publicadas. Las FK son SET NULL, asi que borrarlas no rompia la base: hacia algo peor,
      * dejaba al articulo sin imagen social y al periodista sin cara, sin un solo error.
      */
-    public const USOS = ['coveredPosts', 'socialPosts', 'avatarAuthors'];
+    public const USES = ['coveredPosts', 'socialPosts', 'avatarAuthors'];
 
     /** Posts que la usan de portada. */
     public function coveredPosts(): HasMany
@@ -113,8 +113,8 @@ class SnkKilkanaMediaModel extends Model
     /** Un medio al que no apunta nadie. Un solo sitio define «sin usar». */
     public function scopeUnused(Builder $query): Builder
     {
-        foreach (self::USOS as $uso) {
-            $query->whereDoesntHave($uso);
+        foreach (self::USES as $use) {
+            $query->whereDoesntHave($use);
         }
 
         return $query;
@@ -130,9 +130,9 @@ class SnkKilkanaMediaModel extends Model
     public function getUsageCountAttribute(): int
     {
         $total = 0;
-        foreach (self::USOS as $uso) {
-            $columna = Str::snake($uso).'_count';
-            $total += (int) ($this->attributes[$columna] ?? $this->{$uso}()->count());
+        foreach (self::USES as $use) {
+            $column = Str::snake($use).'_count';
+            $total += (int) ($this->attributes[$column] ?? $this->{$use}()->count());
         }
 
         return $total;

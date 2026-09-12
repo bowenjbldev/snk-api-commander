@@ -8,7 +8,7 @@ use Packages\Commander\Services\CommanderQuotaMeasurerService;
 class CommanderQuotaMeasureCommand extends Command
 {
     protected $signature = 'commander:quota:measure
-        {--dry-run : Mide y muestra sin persistir ni aplicar acciones}';
+        {--dry-run : Measure and show without persisting or applying actions}';
 
     protected $description = 'Measure instance and subscription quotas and apply their configured action';
 
@@ -31,7 +31,7 @@ class CommanderQuotaMeasureCommand extends Command
         );
 
         if ($dryRun) {
-            $this->warn('Dry-run: nada persistido ni aplicado.');
+            $this->warn('Dry run: nothing was persisted or applied.');
         }
 
         return self::SUCCESS;

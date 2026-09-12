@@ -8,9 +8,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * Una cuenta lectora tal como la lee el panel.
  *
- * Sustituye a la segunda mitad de `asRows()`, un método de 63 líneas del controlador que mezclaba
- * tres consultas por lotes con el mapeo de la fila. La primera mitad está ahora en
- * `SnkKilkanaReaderService::withActivity()`, y por eso las dos se pueden probar por separado.
+ * Aquí vive solo la forma de la fila. Las tres consultas por lotes que la alimentan están en
+ * `SnkKilkanaReaderService::withActivity()`, y por eso las dos mitades se pueden probar por
+ * separado.
  *
  * El `id` sale como cadena, que es contrato: el panel lo usa como clave de fila y de formulario,
  * y un entero y su cadena no son la misma clave en JavaScript.
@@ -19,13 +19,12 @@ class SnkKilkanaReaderResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        // El orden es el que había, y aquí es contrato: hay pruebas que comparan la fila
+        // El orden de las claves es contrato: hay pruebas que comparan la fila
         // entera con `assertSame`, que en PHP distingue el orden de las claves.
         return [
             'id' => $this->whenHas('id', fn () => (string) $this->resource->getKey()),
-            // El nombre completo si lo hay, y si no el de la cuenta: es el mismo criterio que
-            // usa el hilo de comentarios, y por eso una persona se llama igual en las dos.
-            'name' => $this->whenHas('name', fn () => $this->resource->full_name ?: $this->resource->name),
+            // Nombre y apellido compuestos: el mismo criterio que el hilo de comentarios.
+            'name' => $this->whenHas('name', fn () => $this->resource->full_name),
             'email' => $this->whenHas('email'),
             'since' => $this->whenHas('created_at', fn () => $this->resource->created_at?->toIso8601String()),
 

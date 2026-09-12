@@ -39,15 +39,15 @@ class SnkKilkanaAccountLinkService
             'email' => $user->email,
             'token' => $token,
         ]);
-        $periodico = SnkKilkanaSettingModel::query()->find(1)?->tenant_name ?: config('app.name');
+        $newspaper = SnkKilkanaSettingModel::query()->find(1)?->tenant_name ?: config('app.name');
 
-        $correo = new SnkKilkanaAccountLinkMail(
+        $email = new SnkKilkanaAccountLinkMail(
             $kind,
-            $periodico,
+            $newspaper,
             $url,
             (int) config('auth.passwords.users.expire', 60),
         );
-        $queued ? Mail::to($user->email)->queue($correo) : Mail::to($user->email)->send($correo);
+        $queued ? Mail::to($user->email)->queue($email) : Mail::to($user->email)->send($email);
     }
 
     /**
@@ -60,15 +60,15 @@ class SnkKilkanaAccountLinkService
      */
     private function panelUrl(Request $request): string
     {
-        $ajustes = (string) (SnkKilkanaSettingModel::query()->find(1)?->tenant_url ?? '');
-        if ($ajustes !== '') {
-            return rtrim($ajustes, '/');
+        $settings = (string) (SnkKilkanaSettingModel::query()->find(1)?->tenant_url ?? '');
+        if ($settings !== '') {
+            return rtrim($settings, '/');
         }
 
         $base = (string) config('core.tenant_base_domain', '');
-        $cliente = CorePackageSelectorSupport::subdomainFromHost($request->getHost());
-        if ($base !== '' && $cliente !== null) {
-            return "https://{$cliente}.{$base}";
+        $client = CorePackageSelectorSupport::subdomainFromHost($request->getHost());
+        if ($base !== '' && $client !== null) {
+            return "https://{$client}.{$base}";
         }
 
         throw new \RuntimeException('No panel URL: set tenant_url or core.tenant_base_domain.');

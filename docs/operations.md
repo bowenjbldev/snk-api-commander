@@ -182,7 +182,10 @@ docker compose exec -T -e KILKANA_SEED_DEMO=1 provisioner \
 ```
 
 La variable y un perfil que reclame el cliente son dos puertas independientes. Sin ambas no se
-escribe contenido editorial ni se crean cuentas conocidas.
+escribe contenido editorial ni se crean cuentas conocidas. El perfil las abre por separado:
+`demo` trae el archivo y las cuentas; `accounts` solo las cuentas —el administrador local
+`admin@snake.com` / `secret1234` y el lector de demo—, que es como Diario Norte nace vacío y sin
+abrir pero con quien entrar.
 
 ## Provisioning
 

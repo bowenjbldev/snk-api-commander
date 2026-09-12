@@ -39,10 +39,10 @@ class KilkanaPlanTest extends CommanderTestCase
         $this->application = CommanderApplicationModel::where('slug', 'kilkana')->firstOrFail();
     }
 
-    public function test_el_periodico_lee_su_plan_su_consumo_y_el_escalon_siguiente(): void
+    public function test_the_newspaper_reads_its_plan_its_usage_and_the_next_tier(): void
     {
         [$basic] = $this->plans();
-        $instance = $this->periodico($basic);
+        $instance = $this->newspaper($basic);
 
         $this->quota($instance->id, null, 'editorial_seats', used: 10, limit: 3);
         $this->quota($instance->id, null, 'reads_month', used: 0, limit: 100_000);
@@ -82,10 +82,10 @@ class KilkanaPlanTest extends CommanderTestCase
         $this->assertSame(0, $this->meter($payload, 'reads_month')['used']);
     }
 
-    public function test_el_tope_propio_y_el_del_contrato_llegan_los_dos_y_no_se_tapan(): void
+    public function test_the_instance_cap_and_the_subscription_cap_both_arrive_without_hiding_each_other(): void
     {
         [$basic] = $this->plans();
-        $instance = $this->periodico($basic);
+        $instance = $this->newspaper($basic);
         $subscriptionId = $instance->subscriptionItem->subscription_id;
 
         // Así es como sale una cabecera del provisioning: cuota **propia para cada métrica**.
@@ -113,20 +113,20 @@ class KilkanaPlanTest extends CommanderTestCase
      * pasada. Servirla igual pone al panel a informar sobre un tope que ya no acota: lo que se
      * aplica y lo que se informa tienen que decidirse con la misma condición.
      */
-    public function test_una_metrica_retirada_deja_de_contarse(): void
+    public function test_a_retired_metric_stops_counting(): void
     {
         [$basic] = $this->plans();
-        $instance = $this->periodico($basic);
+        $instance = $this->newspaper($basic);
 
         $this->quota($instance->id, null, 'editorial_seats', used: 10, limit: 3);
         $this->quota($instance->id, null, 'reads_month', used: 0, limit: 100_000);
         $this->application->metrics()->where('key', 'reads_month')->update(['status' => 'inactive']);
 
         $payload = $this->payloadFor($instance);
-        $claves = collect($payload['meters'])->pluck('key');
+        $keys = collect($payload['meters'])->pluck('key');
 
-        $this->assertTrue($claves->contains('editorial_seats'));
-        $this->assertFalse($claves->contains('reads_month'), 'una métrica retirada no se informa');
+        $this->assertTrue($keys->contains('editorial_seats'));
+        $this->assertFalse($keys->contains('reads_month'), 'una métrica retirada no se informa');
     }
 
     /**
@@ -134,10 +134,10 @@ class KilkanaPlanTest extends CommanderTestCase
      * puede decir del dinero sin inventar un reparto: el importe es del contrato entero y no tiene
      * precio por cabecera.
      */
-    public function test_el_plan_dice_a_que_cuenta_se_factura(): void
+    public function test_the_plan_says_which_account_is_billed(): void
     {
         [$basic] = $this->plans();
-        $instance = $this->periodico($basic, 'negotiated');
+        $instance = $this->newspaper($basic, 'negotiated');
         $this->quota($instance->id, null, 'editorial_seats', used: 1, limit: 10);
 
         $payload = $this->payloadFor($instance);
@@ -147,10 +147,10 @@ class KilkanaPlanTest extends CommanderTestCase
     }
 
     /** Un ítem dado de baja no acota nada: el medidor solo cuenta los activos. */
-    public function test_un_item_dado_de_baja_no_rotula_su_plan(): void
+    public function test_a_cancelled_subscription_item_reports_no_plan(): void
     {
         [$basic] = $this->plans();
-        $instance = $this->periodico($basic);
+        $instance = $this->newspaper($basic);
         $this->quota($instance->id, null, 'editorial_seats', used: 1, limit: 10);
 
         $instance->subscriptionItem()->update(['status' => 'canceled']);
@@ -158,10 +158,10 @@ class KilkanaPlanTest extends CommanderTestCase
         $this->assertNull($this->payloadFor($instance)['plan']);
     }
 
-    public function test_un_tope_ausente_es_sin_tope_y_no_un_cero(): void
+    public function test_a_missing_cap_means_uncapped_not_zero(): void
     {
         [$basic] = $this->plans();
-        $instance = $this->periodico($basic);
+        $instance = $this->newspaper($basic);
         $this->quota($instance->id, null, 'editorial_seats', used: 7, limit: null);
 
         // Cinco de las siete métricas se miden para verlas, no para acotarlas. Un cero ahí
@@ -179,10 +179,10 @@ class KilkanaPlanTest extends CommanderTestCase
      * Un contrato negociado no tiene precio por cabecera: el importe es del contrato entero y de
      * la cuenta. Rotular el del catálogo ahí es decirle a la redacción una cifra que no paga.
      */
-    public function test_un_contrato_negociado_se_declara_como_tal(): void
+    public function test_a_negotiated_contract_is_declared_as_such(): void
     {
         [$basic] = $this->plans();
-        $instance = $this->periodico($basic, pricingMode: 'negotiated');
+        $instance = $this->newspaper($basic, pricingMode: 'negotiated');
         $this->quota($instance->id, null, 'editorial_seats', used: 1, limit: 10);
         $this->quota($instance->id, null, 'reads_month', used: 1, limit: 10);
 
@@ -199,17 +199,17 @@ class KilkanaPlanTest extends CommanderTestCase
      * token de Sanctum en la base del periódico— y la suite no tiene ese arnés. Ningún test toca
      * hoy una ruta protegida de `api/v1/kilkana`, no solo esta.
      */
-    public function test_la_ruta_del_plan_va_tras_el_permiso_del_panel(): void
+    public function test_the_plan_route_sits_behind_the_panel_permission(): void
     {
-        $ruta = collect(app('router')->getRoutes()->getRoutes())
+        $route = collect(app('router')->getRoutes()->getRoutes())
             ->first(fn ($r) => str_ends_with($r->uri(), 'kilkana/plan') && in_array('GET', $r->methods(), true));
 
-        $this->assertNotNull($ruta, 'La ruta GET plan no está registrada.');
-        $this->assertContains('can:index posts', $ruta->gatherMiddleware());
-        $this->assertContains('auth:sanctum', $ruta->gatherMiddleware());
+        $this->assertNotNull($route, 'La ruta GET plan no está registrada.');
+        $this->assertContains('can:index posts', $route->gatherMiddleware());
+        $this->assertContains('auth:sanctum', $route->gatherMiddleware());
     }
 
-    public function test_sin_inquilino_no_hay_plan_que_contar(): void
+    public function test_without_a_tenant_there_is_no_plan_to_count(): void
     {
         app(CoreActiveInstanceSupport::class)->forget();
 
@@ -220,16 +220,16 @@ class KilkanaPlanTest extends CommanderTestCase
     private function plans(): array
     {
         return collect([['basic', 'Basic', 29], ['pro', 'Pro', 59], ['business', 'Business', 99]])
-            ->map(fn (array $fila) => CommanderPlanModel::create([
+            ->map(fn (array $row) => CommanderPlanModel::create([
                 'application_id' => $this->application->id,
-                'slug' => $fila[0],
-                'name' => $fila[1],
-                'price_monthly' => $fila[2],
+                'slug' => $row[0],
+                'name' => $row[1],
+                'price_monthly' => $row[2],
             ]))
             ->all();
     }
 
-    private function periodico(CommanderPlanModel $plan, string $pricingMode = 'catalog'): CommanderInstanceModel
+    private function newspaper(CommanderPlanModel $plan, string $pricingMode = 'catalog'): CommanderInstanceModel
     {
         $account = CommanderAccountModel::create([
             'name' => 'Grupo Kilkana',

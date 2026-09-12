@@ -57,24 +57,24 @@ class KilkanaPostsListTest extends TestCase
      * con `data` vacío y un `meta` diciendo que hay siete piezas, que es una contradicción que
      * el panel pinta como «no hay nada».
      */
-    public function test_una_pagina_fuera_de_rango_ensena_la_ultima_y_no_una_tabla_vacia(): void
+    public function test_an_out_of_range_page_shows_the_last_one_not_an_empty_table(): void
     {
         $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
         $marta->assignRole('director');
         $this->actingAs($marta, 'sanctum');
-        $seccion = $this->category('Local', 'local');
-        $firma = $this->author('Redacción', alias: 'Redacción');
+        $section = $this->category('Local', 'local');
+        $byline = $this->author('Redacción', alias: 'Redacción');
         for ($i = 0; $i < 7; $i++) {
-            $this->makePost("Pieza {$i}", $seccion, $firma, 'draft', null, $marta->id);
+            $this->makePost("Pieza {$i}", $section, $byline, 'draft', null, $marta->id);
         }
 
         request()->query->replace(['per_page' => '5', 'page' => '999']);
-        $fuera = app(SnkKilkanaPostsController::class)->index()->getData(true);
+        $outOfRange = app(SnkKilkanaPostsController::class)->index()->getData(true);
 
-        $this->assertSame(2, $fuera['meta']['current_page'], 'Cae a la última, no se queda en la 999.');
-        $this->assertSame(2, $fuera['meta']['last_page']);
-        $this->assertSame(7, $fuera['meta']['total']);
-        $this->assertCount(2, $fuera['data'], 'Y trae las filas de esa última página.');
+        $this->assertSame(2, $outOfRange['meta']['current_page'], 'Cae a la última, no se queda en la 999.');
+        $this->assertSame(2, $outOfRange['meta']['last_page']);
+        $this->assertSame(7, $outOfRange['meta']['total']);
+        $this->assertCount(2, $outOfRange['data'], 'Y trae las filas de esa última página.');
     }
 
     /**
@@ -84,26 +84,26 @@ class KilkanaPostsListTest extends TestCase
      * `?status=banana` a mano se merece la lista entera, no una pantalla en blanco. Y el tope
      * por página no lo elige quien llama, o `?per_page=500` restaura el volcado entero.
      */
-    public function test_lo_que_la_query_no_reconoce_cae_al_defecto(): void
+    public function test_unrecognised_query_values_fall_back_to_the_default(): void
     {
         $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
         $marta->assignRole('director');
         $this->actingAs($marta, 'sanctum');
-        $seccion = $this->category('Local', 'local');
-        $firma = $this->author('Redacción', alias: 'Redacción');
-        $this->makePost('Una', $seccion, $firma, 'draft', null, $marta->id);
+        $section = $this->category('Local', 'local');
+        $byline = $this->author('Redacción', alias: 'Redacción');
+        $this->makePost('Una', $section, $byline, 'draft', null, $marta->id);
 
-        $pedir = function (array $query) {
+        $request = function (array $query) {
             request()->query->replace($query);
 
             return app(SnkKilkanaPostsController::class)->index()->getData(true);
         };
 
-        $this->assertCount(1, $pedir(['status' => 'banana'])['data'], 'Un estado inventado no filtra a cero.');
-        $this->assertCount(1, $pedir(['category' => 'No existe'])['data'], 'Ni una sección que no está.');
-        $this->assertCount(1, $pedir(['sort' => 'banana'])['data'], 'Ni un orden que no existe.');
-        $this->assertSame(100, $pedir(['per_page' => '500'])['meta']['per_page'], 'El techo no lo elige quien llama.');
-        $this->assertSame(25, $pedir([])['meta']['per_page'], 'Y sin pedir nada, veinticinco.');
+        $this->assertCount(1, $request(['status' => 'banana'])['data'], 'Un estado inventado no filtra a cero.');
+        $this->assertCount(1, $request(['category' => 'No existe'])['data'], 'Ni una sección que no está.');
+        $this->assertCount(1, $request(['sort' => 'banana'])['data'], 'Ni un orden que no existe.');
+        $this->assertSame(100, $request(['per_page' => '500'])['meta']['per_page'], 'El techo no lo elige quien llama.');
+        $this->assertSame(25, $request([])['meta']['per_page'], 'Y sin pedir nada, veinticinco.');
     }
 
     /**
@@ -113,33 +113,33 @@ class KilkanaPostsListTest extends TestCase
      * sin `dir` salía descendente, que es lo contrario de lo que cualquiera espera de un
      * alfabético. Ahora sin signo es ascendente, como en JSON:API.
      */
-    public function test_el_orden_va_en_un_parametro_y_el_menos_es_descendente(): void
+    public function test_sort_is_one_parameter_and_a_minus_means_descending(): void
     {
         $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
         $marta->assignRole('director');
         $this->actingAs($marta, 'sanctum');
-        $seccion = $this->category('Local', 'local');
-        $firma = $this->author('Redacción', alias: 'Redacción');
-        foreach (['Bravo' => '2026-06-02 10:00:00', 'Alfa' => '2026-06-03 10:00:00', 'Charlie' => '2026-06-01 10:00:00'] as $titular => $cuando) {
-            $this->makePost($titular, $seccion, $firma, 'published', $cuando, $marta->id);
+        $section = $this->category('Local', 'local');
+        $byline = $this->author('Redacción', alias: 'Redacción');
+        foreach (['Bravo' => '2026-06-02 10:00:00', 'Alfa' => '2026-06-03 10:00:00', 'Charlie' => '2026-06-01 10:00:00'] as $headline => $at) {
+            $this->makePost($headline, $section, $byline, 'published', $at, $marta->id);
         }
 
-        $titulos = function (array $query) {
+        $titles = function (array $query) {
             request()->query->replace($query);
 
             return array_column(app(SnkKilkanaPostsController::class)->index()->getData(true)['data'], 'title');
         };
 
-        $this->assertSame(['Alfa', 'Bravo', 'Charlie'], $titulos(['sort' => 'title']));
-        $this->assertSame(['Charlie', 'Bravo', 'Alfa'], $titulos(['sort' => '-title']));
+        $this->assertSame(['Alfa', 'Bravo', 'Charlie'], $titles(['sort' => 'title']));
+        $this->assertSame(['Charlie', 'Bravo', 'Alfa'], $titles(['sort' => '-title']));
 
         // Sin pedir orden, lo más nuevo primero: es con lo que se abre el panel.
-        $this->assertSame(['Alfa', 'Bravo', 'Charlie'], $titulos(['sort' => '-date']));
-        $this->assertSame($titulos([]), $titulos(['sort' => '-date']));
+        $this->assertSame(['Alfa', 'Bravo', 'Charlie'], $titles(['sort' => '-date']));
+        $this->assertSame($titles([]), $titles(['sort' => '-date']));
 
         // Y lo que no está en el vocabulario cae ahí, con signo o sin él.
-        $this->assertSame($titulos([]), $titulos(['sort' => 'banana']));
-        $this->assertSame($titulos([]), $titulos(['sort' => '-banana']));
+        $this->assertSame($titles([]), $titles(['sort' => 'banana']));
+        $this->assertSame($titles([]), $titles(['sort' => '-banana']));
     }
 
     /**
@@ -149,43 +149,43 @@ class KilkanaPostsListTest extends TestCase
      * otra pregunta que se contesta en el mismo viaje. Tres pantallas del panel piden este
      * listado solo para enseñar «lo último publicado» y pagaban el recuento sin usarlo.
      */
-    public function test_las_cifras_solo_viajan_si_se_piden(): void
+    public function test_counts_are_sent_only_when_requested(): void
     {
         $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
         $marta->assignRole('director');
         $this->actingAs($marta, 'sanctum');
         $this->makePost('Una', $this->category('Local', 'local'), $this->author('Redacción', alias: 'Redacción'), 'draft', null, $marta->id);
 
-        $pedir = function (array $query) {
+        $request = function (array $query) {
             request()->query->replace($query);
 
             return app(SnkKilkanaPostsController::class)->index()->getData(true);
         };
 
-        $sin = $pedir([]);
-        $this->assertArrayNotHasKey('counts', $sin);
-        $this->assertArrayNotHasKey('counts_all', $sin);
-        $this->assertCount(1, $sin['data'], 'Las filas siguen llegando.');
+        $withoutCounts = $request([]);
+        $this->assertArrayNotHasKey('counts', $withoutCounts);
+        $this->assertArrayNotHasKey('counts_all', $withoutCounts);
+        $this->assertCount(1, $withoutCounts['data'], 'Las filas siguen llegando.');
 
-        $con = $pedir(['summary' => 'counts']);
-        $this->assertSame(1, $con['counts']['draft']);
-        $this->assertArrayHasKey('counts_all', $con);
+        $withCounts = $request(['summary' => 'counts']);
+        $this->assertSame(1, $withCounts['counts']['draft']);
+        $this->assertArrayHasKey('counts_all', $withCounts);
 
         // Y lo que no se ofrece se ignora, como el resto de la query: nunca un 422.
-        $this->assertArrayNotHasKey('counts', $pedir(['summary' => 'banana']));
-        $this->assertArrayHasKey('counts', $pedir(['summary' => 'banana,counts']));
+        $this->assertArrayNotHasKey('counts', $request(['summary' => 'banana']));
+        $this->assertArrayHasKey('counts', $request(['summary' => 'banana,counts']));
     }
 
-    public function test_el_filtro_acota_y_el_orden_es_estable(): void
+    public function test_the_filter_narrows_and_the_order_is_stable(): void
     {
-        $deportes = $this->category('Deportes', 'deportes');
+        $sports = $this->category('Deportes', 'deportes');
         $local = $this->category('Local', 'local');
         $marta = $this->author('Marta Beneyto');
-        $casa = $this->author('Redacción', alias: 'Redacción');
+        $newsroom = $this->author('Redacción', alias: 'Redacción');
 
-        $this->makePost('El derbi acaba en tablas', $deportes, $marta, 'published', '2026-06-01 10:00:00');
+        $this->makePost('El derbi acaba en tablas', $sports, $marta, 'published', '2026-06-01 10:00:00');
         $this->makePost('El pleno aprueba el presupuesto', $local, $marta, 'draft');
-        $this->makePost('Breve de la casa', $local, $casa, 'draft');
+        $this->makePost('Breve de la casa', $local, $newsroom, 'draft');
 
         $all = fn (array $filters) => $this->posts
             ->filter($this->posts->query(1, true), $filters)
@@ -206,14 +206,14 @@ class KilkanaPostsListTest extends TestCase
         $this->assertSame($all([]), $all([]));
     }
 
-    public function test_las_cifras_de_las_pestanas_cuentan_el_archivo_y_no_la_pagina(): void
+    public function test_tab_counts_cover_the_archive_not_the_page(): void
     {
         $local = $this->category('Local', 'local');
-        $firma = $this->author('Marta Beneyto');
+        $byline = $this->author('Marta Beneyto');
 
-        $this->makePost('Uno', $local, $firma, 'published', '2026-06-01 10:00:00');
-        $this->makePost('Dos', $local, $firma, 'published', '2026-06-02 10:00:00');
-        $this->makePost('Tres', $local, $firma, 'draft');
+        $this->makePost('Uno', $local, $byline, 'published', '2026-06-01 10:00:00');
+        $this->makePost('Dos', $local, $byline, 'published', '2026-06-02 10:00:00');
+        $this->makePost('Tres', $local, $byline, 'draft');
 
         $counts = $this->posts->countsByStatus(1, true, true);
 
@@ -232,26 +232,26 @@ class KilkanaPostsListTest extends TestCase
      * y se lee como una contradicción: una sección parece tener más piezas que todo lo
      * publicado. Las dos cifras son ciertas, y la de al lado es la que lo explica.
      */
-    public function test_las_cifras_llegan_en_las_dos_escalas_y_solo_una_esta_acotada(): void
+    public function test_counts_arrive_in_both_scales_and_only_one_is_scoped(): void
     {
         $local = $this->category('Local', 'local');
-        $firma = $this->author('Marta Beneyto');
+        $byline = $this->author('Marta Beneyto');
 
         // Dos de la cuenta 7 y una de otra: así se distingue lo suyo de lo de la casa.
-        $this->makePost('Suya publicada', $local, $firma, 'published', '2026-06-01 10:00:00', createdBy: 7);
-        $this->makePost('Suyo borrador', $local, $firma, 'draft', createdBy: 7);
-        $this->makePost('De otro', $local, $firma, 'published', '2026-06-02 10:00:00', createdBy: 9);
+        $this->makePost('Suya publicada', $local, $byline, 'published', '2026-06-01 10:00:00', createdBy: 7);
+        $this->makePost('Suyo borrador', $local, $byline, 'draft', createdBy: 7);
+        $this->makePost('De otro', $local, $byline, 'published', '2026-06-02 10:00:00', createdBy: 9);
 
-        $acotada = $this->posts->countsByStatus(7, false, true);
-        $this->assertSame(1, $acotada['scoped']['published'], 'lo acotado tiene que contar solo lo suyo');
-        $this->assertSame(2, $acotada['all']['published'], 'la otra escala cuenta el periódico entero');
-        $this->assertSame(1, $acotada['scoped']['draft']);
+        $scoped = $this->posts->countsByStatus(7, false, true);
+        $this->assertSame(1, $scoped['scoped']['published'], 'lo acotado tiene que contar solo lo suyo');
+        $this->assertSame(2, $scoped['all']['published'], 'la otra escala cuenta el periódico entero');
+        $this->assertSame(1, $scoped['scoped']['draft']);
 
         // Con `edit others posts` las dos escalas son la misma, y el panel enseña una cifra
         // sola en vez de «2 of 2».
-        $abierta = $this->posts->countsByStatus(7, true, true);
-        $this->assertSame($abierta['all'], $abierta['scoped']);
-        $this->assertSame(2, $abierta['scoped']['published']);
+        $unrestricted = $this->posts->countsByStatus(7, true, true);
+        $this->assertSame($unrestricted['all'], $unrestricted['scoped']);
+        $this->assertSame(2, $unrestricted['scoped']['published']);
     }
 
     /**
@@ -263,18 +263,18 @@ class KilkanaPostsListTest extends TestCase
      * cambiaría el tablero, y quien lo comprobara ahí concluiría que el permiso no hace nada.
      * Donde sí decide es en el redactor, que es la prueba de abajo.
      */
-    public function test_editar_lo_ajeno_implica_verlo_aunque_falte_el_permiso(): void
+    public function test_editing_others_posts_implies_viewing_them_even_without_the_permission(): void
     {
         $local = $this->category('Local', 'local');
-        $firma = $this->author('Marta Beneyto');
+        $byline = $this->author('Marta Beneyto');
 
-        $this->makePost('Suya', $local, $firma, 'published', '2026-06-01 10:00:00', createdBy: 7);
-        $this->makePost('De otro', $local, $firma, 'published', '2026-06-02 10:00:00', createdBy: 9);
+        $this->makePost('Suya', $local, $byline, 'published', '2026-06-01 10:00:00', createdBy: 7);
+        $this->makePost('De otro', $local, $byline, 'published', '2026-06-02 10:00:00', createdBy: 9);
 
-        $sinElPermiso = $this->posts->countsByStatus(7, true, false);
+        $withoutPermission = $this->posts->countsByStatus(7, true, false);
 
-        $this->assertSame(2, $sinElPermiso['scoped']['published'], 'quien edita lo ajeno lo cuenta');
-        $this->assertSame($sinElPermiso['scoped'], $sinElPermiso['all']);
+        $this->assertSame(2, $withoutPermission['scoped']['published'], 'quien edita lo ajeno lo cuenta');
+        $this->assertSame($withoutPermission['scoped'], $withoutPermission['all']);
     }
 
     /**
@@ -289,24 +289,24 @@ class KilkanaPostsListTest extends TestCase
      * coincidan que hay una sola escala que dibujar, y omitir la clave le dejaría la barra sin
      * saber qué medir.
      */
-    public function test_sin_ver_lo_ajeno_las_dos_escalas_son_lo_suyo(): void
+    public function test_without_viewing_others_both_scales_count_only_own_posts(): void
     {
         $local = $this->category('Local', 'local');
-        $firma = $this->author('Marta Beneyto');
+        $byline = $this->author('Marta Beneyto');
 
-        $this->makePost('Suya publicada', $local, $firma, 'published', '2026-06-01 10:00:00', createdBy: 7);
-        $this->makePost('De otro', $local, $firma, 'published', '2026-06-02 10:00:00', createdBy: 9);
-        $this->makePost('Borrador de otro', $local, $firma, 'draft', createdBy: 9);
+        $this->makePost('Suya publicada', $local, $byline, 'published', '2026-06-01 10:00:00', createdBy: 7);
+        $this->makePost('De otro', $local, $byline, 'published', '2026-06-02 10:00:00', createdBy: 9);
+        $this->makePost('Borrador de otro', $local, $byline, 'draft', createdBy: 9);
 
-        $fuera = $this->posts->countsByStatus(7, false, false);
+        $ownOnly = $this->posts->countsByStatus(7, false, false);
 
-        $this->assertSame($fuera['scoped'], $fuera['all'], 'sin ver lo ajeno las dos escalas coinciden');
-        $this->assertSame(1, $fuera['scoped']['published']);
-        $this->assertSame(0, $fuera['scoped']['draft'], 'el borrador de otro no puede aparecer ni contado');
+        $this->assertSame($ownOnly['scoped'], $ownOnly['all'], 'sin ver lo ajeno las dos escalas coinciden');
+        $this->assertSame(1, $ownOnly['scoped']['published']);
+        $this->assertSame(0, $ownOnly['scoped']['draft'], 'el borrador de otro no puede aparecer ni contado');
 
         // Y las cuatro claves siguen estando, también las de cero: una pestaña que desaparece
         // al quedarse vacía es una pestaña a la que no se puede volver.
-        $this->assertSame(['draft', 'review', 'scheduled', 'published'], array_keys($fuera['all']));
+        $this->assertSame(['draft', 'review', 'scheduled', 'published'], array_keys($ownOnly['all']));
     }
 
     /**
@@ -314,18 +314,18 @@ class KilkanaPostsListTest extends TestCase
      * sobre el mismo `GROUP BY`. Pedirlas por separado sería pasar dos veces por la tabla para
      * contestar dos mitades de la misma pregunta, y esta prueba es lo único que lo impide.
      */
-    public function test_las_dos_escalas_cuestan_una_sola_consulta(): void
+    public function test_both_scales_cost_a_single_query(): void
     {
         $local = $this->category('Local', 'local');
-        $firma = $this->author('Marta Beneyto');
-        $this->makePost('Una', $local, $firma, 'published', '2026-06-01 10:00:00', createdBy: 7);
+        $byline = $this->author('Marta Beneyto');
+        $this->makePost('Una', $local, $byline, 'published', '2026-06-01 10:00:00', createdBy: 7);
 
         DB::enableQueryLog();
         $this->posts->countsByStatus(7, false, true);
-        $consultas = count(DB::getQueryLog());
+        $queries = count(DB::getQueryLog());
         DB::disableQueryLog();
 
-        $this->assertSame(1, $consultas, "las dos escalas cuestan {$consultas} consultas y tienen que costar 1");
+        $this->assertSame(1, $queries, "las dos escalas cuestan {$queries} consultas y tienen que costar 1");
     }
 
     /**
@@ -336,23 +336,23 @@ class KilkanaPostsListTest extends TestCase
      * el que no tiene entradilla. El resto SÍ están listos, así que el lote no falla entero:
      * se salta el incompleto y el recuento lo dice.
      */
-    public function test_el_lote_no_publica_una_pieza_sin_entradilla(): void
+    public function test_the_batch_does_not_publish_a_post_without_an_excerpt(): void
     {
         $local = $this->category('Local', 'local');
-        $firma = $this->author('Marta Beneyto');
+        $byline = $this->author('Marta Beneyto');
 
-        $lista = $this->makePost('Con entradilla', $local, $firma, 'draft');
-        $sin = $this->makePost('Sin entradilla', $local, $firma, 'draft');
-        $sin->update(['excerpt' => null]);
+        $ready = $this->makePost('Con entradilla', $local, $byline, 'draft');
+        $withoutExcerpt = $this->makePost('Sin entradilla', $local, $byline, 'draft');
+        $withoutExcerpt->update(['excerpt' => null]);
 
-        $movidas = $this->posts->bulk([$lista->id, $sin->id], 'publish', 1, true);
+        $moved = $this->posts->bulk([$ready->id, $withoutExcerpt->id], 'publish', 1, true);
 
-        $this->assertSame(1, $movidas);
-        $this->assertSame('published', $lista->fresh()->status->value);
-        $this->assertSame('draft', $sin->fresh()->status->value);
+        $this->assertSame(1, $moved);
+        $this->assertSame('published', $ready->fresh()->status->value);
+        $this->assertSame('draft', $withoutExcerpt->fresh()->status->value);
 
         // Y a borrador sí van las dos: la entradilla hace falta para SALIR, no para volver.
-        $this->assertSame(2, $this->posts->bulk([$lista->id, $sin->id], 'draft', 1, true));
+        $this->assertSame(2, $this->posts->bulk([$ready->id, $withoutExcerpt->id], 'draft', 1, true));
     }
 
     /**
@@ -360,18 +360,18 @@ class KilkanaPostsListTest extends TestCase
      * sin esto la pieza incompleta salía a la calle a las seis de la mañana sin que nadie la
      * viera. Se queda programada, que es un estado del que se sale escribiéndola.
      */
-    public function test_el_cron_no_publica_una_programada_sin_entradilla(): void
+    public function test_the_cron_does_not_publish_a_scheduled_post_without_an_excerpt(): void
     {
         $local = $this->category('Local', 'local');
-        $firma = $this->author('Marta Beneyto');
+        $byline = $this->author('Marta Beneyto');
 
-        $lista = $this->makePost('Programada completa', $local, $firma, 'scheduled', '2026-01-01 06:00:00');
-        $sin = $this->makePost('Programada a medias', $local, $firma, 'scheduled', '2026-01-01 06:00:00');
-        $sin->update(['excerpt' => null]);
+        $ready = $this->makePost('Programada completa', $local, $byline, 'scheduled', '2026-01-01 06:00:00');
+        $withoutExcerpt = $this->makePost('Programada a medias', $local, $byline, 'scheduled', '2026-01-01 06:00:00');
+        $withoutExcerpt->update(['excerpt' => null]);
 
         $this->assertSame(1, $this->posts->publishDue());
-        $this->assertSame('published', $lista->fresh()->status->value);
-        $this->assertSame('scheduled', $sin->fresh()->status->value);
+        $this->assertSame('published', $ready->fresh()->status->value);
+        $this->assertSame('scheduled', $withoutExcerpt->fresh()->status->value);
     }
 
     /**
@@ -383,20 +383,20 @@ class KilkanaPostsListTest extends TestCase
      * el `down()` de la migración convierte las nulas en vacías, así que un rollback y su
      * reaplicación cambiaban quién se publica.
      */
-    public function test_una_entradilla_en_blanco_cuenta_igual_que_una_ausente(): void
+    public function test_a_blank_excerpt_counts_the_same_as_a_missing_one(): void
     {
         $local = $this->category('Local', 'local');
-        $firma = $this->author('Marta Beneyto');
+        $byline = $this->author('Marta Beneyto');
 
-        $lote = $this->makePost('Por el lote', $local, $firma, 'draft');
-        $cron = $this->makePost('Por el cron', $local, $firma, 'scheduled', '2026-01-01 06:00:00');
-        $lote->update(['excerpt' => '']);
+        $batch = $this->makePost('Por el lote', $local, $byline, 'draft');
+        $cron = $this->makePost('Por el cron', $local, $byline, 'scheduled', '2026-01-01 06:00:00');
+        $batch->update(['excerpt' => '']);
         $cron->update(['excerpt' => '   ']);
 
-        $this->assertSame(0, $this->posts->bulk([$lote->id], 'publish', 1, true));
+        $this->assertSame(0, $this->posts->bulk([$batch->id], 'publish', 1, true));
         $this->assertSame(0, $this->posts->publishDue());
 
-        $this->assertSame('draft', $lote->fresh()->status->value);
+        $this->assertSame('draft', $batch->fresh()->status->value);
         $this->assertSame('scheduled', $cron->fresh()->status->value);
     }
 
@@ -405,17 +405,17 @@ class KilkanaPostsListTest extends TestCase
      * creada —el titular llega antes que el texto—, y una lista que se cae con la primera se
      * lleva por delante las otras veinticuatro de la página.
      */
-    public function test_un_borrador_sin_entradilla_sale_en_el_listado(): void
+    public function test_a_draft_without_an_excerpt_appears_in_the_list(): void
     {
         $local = $this->category('Local', 'local');
-        $firma = $this->author('Marta Beneyto');
+        $byline = $this->author('Marta Beneyto');
 
-        $this->makePost('Titular a secas', $local, $firma, 'draft')->update(['excerpt' => null]);
+        $this->makePost('Titular a secas', $local, $byline, 'draft')->update(['excerpt' => null]);
 
-        $filas = $this->posts->filter($this->posts->query(1, true), [])->get();
+        $rows = $this->posts->filter($this->posts->query(1, true), [])->get();
 
-        $this->assertCount(1, $filas);
-        $this->assertNull($filas->first()->excerpt);
+        $this->assertCount(1, $rows);
+        $this->assertNull($rows->first()->excerpt);
     }
 
     /**
@@ -424,25 +424,25 @@ class KilkanaPostsListTest extends TestCase
      * Es lo que hace que reetiquetar veinte piezas sea un endpoint y no veinte `PUT`: la unión
      * con lo que cada pieza ya llevaba la calcula quien tiene las filas delante.
      */
-    public function test_el_lote_etiqueta_sin_pisar_lo_que_ya_habia(): void
+    public function test_the_batch_tags_without_overwriting_existing_tags(): void
     {
         $local = $this->category('Local', 'local');
-        $firma = $this->author('Marta Beneyto');
+        $byline = $this->author('Marta Beneyto');
 
-        $una = $this->makePost('Una', $local, $firma, 'draft');
-        $otra = $this->makePost('Otra', $local, $firma, 'draft');
-        $una->tags()->sync([SnkKilkanaTagModel::firstOrCreateByName('pleno')->id]);
+        $one = $this->makePost('Una', $local, $byline, 'draft');
+        $other = $this->makePost('Otra', $local, $byline, 'draft');
+        $one->tags()->sync([SnkKilkanaTagModel::firstOrCreateByName('pleno')->id]);
 
-        $this->assertSame(2, $this->posts->bulk([$una->id, $otra->id], 'tag', 1, true, ['sequía']));
+        $this->assertSame(2, $this->posts->bulk([$one->id, $other->id], 'tag', 1, true, ['sequía']));
 
         // La que ya tenía «pleno» conserva las dos; la etiqueta nueva se creó al vuelo.
-        $this->assertEqualsCanonicalizing(['pleno', 'sequía'], $una->fresh()->tags->pluck('name')->all());
-        $this->assertSame(['sequía'], $otra->fresh()->tags->pluck('name')->all());
+        $this->assertEqualsCanonicalizing(['pleno', 'sequía'], $one->fresh()->tags->pluck('name')->all());
+        $this->assertSame(['sequía'], $other->fresh()->tags->pluck('name')->all());
 
-        $this->assertSame(2, $this->posts->bulk([$una->id, $otra->id], 'untag', 1, true, ['sequía']));
+        $this->assertSame(2, $this->posts->bulk([$one->id, $other->id], 'untag', 1, true, ['sequía']));
 
-        $this->assertSame(['pleno'], $una->fresh()->tags->pluck('name')->all());
-        $this->assertSame([], $otra->fresh()->tags->pluck('name')->all());
+        $this->assertSame(['pleno'], $one->fresh()->tags->pluck('name')->all());
+        $this->assertSame([], $other->fresh()->tags->pluck('name')->all());
         // Desenganchar no borra la fila: el vocabulario lo gobierna su pantalla.
         $this->assertNotNull(SnkKilkanaTagModel::query()->where('name', 'sequía')->first());
     }
@@ -459,17 +459,17 @@ class KilkanaPostsListTest extends TestCase
      * Se cuentan sobre el JSON serializado a proposito: la mitad de los N+1 de Eloquent no
      * los dispara la consulta, los dispara un accesor al serializar.
      */
-    public function test_el_listado_no_hace_una_consulta_por_fila(): void
+    public function test_the_list_does_not_run_a_query_per_row(): void
     {
         $local = $this->category('Local', 'local');
-        $firma = $this->author('Marta Beneyto');
-        $foto = SnkKilkanaMediaModel::create(['url' => 'https://ejemplo.test/foto.jpg', 'url_hash' => sha1('https://ejemplo.test/foto.jpg')]);
+        $byline = $this->author('Marta Beneyto');
+        $photo = SnkKilkanaMediaModel::create(['url' => 'https://ejemplo.test/foto.jpg', 'url_hash' => sha1('https://ejemplo.test/foto.jpg')]);
 
         // Con las cuatro relaciones pedidas, que es cuando un N+1 puede existir: sin pedirlas
         // el listado no carga ninguna y la prueba sería cierta sin demostrar nada. Y por el
         // Resource, que es por donde sale en producción — la mitad de los N+1 de Eloquent no
         // los dispara la consulta sino un accesor al serializar.
-        $serializar = function () {
+        $serialize = function () {
             $page = $this->posts->filter(
                 $this->posts->query(1, true)->with(['category', 'author', 'tags', 'coverMedia']),
                 [],
@@ -479,27 +479,27 @@ class KilkanaPostsListTest extends TestCase
         };
 
         for ($n = 0; $n < 3; $n++) {
-            $this->makePost("Pieza {$n}", $local, $firma, 'published', "2026-06-0{$n} 10:00:00")
-                ->update(['cover_media_id' => $foto->id]);
+            $this->makePost("Pieza {$n}", $local, $byline, 'published', "2026-06-0{$n} 10:00:00")
+                ->update(['cover_media_id' => $photo->id]);
         }
         DB::flushQueryLog();
         DB::enableQueryLog();
-        $serializar();
-        $conTres = count(DB::getQueryLog());
+        $serialize();
+        $withThree = count(DB::getQueryLog());
 
         for ($n = 3; $n < 15; $n++) {
-            $this->makePost("Pieza {$n}", $local, $firma, 'published', '2026-07-01 10:00:00')
-                ->update(['cover_media_id' => $foto->id]);
+            $this->makePost("Pieza {$n}", $local, $byline, 'published', '2026-07-01 10:00:00')
+                ->update(['cover_media_id' => $photo->id]);
         }
         DB::flushQueryLog();
-        $serializar();
-        $conQuince = count(DB::getQueryLog());
+        $serialize();
+        $withFifteen = count(DB::getQueryLog());
         DB::disableQueryLog();
 
         $this->assertSame(
-            $conTres,
-            $conQuince,
-            "el listado pasa de {$conTres} consultas con 3 filas a {$conQuince} con 15: hay un N+1",
+            $withThree,
+            $withFifteen,
+            "el listado pasa de {$withThree} consultas con 3 filas a {$withFifteen} con 15: hay un N+1",
         );
     }
 
@@ -511,7 +511,7 @@ class KilkanaPostsListTest extends TestCase
      * porque ordenar por el alias de una correlacionada obliga a calcularla para TODAS las
      * filas. Las ventanas siguen donde se usan, en el servicio publico.
      */
-    public function test_el_listado_solo_suma_la_audiencia_que_se_enseña(): void
+    public function test_the_list_only_sums_the_audience_it_shows(): void
     {
         $sql = $this->posts->withAudience($this->posts->query(1, true), null)->toSql();
 
@@ -523,11 +523,9 @@ class KilkanaPostsListTest extends TestCase
     /**
      * **Quien llama elige las columnas, y lo que no pide no viaja.**
      *
-     * Sustituye a `FILA_DEL_LISTADO`, que era una lista de doce campos escrita en el servidor y
-     * copiada a mano en el parser del BFF. Eran gemelas mantenidas en dos repos y ya divergieron
-     * una vez: seis campos se cayeron de aquí y allí siguieron parseándose como `undefined`, con
-     * un `noindex: false` que afirmaba «indexable» sobre un dato que no había llegado. Ahora la
-     * lista está **una sola vez**, en quien la pide.
+     * El servidor no declara una fila fija que el parser del BFF tenga que copiar a mano: dos
+     * listas gemelas en dos repos divergen, y un campo que se cae de un lado sigue parseándose
+     * en el otro como `undefined`. La lista está **una sola vez**, en quien la pide.
      *
      * Un campo no pedido sale **ausente**, no nulo, que es lo que permite notar la diferencia.
      *
@@ -536,21 +534,21 @@ class KilkanaPostsListTest extends TestCase
      * `?fields=`, el `select()` del recorte se la llevaría por delante y la audiencia se leería
      * como cero, sin error.
      *
-     * Medido con 522 piezas cuando esto era una constante: mandar la fila entera costaba 28,0 ms
-     * y 59,7 kB por página de veinticinco; recortada, 14,5 ms y 14,2 kB.
+     * Medido con 522 piezas: la fila entera cuesta 28,0 ms y 59,7 kB por página de veinticinco;
+     * recortada, 14,5 ms y 14,2 kB.
      */
-    public function test_la_fila_trae_las_columnas_que_se_piden_y_ninguna_mas(): void
+    public function test_the_row_includes_the_requested_columns_and_nothing_else(): void
     {
         $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
         $marta->assignRole('director');
         $this->actingAs($marta, 'sanctum');
 
         $local = $this->category('Local', 'local');
-        $firma = $this->author('Marta Beneyto', alias: 'Redacción');
-        $foto = SnkKilkanaMediaModel::create(['url' => 'https://ejemplo.test/foto.jpg', 'url_hash' => sha1('https://ejemplo.test/foto.jpg')]);
-        $pieza = $this->makePost('Una pieza', $local, $firma, 'published', '2026-06-01 10:00:00', $marta->id);
-        $pieza->update(['cover_media_id' => $foto->id]);
-        $pieza->tags()->sync([SnkKilkanaTagModel::firstOrCreateByName('pleno')->id]);
+        $byline = $this->author('Marta Beneyto', alias: 'Redacción');
+        $photo = SnkKilkanaMediaModel::create(['url' => 'https://ejemplo.test/foto.jpg', 'url_hash' => sha1('https://ejemplo.test/foto.jpg')]);
+        $post = $this->makePost('Una pieza', $local, $byline, 'published', '2026-06-01 10:00:00', $marta->id);
+        $post->update(['cover_media_id' => $photo->id]);
+        $post->tags()->sync([SnkKilkanaTagModel::firstOrCreateByName('pleno')->id]);
 
         // Los campos de una relación viajan en el MISMO parámetro, con el punto delante: el
         // prefijo es el nombre de la relación en plural snake, no el de la tabla.
@@ -562,14 +560,14 @@ class KilkanaPostsListTest extends TestCase
                 .',categories.id,categories.name,authors.id,authors.alias,authors.user_id,tags.id,tags.name',
             'include' => 'category,author,tags',
         ]);
-        $fila = app(SnkKilkanaPostsController::class)->index()->getData(true)['data'][0];
+        $row = app(SnkKilkanaPostsController::class)->index()->getData(true)['data'][0];
 
         $this->assertSame([
             'id', 'title', 'excerpt', 'slug', 'status', 'content_tier',
             'publish_at', 'cover_media_id', 'views_total', 'category', 'author', 'tags',
-        ], array_keys($fila));
+        ], array_keys($row));
 
-        $this->assertSame($foto->id, $fila['cover_media_id'], 'La portada es su columna, no un objeto.');
+        $this->assertSame($photo->id, $row['cover_media_id'], 'La portada es su columna, no un objeto.');
         // Y sale sin pedirla: no es una columna, así que `?fields=` no la nombra —le antepondría
         // la tabla y `kilkana_posts.views_total` no existe—. La cuelga `withAudience()` después
         // del recorte, y esta línea es la que prueba que ese orden se mantiene: al revés, el
@@ -577,16 +575,16 @@ class KilkanaPostsListTest extends TestCase
         // Sin lecturas la suma es `null`, no cero, y da igual: lo que se comprueba es que la
         // clave **está**. Si el recorte se hubiera llevado la subconsulta, `whenHas()` no la
         // vería y no habría clave que mirar.
-        $this->assertArrayHasKey('views_total', $fila, 'La suma sobrevive al recorte de columnas.');
+        $this->assertArrayHasKey('views_total', $row, 'La suma sobrevive al recorte de columnas.');
 
         // Y las relaciones tampoco viajan enteras: de cada una, lo que se pidió.
-        $this->assertSame(['id', 'name'], array_keys($fila['category']));
-        $this->assertSame(['id', 'name'], array_keys($fila['author']));
-        $this->assertSame(['id', 'name'], array_keys($fila['tags'][0]));
+        $this->assertSame(['id', 'name'], array_keys($row['category']));
+        $this->assertSame(['id', 'name'], array_keys($row['author']));
+        $this->assertSame(['id', 'name'], array_keys($row['tags'][0]));
 
         // El nombre de la firma es el PUBLICADO, que es derivado: recortar columnas no puede
         // dejarlo sin la que lo compone.
-        $this->assertSame('Redacción', $fila['author']['name']);
+        $this->assertSame('Redacción', $row['author']['name']);
     }
 
     /**
@@ -597,7 +595,7 @@ class KilkanaPostsListTest extends TestCase
      * cuenta de usos de cada portada, que son tres `COUNT` por foto—. Era la última pieza de la
      * forma de salida que decidía el modelo en vez de quien pregunta.
      */
-    public function test_lo_que_no_se_pide_no_viaja(): void
+    public function test_what_is_not_requested_is_not_sent(): void
     {
         $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
         $marta->assignRole('director');
@@ -605,35 +603,35 @@ class KilkanaPostsListTest extends TestCase
         $this->makePost('Una', $this->category('Local', 'local'), $this->author('Redacción', alias: 'Redacción'), 'draft', null, $marta->id);
 
         request()->query->replace(['fields' => 'id,title']);
-        $fila = app(SnkKilkanaPostsController::class)->index()->getData(true)['data'][0];
+        $row = app(SnkKilkanaPostsController::class)->index()->getData(true)['data'][0];
 
-        $this->assertSame(['id', 'title', 'views_total'], array_keys($fila), 'Y `views_total` porque la suma se cuelga siempre.');
-        $this->assertSame('Una', $fila['title']);
+        $this->assertSame(['id', 'title', 'views_total'], array_keys($row), 'Y `views_total` porque la suma se cuelga siempre.');
+        $this->assertSame('Una', $row['title']);
     }
 
     /**
      * Y el editor sigue recibiendo la pieza entera: son dos preguntas distintas.
      */
-    public function test_la_pieza_del_editor_no_viene_recortada(): void
+    public function test_the_editor_post_is_not_trimmed(): void
     {
         $local = $this->category('Local', 'local');
-        $firma = $this->author('Marta Beneyto');
-        $pieza = $this->makePost('Una pieza', $local, $firma, 'draft');
+        $byline = $this->author('Marta Beneyto');
+        $post = $this->makePost('Una pieza', $local, $byline, 'draft');
 
         $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
         $marta->assignRole('director');
         $this->actingAs($marta, 'sanctum');
         request()->query->replace(['include' => 'category,author,tags,coverMedia']);
 
-        $json = app(SnkKilkanaPostsController::class)->show($pieza->id)->getData(true);
+        $json = app(SnkKilkanaPostsController::class)->show($post->id)->getData(true);
 
         // Sin `?fields=`, la ficha trae la pieza entera: es la puerta del editor y ahí se
         // escribe. `url_path` sale porque `url_date` está, que es lo que sustituye al `$appends`.
-        foreach (['body_blocks', 'seo_title', 'url_path', 'og_title', 'noindex'] as $campo) {
-            $this->assertArrayHasKey($campo, $json, "el editor necesita «{$campo}»");
+        foreach (['body_blocks', 'seo_title', 'url_path', 'og_title', 'noindex'] as $field) {
+            $this->assertArrayHasKey($field, $json, "el editor necesita «{$field}»");
         }
-        foreach (['category', 'author', 'tags'] as $relacion) {
-            $this->assertArrayHasKey($relacion, $json, "el editor pide «{$relacion}» y tiene que llegar");
+        foreach (['category', 'author', 'tags'] as $relation) {
+            $this->assertArrayHasKey($relation, $json, "el editor pide «{$relation}» y tiene que llegar");
         }
     }
 
@@ -645,10 +643,10 @@ class KilkanaPostsListTest extends TestCase
      * fecha que el panel no tiene donde pedir. La accion en tanda ya sellaba; lo que faltaba
      * era que las dos puertas se comportaran igual.
      */
-    public function test_publicar_sella_la_fecha_cuando_falta_o_apunta_al_futuro(): void
+    public function test_publishing_stamps_the_date_when_missing_or_in_the_future(): void
     {
-        $manana = now()->addDay()->toDateTimeString();
-        $ayer = now()->subDay()->toDateTimeString();
+        $tomorrow = now()->addDay()->toDateTimeString();
+        $yesterday = now()->subDay()->toDateTimeString();
 
         // Sin fecha: se sella ahora.
         $this->assertNotNull(SnkKilkanaPostService::stampFor('published', null));
@@ -656,12 +654,12 @@ class KilkanaPostsListTest extends TestCase
 
         // Programada para manana y publicada a mano: sale AHORA, no manana. Dejarle la fecha
         // prevista la ordenaria manana en la portada, el sitemap y el feed.
-        $sello = SnkKilkanaPostService::stampFor('published', $manana);
-        $this->assertNotNull($sello);
-        $this->assertTrue(Carbon::parse($sello)->lessThan(Carbon::parse($manana)));
+        $stamp = SnkKilkanaPostService::stampFor('published', $tomorrow);
+        $this->assertNotNull($stamp);
+        $this->assertTrue(Carbon::parse($stamp)->lessThan(Carbon::parse($tomorrow)));
 
         // Una fecha pasada es una decision editorial y se respeta.
-        $this->assertNull(SnkKilkanaPostService::stampFor('published', $ayer));
+        $this->assertNull(SnkKilkanaPostService::stampFor('published', $yesterday));
 
         // Y `scheduled` no se inventa: una programada sin fecha es un error de verdad.
         $this->assertNull(SnkKilkanaPostService::stampFor('scheduled', null));

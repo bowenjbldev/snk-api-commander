@@ -15,8 +15,8 @@ class CoreMigrationMakeCommand extends MigrateMakeCommand
         {--path= : The location where the migration file should be created}
         {--realpath : Indicate any provided migration file paths are pre-resolved absolute paths}
         {--fullpath : Output the full path of the migration (Deprecated)}
-        {--client= : Cliente del paquete anidado (e.g. Acme). Requiere --package.}
-        {--package= : Paquete dentro del cliente (e.g. Shop). Requiere --client.}';
+        {--client= : Client of the nested package (e.g. Acme). Requires --package.}
+        {--package= : Package inside the client (e.g. Shop). Requires --client.}';
 
     public function handle()
     {

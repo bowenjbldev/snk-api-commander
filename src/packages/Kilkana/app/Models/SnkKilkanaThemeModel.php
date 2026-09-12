@@ -60,13 +60,13 @@ class SnkKilkanaThemeModel extends Model
      * En modo booleano y con comodín al final para que teclear «tec» ya encuentre los temas de
      * tecnología: un buscador de catálogo se usa escribiendo, no pulsando enter.
      */
-    public function scopeSearch(Builder $query, string $termino): Builder
+    public function scopeSearch(Builder $query, string $term): Builder
     {
-        $limpio = trim(preg_replace('/[+\-><()~*"@]+/', ' ', $termino) ?? '');
+        $sanitized = trim(preg_replace('/[+\-><()~*"@]+/', ' ', $term) ?? '');
 
-        return $limpio === ''
+        return $sanitized === ''
             ? $query
-            : $query->whereFullText(['name', 'tagline', 'description'], $limpio.'*', ['mode' => 'boolean']);
+            : $query->whereFullText(['name', 'tagline', 'description'], $sanitized.'*', ['mode' => 'boolean']);
     }
 
     /**
@@ -76,9 +76,9 @@ class SnkKilkanaThemeModel extends Model
      * novedades, `popular` la que ordena por el número que fijas al publicar y `name` la
      * alfabética de quien ya sabe lo que busca.
      */
-    public function scopeSorted(Builder $query, ?string $criterio): Builder
+    public function scopeSorted(Builder $query, ?string $sort): Builder
     {
-        return match ($criterio) {
+        return match ($sort) {
             'recent' => $query->orderByDesc('published_at')->orderByDesc('id'),
             'popular' => $query->orderByDesc('popularity')->orderBy('position'),
             'name' => $query->orderBy('name'),

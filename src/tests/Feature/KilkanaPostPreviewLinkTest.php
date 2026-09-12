@@ -25,39 +25,39 @@ class KilkanaPostPreviewLinkTest extends TestCase
         parent::setUp();
 
         DB::setDefaultConnection('tenant');
-        foreach (['Core', 'Kilkana'] as $paquete) {
+        foreach (['Core', 'Kilkana'] as $package) {
             $this->artisan('migrate', [
                 '--database' => 'tenant',
-                '--path' => "packages/{$paquete}/database/migrations",
+                '--path' => "packages/{$package}/database/migrations",
             ])->run();
         }
         app(SnkKilkanaRoleCatalogService::class)->sync();
     }
 
-    public function test_el_enlace_abre_el_borrador_y_una_firma_tocada_o_caducada_no(): void
+    public function test_the_link_opens_the_draft_and_a_tampered_or_expired_signature_does_not(): void
     {
         $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
         $marta->assignRole('director');
         $this->actingAs($marta, 'sanctum');
-        $seccion = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
-        $firma = SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);
-        $pieza = SnkKilkanaPostModel::create(['title' => 'Todavía no', 'slug' => 'todavia-no', 'category_id' => $seccion->id, 'author_id' => $firma->id, 'status' => 'draft', 'excerpt' => 'E.', 'body_blocks' => [['id' => 'b1', 'type' => 'paragraph', 'config' => ['text' => 'Secreto']]]]);
+        $section = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
+        $byline = SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);
+        $post = SnkKilkanaPostModel::create(['title' => 'Todavía no', 'slug' => 'todavia-no', 'category_id' => $section->id, 'author_id' => $byline->id, 'status' => 'draft', 'excerpt' => 'E.', 'body_blocks' => [['id' => 'b1', 'type' => 'paragraph', 'config' => ['text' => 'Secreto']]]]);
 
-        $enlace = app(SnkKilkanaPostsController::class)->previewLink($pieza->id)->getData(true);
-        $this->assertStringStartsWith("/preview/{$pieza->id}?until=", $enlace['path']);
-        parse_str((string) parse_url($enlace['path'], PHP_URL_QUERY), $query);
+        $link = app(SnkKilkanaPostsController::class)->previewLink($post->id)->getData(true);
+        $this->assertStringStartsWith("/preview/{$post->id}?until=", $link['path']);
+        parse_str((string) parse_url($link['path'], PHP_URL_QUERY), $query);
 
         auth()->forgetGuards();
-        $abrir = fn (array $q) => app(SnkKilkanaPublicController::class)->preview(Request::create('/', 'GET', $q), $pieza->id);
+        $open = fn (array $q) => app(SnkKilkanaPublicController::class)->preview(Request::create('/', 'GET', $q), $post->id);
 
-        $previa = $abrir($query);
-        $this->assertSame(200, $previa->getStatusCode());
-        $this->assertSame('Todavía no', $previa->getData(true)['title']);
-        $this->assertSame('Secreto', $previa->getData(true)['body_blocks'][0]['config']['text']);
+        $preview = $open($query);
+        $this->assertSame(200, $preview->getStatusCode());
+        $this->assertSame('Todavía no', $preview->getData(true)['title']);
+        $this->assertSame('Secreto', $preview->getData(true)['body_blocks'][0]['config']['text']);
 
-        $this->assertSame(404, $abrir(['until' => $query['until'], 'sig' => strrev($query['sig'])])->getStatusCode(), 'Una firma tocada no abre nada.');
-        $this->assertSame(404, $abrir(['until' => (string) ((int) $query['until'] + 1), 'sig' => $query['sig']])->getStatusCode(), 'Y alargar la caducidad rompe la firma.');
+        $this->assertSame(404, $open(['until' => $query['until'], 'sig' => strrev($query['sig'])])->getStatusCode(), 'Una firma tocada no abre nada.');
+        $this->assertSame(404, $open(['until' => (string) ((int) $query['until'] + 1), 'sig' => $query['sig']])->getStatusCode(), 'Y alargar la caducidad rompe la firma.');
         $this->travel(8)->days();
-        $this->assertSame(404, $abrir($query)->getStatusCode(), 'A la semana caduca.');
+        $this->assertSame(404, $open($query)->getStatusCode(), 'A la semana caduca.');
     }
 }

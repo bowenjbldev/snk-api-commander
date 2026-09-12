@@ -10,10 +10,10 @@
 @endif
 # {{ $issueSubject }}
 
-@foreach ($pieces as $piece)
-## [{{ $piece['title'] }}]({{ $piece['url'] }})
+@foreach ($posts as $post)
+## [{{ $post['title'] }}]({{ $post['url'] }})
 
-{{ $piece['excerpt'] }}
+{{ $post['excerpt'] }}
 
 @endforeach
 

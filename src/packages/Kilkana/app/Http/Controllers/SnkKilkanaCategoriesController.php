@@ -18,8 +18,8 @@ class SnkKilkanaCategoriesController extends CoreBaseApiController
     /** `rule()` es una llamada, y una propiedad no se puede inicializar con eso: va aquí. */
     public function __construct()
     {
-        foreach (['validationRulesStore', 'validationRulesUpdate'] as $reglas) {
-            $this->{$reglas}['status'] = 'sometimes|'.SnkKilkanaCategoryStatusEnum::rule();
+        foreach (['validationRulesStore', 'validationRulesUpdate'] as $property) {
+            $this->{$property}['status'] = 'sometimes|'.SnkKilkanaCategoryStatusEnum::rule();
         }
     }
 
@@ -113,13 +113,13 @@ class SnkKilkanaCategoriesController extends CoreBaseApiController
         }
 
         $posts = SnkKilkanaPostModel::query()->where('category_id', $id)->count();
-        $subsecciones = SnkKilkanaCategoryModel::query()->where('parent_id', $id)->count();
+        $subsections = SnkKilkanaCategoryModel::query()->where('parent_id', $id)->count();
 
-        if ($posts > 0 || $subsecciones > 0) {
+        if ($posts > 0 || $subsections > 0) {
             return response()->json([
                 'error' => 'Section in use',
                 'posts' => $posts,
-                'subsections' => $subsecciones,
+                'subsections' => $subsections,
             ], 409);
         }
 

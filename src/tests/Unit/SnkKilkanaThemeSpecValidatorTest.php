@@ -42,18 +42,18 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
     }
 
     /** Una fila: los bloques de cada columna, con su ancho. */
-    private function row(array $columnas, ?string $rotulo = null): array
+    private function row(array $columns, ?string $header = null): array
     {
-        $fila = ['cols' => array_map(
+        $row = ['cols' => array_map(
             fn (array $c) => ['span' => $c[0], 'blocks' => array_map(fn ($t) => ['type' => $t], $c[1])],
-            $columnas
+            $columns
         )];
 
-        return $rotulo === null ? $fila : [...$fila, 'header' => ['text' => $rotulo]];
+        return $header === null ? $row : [...$row, 'header' => ['text' => $header]];
     }
 
     /** Un tema valido de referencia; cada caso lo estropea por un sitio distinto. */
-    private function spec(array $cambios = []): array
+    private function spec(array $changes = []): array
     {
         $spec = [
             'specVersion' => 2,
@@ -83,9 +83,9 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
             ],
         ];
 
-        foreach ($cambios as $ruta => $valor) {
-            [$grupo, $clave] = explode('.', $ruta);
-            $spec[$grupo][$clave] = $valor;
+        foreach ($changes as $path => $value) {
+            [$group, $key] = explode('.', $path);
+            $spec[$group][$key] = $value;
         }
 
         return $spec;
@@ -109,11 +109,11 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
         $spec = $this->spec();
         $spec['specVersion'] = 1;
 
-        $errores = $this->validator()->validate($spec);
+        $errors = $this->validator()->validate($spec);
 
-        $this->assertCount(1, $errores);
-        $this->assertStringContainsString('specVersion', $errores[0]);
-        $this->assertStringContainsString('se migra', $errores[0]);
+        $this->assertCount(1, $errors);
+        $this->assertStringContainsString('specVersion', $errors[0]);
+        $this->assertStringContainsString('it is migrated', $errors[0]);
     }
 
     public function test_it_refuses_a_spec_without_a_version(): void
@@ -132,19 +132,19 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
      */
     public function test_it_refuses_a_theme_below_the_aa_contrast_ratio(): void
     {
-        $errores = $this->validator()->validate($this->spec(['tokens.textSoft' => '#dddddd']));
+        $errors = $this->validator()->validate($this->spec(['tokens.textSoft' => '#dddddd']));
 
-        $this->assertCount(1, $errores);
-        $this->assertStringContainsString('contraste textSoft sobre surface', $errores[0]);
-        $this->assertStringContainsString('#dddddd', $errores[0], 'el error tiene que decir QUE color');
+        $this->assertCount(1, $errors);
+        $this->assertStringContainsString('contrast textSoft on surface', $errors[0]);
+        $this->assertStringContainsString('#dddddd', $errors[0], 'el error tiene que decir QUE color');
     }
 
     public function test_it_refuses_an_accent_that_cannot_be_read(): void
     {
-        $errores = $this->validator()->validate($this->spec(['tokens.accent' => '#ffe066']));
+        $errors = $this->validator()->validate($this->spec(['tokens.accent' => '#ffe066']));
 
-        $this->assertNotSame([], $errores);
-        $this->assertStringContainsString('accent', $errores[0]);
+        $this->assertNotSame([], $errors);
+        $this->assertStringContainsString('accent', $errors[0]);
     }
 
     public function test_it_refuses_a_masthead_that_no_component_can_paint(): void
@@ -166,7 +166,7 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
 
     public function test_it_refuses_values_outside_the_same_ranges_the_inspector_allows(): void
     {
-        $casos = [
+        $cases = [
             'tokens.pageRadius' => fn (array &$s) => $s['tokens']['pageRadius'] = '40px',
             'density.padX' => fn (array &$s) => $s['density']['padX'] = 99,
             'type.steps.hero.weight' => fn (array &$s) => $s['type']['steps']['hero']['weight'] = 650,
@@ -174,12 +174,12 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
             'grid.sheet' => fn (array &$s) => $s['grid']['sheet'] = 60,
         ];
 
-        foreach ($casos as $que => $estropear) {
+        foreach ($cases as $what => $breakSpec) {
             $spec = $this->spec();
-            $estropear($spec);
+            $breakSpec($spec);
 
-            $errores = $this->validator()->validate($spec);
-            $this->assertNotSame([], $errores, "{$que} deberia haber fallado");
+            $errors = $this->validator()->validate($spec);
+            $this->assertNotSame([], $errors, "{$what} deberia haber fallado");
         }
     }
 
@@ -194,7 +194,7 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
         $spec = $this->spec();
         $spec['type']['steps']['hero']['size'] = 12;
 
-        $this->assertStringContainsString('menor que la tarjeta', implode(' ', $this->validator()->validate($spec)));
+        $this->assertStringContainsString('smaller than the card', implode(' ', $this->validator()->validate($spec)));
     }
 
     /** Los cinco recortes con nombre son lo que declara la altura de una foto: de ahi sale el CLS. */
@@ -214,7 +214,7 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
         $spec = $this->spec();
         $spec['grid']['tracks'] = [272, 272, 172, 302];
 
-        $this->assertStringContainsString('exactamente uno', implode(' ', $this->validator()->validate($spec)));
+        $this->assertStringContainsString('exactly one', implode(' ', $this->validator()->validate($spec)));
     }
 
     /** Una fila que no llena la rejilla deja un hueco que nadie pidio, y no se ve hasta pintarla. */
@@ -223,10 +223,10 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
         $spec = $this->spec();
         $spec['layouts']['front'][1] = $this->row([[8, ['river']], [3, ['most-read']]]);
 
-        $errores = $this->validator()->validate($spec);
+        $errors = $this->validator()->validate($spec);
 
-        $this->assertStringContainsString('los span suman 11', $errores[0]);
-        $this->assertStringContainsString('la rejilla tiene 12', $errores[0]);
+        $this->assertStringContainsString('the spans add up to 11', $errors[0]);
+        $this->assertStringContainsString('the grid has 12', $errors[0]);
     }
 
     public function test_it_refuses_a_column_without_blocks(): void
@@ -234,7 +234,7 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
         $spec = $this->spec();
         $spec['layouts']['front'][0]['cols'][0]['blocks'] = [];
 
-        $this->assertStringContainsString('al menos un bloque', $this->validator()->validate($spec)[0]);
+        $this->assertStringContainsString('at least one block', $this->validator()->validate($spec)[0]);
     }
 
     /**
@@ -249,10 +249,10 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
         $spec = $this->spec();
         $spec['layouts']['front'][] = $this->row([[12, ['weather']]]);
 
-        $errores = $this->validator()->validate($spec);
+        $errors = $this->validator()->validate($spec);
 
-        $this->assertStringContainsString('weather', $errores[0]);
-        $this->assertStringContainsString('no es un bloque del editor', $errores[0]);
+        $this->assertStringContainsString('weather', $errors[0]);
+        $this->assertStringContainsString('is not an editor block', $errors[0]);
     }
 
     /**
@@ -262,7 +262,7 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
      * La banda va la tercera y no la segunda a proposito: `lead-briefs` mas `four-up` mas
      * `mosaic` son diez fotos, y sobre el pliegue eso es justo lo que el presupuesto para.
      */
-    public function test_it_accepts_the_blocks_the_v2_added(): void
+    public function test_it_accepts_the_blocks_added_in_v2(): void
     {
         $spec = $this->spec();
         $spec['layouts']['section'][] = $this->row([[12, ['brief-list']]]);
@@ -294,10 +294,10 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
         $spec = $this->spec();
         $spec['layouts']['front'] = array_fill(0, 17, $this->row([[12, ['four-up']]]));
 
-        $errores = $this->validator()->validate($spec);
+        $errors = $this->validator()->validate($spec);
 
-        $this->assertStringContainsString('fotos 68', $errores[0]);
-        $this->assertStringContainsString('peso de la pagina', str_replace('á', 'a', $errores[0]));
+        $this->assertStringContainsString('photos 68', $errors[0]);
+        $this->assertStringContainsString('page weight', $errors[0]);
     }
 
     /**
@@ -312,19 +312,19 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
             $this->row([[12, ['lead-story']]]),
         ];
 
-        $errores = $this->validator()->validate($spec);
+        $errors = $this->validator()->validate($spec);
 
-        $this->assertStringContainsString('pliegue', $errores[0]);
-        $this->assertStringContainsString('LCP', $errores[0]);
+        $this->assertStringContainsString('above the fold', $errors[0]);
+        $this->assertStringContainsString('LCP', $errors[0]);
     }
 
     /** `photo: false` es lo que hace que una edicion de teletipo no cuente fotos. */
     public function test_a_block_with_photos_switched_off_does_not_spend_budget(): void
     {
         $spec = $this->spec();
-        $fila = $this->row([[12, ['four-up']]]);
-        $fila['cols'][0]['blocks'][0]['config'] = ['photo' => false];
-        $spec['layouts']['front'] = array_fill(0, 17, $fila);
+        $row = $this->row([[12, ['four-up']]]);
+        $row['cols'][0]['blocks'][0]['config'] = ['photo' => false];
+        $spec['layouts']['front'] = array_fill(0, 17, $row);
 
         $this->assertSame([], $this->validator()->validate($spec));
     }

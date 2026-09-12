@@ -80,8 +80,8 @@ class SnkKilkanaTagsController extends CoreBaseApiController
             return $response;
         }
 
-        $desde = SnkKilkanaTagModel::query()->find($id);
-        if ($desde === null) {
+        $source = SnkKilkanaTagModel::query()->find($id);
+        if ($source === null) {
             return response()->json(['error' => 'Record not found'], 404);
         }
 
@@ -90,21 +90,21 @@ class SnkKilkanaTagsController extends CoreBaseApiController
         // un 500 con `Validator::validateX does not exist` dentro. La regla es la misma; lo que
         // cambia es que el valor viaja como valor.
         $data = $request->validate([
-            'into' => ['required', 'integer', Rule::notIn([$desde->id]), 'exists:kilkana_tags,id'],
+            'into' => ['required', 'integer', Rule::notIn([$source->id]), 'exists:kilkana_tags,id'],
         ]);
 
-        $hasta = SnkKilkanaTagModel::query()->findOrFail($data['into']);
-        $piezas = $desde->posts()->pluck('kilkana_posts.id')->all();
+        $target = SnkKilkanaTagModel::query()->findOrFail($data['into']);
+        $posts = $source->posts()->pluck('kilkana_posts.id')->all();
 
         // Callado: fundir borra una etiqueta, y «borró la etiqueta» no es lo que pasó.
-        $registro = app(SnkKilkanaActivityService::class);
-        $registro->quiet(fn () => DB::transaction(function () use ($desde, $hasta, $piezas) {
-            $hasta->posts()->syncWithoutDetaching($piezas);
-            $desde->delete();
+        $activityLog = app(SnkKilkanaActivityService::class);
+        $activityLog->quiet(fn () => DB::transaction(function () use ($source, $target, $posts) {
+            $target->posts()->syncWithoutDetaching($posts);
+            $source->delete();
         }));
-        $registro->log('tag', 'tags_merged', $hasta->name, '/tags', ['before' => $desde->name, 'after' => $hasta->name]);
+        $activityLog->log('tag', 'tags_merged', $target->name, '/tags', ['before' => $source->name, 'after' => $target->name]);
 
-        return response()->json(['id' => (string) $hasta->id, 'moved' => count($piezas)]);
+        return response()->json(['id' => (string) $target->id, 'moved' => count($posts)]);
     }
 
     /**
@@ -121,14 +121,14 @@ class SnkKilkanaTagsController extends CoreBaseApiController
             return $response;
         }
 
-        $etiqueta = SnkKilkanaTagModel::query()->find($id);
-        if ($etiqueta === null) {
+        $tag = SnkKilkanaTagModel::query()->find($id);
+        if ($tag === null) {
             return response()->json(['error' => 'Record not found'], 404);
         }
 
-        $piezas = $etiqueta->posts()->count();
-        $etiqueta->delete();
+        $posts = $tag->posts()->count();
+        $tag->delete();
 
-        return response()->json(['id' => (string) $id, 'detached' => $piezas]);
+        return response()->json(['id' => (string) $id, 'detached' => $posts]);
     }
 }

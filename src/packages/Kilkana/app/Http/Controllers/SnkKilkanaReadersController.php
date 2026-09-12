@@ -76,7 +76,7 @@ class SnkKilkanaReadersController extends CoreBaseApiController
             ->when($tab !== 'all', fn (Builder $q) => $this->onTab($q, $tab))
             ->when($term !== '', fn (Builder $q) => $q->where(fn (Builder $w) => $w
                 ->where('name', 'like', "%{$term}%")
-                ->orWhere('full_name', 'like', "%{$term}%")
+                ->orWhere('lastname', 'like', "%{$term}%")
                 ->orWhere('email', 'like', "%{$term}%")))
             ->withMax('tokens as last_token_at', 'last_used_at')
             ->orderByDesc('created_at')
@@ -89,15 +89,15 @@ class SnkKilkanaReadersController extends CoreBaseApiController
         }
 
         $page = $query->paginate($this->perPage());
-        $cifras = $this->wants('counts') ? $this->counts() : null;
+        $counts = $this->wants('counts') ? $this->counts() : null;
 
         return response()->json([
             'data' => SnkKilkanaReaderResource::collection($this->readers->withActivity($page->getCollection())),
             'meta' => $this->paginationMeta($page),
             // Las dos comparten dos consultas, así que se calculan en este orden y la banda
             // reutiliza lo que las pestañas ya contaron. Ver `stats()`.
-            ...$cifras === null ? [] : ['counts' => $cifras],
-            ...$this->wants('stats') ? ['stats' => $this->stats($cifras)] : [],
+            ...$counts === null ? [] : ['counts' => $counts],
+            ...$this->wants('stats') ? ['stats' => $this->stats($counts)] : [],
         ]);
     }
 
@@ -112,9 +112,9 @@ class SnkKilkanaReadersController extends CoreBaseApiController
             return response()->json(['error' => 'Record not found'], 404);
         }
 
-        $rechazados = $this->readers->block($user);
+        $rejected = $this->readers->block($user);
 
-        return response()->json(['blocked' => (string) $user->getKey(), 'rejected' => $rechazados]);
+        return response()->json(['blocked' => (string) $user->getKey(), 'rejected' => $rejected]);
     }
 
     /** Retirar a un lector: lo que identifica desaparece; sus comentarios se quedan sin nombre. */

@@ -48,12 +48,12 @@ use Spatie\Permission\Models\Role;
 class SnkKilkanaDatabaseSeeder extends Seeder
 {
     /** El perfil resuelto, o `[]` si esta base no es de ningun periodico declarado. */
-    private ?int $desfase = null;
+    private ?int $dayOffset = null;
 
     /** @var array<int, array<string, mixed>>|null */
     private ?array $snapshot = null;
 
-    private ?array $perfil = null;
+    private ?array $profile = null;
 
     /**
      * Taxonomía del periódico. Dos niveles: las mesas de redacción y sus subsecciones.
@@ -122,14 +122,14 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             // Y se dice cuál de las dos paró: una siembra que termina con éxito y sin escribir una
             // fila es indistinguible de una correcta, y la pregunta que sigue —«¿corrió con la
             // variable?»— tiene dos respuestas posibles desde que el perfil también puede pararla.
-            $cliente = $this->clientSlug() ?? 'esta base';
+            $client = $this->clientSlug() ?? 'this database';
             $this->command?->getOutput()->writeln(match (true) {
-                ! config('kilkana.kilkana.seed_demo', false) => '<comment>demo: KILKANA_SEED_DEMO no está puesta.</comment>',
+                ! config('kilkana.kilkana.seed_demo', false) => '<comment>demo: KILKANA_SEED_DEMO is not set.</comment>',
                 // Las dos significan lo mismo hoy y son diagnósticos distintos el día que alguien
                 // escriba mal un slug en `clients`: sin perfil, el fichero no existe o no la
                 // reclama; con perfil, es una decisión escrita.
-                $this->profile() === [] => "<comment>demo: ningún perfil reclama {$cliente}.</comment>",
-                default => "<comment>demo: el perfil de {$cliente} dice que no lleva datos de demo.</comment>",
+                $this->profile() === [] => "<comment>demo: no profile claims {$client}.</comment>",
+                default => "<comment>demo: the profile for {$client} declares no demo data.</comment>",
             });
 
             return;
@@ -160,50 +160,50 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      */
     private function seedNewsletter(): void
     {
-        $piezas = SnkKilkanaPostModel::query()->published()->orderByDesc('publish_at')->limit(40)->get(['id', 'publish_at']);
-        if ($piezas->count() < 8) {
+        $posts = SnkKilkanaPostModel::query()->published()->orderByDesc('publish_at')->limit(40)->get(['id', 'publish_at']);
+        if ($posts->count() < 8) {
             return;
         }
-        $confirmados = SnkKilkanaSubscriberModel::query()->where('status', SnkKilkanaSubscriberStatusEnum::Confirmed)->orderBy('id')->pluck('id');
-        $bajas = SnkKilkanaSubscriberModel::query()->where('status', SnkKilkanaSubscriberStatusEnum::Unsubscribed)->orderBy('id')->pluck('id');
-        $numeros = [
-            ['subject' => 'Domingo | El mosaico que apareció bajo la calle Mayor', 'hace' => 5, 'desde' => 0],
-            ['subject' => 'El club vuelve a Segunda B', 'hace' => 12, 'desde' => 4],
-            ['subject' => 'Doce fuentes para la ola de calor', 'hace' => 19, 'desde' => 8],
-            ['subject' => 'Lo que deja el pleno de julio', 'hace' => 33, 'desde' => 12],
+        $confirmed = SnkKilkanaSubscriberModel::query()->where('status', SnkKilkanaSubscriberStatusEnum::Confirmed)->orderBy('id')->pluck('id');
+        $unsubscribed = SnkKilkanaSubscriberModel::query()->where('status', SnkKilkanaSubscriberStatusEnum::Unsubscribed)->orderBy('id')->pluck('id');
+        $issueRows = [
+            ['subject' => 'Domingo | El mosaico que apareció bajo la calle Mayor', 'days_ago' => 5, 'offset' => 0],
+            ['subject' => 'El club vuelve a Segunda B', 'days_ago' => 12, 'offset' => 4],
+            ['subject' => 'Doce fuentes para la ola de calor', 'days_ago' => 19, 'offset' => 8],
+            ['subject' => 'Lo que deja el pleno de julio', 'days_ago' => 33, 'offset' => 12],
         ];
-        foreach ($numeros as $n => $numero) {
-            $cuando = now()->subDays($numero['hace'])->setTime(7, 0);
-            $issue = SnkKilkanaNewsletterIssueModel::firstOrCreate(['subject' => $numero['subject']], [
+        foreach ($issueRows as $n => $issueRow) {
+            $at = now()->subDays($issueRow['days_ago'])->setTime(7, 0);
+            $issue = SnkKilkanaNewsletterIssueModel::firstOrCreate(['subject' => $issueRow['subject']], [
                 'preheader' => 'Lo que pasa en la comarca, en cinco minutos.',
                 'status' => SnkKilkanaNewsletterIssueModel::SENT,
-                'post_ids' => $piezas->slice($numero['desde'], SnkKilkanaNewsletterIssueModel::PIECES)->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
-                'sent_at' => $cuando,
-                'recipients_count' => $confirmados->count() + intdiv($bajas->count() * (3 - $n), 4),
-                'created_at' => $cuando,
-                'updated_at' => $cuando,
+                'post_ids' => $posts->slice($issueRow['offset'], SnkKilkanaNewsletterIssueModel::POSTS_PER_ISSUE)->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+                'sent_at' => $at,
+                'recipients_count' => $confirmed->count() + intdiv($unsubscribed->count() * (3 - $n), 4),
+                'created_at' => $at,
+                'updated_at' => $at,
             ]);
             if (! $issue->wasRecentlyCreated) {
                 continue;
             }
-            $filas = [];
-            foreach ($confirmados as $id) {
+            $rows = [];
+            foreach ($confirmed as $id) {
                 $h = crc32("nl:{$n}:{$id}");
                 if ($h % 100 < 55) {
-                    $filas[] = ['issue_id' => $issue->id, 'subscriber_id' => $id, 'kind' => SnkKilkanaNewsletterEventModel::OPEN, 'post_id' => 0, 'created_at' => $cuando->copy()->addMinutes(20 + $h % 900)];
+                    $rows[] = ['issue_id' => $issue->id, 'subscriber_id' => $id, 'kind' => SnkKilkanaNewsletterEventModel::OPEN, 'post_id' => 0, 'created_at' => $at->copy()->addMinutes(20 + $h % 900)];
                     if (intdiv($h, 100) % 100 < 22) {
-                        $pieza = (int) $issue->post_ids[intdiv($h, 10000) % count($issue->post_ids)];
-                        $filas[] = ['issue_id' => $issue->id, 'subscriber_id' => $id, 'kind' => SnkKilkanaNewsletterEventModel::CLICK, 'post_id' => $pieza, 'created_at' => $cuando->copy()->addMinutes(25 + $h % 900)];
+                        $post = (int) $issue->post_ids[intdiv($h, 10000) % count($issue->post_ids)];
+                        $rows[] = ['issue_id' => $issue->id, 'subscriber_id' => $id, 'kind' => SnkKilkanaNewsletterEventModel::CLICK, 'post_id' => $post, 'created_at' => $at->copy()->addMinutes(25 + $h % 900)];
                     }
                 }
             }
-            foreach ($bajas as $i => $id) {
+            foreach ($unsubscribed as $i => $id) {
                 if ($i % 4 === $n) {
-                    $filas[] = ['issue_id' => $issue->id, 'subscriber_id' => $id, 'kind' => SnkKilkanaNewsletterEventModel::UNSUB, 'post_id' => 0, 'created_at' => $cuando->copy()->addHours(2 + $i % 30)];
+                    $rows[] = ['issue_id' => $issue->id, 'subscriber_id' => $id, 'kind' => SnkKilkanaNewsletterEventModel::UNSUB, 'post_id' => 0, 'created_at' => $at->copy()->addHours(2 + $i % 30)];
                 }
             }
-            foreach (array_chunk($filas, 500) as $tanda) {
-                SnkKilkanaNewsletterEventModel::insert($tanda);
+            foreach (array_chunk($rows, 500) as $batch) {
+                SnkKilkanaNewsletterEventModel::insert($batch);
             }
         }
         SnkKilkanaNewsletterIssueModel::firstOrCreate(['subject' => 'El plan de movilidad, calle por calle'], [
@@ -221,26 +221,26 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      */
     private function seedTrash(): void
     {
-        $direccion = CoreUserModel::query()
+        $director = CoreUserModel::query()
             ->whereHas('roles', fn ($q) => $q->where('name', 'director'))
             ->first() ?? CoreUserModel::query()->whereHas('roles', fn ($q) => $q->whereIn('name', SnkKilkanaRoleCatalogService::PANEL_ROLES))->first();
-        if ($direccion === null) {
+        if ($director === null) {
             return;
         }
-        $registro = app(SnkKilkanaActivityService::class);
-        $tirar = function (SnkKilkanaPostModel|SnkKilkanaMediaModel $cosa, int $hace, string $titulo, string $href) use ($direccion, $registro) {
-            if ($cosa->trashed()) {
+        $activityLog = app(SnkKilkanaActivityService::class);
+        $discard = function (SnkKilkanaPostModel|SnkKilkanaMediaModel $item, int $ago, string $title, string $href) use ($director, $activityLog) {
+            if ($item->trashed()) {
                 return;
             }
-            $cuando = now()->subDays($hace)->setTime(10 + $hace % 8, 5 + $hace * 7 % 50);
-            $cosa->delete();
-            $cosa->newQueryWithoutScopes()->whereKey($cosa->getKey())->update(['deleted_at' => $cuando, 'deleted_by' => $direccion->getKey()]);
-            if (SnkKilkanaActivityModel::query()->where(['kind' => 'delete', 'what' => $titulo, 'created_at' => $cuando])->exists()) {
+            $at = now()->subDays($ago)->setTime(10 + $ago % 8, 5 + $ago * 7 % 50);
+            $item->delete();
+            $item->newQueryWithoutScopes()->whereKey($item->getKey())->update(['deleted_at' => $at, 'deleted_by' => $director->getKey()]);
+            if (SnkKilkanaActivityModel::query()->where(['kind' => 'delete', 'what' => $title, 'created_at' => $at])->exists()) {
                 return;
             }
-            Carbon::setTestNow($cuando);
+            Carbon::setTestNow($at);
             try {
-                $registro->log('delete', 'deleted', $titulo, $href, ['user' => $direccion, 'force' => true]);
+                $activityLog->log('delete', 'deleted', $title, $href, ['user' => $director, 'force' => true]);
             } finally {
                 Carbon::setTestNow();
             }
@@ -248,31 +248,31 @@ class SnkKilkanaDatabaseSeeder extends Seeder
 
         // Con la papelera dentro: las mismas candidatas en cada siembra, o cada `core:seed`
         // tiraría dos piezas más.
-        $candidatas = SnkKilkanaPostModel::withTrashed()->published()
+        $candidates = SnkKilkanaPostModel::withTrashed()->published()
             ->whereBetween('publish_at', [now()->subDays(60), now()->subDays(10)])
             // `deleted_at` va en la proyección porque `trashed()` la lee: sin ella la pregunta
             // «¿esto ya está tirado?» no se puede contestar, y con el modo estricto revienta.
             ->orderBy('slug')->get(['id', 'slug', 'title', 'deleted_at']);
-        if ($candidatas->count() >= 2) {
-            $tirar($candidatas[crc32('trash:1') % $candidatas->count()], 24, $candidatas[crc32('trash:1') % $candidatas->count()]->title, '/trash');
-            $otra = $candidatas[crc32('trash:2') % $candidatas->count()];
-            if (! $otra->trashed() && $otra->getKey() !== $candidatas[crc32('trash:1') % $candidatas->count()]->getKey()) {
-                $tirar($otra, 2, $otra->title, '/trash');
+        if ($candidates->count() >= 2) {
+            $discard($candidates[crc32('trash:1') % $candidates->count()], 24, $candidates[crc32('trash:1') % $candidates->count()]->title, '/trash');
+            $other = $candidates[crc32('trash:2') % $candidates->count()];
+            if (! $other->trashed() && $other->getKey() !== $candidates[crc32('trash:1') % $candidates->count()]->getKey()) {
+                $discard($other, 2, $other->title, '/trash');
             }
         }
 
         // Y dos fotos que nadie usa: las del snapshot van todas en alguna pieza, y tirar una que
         // otra pieza publicada lleva dejaría la calle con una imagen rota. Son ficheros de
         // fuera —sin `disk` ni `path`—, así que purgarlas no borra nada del disco de nadie.
-        $sueltas = [
-            ['url' => 'https://images.example/feria-2025-cartel.jpg', 'original_name' => 'feria-2025-cartel.jpg', 'title' => 'Cartel de la feria de 2025', 'width' => 2400, 'height' => 1600, 'size_bytes' => 1887436, 'mime' => 'image/jpeg', 'hace' => 27],
-            ['url' => 'https://images.example/pleno-julio-borrosa.jpg', 'original_name' => 'pleno-julio-borrosa.jpg', 'title' => 'Pleno de julio, toma movida', 'width' => 1800, 'height' => 1200, 'size_bytes' => 942113, 'mime' => 'image/jpeg', 'hace' => 5],
+        $looseMedia = [
+            ['url' => 'https://images.example/feria-2025-cartel.jpg', 'original_name' => 'feria-2025-cartel.jpg', 'title' => 'Cartel de la feria de 2025', 'width' => 2400, 'height' => 1600, 'size_bytes' => 1887436, 'mime' => 'image/jpeg', 'days_ago' => 27],
+            ['url' => 'https://images.example/pleno-julio-borrosa.jpg', 'original_name' => 'pleno-julio-borrosa.jpg', 'title' => 'Pleno de julio, toma movida', 'width' => 1800, 'height' => 1200, 'size_bytes' => 942113, 'mime' => 'image/jpeg', 'days_ago' => 5],
         ];
-        foreach ($sueltas as $ficha) {
-            $hace = $ficha['hace'];
-            unset($ficha['hace']);
-            $foto = SnkKilkanaMediaModel::withTrashed()->firstOrCreate(['url_hash' => sha1($ficha['url'])], $ficha);
-            $tirar($foto, $hace, $foto->title, '/trash');
+        foreach ($looseMedia as $mediaRow) {
+            $ago = $mediaRow['days_ago'];
+            unset($mediaRow['days_ago']);
+            $photo = SnkKilkanaMediaModel::withTrashed()->firstOrCreate(['url_hash' => sha1($mediaRow['url'])], $mediaRow);
+            $discard($photo, $ago, $photo->title, '/trash');
         }
     }
 
@@ -288,73 +288,73 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      */
     private function seedActivity(): void
     {
-        $registro = app(SnkKilkanaActivityService::class);
-        $desde = now()->subDays(SnkKilkanaActivityModel::DAYS);
+        $activityLog = app(SnkKilkanaActivityService::class);
+        $windowStart = now()->subDays(SnkKilkanaActivityModel::DAYS);
         $staff = CoreUserModel::query()
             ->whereHas('roles', fn ($q) => $q->whereIn('name', SnkKilkanaRoleCatalogService::PANEL_ROLES))
             ->with('roles:id,name')
             ->get()->keyBy('email');
-        $direccion = $staff->first(fn (CoreUserModel $u) => $u->roles->pluck('name')->contains('director')) ?? $staff->first();
-        $moderacion = $staff->first(fn (CoreUserModel $u) => $u->roles->pluck('name')->contains('moderador')) ?? $direccion;
-        if ($direccion === null) {
+        $director = $staff->first(fn (CoreUserModel $u) => $u->roles->pluck('name')->contains('director')) ?? $staff->first();
+        $moderator = $staff->first(fn (CoreUserModel $u) => $u->roles->pluck('name')->contains('moderador')) ?? $director;
+        if ($director === null) {
             return;
         }
-        $porUsuario = $staff->keyBy(fn (CoreUserModel $u) => $u->getKey());
-        $apunta = function (string $kind, string $verb, string $what, string $href, Carbon $cuando, ?CoreUserModel $quien, array $extra = []) use ($registro) {
-            if (SnkKilkanaActivityModel::query()->where(['kind' => $kind, 'verb' => $verb, 'what' => $what, 'created_at' => $cuando])->exists()) {
+        $byUser = $staff->keyBy(fn (CoreUserModel $u) => $u->getKey());
+        $logActivity = function (string $kind, string $verb, string $what, string $href, Carbon $at, ?CoreUserModel $who, array $extra = []) use ($activityLog) {
+            if (SnkKilkanaActivityModel::query()->where(['kind' => $kind, 'verb' => $verb, 'what' => $what, 'created_at' => $at])->exists()) {
                 return;
             }
-            Carbon::setTestNow($cuando);
+            Carbon::setTestNow($at);
             try {
-                $registro->log($kind, $verb, $what, $href, [...$extra, 'user' => $quien, 'force' => true]);
+                $activityLog->log($kind, $verb, $what, $href, [...$extra, 'user' => $who, 'force' => true]);
             } finally {
                 Carbon::setTestNow();
             }
         };
 
-        $piezas = SnkKilkanaPostModel::query()->published()->where('publish_at', '>=', $desde)->where('publish_at', '<=', now())
+        $posts = SnkKilkanaPostModel::query()->published()->where('publish_at', '>=', $windowStart)->where('publish_at', '<=', now())
             ->with('author:id,user_id')->orderBy('publish_at')->get(['id', 'title', 'publish_at', 'author_id', 'status']);
-        foreach ($piezas as $pieza) {
+        foreach ($posts as $post) {
             // De madrugada publica el programador: nadie pulsa a las cinco.
-            $hora = (int) $pieza->publish_at->format('G');
-            $quien = $hora < 7 ? null : ($porUsuario->get($pieza->author?->user_id) ?? $direccion);
-            $apunta('publish', 'published', $pieza->title, '/posts', $pieza->publish_at, $quien);
+            $hour = (int) $post->publish_at->format('G');
+            $who = $hour < 7 ? null : ($byUser->get($post->author?->user_id) ?? $director);
+            $logActivity('publish', 'published', $post->title, '/posts', $post->publish_at, $who);
         }
 
-        $revisiones = SnkKilkanaPostRevisionModel::query()->where('created_at', '>=', $desde)
+        $revisions = SnkKilkanaPostRevisionModel::query()->where('created_at', '>=', $windowStart)
             ->with('post:id,title')->orderBy('created_at')->get(['id', 'post_id', 'user_id', 'created_at']);
-        foreach ($revisiones as $revision) {
+        foreach ($revisions as $revision) {
             if ($revision->post === null) {
                 continue;
             }
-            $apunta('edit', 'edited', $revision->post->title, '/posts', $revision->created_at, $porUsuario->get($revision->user_id) ?? $direccion);
+            $logActivity('edit', 'edited', $revision->post->title, '/posts', $revision->created_at, $byUser->get($revision->user_id) ?? $director);
         }
 
         // Un lote por día con aprobados: la moderadora vacía la cola por la tarde.
-        $aprobados = SnkKilkanaCommentModel::query()->where('status', SnkKilkanaCommentStatusEnum::Approved)
-            ->where('created_at', '>=', $desde)
-            ->selectRaw('date(created_at) as dia, count(*) as total, count(distinct post_id) as piezas, min(post_id) as pieza')
-            ->groupBy('dia')->orderBy('dia')->get();
-        $titulos = SnkKilkanaPostModel::query()->whereIn('id', $aprobados->pluck('pieza'))->pluck('title', 'id');
-        foreach ($aprobados as $dia) {
-            $cuando = Carbon::parse($dia->dia)->setTime(17, 10 + crc32("mod:{$dia->dia}") % 45);
-            if ($cuando->greaterThan(now())) {
+        $approved = SnkKilkanaCommentModel::query()->where('status', SnkKilkanaCommentStatusEnum::Approved)
+            ->where('created_at', '>=', $windowStart)
+            ->selectRaw('date(created_at) as day, count(*) as total, count(distinct post_id) as posts, min(post_id) as first_post_id')
+            ->groupBy('day')->orderBy('day')->get();
+        $titles = SnkKilkanaPostModel::query()->whereIn('id', $approved->pluck('first_post_id'))->pluck('title', 'id');
+        foreach ($approved as $day) {
+            $at = Carbon::parse($day->day)->setTime(17, 10 + crc32("mod:{$day->day}") % 45);
+            if ($at->greaterThan(now())) {
                 continue;
             }
-            $una = (int) $dia->piezas === 1;
-            $apunta('comment', 'comments_approved', $una ? (string) $titulos->get($dia->pieza) : '', '/comments', $cuando, $moderacion, [
-                'params' => $una ? ['count' => (int) $dia->total] : ['count' => (int) $dia->total, 'posts' => (int) $dia->piezas],
+            $one = (int) $day->posts === 1;
+            $logActivity('comment', 'comments_approved', $one ? (string) $titles->get($day->first_post_id) : '', '/comments', $at, $moderator, [
+                'params' => $one ? ['count' => (int) $day->total] : ['count' => (int) $day->total, 'posts' => (int) $day->posts],
             ]);
         }
 
         // Lo que pasa de vez en cuando, con la fecha atada a hoy para que no envejezca.
-        $hoy = now();
-        $apunta('theme', 'theme_applied', 'Folio', '/themes', $hoy->copy()->subDays(41)->setTime(11, 20), $direccion, ['before' => 'Chronicle', 'after' => 'Folio']);
-        $apunta('category', 'category_renamed', 'Pueblos → Municipios', '/categories', $hoy->copy()->subDays(23)->setTime(9, 48), $direccion, ['before' => 'Pueblos', 'after' => 'Municipios']);
-        $apunta('tag', 'tags_merged', 'movilidad', '/tags', $hoy->copy()->subDays(12)->setTime(16, 5), $direccion, ['before' => 'movilidad-urbana', 'after' => 'movilidad']);
-        $apunta('front', 'front_changed', '', '/front', $hoy->copy()->subDays(1)->setTime(8, 2), $direccion, ['params' => ['layout' => 'front']]);
-        $apunta('seat', 'seat_invited', 'paula.roig@eldiario.example', '/roles', $hoy->copy()->subDays(6)->setTime(12, 31), $direccion, ['params' => ['role' => 'editor']]);
-        $apunta('comment', 'reader_blocked', 'u9902', '/readers', $hoy->copy()->subDays(3)->setTime(18, 44), $moderacion);
+        $today = now();
+        $logActivity('theme', 'theme_applied', 'Folio', '/themes', $today->copy()->subDays(41)->setTime(11, 20), $director, ['before' => 'Chronicle', 'after' => 'Folio']);
+        $logActivity('category', 'category_renamed', 'Pueblos → Municipios', '/categories', $today->copy()->subDays(23)->setTime(9, 48), $director, ['before' => 'Pueblos', 'after' => 'Municipios']);
+        $logActivity('tag', 'tags_merged', 'movilidad', '/tags', $today->copy()->subDays(12)->setTime(16, 5), $director, ['before' => 'movilidad-urbana', 'after' => 'movilidad']);
+        $logActivity('front', 'front_changed', '', '/front', $today->copy()->subDays(1)->setTime(8, 2), $director, ['params' => ['layout' => 'front']]);
+        $logActivity('seat', 'seat_invited', 'paula.roig@eldiario.example', '/roles', $today->copy()->subDays(6)->setTime(12, 31), $director, ['params' => ['role' => 'editor']]);
+        $logActivity('comment', 'reader_blocked', 'u9902', '/readers', $today->copy()->subDays(3)->setTime(18, 44), $moderator);
     }
 
     /**
@@ -369,9 +369,9 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      */
     private function seedSubscribers(): void
     {
-        $ayer = now()->subMonths(3);
+        $importedAt = now()->subMonths(3);
 
-        $lista = [
+        $subscriberRows = [
             'marta.ruiz@mail.example' => [SnkKilkanaSubscriberStatusEnum::Confirmed, SnkKilkanaConsentSourceEnum::PublicForm],
             'vferrer@mail.example' => [SnkKilkanaSubscriberStatusEnum::Confirmed, SnkKilkanaConsentSourceEnum::PublicForm],
             'nuria.sanchis@mail.example' => [SnkKilkanaSubscriberStatusEnum::Confirmed, SnkKilkanaConsentSourceEnum::PublicForm],
@@ -386,44 +386,44 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             'helene.dubois@mail.example' => [SnkKilkanaSubscriberStatusEnum::Unsubscribed, SnkKilkanaConsentSourceEnum::PublicForm],
         ];
 
-        foreach ($lista as $email => [$estado, $origen]) {
+        foreach ($subscriberRows as $email => [$status, $consentSource]) {
             SnkKilkanaSubscriberModel::firstOrCreate(['email' => $email], [
-                'status' => $estado,
-                'consent_source' => $origen,
-                'consent_at' => $origen === SnkKilkanaConsentSourceEnum::Import ? $ayer : now(),
+                'status' => $status,
+                'consent_source' => $consentSource,
+                'consent_at' => $consentSource === SnkKilkanaConsentSourceEnum::Import ? $importedAt : now(),
             ]);
         }
 
         // Y la lista a escala: un comarcal con medio millón de lecturas al mes tiene cientos de
         // suscriptores, no nueve. Nombres de la Ribera, altas repartidas en año y medio, la
         // mayoría confirmadas por el formulario y un poso importado de la lista en papel.
-        $nombres = ['Amparo', 'Vicent', 'Carmen', 'Josep', 'Empar', 'Rafa', 'Teresa', 'Salva', 'Pilar', 'Enric', 'Rosa', 'Paco', 'Inma', 'Toni', 'Lola', 'Ximo', 'Encarna', 'Miquel', 'Mireia', 'Jordi', 'Aurora', 'Andreu', 'Neus', 'Batiste', 'Ana', 'Ricard', 'Isabel', 'Nacho', 'Marisa', 'Pep', 'Consol', 'Ferran', 'Maite', 'Joan', 'Elena', 'Pau', 'Carla', 'Lluís', 'Sara', 'Manolo'];
-        $apellidos = ['Ferrer', 'Peris', 'Sanchis', 'Bou', 'Alberola', 'Grau', 'Ribera', 'Serra', 'Company', 'Vidal', 'Chàfer', 'Ortolà', 'Gil', 'Mateu', 'Talens', 'Pellicer', 'Andrés', 'Boluda', 'Cucarella', 'Escrivà', 'Fuster', 'García', 'Llopis', 'Marí', 'Navarro', 'Oltra', 'Pastor', 'Roig', 'Soler', 'Torres', 'Vila', 'Beneyto', 'Climent', 'Domènech', 'Estruch', 'Giner', 'Hernández', 'Lloret', 'Montagud', 'Pons'];
-        $proveedores = ['mail.example', 'correu.example', 'posta.example'];
-        $hoy = now();
+        $names = ['Amparo', 'Vicent', 'Carmen', 'Josep', 'Empar', 'Rafa', 'Teresa', 'Salva', 'Pilar', 'Enric', 'Rosa', 'Paco', 'Inma', 'Toni', 'Lola', 'Ximo', 'Encarna', 'Miquel', 'Mireia', 'Jordi', 'Aurora', 'Andreu', 'Neus', 'Batiste', 'Ana', 'Ricard', 'Isabel', 'Nacho', 'Marisa', 'Pep', 'Consol', 'Ferran', 'Maite', 'Joan', 'Elena', 'Pau', 'Carla', 'Lluís', 'Sara', 'Manolo'];
+        $surnames = ['Ferrer', 'Peris', 'Sanchis', 'Bou', 'Alberola', 'Grau', 'Ribera', 'Serra', 'Company', 'Vidal', 'Chàfer', 'Ortolà', 'Gil', 'Mateu', 'Talens', 'Pellicer', 'Andrés', 'Boluda', 'Cucarella', 'Escrivà', 'Fuster', 'García', 'Llopis', 'Marí', 'Navarro', 'Oltra', 'Pastor', 'Roig', 'Soler', 'Torres', 'Vila', 'Beneyto', 'Climent', 'Domènech', 'Estruch', 'Giner', 'Hernández', 'Lloret', 'Montagud', 'Pons'];
+        $providers = ['mail.example', 'correu.example', 'posta.example'];
+        $today = now();
         for ($n = 0; $n < 400; $n++) {
             $h = crc32("subscriber:{$n}");
-            $nombre = $nombres[$h % count($nombres)];
-            $apellido = $apellidos[intdiv($h, 40) % count($apellidos)];
-            $email = mb_strtolower(str($nombre.'.'.$apellido)->ascii()).($n % 7 === 0 ? '' : $n).'@'.$proveedores[intdiv($h, 1600) % 3];
-            $tramo = intdiv($h, 4800) % 100;
-            $origen = match (true) {
-                $tramo < 85 => SnkKilkanaConsentSourceEnum::PublicForm,
-                $tramo < 97 => SnkKilkanaConsentSourceEnum::Import,
+            $name = $names[$h % count($names)];
+            $surname = $surnames[intdiv($h, 40) % count($surnames)];
+            $email = mb_strtolower(str($name.'.'.$surname)->ascii()).($n % 7 === 0 ? '' : $n).'@'.$providers[intdiv($h, 1600) % 3];
+            $sourceBucket = intdiv($h, 4800) % 100;
+            $consentSource = match (true) {
+                $sourceBucket < 85 => SnkKilkanaConsentSourceEnum::PublicForm,
+                $sourceBucket < 97 => SnkKilkanaConsentSourceEnum::Import,
                 default => SnkKilkanaConsentSourceEnum::Admin,
             };
-            $estadoTramo = intdiv($h, 480000) % 100;
-            $estado = match (true) {
-                $estadoTramo < 78 => SnkKilkanaSubscriberStatusEnum::Confirmed,
-                $estadoTramo < 90 => SnkKilkanaSubscriberStatusEnum::Pending,
+            $statusBucket = intdiv($h, 480000) % 100;
+            $status = match (true) {
+                $statusBucket < 78 => SnkKilkanaSubscriberStatusEnum::Confirmed,
+                $statusBucket < 90 => SnkKilkanaSubscriberStatusEnum::Pending,
                 default => SnkKilkanaSubscriberStatusEnum::Unsubscribed,
             };
-            $hace = $origen === SnkKilkanaConsentSourceEnum::Import ? 400 + $h % 200 : $h % 540;
+            $ago = $consentSource === SnkKilkanaConsentSourceEnum::Import ? 400 + $h % 200 : $h % 540;
 
             SnkKilkanaSubscriberModel::firstOrCreate(['email' => $email], [
-                'status' => $estado,
-                'consent_source' => $origen,
-                'consent_at' => $hoy->copy()->subDays($hace)->subMinutes($h % 1440),
+                'status' => $status,
+                'consent_source' => $consentSource,
+                'consent_at' => $today->copy()->subDays($ago)->subMinutes($h % 1440),
             ]);
         }
     }
@@ -441,7 +441,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      * Sin foto: la del periodista se sube a la biblioteca de medios y cuelga de su FIRMA
      * (`avatar_media_id`); sin ella, la UI dibuja el monograma.
      */
-    private const REDACCION = [
+    private const STAFF = [
         'Marta Beneyto' => [
             'email' => 'marta@eldiario.example',
             // Dirige el periódico: manda en la portada y en la identidad, y su cargo lo decía
@@ -496,12 +496,12 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      * El periódico de la demo. `users.company` es la ORGANIZACIÓN de cada cuenta: para la
      * plantilla, esta; para quien colabora desde fuera, la suya. Antes aquí iba la mesa.
      */
-    private const PERIODICO = 'El Diario';
+    private const NEWSPAPER = 'El Diario';
 
     /**
      * Quien firma sin estar en plantilla.
      *
-     * Las firmas del snapshot que no salen en `REDACCION` caían todas en el mismo molde:
+     * Las firmas del snapshot que no salen en `STAFF` caían todas en el mismo molde:
      * `redactor`, organización «El Diario» y correo `@eldiario.example`. Eso convierte a una
      * agencia de noticias en una redactora del periódico con permiso para publicar, que es
      * exactamente lo que la demo no tiene que enseñar — y borra la diferencia entre la
@@ -513,13 +513,13 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      *
      * @var array<string, array{email: string, name: string, alias?: string, company: ?string, job_title: ?string, bio: ?string, role: ?string, full_name?: string}>
      */
-    private const FIRMAS_EXTERNAS = [
+    private const EXTERNAL_BYLINES = [
         // Firma colectiva de la casa. La cuenta se llama como lo que es —para quien mira el
         // listado de Usuarios— y el ALIAS es lo que sale publicado: llamarla «Redacción» a
         // secas habría dado el mismo nombre publicado sin alias, y la columna no demostraría nada.
         'Redacción' => [
             'alias' => 'Redacción',
-            'job_title' => self::PERIODICO,
+            'job_title' => self::NEWSPAPER,
             'bio' => 'Piezas firmadas por el equipo de redacción.',
             'public_email' => 'redaccion@eldiario.example',
             'kind' => SnkKilkanaAuthorKindEnum::Collective,
@@ -561,32 +561,46 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      * forma de probar lo que los separa: publicar lo ajeno, componer la portada, tocar la
      * identidad del periódico.
      */
+    /**
+     * `users.name` es el nombre de pila y `users.lastname` el apellido: el mapa los trae juntos
+     * como se leen en la firma, y aquí se parten por el primer espacio. Un nombre completo aparte
+     * —«Elena Vara Ruiz» para «Elena Vara»— aporta el segundo apellido.
+     *
+     * @return array{name: string, lastname: ?string}
+     */
+    private static function splitName(string $name, ?string $full = null): array
+    {
+        [$givenName, $surname] = array_pad(explode(' ', trim($full ?: $name), 2), 2, null);
+
+        return ['name' => $givenName, 'lastname' => $surname];
+    }
+
     private function authorFor(string $name): SnkKilkanaAuthorModel
     {
-        if (isset(self::FIRMAS_EXTERNAS[$name])) {
+        if (isset(self::EXTERNAL_BYLINES[$name])) {
             return $this->externalByline($name);
         }
 
-        $ficha = self::REDACCION[$name] ?? [];
+        $record = self::STAFF[$name] ?? [];
 
         $user = CoreUserModel::firstOrCreate(
-            ['email' => $ficha['email'] ?? Str::slug($name, '.').'@eldiario.example'],
+            ['email' => $record['email'] ?? Str::slug($name, '.').'@eldiario.example'],
             // Sin Hash::make: `CoreUserModel::setPasswordAttribute` ya la hashea al asignarla.
-            ['password' => $this->demoPassword(), 'name' => $name]
+            ['password' => $this->demoPassword(), ...self::splitName($name, $record['full_name'] ?? null)]
         );
         // Fuera del create y solo sobre lo vacío: así una siembra sobre una base que ya
         // tenía la cuenta también la completa.
         $user->forceFill(array_filter([
-            'full_name' => $user->full_name ?: ($ficha['full_name'] ?? $name),
-            'company' => $user->company ?: self::PERIODICO,
-            'phone' => $user->phone ?: ($ficha['phone'] ?? null),
+            'lastname' => $user->lastname ?: self::splitName($name, $record['full_name'] ?? null)['lastname'],
+            'company' => $user->company ?: self::NEWSPAPER,
+            'phone' => $user->phone ?: ($record['phone'] ?? null),
             // Cuenta operativa de demo: verificada, o el listado devuelve a media
             // redacción «sin verificar» sin que eso signifique nada.
             'email_verified_at' => $user->email_verified_at ?: now(),
         ], fn ($v) => $v !== null))->save();
         // `syncRoles` y no `assignRole`: una demo sembrada antes tiene a la editora jefe como
         // redactora, y reaplicar el catálogo tiene que corregirlo.
-        $user->syncRoles([$ficha['role'] ?? 'redactor']);
+        $user->syncRoles([$record['role'] ?? 'redactor']);
 
         // Sin alias ni cargo aquí: la firma nace publicando el nombre de la cuenta y su URL
         // se deriva de él. Lo editorial lo pone después `seedAuthorProfiles`.
@@ -602,20 +616,20 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      */
     private function seedAuthorProfiles(): void
     {
-        foreach (self::REDACCION as $nombre => $ficha) {
-            $autor = $this->authorFor($nombre);
-            $autor->fill(array_filter([
-                'alias' => $autor->alias ?: ($ficha['alias'] ?? null),
-                'job_title' => $autor->job_title ?: ($ficha['job_title'] ?? null),
-                'bio' => $autor->bio ?: ($ficha['bio'] ?? null),
-                'website' => $autor->website ?: ($ficha['website'] ?? null),
-                'socials' => $autor->socials ?: ($ficha['socials'] ?: null),
+        foreach (self::STAFF as $name => $record) {
+            $author = $this->authorFor($name);
+            $author->fill(array_filter([
+                'alias' => $author->alias ?: ($record['alias'] ?? null),
+                'job_title' => $author->job_title ?: ($record['job_title'] ?? null),
+                'bio' => $author->bio ?: ($record['bio'] ?? null),
+                'website' => $author->website ?: ($record['website'] ?? null),
+                'socials' => $author->socials ?: ($record['socials'] ?: null),
                 // La clase la manda el catálogo —es estructura, no redacción— y el contacto
                 // público solo rellena lo vacío. En un diario local se le escribe a la
                 // periodista a su correo del periódico, así que en la demo coincide con el de
                 // acceso; son dos columnas distintas aunque coincidan, y solo una sale a la calle.
                 'kind' => SnkKilkanaAuthorKindEnum::Staff,
-                'public_email' => $autor->public_email ?: ($ficha['email'] ?? null),
+                'public_email' => $author->public_email ?: ($record['email'] ?? null),
             ], fn ($v) => $v !== null))->save();
         }
     }
@@ -642,7 +656,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             ],
             [
                 'name' => 'Rubén Nieto', 'email' => 'ruben.nieto@eldiario.example',
-                'full_name' => 'Rubén Nieto Salas', 'company' => self::PERIODICO,
+                'full_name' => 'Rubén Nieto Salas', 'company' => self::NEWSPAPER,
                 'phone' => '+34 962 401 210', 'role' => 'moderador',
                 'job_title' => null,
                 'bio' => null,
@@ -652,10 +666,10 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         foreach ($staff as $person) {
             $user = CoreUserModel::firstOrCreate(
                 ['email' => $person['email']],
-                ['password' => $this->demoPassword(), 'name' => $person['name']]
+                ['password' => $this->demoPassword(), ...self::splitName($person['name'], $person['full_name'])]
             );
             $user->forceFill([
-                'full_name' => $user->full_name ?: $person['full_name'],
+                'lastname' => $user->lastname ?: self::splitName($person['name'], $person['full_name'])['lastname'],
                 'company' => $user->company ?: $person['company'],
                 'phone' => $user->phone ?: $person['phone'],
                 'email_verified_at' => $user->email_verified_at ?: now(),
@@ -684,61 +698,61 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      * Quien sí entra —un columnista con rol— conserva la suya: sin rol no es lo mismo que sin
      * cuenta, y las dos cosas hay que poder enseñarlas.
      */
-    private function externalByline(string $nombre): SnkKilkanaAuthorModel
+    private function externalByline(string $name): SnkKilkanaAuthorModel
     {
-        $ficha = self::FIRMAS_EXTERNAS[$nombre];
+        $record = self::EXTERNAL_BYLINES[$name];
 
         // Sin cuenta: la firma se identifica por su alias, que es lo que sale publicado.
-        if (! isset($ficha['email'])) {
-            $firma = SnkKilkanaAuthorModel::firstOrCreate(
-                ['slug' => Str::slug($ficha['alias'])],
+        if (! isset($record['email'])) {
+            $byline = SnkKilkanaAuthorModel::firstOrCreate(
+                ['slug' => Str::slug($record['alias'])],
                 array_filter([
-                    'alias' => $ficha['alias'],
-                    'job_title' => $ficha['job_title'],
-                    'bio' => $ficha['bio'],
-                    'public_email' => $ficha['public_email'] ?? null,
+                    'alias' => $record['alias'],
+                    'job_title' => $record['job_title'],
+                    'bio' => $record['bio'],
+                    'public_email' => $record['public_email'] ?? null,
                 ], fn ($v) => $v !== null)
             );
 
             // **Y se desvincula si venía de cuando el esquema exigía cuenta.** Una base sembrada
             // antes tiene esta firma colgando de una cuenta de servicio; el catálogo dice que no
             // tiene ninguna, y eso es lo que hay que poder enseñar.
-            $firma->fill(['kind' => $ficha['kind'], 'user_id' => null])->save();
+            $byline->fill(['kind' => $record['kind'], 'user_id' => null])->save();
 
-            return $firma;
+            return $byline;
         }
 
-        $cuenta = CoreUserModel::firstOrCreate(
-            ['email' => $ficha['email']],
-            ['password' => $this->demoPassword(), 'name' => $ficha['name']]
+        $account = CoreUserModel::firstOrCreate(
+            ['email' => $record['email']],
+            ['password' => $this->demoPassword(), ...self::splitName($record['name'], $record['full_name'] ?? null)]
         );
-        $cuenta->forceFill(array_filter([
-            'full_name' => $cuenta->full_name ?: ($ficha['full_name'] ?? $ficha['name']),
-            'company' => $cuenta->company ?: $ficha['company'],
+        $account->forceFill(array_filter([
+            'lastname' => $account->lastname ?: self::splitName($record['name'], $record['full_name'] ?? null)['lastname'],
+            'company' => $account->company ?: $record['company'],
             // Verificada solo si puede entrar: una cuenta de servicio sin rol no verifica
             // nada porque nadie va a usarla para acceder.
-            'email_verified_at' => $ficha['role'] === null
+            'email_verified_at' => $record['role'] === null
                 ? null
-                : ($cuenta->email_verified_at ?: now()),
+                : ($account->email_verified_at ?: now()),
         ], fn ($v) => $v !== null))->save();
 
-        if ($ficha['role'] !== null) {
-            $cuenta->assignRole($ficha['role']);
+        if ($record['role'] !== null) {
+            $account->assignRole($record['role']);
         }
 
-        $firma = SnkKilkanaAuthorModel::firstOrCreate(
-            ['user_id' => $cuenta->id],
+        $byline = SnkKilkanaAuthorModel::firstOrCreate(
+            ['user_id' => $account->id],
             array_filter([
-                'alias' => $ficha['alias'] ?? null,
-                'job_title' => $ficha['job_title'],
-                'bio' => $ficha['bio'],
-                'public_email' => $ficha['public_email'] ?? null,
+                'alias' => $record['alias'] ?? null,
+                'job_title' => $record['job_title'],
+                'bio' => $record['bio'],
+                'public_email' => $record['public_email'] ?? null,
             ], fn ($v) => $v !== null)
         );
 
-        $firma->fill(['kind' => $ficha['kind'] ?? SnkKilkanaAuthorKindEnum::Contributor])->save();
+        $byline->fill(['kind' => $record['kind'] ?? SnkKilkanaAuthorKindEnum::Contributor])->save();
 
-        return $firma;
+        return $byline;
     }
 
     /**
@@ -749,12 +763,12 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      */
     private function deskUserId(): ?int
     {
-        return $this->mesa ??= CoreUserModel::query()
-            ->whereHas('roles', fn ($rol) => $rol->where('name', 'editor'))
+        return $this->desk ??= CoreUserModel::query()
+            ->whereHas('roles', fn ($role) => $role->where('name', 'editor'))
             ->value('id');
     }
 
-    private ?int $mesa = null;
+    private ?int $desk = null;
 
     /**
      * El retrato de cada firma de persona, servido desde el disco del periódico.
@@ -772,7 +786,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      *
      * @var array<string, array{0: string, 1: string}>
      */
-    private const RETRATOS = [
+    private const PORTRAITS = [
         'marta@eldiario.example' => ['marta-beneyto.jpg', 'Janko Ferlič'],
         'ramon@eldiario.example' => ['ramon-clavel.jpg', 'Abdullah Ali'],
         'ivan@eldiario.example' => ['ivan-sagredo.jpg', 'Aditya Sethia'],
@@ -785,30 +799,30 @@ class SnkKilkanaDatabaseSeeder extends Seeder
 
     private function seedPortraits(): void
     {
-        $fototeca = new SnkKilkanaDemoMediaLibrary(__DIR__.'/data/portraits');
+        $photoLibrary = new SnkKilkanaDemoMediaLibrary(__DIR__.'/data/portraits');
 
-        foreach (self::RETRATOS as $email => [$fichero, $autor]) {
-            $firma = SnkKilkanaAuthorModel::query()
-                ->whereHas('user', fn ($cuenta) => $cuenta->where('email', $email))
+        foreach (self::PORTRAITS as $email => [$file, $author]) {
+            $byline = SnkKilkanaAuthorModel::query()
+                ->whereHas('user', fn ($account) => $account->where('email', $email))
                 ->first();
 
-            if ($firma === null || $firma->avatar_media_id !== null) {
+            if ($byline === null || $byline->avatar_media_id !== null) {
                 continue;
             }
 
-            $foto = $fototeca->forName($fichero);
-            if ($foto === null) {
+            $photo = $photoLibrary->forName($file);
+            if ($photo === null) {
                 continue;
             }
 
             // El alt y el crédito los pone quien sabe de quién es la cara: la fototeca solo
             // sabe de ficheros, y una foto de la mediateca sin alt es trabajo pendiente.
-            $foto->fill([
-                'alt' => $foto->alt ?: "Retrato de {$firma->name}",
-                'credit' => $foto->credit ?: $autor,
+            $photo->fill([
+                'alt' => $photo->alt ?: "Retrato de {$byline->name}",
+                'credit' => $photo->credit ?: $author,
             ])->save();
 
-            $firma->update(['avatar_media_id' => $foto->id]);
+            $byline->update(['avatar_media_id' => $photo->id]);
         }
     }
 
@@ -832,34 +846,34 @@ class SnkKilkanaDatabaseSeeder extends Seeder
 
         // Una pieza concreta y estable —la más antigua de la sección más poblada— para que
         // resembrar no reparta el historial por otra distinta cada vez.
-        $pieza = SnkKilkanaPostModel::query()
+        $post = SnkKilkanaPostModel::query()
             ->published()
             ->orderBy('publish_at')
             ->orderBy('id')
             ->first();
 
-        $sinHistorial = $pieza !== null
-            && SnkKilkanaPostRevisionModel::query()->where('post_id', $pieza->id)->doesntExist();
+        $withoutHistory = $post !== null
+            && SnkKilkanaPostRevisionModel::query()->where('post_id', $post->id)->doesntExist();
 
-        if ($sinHistorial) {
+        if ($withoutHistory) {
             // Dos ediciones: la primera cambia el titular —y con él la URL, que deja su 301— y
             // la segunda solo la entradilla. Dos revisiones y una ruta retirada.
-            $posts->update($pieza, [
-                'title' => $pieza->title.' (actualizado)',
-                'slug' => $pieza->slug.'-actualizado',
-            ], (int) $pieza->created_by, false);
+            $posts->update($post, [
+                'title' => $post->title.' (actualizado)',
+                'slug' => $post->slug.'-actualizado',
+            ], (int) $post->created_by, false);
 
-            $posts->update($pieza->fresh(), [
-                'excerpt' => trim((string) $pieza->excerpt).' Ampliada con la reacción del pleno.',
-            ], (int) $pieza->created_by, false);
+            $posts->update($post->fresh(), [
+                'excerpt' => trim((string) $post->excerpt).' Ampliada con la reacción del pleno.',
+            ], (int) $post->created_by, false);
         }
 
         // Una firma que cambió de ruta: el trait guarda la vieja y la deja redirigiendo, que es
         // lo que la ficha enseña como «301». La sección equivalente la declara el catálogo —su
         // slug es su identidad al sembrar, así que renombrarla aquí rompía la siembra siguiente—.
-        $firma = SnkKilkanaAuthorModel::query()->where('slug', 'lucia-ferrandiz')->first();
-        if ($firma !== null && $firma->retiredSlugs()->count() === 0) {
-            $firma->update(['slug' => 'lucia-ferrandiz-marco']);
+        $byline = SnkKilkanaAuthorModel::query()->where('slug', 'lucia-ferrandiz')->first();
+        if ($byline !== null && $byline->retiredSlugs()->count() === 0) {
+            $byline->update(['slug' => 'lucia-ferrandiz-marco']);
         }
 
         // Y dos fotos en la papelera: `kilkana_media` es la única tabla del inquilino con
@@ -871,10 +885,10 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         // piezas más recientes hay una edición real, hecha con el servicio para que deje su
         // revisión. La primera versión no llevaba el antetítulo —se puso al editar— o se quedaba
         // en la primera frase de la entradilla, que es lo que pasa cuando se publica con prisa.
-        $recientes = SnkKilkanaPostModel::query()->published()->orderByDesc('publish_at')->take(200)->get();
-        foreach ($recientes as $pieza) {
-            $hash = crc32("rev:{$pieza->slug}");
-            if ($hash % 2 !== 0 || SnkKilkanaPostRevisionModel::query()->where('post_id', $pieza->id)->exists()) {
+        $recentPosts = SnkKilkanaPostModel::query()->published()->orderByDesc('publish_at')->take(200)->get();
+        foreach ($recentPosts as $post) {
+            $hash = crc32("rev:{$post->slug}");
+            if ($hash % 2 !== 0 || SnkKilkanaPostRevisionModel::query()->where('post_id', $post->id)->exists()) {
                 continue;
             }
 
@@ -883,38 +897,38 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             // respuesta. **Esta guarda va ANTES de tocar la pieza**: el `forceFill` de abajo
             // escribe la versión vieja y es el `update()` del servicio quien devuelve la buena;
             // salir entre los dos dejó la entradilla de la pieza de portada a la mitad.
-            $hueco = min(6, (int) $pieza->publish_at->diffInHours(now()));
-            if ($hueco < 1) {
+            $gap = min(6, (int) $post->publish_at->diffInHours(now()));
+            if ($gap < 1) {
                 continue;
             }
 
-            $titulo = (string) $pieza->title;
-            $entradilla = trim((string) $pieza->excerpt);
+            $title = (string) $post->title;
+            $excerpt = trim((string) $post->excerpt);
             // La primera versión se quedaba en la primera frase o, si solo hay una, antes de la
             // última coma: es donde se corta una entradilla escrita con prisa.
-            $frase = mb_strpos($entradilla, '. ');
-            $coma = mb_strrpos($entradilla, ', ');
-            if (str_contains($titulo, ' | ')) {
-                $pieza->forceFill(['title' => trim(str($titulo)->after(' | ')->value())])->save();
-                $cambio = ['title' => $titulo];
-            } elseif ($frase !== false) {
-                $pieza->forceFill(['excerpt' => mb_substr($entradilla, 0, $frase + 1)])->save();
-                $cambio = ['excerpt' => $entradilla];
-            } elseif ($coma !== false && $coma > 40) {
-                $pieza->forceFill(['excerpt' => mb_substr($entradilla, 0, $coma).'.'])->save();
-                $cambio = ['excerpt' => $entradilla];
+            $sentence = mb_strpos($excerpt, '. ');
+            $comma = mb_strrpos($excerpt, ', ');
+            if (str_contains($title, ' | ')) {
+                $post->forceFill(['title' => trim(str($title)->after(' | ')->value())])->save();
+                $change = ['title' => $title];
+            } elseif ($sentence !== false) {
+                $post->forceFill(['excerpt' => mb_substr($excerpt, 0, $sentence + 1)])->save();
+                $change = ['excerpt' => $excerpt];
+            } elseif ($comma !== false && $comma > 40) {
+                $post->forceFill(['excerpt' => mb_substr($excerpt, 0, $comma).'.'])->save();
+                $change = ['excerpt' => $excerpt];
             } else {
                 continue;
             }
 
-            $editor = (int) ($pieza->created_by ?: $this->deskUserId());
-            $posts->update($pieza->fresh(), $cambio, $editor, false);
+            $editor = (int) ($post->created_by ?: $this->deskUserId());
+            $posts->update($post->fresh(), $change, $editor, false);
 
             // Todas las revisiones de la pieza, que es una: se saltan las que ya tienen alguna,
             // y la de dos revisiones del bloque de arriba es la publicada más antigua, que no
             // está entre las doscientas más recientes mientras el archivo pase de doscientas.
-            $cuando = $pieza->publish_at->copy()->addHours($hash % $hueco + 1);
-            SnkKilkanaPostRevisionModel::query()->where('post_id', $pieza->id)->update(['created_at' => $cuando]);
+            $at = $post->publish_at->copy()->addHours($hash % $gap + 1);
+            SnkKilkanaPostRevisionModel::query()->where('post_id', $post->id)->update(['created_at' => $at]);
         }
 
         if (SnkKilkanaMediaModel::onlyTrashed()->doesntExist()) {
@@ -946,24 +960,24 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      */
     private function retireServiceAccounts(): void
     {
-        $correos = collect(self::FIRMAS_EXTERNAS)
-            ->reject(fn (array $ficha) => isset($ficha['email']))
+        $emails = collect(self::EXTERNAL_BYLINES)
+            ->reject(fn (array $record) => isset($record['email']))
             ->keys()
-            ->map(fn (string $nombre) => Str::slug($nombre).'@eldiario.example')
+            ->map(fn (string $name) => Str::slug($name).'@eldiario.example')
             ->push('redaccion@eldiario.example', 'efe@eldiario.example')
             ->unique();
 
-        foreach ($correos as $email) {
-            $cuenta = CoreUserModel::query()->where('email', $email)->first();
+        foreach ($emails as $email) {
+            $account = CoreUserModel::query()->where('email', $email)->first();
 
-            if ($cuenta === null || $cuenta->roles()->exists()) {
+            if ($account === null || $account->roles()->exists()) {
                 continue;
             }
-            if (SnkKilkanaAuthorModel::query()->where('user_id', $cuenta->id)->exists()) {
+            if (SnkKilkanaAuthorModel::query()->where('user_id', $account->id)->exists()) {
                 continue;
             }
 
-            $cuenta->delete();
+            $account->delete();
         }
     }
 
@@ -996,12 +1010,12 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         // Las voces viven en `SnkKilkanaDemoVoices`: por familia de seccion, porque la gente
         // comenta lo que ha leido, y generales, para que dos hilos de la misma mesa no suenen
         // igual. Dos de cada tres comentarios son de la familia; el resto, generales.
-        $familias = SnkKilkanaCategoryModel::query()->pluck('slug', 'id')
+        $families = SnkKilkanaCategoryModel::query()->pluck('slug', 'id')
             ->map(fn (string $slug) => SnkKilkanaDemoBodyFactory::familyOf($slug));
 
         // Solo publicados: un borrador no ha tenido lectores que comenten.
         $posts = SnkKilkanaPostModel::query()->published()->orderBy('id')->get(['id', 'slug', 'publish_at', 'category_id']);
-        $ahora = now();
+        $now = now();
         foreach ($posts as $post) {
             // 0, 1, 2 o 3 comentarios por pieza, decididos por su slug y no por su posición en
             // la lista: borrar una pieza y resembrarla corría el índice de todas las siguientes
@@ -1012,18 +1026,18 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 // hora, y la cola se leía como doce comentarios repetidos treinta veces.
                 // Por slug y no por id: una pieza nueva en medio del snapshot no toca ni un
                 // comentario de las demás, y un `migrate:fresh` que reordene ids tampoco.
-                $clave = "{$post->slug}:{$n}";
-                $frase = crc32("body:{$clave}");
-                $esSpam = crc32("spam:{$clave}") % 11 === 5;
+                $key = "{$post->slug}:{$n}";
+                $statusHash = crc32("body:{$key}");
+                $isSpam = crc32("spam:{$key}") % 11 === 5;
                 // El spam lo firman cuentas de usar y tirar, no los vecinos que llevan años
                 // comentando: es lo que se ve en cualquier cola real, y lo que hace que
                 // bloquear a su autor sea la respuesta y no un castigo a alguien de casa.
                 // Y en una pieza, cada posición lleva un desechable y una frase distintos: son
                 // cuatro cuentas y seis frases, y dos posiciones que cayeran en el mismo par
                 // serían un solo comentario para `firstOrCreate`.
-                $reader = $esSpam
+                $reader = $isSpam
                     ? $spammers[(crc32("reader:{$post->slug}") + $n) % count($spammers)]
-                    : $readers[crc32("reader:{$clave}") % count($readers)];
+                    : $readers[crc32("reader:{$key}") % count($readers)];
 
                 // Un comentario llega en los cuatro días que siguen a la pieza, que es cuando
                 // se lee, y nunca antes de que exista ni después de hoy. La ventana se acorta
@@ -1036,20 +1050,20 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 // Siempre al menos un minuto después: `% ventana` puede dar cero, y cero es el
                 // sello exacto de la pieza. Con menos de dos minutos publicada, todavía no hay
                 // nadie que la haya leído.
-                $minutos = (int) $post->publish_at->diffInMinutes($ahora);
-                if ($minutos < 2) {
+                $minutes = (int) $post->publish_at->diffInMinutes($now);
+                if ($minutes < 2) {
                     continue;
                 }
-                $fecha = $minutos < 60
-                    ? $post->publish_at->copy()->addMinutes(1 + crc32("at:{$clave}") % ($minutos - 1))
-                    : $post->publish_at->copy()->addHours(1 + crc32("at:{$clave}") % min(96, intdiv($minutos, 60)));
-                $reciente = $fecha->greaterThan($ahora->copy()->subDays(21));
-                $estado = match (true) {
-                    $esSpam => SnkKilkanaCommentStatusEnum::Spam,
+                $date = $minutes < 60
+                    ? $post->publish_at->copy()->addMinutes(1 + crc32("at:{$key}") % ($minutes - 1))
+                    : $post->publish_at->copy()->addHours(1 + crc32("at:{$key}") % min(96, intdiv($minutes, 60)));
+                $recent = $date->greaterThan($now->copy()->subDays(21));
+                $status = match (true) {
+                    $isSpam => SnkKilkanaCommentStatusEnum::Spam,
                     // La cola son los de las últimas tres semanas: lo de hace meses ya está
                     // decidido, y una moderación con pendientes de enero no existe.
-                    $reciente && $frase % 3 === 0 => SnkKilkanaCommentStatusEnum::Pending,
-                    $frase % 17 === 0 => SnkKilkanaCommentStatusEnum::Rejected,
+                    $recent && $statusHash % 3 === 0 => SnkKilkanaCommentStatusEnum::Pending,
+                    $statusHash % 17 === 0 => SnkKilkanaCommentStatusEnum::Rejected,
                     default => SnkKilkanaCommentStatusEnum::Approved,
                 };
 
@@ -1059,39 +1073,39 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 $comment = SnkKilkanaCommentModel::firstOrCreate([
                     'user_id' => $reader->id,
                     'post_id' => $post->id,
-                    'body' => $esSpam
+                    'body' => $isSpam
                         ? SnkKilkanaDemoVoices::SPAM[(crc32("body:{$post->slug}") + $n) % count(SnkKilkanaDemoVoices::SPAM)]
                         // Con su propio hash: atada al de la frase, la elección de voz iba de la
                         // mano del estado y las generales no salían nunca en la cola.
-                        : self::voice($familias[$post->category_id] ?? 'local', crc32("voice:{$clave}")),
+                        : self::voice($families[$post->category_id] ?? 'local', crc32("voice:{$key}")),
                 ], [
-                    'status' => $estado,
-                    'created_at' => $fecha,
-                    'updated_at' => $fecha,
+                    'status' => $status,
+                    'created_at' => $date,
+                    'updated_at' => $date,
                 ]);
 
                 // Una respuesta cada pocos hilos: la conversación anidada también hay que
                 // poder probarla; la API la borra en cascada.
-                if ($n === 0 && crc32("thread:{$post->slug}") % 5 === 3 && ! $esSpam) {
+                if ($n === 0 && crc32("thread:{$post->slug}") % 5 === 3 && ! $isSpam) {
                     // Otra persona, para que el hilo enseñe una conversación y no un monólogo.
                     // La respuesta llega entre una y treinta horas después, dentro de lo que
                     // queda hasta ahora; sin una hora de hueco no hay respuesta honesta, y un
                     // hilo sin contestar se lee mejor que uno contestado en el mismo minuto.
-                    $hueco = min(30, (int) $fecha->diffInHours($ahora));
-                    if ($hueco < 1) {
+                    $gap = min(30, (int) $date->diffInHours($now));
+                    if ($gap < 1) {
                         continue;
                     }
-                    $otro = $readers[(crc32("reader:{$clave}") + 1) % count($readers)];
-                    $contesta = $fecha->copy()->addHours(crc32("reply:{$clave}") % $hueco + 1);
+                    $otherReader = $readers[(crc32("reader:{$key}") + 1) % count($readers)];
+                    $reply = $date->copy()->addHours(crc32("reply:{$key}") % $gap + 1);
                     SnkKilkanaCommentModel::firstOrCreate([
                         'post_id' => $post->id,
-                        'user_id' => $otro->id,
+                        'user_id' => $otherReader->id,
                         'parent_id' => $comment->id,
-                        'body' => SnkKilkanaDemoVoices::REPLIES[crc32("replybody:{$clave}") % count(SnkKilkanaDemoVoices::REPLIES)],
+                        'body' => SnkKilkanaDemoVoices::REPLIES[crc32("replybody:{$key}") % count(SnkKilkanaDemoVoices::REPLIES)],
                     ], [
                         'status' => SnkKilkanaCommentStatusEnum::Approved,
-                        'created_at' => $contesta,
-                        'updated_at' => $contesta,
+                        'created_at' => $reply,
+                        'updated_at' => $reply,
                     ]);
                 }
             }
@@ -1106,14 +1120,14 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      * @return array{readers: list<CoreUserModel>, spammers: list<CoreUserModel>}
      */
     /** La frase de un comentario: de su familia dos de cada tres veces, general el resto. */
-    private static function voice(string $familia, int $hash): string
+    private static function voice(string $family, int $hash): string
     {
-        $propias = SnkKilkanaDemoVoices::BY_FAMILY[$familia] ?? SnkKilkanaDemoVoices::BY_FAMILY['local'];
+        $own = SnkKilkanaDemoVoices::BY_FAMILY[$family] ?? SnkKilkanaDemoVoices::BY_FAMILY['local'];
         $general = SnkKilkanaDemoVoices::GENERAL;
 
         return $hash % 3 === 2
             ? $general[intdiv($hash, 3) % count($general)]
-            : $propias[intdiv($hash, 3) % count($propias)];
+            : $own[intdiv($hash, 3) % count($own)];
     }
 
     /** La descripción SEO de una de cada tres piezas: la entradilla, recortada a 158 caracteres en una palabra. */
@@ -1122,13 +1136,13 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         if (crc32("seo:{$post['slug']}") % 3 !== 0) {
             return null;
         }
-        $texto = trim((string) $post['excerpt']);
-        if (mb_strlen($texto) <= 158) {
-            return $texto;
+        $text = trim((string) $post['excerpt']);
+        if (mb_strlen($text) <= 158) {
+            return $text;
         }
-        $corte = mb_strrpos(mb_substr($texto, 0, 155), ' ');
+        $cut = mb_strrpos(mb_substr($text, 0, 155), ' ');
 
-        return rtrim(mb_substr($texto, 0, $corte ?: 155), ',;:').'…';
+        return rtrim(mb_substr($text, 0, $cut ?: 155), ',;:').'…';
     }
 
     /** Cuántos comentarios lleva una pieza: 0, 1, 2 o 3, fijados por su slug. */
@@ -1173,14 +1187,13 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         ];
 
         $role = Role::findOrCreate('reader', 'sanctum');
-        $alta = function (array $person, int $antiguedad, bool $bloqueada) use ($password, $role): CoreUserModel {
+        $createAccount = function (array $person, int $ageDays, bool $suspended) use ($password, $role): CoreUserModel {
             $user = CoreUserModel::firstOrCreate(
                 ['email' => $person['email']],
                 [
                     // Sin Hash::make: `CoreUserModel::setPasswordAttribute` ya la hashea al asignarla.
                     'password' => $password,
-                    'name' => $person['name'],
-                    'full_name' => $person['full_name'],
+                    ...self::splitName($person['name'], $person['full_name']),
                     'company' => $person['company'],
                     'phone' => $person['phone'],
                 ]
@@ -1190,8 +1203,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             // escribe al nacer: una cuenta que ya existía tiene la suya.
             $user->forceFill([
                 'email_verified_at' => $user->email_verified_at ?: now(),
-                'created_at' => $user->wasRecentlyCreated ? now()->subDays($antiguedad) : $user->created_at,
-                'suspended_at' => $bloqueada ? ($user->suspended_at ?: now()->subDays($antiguedad % 5)) : $user->suspended_at,
+                'created_at' => $user->wasRecentlyCreated ? now()->subDays($ageDays) : $user->created_at,
+                'suspended_at' => $suspended ? ($user->suspended_at ?: now()->subDays($ageDays % 5)) : $user->suspended_at,
             ])->save();
             $user->assignRole($role);
 
@@ -1201,14 +1214,14 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         $readers = [];
         foreach ($people as $person) {
             // Altas repartidas en dos años y media: «member since» es lo que ordena la lista.
-            $readers[] = $alta($person, 30 + crc32("since:{$person['email']}") % 900, false);
+            $readers[] = $createAccount($person, 30 + crc32("since:{$person['email']}") % 900, false);
         }
-        $cuentasSpam = [];
+        $spamAccounts = [];
         foreach ($spammers as $i => $person) {
-            $cuentasSpam[] = $alta($person, 3 + crc32("since:{$person['email']}") % 40, $i < 3);
+            $spamAccounts[] = $createAccount($person, 3 + crc32("since:{$person['email']}") % 40, $i < 3);
         }
 
-        return ['readers' => $readers, 'spammers' => $cuentasSpam];
+        return ['readers' => $readers, 'spammers' => $spamAccounts];
     }
 
     /**
@@ -1223,31 +1236,31 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      */
     private function seedReads(array $readers): void
     {
-        $ahora = now();
-        $inicio = $ahora->copy()->startOfMonth();
-        $medidas = SnkKilkanaPostModel::query()
+        $now = now();
+        $monthStart = $now->copy()->startOfMonth();
+        $meteredPosts = SnkKilkanaPostModel::query()
             ->published()
             ->where('content_tier', SnkKilkanaContentTierEnum::Metered)
-            ->where('publish_at', '<', $ahora)
+            ->where('publish_at', '<', $now)
             ->orderByDesc('publish_at')
             ->limit(60)
             ->get(['id', 'slug', 'publish_at', 'content_tier']);
-        if ($medidas->isEmpty()) {
+        if ($meteredPosts->isEmpty()) {
             return;
         }
 
         foreach ($readers as $reader) {
-            $cuantas = crc32("reads:{$reader->email}") % 5;
-            for ($n = 0; $n < $cuantas; $n++) {
-                $post = $medidas[crc32("read:{$reader->email}:{$n}") % $medidas->count()];
+            $count = crc32("reads:{$reader->email}") % 5;
+            for ($n = 0; $n < $count; $n++) {
+                $post = $meteredPosts[crc32("read:{$reader->email}:{$n}") % $meteredPosts->count()];
                 // Desde que existe la pieza o desde el día uno, lo que sea más tarde, hasta ahora.
-                $desde = $post->publish_at->greaterThan($inicio) ? $post->publish_at : $inicio;
-                $ventana = (int) $desde->diffInMinutes($ahora);
-                if ($ventana < 2) {
+                $readableFrom = $post->publish_at->greaterThan($monthStart) ? $post->publish_at : $monthStart;
+                $window = (int) $readableFrom->diffInMinutes($now);
+                if ($window < 2) {
                     continue;
                 }
-                $cuando = $desde->copy()->addMinutes(1 + crc32("readat:{$reader->email}:{$n}") % ($ventana - 1));
-                SnkKilkanaReaderReadModel::record((int) $reader->getKey(), $post, $cuando);
+                $at = $readableFrom->copy()->addMinutes(1 + crc32("readat:{$reader->email}:{$n}") % ($window - 1));
+                SnkKilkanaReaderReadModel::record((int) $reader->getKey(), $post, $at);
             }
         }
     }
@@ -1258,9 +1271,9 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         // El catálogo no se siembra aquí: lo publica el mismo servicio que usa
         // `kilkana:sync-themes`, desde los ficheros maestros. Duplicar la siembra habría dejado
         // dos sitios que escriben las mismas filas y que se separan en cuanto uno se toque.
-        $resumen = app(SnkKilkanaThemeCatalogSyncService::class)->sync();
+        $summary = app(SnkKilkanaThemeCatalogSyncService::class)->sync();
 
-        foreach ($resumen['errors'] as $error) {
+        foreach ($summary['errors'] as $error) {
             $this->command?->getOutput()->writeln("<error>themes: {$error}</error>");
         }
     }
@@ -1268,40 +1281,40 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     /** Identidad/tema de arranque; firstOrCreate: nunca pisa lo que el tenant ya editó. */
     private function seedSettings(): void
     {
-        $perfil = $this->profile();
-        $tenant = $perfil['tenant'] ?? [];
+        $profile = $this->profile();
+        $tenant = $profile['tenant'] ?? [];
 
         // El fichero guarda el SLUG del tema, nunca su id: un id de una base no significa nada
         // en otra, y un perfil tiene que poder sembrarse en cualquiera. Sin `theme` en el perfil
         // el periódico nace desnudo: elegirlo es el primer paso de la puesta en marcha, y un
         // tema puesto de oficio es un paso que nadie dio.
-        $tema = isset($perfil['theme'])
-            ? SnkKilkanaThemeModel::query()->published()->where('slug', $perfil['theme'])->first()
+        $theme = isset($profile['theme'])
+            ? SnkKilkanaThemeModel::query()->published()->where('slug', $profile['theme'])->first()
             : null;
 
-        $fila = SnkKilkanaSettingModel::firstOrCreate(['id' => 1], [
+        $row = SnkKilkanaSettingModel::firstOrCreate(['id' => 1], [
             'tenant_name' => $tenant['name'] ?? null,
             'tenant_tagline' => $tenant['tagline'] ?? null,
             'tenant_city' => $tenant['city'] ?? null,
             'tenant_url' => $this->tenantUrl(),
             // La demo nace abierta: es lo que se enseña a un comprador, no un periódico por estrenar.
-            'launched_at' => ($perfil['launched'] ?? false) ? now() : null,
+            'launched_at' => ($profile['launched'] ?? false) ? now() : null,
         ]);
 
         // La cabecera escrita manda —el inquilino puede renombrarse desde el panel—, pero que no
         // coincida con la del perfil también es la firma de estar sembrando el periódico
         // equivocado, y eso no puede pasar callado.
-        if (isset($tenant['name']) && $fila->tenant_name !== null && $fila->tenant_name !== $tenant['name']) {
+        if (isset($tenant['name']) && $row->tenant_name !== null && $row->tenant_name !== $tenant['name']) {
             $this->command?->getOutput()->writeln(
-                "<comment>demo: la base se llama «{$fila->tenant_name}» y el perfil dice «{$tenant['name']}».</comment>"
+                "<comment>demo: the database is named '{$row->tenant_name}' but the profile says '{$tenant['name']}'.</comment>"
             );
         }
 
         // Vestir COPIA el spec, no lo apunta: apuntar a la fila del catálogo rompería el
         // congelado, porque la siguiente sincronización le cambiaría el tema al periódico. Solo
         // si va desnudo — `firstOrCreate` no pisa lo que el inquilino ya eligió.
-        if ($tema && $fila->theme_spec === null) {
-            app(SnkKilkanaThemeWearService::class)->wear($tema);
+        if ($theme && $row->theme_spec === null) {
+            app(SnkKilkanaThemeWearService::class)->wear($theme);
         }
     }
 
@@ -1323,41 +1336,55 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      * Si esta base lleva datos de demo, que son DOS condiciones y hacen falta las dos.
      *
      * El entorno dice si esta instalación los admite; el perfil, si este periódico en concreto
-     * los tiene. Cuelgan de aquí las cuentas de demo igual que el archivo: una cuenta con
-     * contraseña conocida dentro de la base de un cliente es un acceso ajeno a su panel.
+     * los tiene. Cuelga de aquí el archivo; las cuentas, de `demoAccounts()`.
      */
     private function demoData(): bool
     {
         return (bool) config('kilkana.kilkana.seed_demo', false) && ($this->profile()['demo'] ?? false);
     }
 
+    /**
+     * Las cuentas con contraseña conocida —el administrador local y el lector de demo—, con las
+     * mismas dos puertas. Un perfil con archivo las trae; uno sin archivo puede pedirlas con
+     * `accounts`, que es lo que deja entrar a un periódico vacío para recorrer su puesta en
+     * marcha. Sin perfil que las reclame no hay ninguna: una cuenta conocida dentro de la base de
+     * un cliente es un acceso ajeno a su panel.
+     */
+    private function demoAccounts(): bool
+    {
+        $profile = $this->profile();
+
+        return (bool) config('kilkana.kilkana.seed_demo', false)
+            && (($profile['demo'] ?? false) || ($profile['accounts'] ?? false));
+    }
+
     private function profile(): array
     {
-        if ($this->perfil !== null) {
-            return $this->perfil;
+        if ($this->profile !== null) {
+            return $this->profile;
         }
 
-        $cliente = $this->clientSlug();
-        $encontrados = [];
+        $client = $this->clientSlug();
+        $found = [];
 
-        foreach (glob(__DIR__.'/data/profiles/*.json') ?: [] as $ruta) {
-            $perfil = json_decode((string) file_get_contents($ruta), true, flags: JSON_THROW_ON_ERROR);
+        foreach (glob(__DIR__.'/data/profiles/*.json') ?: [] as $path) {
+            $profile = json_decode((string) file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
 
-            if ($cliente !== null && in_array($cliente, $perfil['clients'] ?? [], true)) {
-                $encontrados[basename($ruta, '.json')] = $perfil;
+            if ($client !== null && in_array($client, $profile['clients'] ?? [], true)) {
+                $found[basename($path, '.json')] = $profile;
             }
         }
 
         // Dos perfiles que reclaman el mismo cliente es un catálogo roto, y quedarse con el
         // primero por orden de fichero convierte el fallo en «el periódico amaneció con otro
         // nombre», que es de las cosas que nadie mira hasta que un cliente lo dice.
-        if (count($encontrados) > 1) {
+        if (count($found) > 1) {
             throw new \RuntimeException(
-                "Dos perfiles reclaman el cliente {$cliente}: ".implode(', ', array_keys($encontrados))
+                "Two profiles claim the client {$client}: ".implode(', ', array_keys($found))
             );
         }
 
-        return $this->perfil = $encontrados === [] ? [] : (array) reset($encontrados);
+        return $this->profile = $found === [] ? [] : (array) reset($found);
     }
 
     /**
@@ -1369,16 +1396,16 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      */
     private function clientSlug(): ?string
     {
-        $bd = (string) config('database.connections.tenant.database', '');
-        $sufijo = '_kilkana';
+        $database = (string) config('database.connections.tenant.database', '');
+        $suffix = '_kilkana';
 
-        if (! str_ends_with($bd, $sufijo)) {
+        if (! str_ends_with($database, $suffix)) {
             return null;
         }
 
-        $cliente = str_replace('_', '-', substr($bd, 0, -strlen($sufijo)));
+        $client = str_replace('_', '-', substr($database, 0, -strlen($suffix)));
 
-        return CorePackageSelectorSupport::isValidClientSubdomain($cliente) ? $cliente : null;
+        return CorePackageSelectorSupport::isValidClientSubdomain($client) ? $client : null;
     }
 
     /**
@@ -1395,9 +1422,9 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     private function tenantUrl(): ?string
     {
         $base = (string) config('core.tenant_base_domain', '');
-        $cliente = $this->clientSlug();
+        $client = $this->clientSlug();
 
-        return $base !== '' && $cliente !== null ? "https://{$cliente}.{$base}" : null;
+        return $base !== '' && $client !== null ? "https://{$client}.{$base}" : null;
     }
 
     /**
@@ -1431,7 +1458,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
 
         $reader = Role::findByName('reader', 'sanctum');
 
-        if ($this->demoData()) {
+        if ($this->demoAccounts()) {
             $readerPassword = config('kilkana.kilkana.demo_reader_password');
             if ((! is_string($readerPassword) || $readerPassword === '') && app()->environment(['local', 'testing'])) {
                 $readerPassword = 'password';
@@ -1439,10 +1466,9 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             if (is_string($readerPassword) && $readerPassword !== '') {
                 $demo = CoreUserModel::firstOrCreate(
                     ['email' => 'reader@snk.test'],
-                    ['name' => 'Demo Reader', 'password' => $readerPassword]
+                    ['name' => 'Demo', 'lastname' => 'Reader', 'password' => $readerPassword]
                 );
                 $demo->forceFill([
-                    'full_name' => $demo->full_name ?: 'Demo Reader',
                     'company' => $demo->company ?: 'Cuenta de demostración',
                     'phone' => $demo->phone ?: '+34 900 000 000',
                     'email_verified_at' => $demo->email_verified_at ?: now(),
@@ -1457,11 +1483,11 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         $adminEmail = config('core.auth.admin_email', 'admin@snake.com');
         $admin = CoreUserModel::query()->where('email', $adminEmail)->first();
 
-        // Con datos demo se crea si falta, y solo entonces. El administrador de un periódico de
+        // Con cuentas de demo se crea si falta, y solo entonces. El administrador de un periódico de
         // verdad lo crea el provisioning con las credenciales que se eligen en el alta; aquí lo
         // que se cubre es el agujero de recrear la base a mano: `--fresh` vacía también `users`,
         // así que el juego demo volvía entero pero sin ninguna cuenta con la que entrar.
-        if ($admin === null && $this->demoData() && app()->environment(['local', 'testing'])) {
+        if ($admin === null && $this->demoAccounts() && app()->environment(['local', 'testing'])) {
             $admin = CoreUserModel::create([
                 'name' => 'Admin',
                 'email' => $adminEmail,
@@ -1476,12 +1502,12 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             return;
         }
         $admin->forceFill(array_filter([
-            'full_name' => $admin->full_name ?: 'Admin User',
+            'lastname' => $admin->lastname ?: 'User',
             'company' => $admin->company ?: 'Dirección del periódico',
             'phone' => $admin->phone ?: '+34 962 401 200',
             'email_verified_at' => $admin->email_verified_at ?: now(),
         ], fn ($v) => $v !== null))->save();
-        // Misma regla que la API (`SnkKilkanaUsersController::ensureByline`): cuenta que
+        // Misma regla que la API (`SnkKilkanaBylineService::ensureForUser`): cuenta que
         // puede escribir, cuenta con firma. Sin esto, el administrador abre el editor y no
         // tiene con qué firmar — tendría que atribuirse a un periodista.
         SnkKilkanaAuthorModel::firstOrCreate(['user_id' => $admin->id]);
@@ -1509,29 +1535,29 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             $branch = $parent ?? '';
             $position[$branch] = ($position[$branch] ?? -1) + 1;
 
-            $categoria = SnkKilkanaCategoryModel::firstOrCreate(['slug' => $slug], [
+            $category = SnkKilkanaCategoryModel::firstOrCreate(['slug' => $slug], [
                 'name' => $attrs['name'],
                 'description' => $attrs['description'] ?? null,
             ]);
 
             // Va en orden de catálogo, así que la madre existe y ya tiene su estado cuando le
             // toca a la hija: el modelo rechaza una sección más visible que la suya.
-            $categoria->fill([
+            $category->fill([
                 'parent_id' => $parent ? ($ids[$parent] ?? null) : null,
                 'position' => $position[$branch],
                 'status' => $attrs['status'] ?? SnkKilkanaCategoryStatusEnum::Live,
             ])->save();
 
-            foreach ($attrs['retired'] ?? [] as $vieja) {
+            foreach ($attrs['retired'] ?? [] as $retiredPath) {
                 // La URL que dejó atrás sigue redirigiendo: es lo que la ficha enseña como 301,
                 // y sin una fila así esa mitad de la pantalla no se puede ni mirar.
                 SnkKilkanaCategorySlugModel::firstOrCreate([
-                    'category_id' => $categoria->id,
-                    'path' => $vieja,
+                    'category_id' => $category->id,
+                    'path' => $retiredPath,
                 ]);
             }
 
-            $ids[$slug] = $categoria->id;
+            $ids[$slug] = $category->id;
         }
     }
 
@@ -1546,15 +1572,15 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         // La dirección que trae el snapshot es de un servicio de fotos de relleno; lo que
         // acaba en la base es el JPEG de `data/media/` que le corresponde, copiado al disco
         // del periódico. El porqué, en la propia clase.
-        $fototeca = new SnkKilkanaDemoMediaLibrary;
-        $fototeca->seedAll();
+        $photoLibrary = new SnkKilkanaDemoMediaLibrary;
+        $photoLibrary->seedAll();
         // Las direcciones del snapshot se reparten entre los ficheros por turno y no por
         // hash: con el hash, un fichero acababa en veinticuatro piezas y otros cuatro en ninguna.
-        $fototeca->assign(array_filter(array_column($posts, 'image')));
+        $photoLibrary->assign(array_filter(array_column($posts, 'image')));
 
         // Destacadas: las seis más leídas del último mes. Es lo que una redacción marca a mano
         // para la portada, y sin ninguna la casilla parece que no funciona.
-        $destacadas = collect($posts)
+        $featuredSlugs = collect($posts)
             ->where('status', SnkKilkanaPostStatusEnum::Published->value)
             ->filter(fn (array $p) => Carbon::parse($this->shift($p['publish_at']))->greaterThan(now()->subDays(30)))
             ->sortByDesc('reads')
@@ -1569,13 +1595,13 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             // renombrada dejaba la siembra a medias con un `ModelNotFound`.
             $category = SnkKilkanaCategoryModel::query()
                 ->where('slug', $post['cat'])
-                ->orWhereHas('retiredSlugs', fn ($vieja) => $vieja->where('path', $post['cat']))
+                ->orWhereHas('retiredSlugs', fn ($retiredPath) => $retiredPath->where('path', $post['cat']))
                 // Ordenado aunque hoy sea único por construcción: si el muro que impide tomar
                 // un slug retirado cambiara alguna vez, esto elegiría una cualquiera sin avisar.
                 ->orderBy('id')
                 ->firstOrFail();
             $author = $this->authorFor(trim($post['author']));
-            $media = ! empty($post['image']) ? $fototeca->forUrl($post['image']) : null;
+            $media = ! empty($post['image']) ? $photoLibrary->forUrl($post['image']) : null;
             $publishAt = $this->publishAt($post);
             $urlDate = $post['status'] === SnkKilkanaPostStatusEnum::Published->value
                 ? substr($publishAt, 0, 10)
@@ -1587,12 +1613,12 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             // primero por la ruta que dejó atrás, igual que con las secciones. Sin esto, una
             // pieza editada por `seedEditHistory` se intentaba recrear con su slug viejo —que
             // ya está retirado— y la siembra siguiente reventaba a mitad.
-            $retirada = $urlDate === null ? null : SnkKilkanaPostSlugModel::query()
+            $retired = $urlDate === null ? null : SnkKilkanaPostSlugModel::query()
                 ->where('path', str_replace('-', '/', $urlDate).'/'.$post['slug'])
                 ->first();
-            $anterior = $retirada === null
+            $previous = $retired === null
                 ? null
-                : SnkKilkanaPostModel::withTrashed()->whereKey($retirada->post_id)->first();
+                : SnkKilkanaPostModel::withTrashed()->whereKey($retired->post_id)->first();
 
             // **Lo editorial no se reescribe sobre una pieza que ya existe.** El snapshot es la
             // versión con la que nació el archivo; lo que alguien —o el propio seeder, al sembrar
@@ -1618,7 +1644,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             // Y esto sí se sincroniza: es lo que ata la pieza al resto del juego de datos —su
             // sección, su firma, su estado, su fecha— y lo que tiene que seguir cuadrando cuando
             // el catálogo cambia.
-            $estructura = [
+            $structure = [
                 'category_id' => $category->id,
                 'author_id' => $author->id,
                 // Quien la escribió, que NO es lo mismo que quien la firma: el acotado por rol
@@ -1631,7 +1657,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 'publish_at' => $publishAt,
                 'status' => $post['status'],
                 'content_tier' => $post['content_tier'],
-                'featured' => $post['featured'] ?? in_array($post['slug'], $destacadas, true),
+                'featured' => $post['featured'] ?? in_array($post['slug'], $featuredSlugs, true),
                 'noindex' => $post['noindex'] ?? false,
             ];
 
@@ -1639,11 +1665,11 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             // que resembrar no la recrea encima —reventaría contra la reserva— ni la saca de
             // la papelera. Tirada se queda.
             $row = SnkKilkanaPostModel::withTrashed()->firstOrCreate([
-                'url_date' => $anterior?->getRawOriginal('url_date') ?? $urlDate,
-                'slug' => $anterior?->slug ?? $post['slug'],
-            ], $editorial + $estructura);
+                'url_date' => $previous?->getRawOriginal('url_date') ?? $urlDate,
+                'slug' => $previous?->slug ?? $post['slug'],
+            ], $editorial + $structure);
 
-            $row->fill($estructura)->save();
+            $row->fill($structure)->save();
 
             // `syncWithoutDetaching` y no `sync`: re-sembrar repone lo que trae el snapshot y
             // **no quita** lo que alguien etiquetó a mano encima. Un seeder que borra trabajo
@@ -1685,32 +1711,32 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      */
     private function seedMediaDesks(): void
     {
-        $creditos = ['Óscar Tomás', 'Agencia EFE', 'Redacción'];
-        $estantes = [];
+        $credits = ['Óscar Tomás', 'Agencia EFE', 'Redacción'];
+        $shelves = [];
 
         // La madre va en la carga: se leía abajo y la traía el `$with` del modelo de sección,
         // que ya no existe — una relación cargada en toda consulta para dos sitios que la usan.
         foreach (SnkKilkanaMediaModel::query()->with('coveredPosts.category.parent')->get() as $media) {
-            $cambios = [];
+            $changes = [];
 
             if (! $media->credit) {
-                $cambios['credit'] = $creditos[crc32((string) $media->original_name) % count($creditos)];
+                $changes['credit'] = $credits[crc32((string) $media->original_name) % count($credits)];
             }
-            if ($cambios) {
-                $media->update($cambios);
+            if ($changes) {
+                $media->update($changes);
             }
 
-            $mesa = $media->coveredPosts->first()?->category;
-            if (! $mesa) {
+            $desk = $media->coveredPosts->first()?->category;
+            if (! $desk) {
                 continue;
             }
 
             // La mesa de una subsección es su madre: un diario comarcal archiva «Deportes», no
             // «Polideportivo». Sin `parent`, la propia sección.
-            $nombre = $mesa->parent?->name ?? $mesa->name;
-            $estantes[$nombre] ??= SnkKilkanaMediaCollectionModel::firstOrCreate(['name' => $nombre]);
+            $name = $desk->parent?->name ?? $desk->name;
+            $shelves[$name] ??= SnkKilkanaMediaCollectionModel::firstOrCreate(['name' => $name]);
 
-            $media->collections()->syncWithoutDetaching([$estantes[$nombre]->id]);
+            $media->collections()->syncWithoutDetaching([$shelves[$name]->id]);
         }
     }
 
@@ -1752,33 +1778,33 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      */
     private function offsetDays(): int
     {
-        if ($this->desfase !== null) {
-            return $this->desfase;
+        if ($this->dayOffset !== null) {
+            return $this->dayOffset;
         }
 
         // Solo entre los slugs que el snapshot trae UNA vez: los dos que repite en días
         // distintos son piezas legítimas, pero `keyBy` se quedaría callado con la última y el
         // desfase saldría con meses de error.
-        $publicadas = collect($this->snapshot())
+        $published = collect($this->snapshot())
             ->where('status', SnkKilkanaPostStatusEnum::Published->value);
-        $repetidos = $publicadas->countBy('slug')->filter(fn (int $n) => $n > 1)->keys();
-        $publicadas = $publicadas->whereNotIn('slug', $repetidos)->keyBy('slug');
+        $duplicates = $published->countBy('slug')->filter(fn (int $n) => $n > 1)->keys();
+        $published = $published->whereNotIn('slug', $duplicates)->keyBy('slug');
 
-        $sembrada = SnkKilkanaPostModel::query()
-            ->whereIn('slug', $publicadas->keys()->all())
+        $seeded = SnkKilkanaPostModel::query()
+            ->whereIn('slug', $published->keys()->all())
             ->orderBy('url_date')
             ->orderBy('id')
             ->first(['slug', 'url_date']);
 
-        if ($sembrada === null) {
-            $origen = Carbon::parse((string) $publicadas->max('publish_at'))->startOfDay();
-            $destino = now()->startOfDay();
+        if ($seeded === null) {
+            $origin = Carbon::parse((string) $published->max('publish_at'))->startOfDay();
+            $target = now()->startOfDay();
         } else {
-            $origen = Carbon::parse((string) $publicadas[$sembrada->slug]['publish_at'])->startOfDay();
-            $destino = Carbon::parse((string) $sembrada->getRawOriginal('url_date'))->startOfDay();
+            $origin = Carbon::parse((string) $published[$seeded->slug]['publish_at'])->startOfDay();
+            $target = Carbon::parse((string) $seeded->getRawOriginal('url_date'))->startOfDay();
         }
 
-        return $this->desfase = (int) round($origen->diffInDays($destino, false));
+        return $this->dayOffset = (int) round($origin->diffInDays($target, false));
     }
 
     /** @return array<int, array<string, mixed>> */
@@ -1792,14 +1818,14 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     }
 
     /** Una fecha del snapshot, puesta al día. */
-    private function shift(string $fecha): string
+    private function shift(string $date): string
     {
-        return Carbon::parse($fecha)->addDays($this->offsetDays())->toDateTimeString();
+        return Carbon::parse($date)->addDays($this->offsetDays())->toDateTimeString();
     }
 
     private function publishAt(array $post): string
     {
-        $cuando = $this->shift($post['publish_at']);
+        $at = $this->shift($post['publish_at']);
 
         // El desplazamiento va por días enteros, así que la pieza más reciente aterriza HOY a
         // su hora del snapshot, que de madrugada todavía no ha llegado: una pieza publicada
@@ -1808,18 +1834,18 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         // porque en la primera hora del día restar minutos la mandaría a ayer y cambiaría la
         // clave `(url_date, slug)` con la que la siguiente siembra la reconoce.
         if ($post['status'] === SnkKilkanaPostStatusEnum::Published->value
-            && Carbon::parse($cuando)->isFuture()) {
+            && Carbon::parse($at)->isFuture()) {
             return now()->subMinutes(5 + crc32($post['slug']) % 55)->max(now()->startOfDay())->toDateTimeString();
         }
 
         if ($post['status'] !== SnkKilkanaPostStatusEnum::Scheduled->value
-            || Carbon::parse($cuando)->isFuture()) {
-            return $cuando;
+            || Carbon::parse($at)->isFuture()) {
+            return $at;
         }
 
         return now()
             ->addDays(crc32($post['slug']) % 5 + 1)
-            ->setTimeFromTimeString(substr($cuando, 11))
+            ->setTimeFromTimeString(substr($at, 11))
             ->toDateTimeString();
     }
 
@@ -1841,52 +1867,52 @@ class SnkKilkanaDatabaseSeeder extends Seeder
     {
         // Decaimiento exponencial sobre 30 días: el primer día se lleva ~22% de las lecturas
         // y a las dos semanas queda cola. Enteros y sin azar: dos siembras dan lo mismo.
-        $dias = 30;
-        $pesos = [];
-        for ($edad = 0; $edad < $dias; $edad++) {
-            $pesos[$edad] = (int) round(1000 * exp(-$edad / 4));
+        $days = 30;
+        $weights = [];
+        for ($age = 0; $age < $days; $age++) {
+            $weights[$age] = (int) round(1000 * exp(-$age / 4));
         }
-        $suma = array_sum($pesos);
+        $sum = array_sum($weights);
 
         $posts = json_decode(
             (string) file_get_contents(__DIR__.'/data/posts.json'),
             true,
             flags: JSON_THROW_ON_ERROR,
         );
-        $porPost = collect($posts)->mapWithKeys(fn (array $post) => [
+        $byPost = collect($posts)->mapWithKeys(fn (array $post) => [
             substr($this->shift($post['publish_at']), 0, 10).'|'.$post['slug'] => $post['reads'],
         ]);
-        $hoy = now()->startOfDay();
+        $today = now()->startOfDay();
 
         foreach (SnkKilkanaPostModel::query()->published()->get(['id', 'slug', 'publish_at']) as $post) {
             $key = $post->publish_at?->toDateString().'|'.$post->slug;
-            $total = (int) ($porPost[$key] ?? 0);
+            $total = (int) ($byPost[$key] ?? 0);
             if ($total <= 0 || $post->publish_at === null) {
                 continue; // una pieza sin lecturas es un estado real; no se inventa
             }
-            for ($edad = 0; $edad < $dias; $edad++) {
-                $fecha = $post->publish_at->copy()->startOfDay()->addDays($edad);
-                if ($fecha->greaterThan($hoy)) {
+            for ($age = 0; $age < $days; $age++) {
+                $date = $post->publish_at->copy()->startOfDay()->addDays($age);
+                if ($date->greaterThan($today)) {
                     break; // el futuro no tiene lecturas
                 }
-                $lecturas = intdiv($total * $pesos[$edad], $suma);
-                if ($lecturas <= 0) {
+                $reads = intdiv($total * $weights[$age], $sum);
+                if ($reads <= 0) {
                     continue;
                 }
                 // Proporciones fijas y creíbles, sin azar: dos siembras dan lo mismo. 62% de
                 // los que abren se quedan a leer, y de cada cinco lecturas cuatro son de
                 // gente distinta. El reparto de procedencia es el típico de un digital: el
                 // buscador manda, las redes pican, y la casa se lee sola.
-                $aperturas = (int) round($lecturas / 0.62);
-                $reparto = ['ref_search' => 45, 'ref_social' => 25, 'ref_internal' => 20, 'ref_direct' => 7, 'ref_other' => 3];
+                $opens = (int) round($reads / 0.62);
+                $referrerShares = ['ref_search' => 45, 'ref_social' => 25, 'ref_internal' => 20, 'ref_direct' => 7, 'ref_other' => 3];
 
                 SnkKilkanaPostViewModel::updateOrCreate(
-                    ['post_id' => $post->id, 'date' => $fecha->toDateString()],
+                    ['post_id' => $post->id, 'date' => $date->toDateString()],
                     [
-                        'opens' => $aperturas,
-                        'engaged' => $lecturas,
-                        'readers' => (int) round($lecturas * 0.78),
-                        ...collect($reparto)->map(fn (int $pct) => intdiv($aperturas * $pct, 100))->all(),
+                        'opens' => $opens,
+                        'engaged' => $reads,
+                        'readers' => (int) round($reads * 0.78),
+                        ...collect($referrerShares)->map(fn (int $pct) => intdiv($opens * $pct, 100))->all(),
                     ],
                 );
             }

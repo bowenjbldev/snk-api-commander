@@ -15,7 +15,7 @@ use Illuminate\Queue\SerializesModels;
  * Todo lo que lleva viene resuelto: las piezas con su enlace ya contado, el píxel de apertura
  * y la baja firmada, cada uno para ESTE suscriptor. El correo no sabe de firmas ni de rutas.
  *
- * @param  list<array{title: string, excerpt: string, url: string}>  $pieces
+ * @param  list<array{title: string, excerpt: string, url: string}>  $posts
  */
 class SnkKilkanaNewsletterMail extends Mailable
 {
@@ -25,7 +25,7 @@ class SnkKilkanaNewsletterMail extends Mailable
         public readonly string $newspaper,
         public readonly string $issueSubject,
         public readonly ?string $preheader,
-        public readonly array $pieces,
+        public readonly array $posts,
         public readonly ?string $openUrl,
         public readonly string $unsubscribeUrl,
     ) {}

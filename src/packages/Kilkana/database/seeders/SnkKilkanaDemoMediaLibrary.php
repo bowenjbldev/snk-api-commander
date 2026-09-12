@@ -41,7 +41,7 @@ use Packages\Kilkana\Services\SnkKilkanaImageService;
 final class SnkKilkanaDemoMediaLibrary
 {
     /** Lo que el catálogo de Unsplash permite decir de estas sesenta: se pueden publicar. */
-    private const LICENCIA = 'Unsplash License';
+    private const LICENSE = 'Unsplash License';
 
     /**
      * Las fotos disponibles, en el orden que da el sistema de ficheros.
@@ -51,36 +51,36 @@ final class SnkKilkanaDemoMediaLibrary
      *
      * @var list<string>
      */
-    private array $ficheros;
+    private array $files;
 
     /** @var array<string, SnkKilkanaMediaModel> */
-    private array $porFichero = [];
+    private array $byFile = [];
 
-    public function __construct(private readonly string $directorio = __DIR__.'/data/media')
+    public function __construct(private readonly string $directory = __DIR__.'/data/media')
     {
-        $ficheros = glob($this->directorio.'/*.jpg') ?: [];
-        sort($ficheros);
-        $this->ficheros = array_values($ficheros);
+        $files = glob($this->directory.'/*.jpg') ?: [];
+        sort($files);
+        $this->files = array_values($files);
     }
 
     /** @var array<string, array{author: string, url: string}>|null fichero → autor y página de Unsplash */
-    private ?array $fuentes = null;
+    private ?array $sources = null;
 
     /** Autor y página de Unsplash de cada foto, de `sources.json`; vacío si la carpeta no lo trae. */
-    private function fuentes(): array
+    private function sources(): array
     {
-        if ($this->fuentes === null) {
-            $json = @file_get_contents($this->directorio.'/sources.json');
-            $this->fuentes = is_string($json) ? (json_decode($json, true) ?: []) : [];
+        if ($this->sources === null) {
+            $json = @file_get_contents($this->directory.'/sources.json');
+            $this->sources = is_string($json) ? (json_decode($json, true) ?: []) : [];
         }
 
-        return $this->fuentes;
+        return $this->sources;
     }
 
     /** Cuántas fotos hay de verdad en el disco. */
     public function size(): int
     {
-        return count($this->ficheros);
+        return count($this->files);
     }
 
     /**
@@ -94,11 +94,11 @@ final class SnkKilkanaDemoMediaLibrary
      */
     public function seedAll(): int
     {
-        foreach ($this->ficheros as $fichero) {
-            $this->fromFile($fichero);
+        foreach ($this->files as $file) {
+            $this->fromFile($file);
         }
 
-        return count($this->porFichero);
+        return count($this->byFile);
     }
 
     /**
@@ -119,15 +119,15 @@ final class SnkKilkanaDemoMediaLibrary
      */
     public function fileFor(string $url): ?string
     {
-        if ($this->ficheros === []) {
+        if ($this->files === []) {
             return null;
         }
 
-        return $this->asignadas[$url] ?? $this->ficheros[crc32($url) % count($this->ficheros)];
+        return $this->assigned[$url] ?? $this->files[crc32($url) % count($this->files)];
     }
 
     /** @var array<string, string> dirección del snapshot → fichero, por turno */
-    private array $asignadas = [];
+    private array $assigned = [];
 
     /**
      * Reparte las direcciones del snapshot entre los ficheros por CARGA, en orden estable.
@@ -143,17 +143,17 @@ final class SnkKilkanaDemoMediaLibrary
      */
     public function assign(array $urls): void
     {
-        if ($this->ficheros === []) {
+        if ($this->files === []) {
             return;
         }
-        $porUrl = array_count_values(array_values($urls));
-        uksort($porUrl, fn (string $a, string $b) => [$porUrl[$b], $a] <=> [$porUrl[$a], $b]);
+        $byUrl = array_count_values(array_values($urls));
+        uksort($byUrl, fn (string $a, string $b) => [$byUrl[$b], $a] <=> [$byUrl[$a], $b]);
 
-        $carga = array_fill_keys($this->ficheros, 0);
-        foreach ($porUrl as $url => $piezas) {
-            $fichero = array_search(min($carga), $carga, true);
-            $this->asignadas[$url] = $fichero;
-            $carga[$fichero] += $piezas;
+        $load = array_fill_keys($this->files, 0);
+        foreach ($byUrl as $url => $posts) {
+            $file = array_search(min($load), $load, true);
+            $this->assigned[$url] = $file;
+            $load[$file] += $posts;
         }
     }
 
@@ -165,19 +165,19 @@ final class SnkKilkanaDemoMediaLibrary
      * que las demás —al disco del inquilino, con hash y medidas—, que es lo que las hace
      * ficheros y no direcciones.
      */
-    public function forName(string $nombre): ?SnkKilkanaMediaModel
+    public function forName(string $name): ?SnkKilkanaMediaModel
     {
-        $fichero = $this->directorio.'/'.$nombre;
+        $file = $this->directory.'/'.$name;
 
-        return is_file($fichero) ? $this->fromFile($fichero) : null;
+        return is_file($file) ? $this->fromFile($file) : null;
     }
 
     /** La fila de medio que le toca a una dirección del snapshot, creándola si hace falta. */
     public function forUrl(string $url): ?SnkKilkanaMediaModel
     {
-        $fichero = $this->fileFor($url);
+        $file = $this->fileFor($url);
 
-        return $fichero === null ? null : $this->fromFile($fichero);
+        return $file === null ? null : $this->fromFile($file);
     }
 
     /**
@@ -187,47 +187,47 @@ final class SnkKilkanaDemoMediaLibrary
      * reclaman ocho piezas; `content_hash` evita duplicar la fila entre ejecuciones, que es
      * el mismo criterio con el que el servicio deduplica una subida de verdad.
      */
-    private function fromFile(string $fichero): SnkKilkanaMediaModel
+    private function fromFile(string $file): SnkKilkanaMediaModel
     {
-        if (isset($this->porFichero[$fichero])) {
-            return $this->porFichero[$fichero];
+        if (isset($this->byFile[$file])) {
+            return $this->byFile[$file];
         }
 
-        $hash = hash_file('sha256', $fichero);
-        $existente = SnkKilkanaMediaModel::withTrashed()->where('content_hash', $hash)->first();
-        if ($existente) {
-            return $this->porFichero[$fichero] = $existente;
+        $hash = hash_file('sha256', $file);
+        $existing = SnkKilkanaMediaModel::withTrashed()->where('content_hash', $hash)->first();
+        if ($existing) {
+            return $this->byFile[$file] = $existing;
         }
 
-        $nombre = basename($fichero);
-        $ruta = 'media/'.DB::connection()->getDatabaseName().'/'.$nombre;
+        $name = basename($file);
+        $path = 'media/'.DB::connection()->getDatabaseName().'/'.$name;
         // Se escribe siempre: la fila lleva el `content_hash` de ESTE fichero, y un disco con
         // la versión anterior bajo el mismo nombre dejaría la huella y la foto sin casar.
-        Storage::disk('public')->put($ruta, (string) file_get_contents($fichero));
+        Storage::disk('public')->put($path, (string) file_get_contents($file));
 
-        $url = '/storage/'.$ruta;
-        [$ancho, $alto, $mime] = $this->medidas($fichero);
+        $url = '/storage/'.$path;
+        [$width, $height, $mime] = $this->dimensions($file);
         // El mismo máster que deja una subida real: sin él la foto no tiene derivadas y la
         // mediateca la pinta con el original entero, que en la rejilla son cuarenta y ocho
         // ficheros de cien kilobytes para miniaturas de 157 px.
-        $master = app(SnkKilkanaImageService::class)->master($fichero, dirname($ruta), pathinfo($ruta, PATHINFO_FILENAME));
+        $master = app(SnkKilkanaImageService::class)->master($file, dirname($path), pathinfo($path, PATHINFO_FILENAME));
 
         $media = SnkKilkanaMediaModel::create([
             'url' => $url,
             'url_hash' => sha1($url),
             'content_hash' => $hash,
-            'original_name' => $nombre,
+            'original_name' => $name,
             // Sin título: `enrichFromPosts()` le pone el del artículo que la estrena, que es
             // lo que hace buscable la biblioteca. `unsplash-7` no lo es.
             'disk' => 'public',
-            'path' => $ruta,
+            'path' => $path,
             'mime' => $mime,
-            'size_bytes' => filesize($fichero) ?: null,
-            'width' => $ancho,
-            'height' => $alto,
+            'size_bytes' => filesize($file) ?: null,
+            'width' => $width,
+            'height' => $height,
             'rights_status' => SnkKilkanaMediaRightsEnum::Licensed,
-            'license' => self::LICENCIA,
-            'source_url' => $this->fuentes()[$nombre]['url'] ?? null,
+            'license' => self::LICENSE,
+            'source_url' => $this->sources()[$name]['url'] ?? null,
             'master_path' => $master['path'] ?? null,
             'master_width' => $master['width'] ?? null,
             'master_height' => $master['height'] ?? null,
@@ -240,7 +240,7 @@ final class SnkKilkanaDemoMediaLibrary
             SnkKilkanaMediaWarmJob::dispatch(DB::connection()->getDatabaseName(), (int) $media->getKey());
         }
 
-        return $this->porFichero[$fichero] = $media;
+        return $this->byFile[$file] = $media;
     }
 
     /**
@@ -253,12 +253,12 @@ final class SnkKilkanaDemoMediaLibrary
      *
      * @return array{0: ?int, 1: ?int, 2: ?string}
      */
-    private function medidas(string $fichero): array
+    private function dimensions(string $file): array
     {
-        $tamano = @getimagesize($fichero);
+        $size = @getimagesize($file);
 
-        return $tamano
-            ? [$tamano[0], $tamano[1], $tamano['mime'] ?? null]
+        return $size
+            ? [$size[0], $size[1], $size['mime'] ?? null]
             : [null, null, null];
     }
 }

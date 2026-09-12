@@ -32,7 +32,7 @@ class SnkKilkanaRolesController extends CoreBaseApiController
 
         // `withCount('users')` de Spatie cuelga del guard de la instancia y sin instancia cae al
         // guard por defecto; contar el pivote a mano no depende de eso.
-        $cuentas = DB::table('model_has_roles')
+        $accounts = DB::table('model_has_roles')
             ->where('model_type', (new CoreUserModel)->getMorphClass())
             ->selectRaw('role_id, count(distinct model_id) as total')
             ->groupBy('role_id')
@@ -45,7 +45,7 @@ class SnkKilkanaRolesController extends CoreBaseApiController
             ->get()
             // El recuento se cuelga de la fila para que el Resource lo lea como cualquier otro
             // atributo: viene de una sola consulta agrupada, no de una por papel.
-            ->each(fn (Role $rol) => $rol->setAttribute('users_count', (int) $cuentas->get($rol->id, 0)));
+            ->each(fn (Role $role) => $role->setAttribute('users_count', (int) $accounts->get($role->id, 0)));
 
         return response()->json(SnkKilkanaRoleResource::collection($roles));
     }

@@ -199,9 +199,9 @@ De ahí salen tres reglas:
    nada.
 2. **Un agregado por transacción.** Cuando una operación toca dos, no se envuelven juntos: se
    guarda el principal y el otro queda como mejor-esfuerzo **con una señal visible**. Es lo que
-   pasa al dar de alta una cuenta con permiso de escritura: la cuenta se guarda aunque su firma
-   no se pueda crear, y la respuesta lo dice (`byline_pending`). Guardar un usuario no puede
-   fallar por su URL pública.
+   pasa al dar de alta una cuenta con permiso de escritura: la cuenta se guarda primero y la
+   firma se crea después, fuera de esa transacción. Guardar un usuario no puede fallar por su
+   firma.
 3. **Dentro no entra nada que no sea base de datos.** Ni ficheros, ni peticiones a otros
    servicios, ni correo. No se deshacen con un `ROLLBACK`, y mientras la transacción está
    abierta los bloqueos de fila siguen puestos: meter dentro la subida de un fichero es tener

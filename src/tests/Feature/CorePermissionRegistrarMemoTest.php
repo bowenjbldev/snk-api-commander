@@ -32,7 +32,7 @@ class CorePermissionRegistrarMemoTest extends TestCase
         $this->registrar->forgetCachedPermissions();
     }
 
-    public function test_sirve_copias_mientras_la_cache_no_cambia_y_se_descarta_cuando_cambia(): void
+    public function test_serves_copies_while_the_cache_is_unchanged_and_drops_them_when_it_changes(): void
     {
         // Inserción cruda: el modelo de Spatie vaciaría la caché al guardar, y lo que se prueba
         // es qué pasa cuando NO se vacía.

@@ -24,7 +24,7 @@ class SnkKilkanaNewsletterIssueModel extends Model
     public const SENT = 'sent';
 
     /** Cuántas piezas lleva un número: las últimas publicadas al enviarlo. */
-    public const PIECES = 4;
+    public const POSTS_PER_ISSUE = 4;
 
     public function events(): HasMany
     {

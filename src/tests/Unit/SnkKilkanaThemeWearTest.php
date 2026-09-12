@@ -19,9 +19,9 @@ use Tests\TestCase;
  */
 class SnkKilkanaThemeWearTest extends TestCase
 {
-    private function validate(array $datos): \Illuminate\Validation\Validator
+    private function validate(array $data): \Illuminate\Validation\Validator
     {
-        return Validator::make($datos, SnkKilkanaSettingModel::shapeRules());
+        return Validator::make($data, SnkKilkanaSettingModel::shapeRules());
     }
 
     public function test_it_accepts_a_tweak_within_range(): void
@@ -74,11 +74,11 @@ class SnkKilkanaThemeWearTest extends TestCase
             'theme_overrides.density.padX' => ['density' => ['padX' => 99]],
             'theme_overrides.density.rowGap' => ['density' => ['rowGap' => 400]],
             'theme_overrides.tokens.pageRadius' => ['tokens' => ['pageRadius' => '40px']],
-        ] as $campo => $datos) {
-            $validator = $this->validate(['theme_overrides' => $datos]);
+        ] as $field => $data) {
+            $validator = $this->validate(['theme_overrides' => $data]);
 
-            $this->assertTrue($validator->fails(), "{$campo} deberia haber fallado");
-            $this->assertArrayHasKey($campo, $validator->errors()->toArray());
+            $this->assertTrue($validator->fails(), "{$field} deberia haber fallado");
+            $this->assertArrayHasKey($field, $validator->errors()->toArray());
         }
     }
 
@@ -108,14 +108,14 @@ class SnkKilkanaThemeWearTest extends TestCase
     }
 
     /** Sin retoques, el retoque sale como objeto y no como lista. */
-    public function test_a_pristine_dressing_serialises_an_empty_object(): void
+    public function test_a_theme_without_overrides_serialises_them_as_an_empty_object(): void
     {
-        $ajustes = new SnkKilkanaSettingModel([
+        $settings = new SnkKilkanaSettingModel([
             'theme_spec' => ['masthead' => 'daily', 'tokens' => ['brand' => '#121212']],
             'theme_version' => '2.0.0',
         ]);
 
-        $payload = $ajustes->themePayload();
+        $payload = $settings->themePayload();
 
         $this->assertSame('{}', json_encode($payload['overrides']));
         // El spec resuelto sin retoques es el spec tal cual.
@@ -131,7 +131,7 @@ class SnkKilkanaThemeWearTest extends TestCase
      */
     public function test_the_resolved_spec_layers_the_newsroom_tweak_on_top(): void
     {
-        $ajustes = new SnkKilkanaSettingModel([
+        $settings = new SnkKilkanaSettingModel([
             'theme_spec' => [
                 'tokens' => ['brand' => '#121212', 'accent' => '#d32f2f'],
                 'density' => ['rowGap' => 44, 'blockGap' => 18],
@@ -150,16 +150,16 @@ class SnkKilkanaThemeWearTest extends TestCase
             ],
         ]);
 
-        $resuelto = $ajustes->resolvedSpec();
+        $resolved = $settings->resolvedSpec();
 
-        $this->assertSame('#0000ff', $resuelto['tokens']['brand']);
-        $this->assertSame('#d32f2f', $resuelto['tokens']['accent'], 'lo que no se toca se hereda del spec');
-        $this->assertSame(60, $resuelto['density']['rowGap']);
-        $this->assertSame(18, $resuelto['density']['blockGap'], 'lo que no se toca se hereda del spec');
-        $this->assertSame(64, $resuelto['type']['steps']['hero']['size']);
-        $this->assertSame(700, $resuelto['type']['steps']['hero']['weight'], 'el peldano se mezcla, no se sustituye');
-        $this->assertSame(20, $resuelto['type']['steps']['card']['size'], 'los otros peldanos no se tocan');
-        $this->assertSame('Georgia, serif', $resuelto['type']['display']);
+        $this->assertSame('#0000ff', $resolved['tokens']['brand']);
+        $this->assertSame('#d32f2f', $resolved['tokens']['accent'], 'lo que no se toca se hereda del spec');
+        $this->assertSame(60, $resolved['density']['rowGap']);
+        $this->assertSame(18, $resolved['density']['blockGap'], 'lo que no se toca se hereda del spec');
+        $this->assertSame(64, $resolved['type']['steps']['hero']['size']);
+        $this->assertSame(700, $resolved['type']['steps']['hero']['weight'], 'el peldano se mezcla, no se sustituye');
+        $this->assertSame(20, $resolved['type']['steps']['card']['size'], 'los otros peldanos no se tocan');
+        $this->assertSame('Georgia, serif', $resolved['type']['display']);
     }
 
     /**
@@ -170,10 +170,10 @@ class SnkKilkanaThemeWearTest extends TestCase
      */
     public function test_settings_payload_nests_the_tenant_and_resolves_the_theme(): void
     {
-        $tema = new SnkKilkanaThemeModel(['slug' => 'folio', 'name' => 'Folio', 'version' => '2.0.0']);
-        $tema->id = 3;
+        $theme = new SnkKilkanaThemeModel(['slug' => 'folio', 'name' => 'Folio', 'version' => '2.0.0']);
+        $theme->id = 3;
 
-        $ajustes = new SnkKilkanaSettingModel([
+        $settings = new SnkKilkanaSettingModel([
             'theme_id' => 3,
             'theme_spec' => ['masthead' => 'daily', 'tokens' => ['brand' => '#121212']],
             'theme_version' => '2.0.0',
@@ -181,9 +181,9 @@ class SnkKilkanaThemeWearTest extends TestCase
             'tenant_city' => 'Springfield',
             'launched_at' => '2026-09-07T10:00:00+00:00',
         ]);
-        $ajustes->setRelation('theme', $tema);
+        $settings->setRelation('theme', $theme);
 
-        $payload = app(SnkKilkanaSettingService::class)->payload($ajustes);
+        $payload = app(SnkKilkanaSettingService::class)->payload($settings);
 
         $this->assertSame(3, $payload['theme_id']);
         // El tema viaja con su spec resuelto: quien pinta no necesita otra llamada.
@@ -202,19 +202,19 @@ class SnkKilkanaThemeWearTest extends TestCase
      */
     public function test_it_flags_an_update_only_when_the_catalogue_moved_on(): void
     {
-        $tema = new SnkKilkanaThemeModel(['slug' => 'folio', 'version' => '2.1.0']);
+        $theme = new SnkKilkanaThemeModel(['slug' => 'folio', 'version' => '2.1.0']);
 
-        $ajustes = new SnkKilkanaSettingModel(['theme_version' => '2.0.0']);
-        $ajustes->setRelation('theme', $tema);
-        $this->assertTrue(app(SnkKilkanaThemeWearService::class)->updateAvailable($ajustes));
+        $settings = new SnkKilkanaSettingModel(['theme_version' => '2.0.0']);
+        $settings->setRelation('theme', $theme);
+        $this->assertTrue(app(SnkKilkanaThemeWearService::class)->updateAvailable($settings));
 
-        $alDia = new SnkKilkanaSettingModel(['theme_version' => '2.1.0']);
-        $alDia->setRelation('theme', $tema);
-        $this->assertFalse(app(SnkKilkanaThemeWearService::class)->updateAvailable($alDia));
+        $upToDate = new SnkKilkanaSettingModel(['theme_version' => '2.1.0']);
+        $upToDate->setRelation('theme', $theme);
+        $this->assertFalse(app(SnkKilkanaThemeWearService::class)->updateAvailable($upToDate));
 
         // Sin tema del catalogo detras —retirado, o base recien sembrada— no hay con que comparar.
-        $huerfano = new SnkKilkanaSettingModel(['theme_version' => '2.0.0']);
-        $huerfano->setRelation('theme', null);
-        $this->assertFalse(app(SnkKilkanaThemeWearService::class)->updateAvailable($huerfano));
+        $orphan = new SnkKilkanaSettingModel(['theme_version' => '2.0.0']);
+        $orphan->setRelation('theme', null);
+        $this->assertFalse(app(SnkKilkanaThemeWearService::class)->updateAvailable($orphan));
     }
 }

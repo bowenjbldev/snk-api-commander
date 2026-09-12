@@ -25,19 +25,19 @@ class SnkKilkanaThemeWearService
      * sobre otro y nadie sabría de dónde salió. Volver a vestir el mismo tema es la vía para
      * recuperar el spec de fábrica, y por eso no es idempotente en los retoques.
      */
-    public function wear(SnkKilkanaThemeModel $tema): SnkKilkanaSettingModel
+    public function wear(SnkKilkanaThemeModel $theme): SnkKilkanaSettingModel
     {
-        return DB::transaction(function () use ($tema) {
-            $ajustes = SnkKilkanaSettingModel::query()->firstOrCreate(['id' => 1]);
+        return DB::transaction(function () use ($theme) {
+            $settings = SnkKilkanaSettingModel::query()->firstOrCreate(['id' => 1]);
 
-            $ajustes->forceFill([
-                'theme_id' => $tema->id,
-                'theme_spec' => $tema->spec,
-                'theme_version' => $tema->version,
+            $settings->forceFill([
+                'theme_id' => $theme->id,
+                'theme_spec' => $theme->spec,
+                'theme_version' => $theme->version,
                 'theme_overrides' => null,
             ])->save();
 
-            return $ajustes;
+            return $settings;
         });
     }
 
@@ -47,12 +47,12 @@ class SnkKilkanaThemeWearService
      * Compara versiones y no los dos JSON: la versión es lo que sube el fichero maestro al
      * publicar, así que es la única señal que no depende de cómo se serialice un spec.
      */
-    public function updateAvailable(SnkKilkanaSettingModel $ajustes): bool
+    public function updateAvailable(SnkKilkanaSettingModel $settings): bool
     {
-        $publicada = $ajustes->theme?->version;
+        $published = $settings->theme?->version;
 
-        return $publicada !== null
-            && $ajustes->theme_version !== null
-            && $publicada !== $ajustes->theme_version;
+        return $published !== null
+            && $settings->theme_version !== null
+            && $published !== $settings->theme_version;
     }
 }

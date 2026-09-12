@@ -59,7 +59,7 @@ Route::middleware(['api'])->group(function () {
     Route::get('public/sitemap', [SnkKilkanaPublicController::class, 'sitemap']);
     Route::get('public/tags/{slug}', [SnkKilkanaPublicController::class, 'tag']);
     Route::get('public/categories', [SnkKilkanaPublicController::class, 'categories']);
-    // Una sección por slug: lo necesita quien resuelve `/{seccion}`, y es por donde entra la
+    // Una sección por slug: lo necesita quien resuelve `/{section}`, y es por donde entra la
     // redirección cuando esa URL es una que la sección dejó atrás.
     Route::get('public/categories/{slug}', [SnkKilkanaPublicController::class, 'category']);
     // Perfil de una firma: lo necesita /author/{slug}, que existe aunque no tenga publicados.

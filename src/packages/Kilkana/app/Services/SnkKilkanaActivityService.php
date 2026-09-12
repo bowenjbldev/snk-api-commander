@@ -31,7 +31,7 @@ use Packages\Kilkana\Models\SnkKilkanaThemeModel;
 class SnkKilkanaActivityService
 {
     /** Mientras es verdad, los modelos no cuentan nada: lo cuenta quien los mueve, o nadie. */
-    private bool $callado = false;
+    private bool $muted = false;
 
     /** Techo del adelanto: `count` lo pide quien llama y no puede pedir el registro entero. */
     public const COUNT_MAX = 500;
@@ -54,21 +54,21 @@ class SnkKilkanaActivityService
      * El adelanto de la campana: solo filas y hasta cuándo miró esta cuenta.
      *
      * La gente y las cifras de la pantalla del registro son cinco consultas más que el armazón
-     * pagaría en cada carga para no pintarlas. `$desde` es lo ya filtrado cuando quien llama
+     * pagaría en cada carga para no pintarlas. `$source` es lo ya filtrado cuando quien llama
      * tiene pestaña o persona; sin él, todo lo visible.
      *
      * @return array{data: Collection<int, array<string, mixed>>, seen_at: ?string}
      */
-    public function bell(int $count, ?Builder $desde = null): array
+    public function bell(int $count, ?Builder $source = null): array
     {
         // Del array crudo y no por su nombre: una cuenta recién creada no lleva sus columnas
         // anulables, y `actingAs()` conserva ese modelo en memoria en vez de releerlo.
-        $visto = auth()->user()?->getAttributes()['activity_seen_at'] ?? null;
+        $seenAt = auth()->user()?->getAttributes()['activity_seen_at'] ?? null;
 
         return [
-            'data' => ($desde ?? $this->visible())->limit(min($count, self::COUNT_MAX))->get()->pipe(SnkKilkanaActivityResource::collection(...)),
+            'data' => ($source ?? $this->visible())->limit(min($count, self::COUNT_MAX))->get()->pipe(SnkKilkanaActivityResource::collection(...)),
             // Hasta cuándo miró esta cuenta: lo posterior es lo que la campana marca.
-            'seen_at' => $visto ? Carbon::parse($visto)->toIso8601String() : null,
+            'seen_at' => $seenAt ? Carbon::parse($seenAt)->toIso8601String() : null,
         ];
     }
 
@@ -76,14 +76,14 @@ class SnkKilkanaActivityService
      * Corre algo sin que los modelos lo cuenten. Para lo que ya se apunta con su propio verbo
      * —fundir dos etiquetas borra una, restaurar una versión guarda la pieza— y para sembrar.
      */
-    public function quiet(callable $trabajo): mixed
+    public function quiet(callable $work): mixed
     {
-        $antes = $this->callado;
-        $this->callado = true;
+        $wasMuted = $this->muted;
+        $this->muted = true;
         try {
-            return $trabajo();
+            return $work();
         } finally {
-            $this->callado = $antes;
+            $this->muted = $wasMuted;
         }
     }
 
@@ -98,7 +98,7 @@ class SnkKilkanaActivityService
      */
     public function log(string $kind, string $verb, string $what, string $href, array $extra = []): void
     {
-        if ($this->callado && ! ($extra['force'] ?? false)) {
+        if ($this->muted && ! ($extra['force'] ?? false)) {
             return;
         }
         try {
@@ -108,13 +108,13 @@ class SnkKilkanaActivityService
             // no selecciona lo que no pinta—. Pedirlas por su nombre lanzaba, el `catch` de
             // abajo se lo tragaba con un `report()`, y la línea del registro **desaparecía sin
             // que nada fallara**: justo lo que la auditoría no puede hacer.
-            $suyo = $actor?->getAttributes() ?? [];
+            $actorAttributes = $actor?->getAttributes() ?? [];
 
             SnkKilkanaActivityModel::create([
                 'user_id' => $actor?->getKey(),
                 'actor_name' => $actor === null
                     ? SnkKilkanaActivityModel::SYSTEM
-                    : (($suyo['full_name'] ?? null) ?: ($suyo['name'] ?? SnkKilkanaActivityModel::SYSTEM)),
+                    : (trim(($actorAttributes['name'] ?? '').' '.($actorAttributes['lastname'] ?? '')) ?: SnkKilkanaActivityModel::SYSTEM),
                 'actor_role' => $actor?->roles->first()?->name,
                 'kind' => $kind,
                 'verb' => $verb,
@@ -125,8 +125,8 @@ class SnkKilkanaActivityService
                 'href' => $href,
                 'created_at' => now(),
             ]);
-        } catch (\Throwable $fallo) {
-            report($fallo);
+        } catch (\Throwable $error) {
+            report($error);
         }
     }
 
@@ -193,11 +193,11 @@ class SnkKilkanaActivityService
     public static function fromLegacy(string $verb, string $what, ?string $after = null): ?array
     {
         $params = null;
-        if (preg_match('/^(approved|rejected|marked as spam|reopened|deleted) (\d+) comments? on$/', $verb, $lote)) {
-            $verb = self::LEGACY_BULK[$lote[1]];
-            $params = ['count' => (int) $lote[2]];
-            if (preg_match('/^(\d+) posts$/', $what, $varias)) {
-                $params['posts'] = (int) $varias[1];
+        if (preg_match('/^(approved|rejected|marked as spam|reopened|deleted) (\d+) comments? on$/', $verb, $batch)) {
+            $verb = self::LEGACY_BULK[$batch[1]];
+            $params = ['count' => (int) $batch[2]];
+            if (preg_match('/^(\d+) posts$/', $what, $matches)) {
+                $params['posts'] = (int) $matches[1];
                 $what = '';
             }
         } elseif (isset(self::LEGACY[$verb])) {
@@ -258,10 +258,10 @@ class SnkKilkanaActivityService
 
         SnkKilkanaSettingModel::updated(function (SnkKilkanaSettingModel $s) {
             if ($s->wasChanged('theme_id')) {
-                $nombres = SnkKilkanaThemeModel::query()->whereKey([$s->getOriginal('theme_id'), $s->theme_id])->pluck('name', 'id');
-                $antes = $nombres->get($s->getOriginal('theme_id'));
-                $despues = (string) $nombres->get($s->theme_id, '');
-                $this->log('theme', 'theme_applied', $despues, '/themes', ['before' => $antes, 'after' => $despues]);
+                $names = SnkKilkanaThemeModel::query()->whereKey([$s->getOriginal('theme_id'), $s->theme_id])->pluck('name', 'id');
+                $previousName = $names->get($s->getOriginal('theme_id'));
+                $currentName = (string) $names->get($s->theme_id, '');
+                $this->log('theme', 'theme_applied', $currentName, '/themes', ['before' => $previousName, 'after' => $currentName]);
 
                 return;
             }
@@ -275,9 +275,9 @@ class SnkKilkanaActivityService
     }
 
     /** Una pieza cuenta su estado: es lo único que un registro necesita de ella. */
-    private function post(SnkKilkanaPostModel $post, bool $nueva): void
+    private function post(SnkKilkanaPostModel $post, bool $isNew): void
     {
-        if ($nueva) {
+        if ($isNew) {
             $this->log($post->status === SnkKilkanaPostStatusEnum::Review ? 'review' : 'edit', $post->status === SnkKilkanaPostStatusEnum::Review ? 'sent_to_review' : 'draft_created', $post->title, '/posts');
 
             return;

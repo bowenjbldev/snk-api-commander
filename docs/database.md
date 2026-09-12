@@ -149,7 +149,7 @@ usa código compartido.
 ### Operador y preferencias
 
 - Las tablas Core `users`, roles, permisos y tokens de la base `commander` pertenecen al operador.
-- Commander añade `full_name`, `company` y `phone` al usuario operador.
+- Commander añade `lastname`, `company` y `phone` al usuario operador.
 - `commander_settings` es un singleton JSON validado por su controller.
 
 Estas identidades no se copian a las bases tenant.

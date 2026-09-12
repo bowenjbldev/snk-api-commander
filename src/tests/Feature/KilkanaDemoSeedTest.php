@@ -29,86 +29,86 @@ class KilkanaDemoSeedTest extends TestCase
         parent::setUp();
 
         DB::setDefaultConnection('tenant');
-        foreach (['Core', 'Kilkana'] as $paquete) {
+        foreach (['Core', 'Kilkana'] as $package) {
             $this->artisan('migrate', [
                 '--database' => 'tenant',
-                '--path' => "packages/{$paquete}/database/migrations",
+                '--path' => "packages/{$package}/database/migrations",
             ])->run();
         }
     }
 
-    public function test_volver_a_sembrar_no_revierte_lo_que_se_edito_encima(): void
+    public function test_reseeding_does_not_revert_later_edits(): void
     {
-        $pieza = $this->sembrar();
+        $post = $this->seedDemo();
 
         // Lo que hace `seedEditHistory`: editar de verdad, con el servicio.
-        app(SnkKilkanaPostService::class)->update($pieza, [
-            'title' => $pieza->title.' (actualizado)',
-            'slug' => $pieza->slug.'-actualizado',
-        ], (int) $pieza->created_by, false);
+        app(SnkKilkanaPostService::class)->update($post, [
+            'title' => $post->title.' (actualizado)',
+            'slug' => $post->slug.'-actualizado',
+        ], (int) $post->created_by, false);
 
         // Y la siembra siguiente, que encuentra la pieza por la ruta que dejo atras.
-        $otra = $this->sembrar();
+        $other = $this->seedDemo();
 
-        $this->assertSame($pieza->id, $otra->id, 'La encuentra por su ruta retirada.');
-        $this->assertSame('Pleno de julio (actualizado)', $otra->title, 'Y no le devuelve el titulo del snapshot.');
-        $this->assertSame('pleno-de-julio-actualizado', $otra->slug);
+        $this->assertSame($post->id, $other->id, 'La encuentra por su ruta retirada.');
+        $this->assertSame('Pleno de julio (actualizado)', $other->title, 'Y no le devuelve el titulo del snapshot.');
+        $this->assertSame('pleno-de-julio-actualizado', $other->slug);
     }
 
     /** Lo estructural sí se sincroniza: es lo que ata la pieza al resto del juego de datos. */
-    public function test_volver_a_sembrar_repara_la_seccion_y_el_estado(): void
+    public function test_reseeding_repairs_the_section_and_the_status(): void
     {
-        $pieza = $this->sembrar();
-        $otra = SnkKilkanaCategoryModel::create([
+        $post = $this->seedDemo();
+        $other = SnkKilkanaCategoryModel::create([
             'name' => 'Sucesos', 'slug' => 'sucesos', 'status' => 'live', 'position' => 1,
         ]);
 
-        $pieza->forceFill(['category_id' => $otra->id, 'featured' => true])->save();
+        $post->forceFill(['category_id' => $other->id, 'featured' => true])->save();
 
-        $resembrada = $this->sembrar();
+        $reseeded = $this->seedDemo();
 
-        $this->assertSame('local', $resembrada->category->slug, 'La sección vuelve a la del catálogo.');
-        $this->assertFalse((bool) $resembrada->featured);
+        $this->assertSame('local', $reseeded->category->slug, 'La sección vuelve a la del catálogo.');
+        $this->assertFalse((bool) $reseeded->featured);
     }
 
     /**
      * La misma siembra que hace el seeder para una pieza, reducida a lo que la regla decide:
      * lo editorial solo al crear, lo estructural siempre.
      */
-    private function sembrar(): SnkKilkanaPostModel
+    private function seedDemo(): SnkKilkanaPostModel
     {
-        $seccion = SnkKilkanaCategoryModel::firstOrCreate(
+        $section = SnkKilkanaCategoryModel::firstOrCreate(
             ['slug' => 'local'],
             ['name' => 'Local', 'status' => 'live', 'position' => 0]
         );
-        $cuenta = CoreUserModel::firstOrCreate(
+        $account = CoreUserModel::firstOrCreate(
             ['email' => 'ramon@eldiario.example'],
             ['name' => 'Ramón Clavel', 'password' => 'secret1234']
         );
-        $firma = SnkKilkanaAuthorModel::firstOrCreate(['user_id' => $cuenta->id]);
+        $byline = SnkKilkanaAuthorModel::firstOrCreate(['user_id' => $account->id]);
 
         $editorial = ['title' => 'Pleno de julio', 'excerpt' => 'Entradilla del snapshot.'];
-        $estructura = [
-            'category_id' => $seccion->id,
-            'author_id' => $firma->id,
-            'created_by' => $cuenta->id,
+        $structure = [
+            'category_id' => $section->id,
+            'author_id' => $byline->id,
+            'created_by' => $account->id,
             'status' => 'published',
             'publish_at' => '2026-07-01 08:00:00',
             'featured' => false,
         ];
 
-        $retirada = DB::table('kilkana_post_slugs')->where('path', '2026/07/01/pleno-de-julio')->first();
-        $anterior = $retirada === null
+        $retired = DB::table('kilkana_post_slugs')->where('path', '2026/07/01/pleno-de-julio')->first();
+        $previous = $retired === null
             ? null
-            : SnkKilkanaPostModel::query()->whereKey($retirada->post_id)->first();
+            : SnkKilkanaPostModel::query()->whereKey($retired->post_id)->first();
 
-        $fila = SnkKilkanaPostModel::firstOrCreate([
-            'url_date' => $anterior?->getRawOriginal('url_date') ?? '2026-07-01',
-            'slug' => $anterior?->slug ?? 'pleno-de-julio',
-        ], $editorial + $estructura);
+        $row = SnkKilkanaPostModel::firstOrCreate([
+            'url_date' => $previous?->getRawOriginal('url_date') ?? '2026-07-01',
+            'slug' => $previous?->slug ?? 'pleno-de-julio',
+        ], $editorial + $structure);
 
-        $fila->fill($estructura)->save();
+        $row->fill($structure)->save();
 
-        return $fila->fresh();
+        return $row->fresh();
     }
 }

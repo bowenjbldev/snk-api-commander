@@ -16,8 +16,8 @@ class CoreInstanceStateService
 
     public function current(?int $instanceId = null): CoreInstanceStateData
     {
-        // HTTP already resolved this row from Commander. Explicit IDs (CLI, quotas and set)
-        // keep their lookup semantics, even when another instance is active.
+        // En HTTP el resolutor ya trajo esta fila de Commander. Un ID explícito (CLI, cuotas y
+        // set) conserva su propia búsqueda, aunque haya otra instancia activa.
         $resolved = $instanceId === null ? $this->active->current() : null;
         $instanceId ??= $this->active->id();
         $raw = $resolved !== null ? $this->stateAttributes($resolved) : Cache::remember(

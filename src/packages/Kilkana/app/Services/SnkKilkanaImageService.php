@@ -212,10 +212,10 @@ class SnkKilkanaImageService
         }
         [$width, $height] = $size;
         $megapixels = ($width * $height) / 1_000_000;
-        $tope = (int) config('kilkana.kilkana.media.max_megapixels', 20);
-        if ($megapixels > $tope) {
+        $cap = (int) config('kilkana.kilkana.media.max_megapixels', 20);
+        if ($megapixels > $cap) {
             throw ValidationException::withMessages([
-                'file' => sprintf('That image is %.0f megapixels; the limit is %d. Export a smaller copy and upload that.', $megapixels, $tope),
+                'file' => sprintf('That image is %.0f megapixels; the limit is %d. Export a smaller copy and upload that.', $megapixels, $cap),
             ]);
         }
 
@@ -236,8 +236,8 @@ class SnkKilkanaImageService
         }
         // `read()` ya aplica la orientación EXIF; reescalar y reencodificar deja fuera el resto
         // de metadatos —la geolocalización de una foto de móvil, entre ellos—.
-        $lado = (int) config('kilkana.kilkana.media.master', 2560);
-        $image->scaleDown($lado, $lado);
+        $longSide = (int) config('kilkana.kilkana.media.master', 2560);
+        $image->scaleDown($longSide, $longSide);
         $path = "{$dir}/m/{$stem}.jpg";
         self::putAtomic($path, (string) $image->toJpeg((int) config('kilkana.kilkana.media.quality.master', 90)));
 
@@ -293,7 +293,7 @@ class SnkKilkanaImageService
      *
      * @return array{x:int,y:int,w:int,h:int}
      */
-    public static function window(int $width, int $height, array $focal, array $crop, ?array $ratio, ?array $own = null): array
+    public static function window(int $width, int $height, array $focal, array $crop, ?array $ratio, ?array $customFrame = null): array
     {
         $cx = (int) round($crop['x'] * $width);
         $cy = (int) round($crop['y'] * $height);
@@ -303,16 +303,16 @@ class SnkKilkanaImageService
         $ch = min($ch, $height - $cy);
         // El recorte acota también al encuadre propio: una proporción puede mirar a otro sitio
         // que las demás, pero no a un trozo de foto que el recorte ya descartó.
-        if ($ratio !== null && $own !== null) {
+        if ($ratio !== null && $customFrame !== null) {
             $target = $ratio[0] / $ratio[1];
-            $w = max(1, min($cw, (int) round(((float) $own['w']) * $width)));
+            $w = max(1, min($cw, (int) round(((float) $customFrame['w']) * $width)));
             $h = max(1, (int) round($w / $target));
             if ($h > $ch) {
                 $h = $ch;
                 $w = max(1, (int) round($h * $target));
             }
-            $x = max($cx, min((int) round(((float) $own['x']) * $width), $cx + $cw - $w));
-            $y = max($cy, min((int) round(((float) $own['y']) * $height), $cy + $ch - $h));
+            $x = max($cx, min((int) round(((float) $customFrame['x']) * $width), $cx + $cw - $w));
+            $y = max($cy, min((int) round(((float) $customFrame['y']) * $height), $cy + $ch - $h));
 
             return ['x' => $x, 'y' => $y, 'w' => $w, 'h' => $h];
         }
@@ -456,35 +456,35 @@ class SnkKilkanaImageService
     {
         $disk = Storage::disk('public');
         $base = 'media/'.DB::connection()->getDatabaseName();
-        $barridas = 0;
-        foreach ($disk->directories($base.'/v') as $carpeta) {
-            $id = (int) basename($carpeta);
-            $vigente = SnkKilkanaMediaModel::withTrashed()->whereKey($id)->value('variants_key');
-            foreach ($disk->directories($carpeta) as $huella) {
-                if ($vigente === null || basename($huella) !== $vigente) {
-                    $disk->deleteDirectory($huella);
-                    $barridas++;
+        $swept = 0;
+        foreach ($disk->directories($base.'/v') as $folder) {
+            $id = (int) basename($folder);
+            $current = SnkKilkanaMediaModel::withTrashed()->whereKey($id)->value('variants_key');
+            foreach ($disk->directories($folder) as $fingerprint) {
+                if ($current === null || basename($fingerprint) !== $current) {
+                    $disk->deleteDirectory($fingerprint);
+                    $swept++;
                 }
             }
         }
-        foreach ($disk->directories($base.'/f') as $carpeta) {
-            $id = (int) basename($carpeta);
+        foreach ($disk->directories($base.'/f') as $folder) {
+            $id = (int) basename($folder);
             $video = SnkKilkanaMediaModel::withTrashed()->whereKey($id)->first(['id', 'poster_at']);
             if ($video === null) {
-                $disk->deleteDirectory($carpeta);
-                $barridas++;
+                $disk->deleteDirectory($folder);
+                $swept++;
 
                 continue;
             }
-            foreach ($disk->files($carpeta) as $fotograma) {
+            foreach ($disk->files($folder) as $frameFile) {
                 // Sin segundo elegido —la portada es una foto— no hay fotograma vigente que guardar.
-                if ($video->poster_at === null || (int) pathinfo($fotograma, PATHINFO_FILENAME) !== (int) $video->poster_at) {
-                    $disk->delete($fotograma);
-                    $barridas++;
+                if ($video->poster_at === null || (int) pathinfo($frameFile, PATHINFO_FILENAME) !== (int) $video->poster_at) {
+                    $disk->delete($frameFile);
+                    $swept++;
                 }
             }
         }
 
-        return $barridas;
+        return $swept;
     }
 }

@@ -18,8 +18,8 @@ class CommanderServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // Origen del historial git: CommanderLocalGitSource (lee el .git montado :ro). Swappable por
-        // CommanderRemoteGitSource (API del proveedor git) cuando el host no tenga .git.
+        // Origen del historial git: CommanderLocalGitSource, que lee el .git montado en solo lectura.
+        // Quien consume la interfaz no conoce la implementación, así que se cambia solo aquí.
         $this->app->bind(CommanderPackageGitSource::class, fn () => new CommanderLocalGitSource(
             (string) config('commander.git.git_dir', '/var/www/.git'),
             (string) config('commander.git.work_tree', '/var/www'),
@@ -40,7 +40,7 @@ class CommanderServiceProvider extends ServiceProvider
                 CommanderSecureTenantsCommand::class,
             ]);
 
-            // KPIs del dashboard + snapshots de uso frescos (cron corre schedule:run).
+            // KPIs del dashboard, rollups de uso, medición de cuotas e historial git (cron corre schedule:run).
             $this->app->booted(function (): void {
                 $schedule = $this->app->make(Schedule::class);
                 $schedule->command('commander:refresh')->everyTenMinutes()->withoutOverlapping();

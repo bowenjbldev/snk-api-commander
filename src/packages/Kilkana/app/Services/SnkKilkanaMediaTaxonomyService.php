@@ -34,7 +34,7 @@ class SnkKilkanaMediaTaxonomyService
      */
     public function all(string $taxonomy)
     {
-        return $this->conCuentas($taxonomy)->orderBy('name')->get();
+        return $this->withCounts($taxonomy)->orderBy('name')->get();
     }
 
     /**
@@ -47,7 +47,7 @@ class SnkKilkanaMediaTaxonomyService
      *
      * @return Builder<Model>
      */
-    private function conCuentas(string $taxonomy)
+    private function withCounts(string $taxonomy)
     {
         $model = $this->modelFor($taxonomy);
 
@@ -60,7 +60,7 @@ class SnkKilkanaMediaTaxonomyService
 
     public function find(string $taxonomy, $id): ?Model
     {
-        return $this->conCuentas($taxonomy)->find($id);
+        return $this->withCounts($taxonomy)->find($id);
     }
 
     public function table(string $taxonomy): string
@@ -94,24 +94,24 @@ class SnkKilkanaMediaTaxonomyService
      *
      * @return int cuantas fotos han cambiado de sitio
      */
-    public function merge(Model $desde, Model $hasta): int
+    public function merge(Model $source, Model $target): int
     {
-        $fotos = $desde->media()->pluck('kilkana_media.id')->all();
+        $mediaIds = $source->media()->pluck('kilkana_media.id')->all();
 
-        DB::transaction(function () use ($desde, $hasta, $fotos) {
-            $hasta->media()->syncWithoutDetaching($fotos);
-            $desde->delete();
+        DB::transaction(function () use ($source, $target, $mediaIds) {
+            $target->media()->syncWithoutDetaching($mediaIds);
+            $source->delete();
         });
 
-        return count($fotos);
+        return count($mediaIds);
     }
 
     /** Devuelve cuantas asociaciones se ha llevado por delante, para poder decirlo. */
     public function remove(Model $row): int
     {
-        $asociaciones = $row->media()->count();
+        $attached = $row->media()->count();
         $row->delete();
 
-        return $asociaciones;
+        return $attached;
     }
 }

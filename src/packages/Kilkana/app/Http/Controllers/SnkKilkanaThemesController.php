@@ -47,24 +47,24 @@ class SnkKilkanaThemesController extends CoreBaseApiController
             return $response;
         }
 
-        $filtros = $request->validate([
+        $filters = $request->validate([
             'category' => 'nullable|string|max:64',
             'q' => 'nullable|string|max:120',
             'sort' => 'nullable|string|in:'.implode(',', SnkKilkanaThemeModel::SORTS),
         ]);
 
-        $catalogo = SnkKilkanaThemeModel::query()
+        $catalog = SnkKilkanaThemeModel::query()
             ->published()
             ->with('categories')
             ->when(
-                $filtros['category'] ?? null,
+                $filters['category'] ?? null,
                 fn ($q, $slug) => $q->whereHas('categories', fn ($c) => $c->where('slug', $slug))
             )
-            ->when($filtros['q'] ?? null, fn ($q, $termino) => $q->search($termino))
-            ->sorted($filtros['sort'] ?? null)
+            ->when($filters['q'] ?? null, fn ($q, $term) => $q->search($term))
+            ->sorted($filters['sort'] ?? null)
             ->get();
 
-        return response()->json(['themes' => SnkKilkanaThemeResource::collection($catalogo)]);
+        return response()->json(['themes' => SnkKilkanaThemeResource::collection($catalog)]);
     }
 
     /** El vocabulario con el que se filtra. Se lee; no se crea desde aquí. */
@@ -92,15 +92,15 @@ class SnkKilkanaThemesController extends CoreBaseApiController
             return $response;
         }
 
-        $tema = $this->findModel($id);
+        $theme = $this->findModel($id);
 
-        if ($tema === null) {
+        if ($theme === null) {
             return response()->json(['error' => 'Record not found'], 404);
         }
 
-        $ajustes = $this->wear->wear($tema);
-        $ajustes->load('theme');
+        $settings = $this->wear->wear($theme);
+        $settings->load('theme');
 
-        return response()->json($ajustes->themePayload());
+        return response()->json($settings->themePayload());
     }
 }

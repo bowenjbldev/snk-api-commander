@@ -39,26 +39,26 @@ class SnkKilkanaSyncThemesCommand extends Command
             $this->error("[{$database}] {$message}");
         }
 
-        $escritos = 0;
-        $saltados = 0;
-        $problemas = 0;
+        $written = 0;
+        $skipped = 0;
+        $problems = 0;
 
-        foreach ($run['results'] as $database => $resumen) {
-            $escritos += $resumen['written'];
-            $saltados += $resumen['skipped'];
+        foreach ($run['results'] as $database => $summary) {
+            $written += $summary['written'];
+            $skipped += $summary['skipped'];
 
-            foreach ($resumen['errors'] as $error) {
-                $problemas++;
+            foreach ($summary['errors'] as $error) {
+                $problems++;
                 $this->error("[{$database}] {$error}");
             }
         }
 
-        $fallos = count($run['errors']) + $problemas;
+        $failures = count($run['errors']) + $problems;
 
         $this->info(
-            "Done: {$escritos} theme(s) written, {$saltados} unchanged across {$run['tenants']} tenant(s); {$fallos} problem(s)."
+            "Done: {$written} theme(s) written, {$skipped} unchanged across {$run['tenants']} tenant(s); {$failures} problem(s)."
         );
 
-        return $fallos === 0 ? self::SUCCESS : self::FAILURE;
+        return $failures === 0 ? self::SUCCESS : self::FAILURE;
     }
 }

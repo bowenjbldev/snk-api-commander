@@ -27,8 +27,8 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
     /** `rule()` es una llamada, y una propiedad no se inicializa con eso: va aqui. */
     public function __construct(
         private readonly SnkKilkanaCommentService $comments,
-        private readonly SnkKilkanaReaderService $lectores,
-        private readonly SnkKilkanaActivityService $registro,
+        private readonly SnkKilkanaReaderService $readers,
+        private readonly SnkKilkanaActivityService $activityLog,
     ) {
         $this->validationRulesUpdate['status'] = 'required|'.SnkKilkanaCommentStatusEnum::rule();
     }
@@ -93,13 +93,13 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
                 ->where('body', 'like', "%{$term}%")
                 ->orWhereHas('user', fn (Builder $u) => $u
                     ->where('name', 'like', "%{$term}%")
-                    ->orWhere('full_name', 'like', "%{$term}%")
+                    ->orWhere('lastname', 'like', "%{$term}%")
                     ->orWhere('email', 'like', "%{$term}%"))))
             ->with([
-                'user:id,name,full_name,email,created_at,suspended_at',
+                'user:id,name,lastname,email,created_at,suspended_at',
                 'post:id,title',
                 'parent:id,body,user_id',
-                'parent.user:id,name,full_name',
+                'parent.user:id,name,lastname',
             ])
             ->orderByDesc('created_at')
             ->orderByDesc('id')
@@ -162,12 +162,12 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
         }
 
         // Sobre qué, antes de mover nada: borrar se lleva las filas que lo dirían.
-        $piezas = SnkKilkanaCommentModel::query()->whereIn('kilkana_comments.id', $data['ids'])
+        $posts = SnkKilkanaCommentModel::query()->whereIn('kilkana_comments.id', $data['ids'])
             ->join('kilkana_posts', 'kilkana_posts.id', '=', 'kilkana_comments.post_id')
             ->distinct()->pluck('kilkana_posts.title');
         $count = $this->comments->bulk($data['ids'], $data['action']);
         if ($count > 0) {
-            $verbo = match ($data['action']) {
+            $verb = match ($data['action']) {
                 'approve' => 'comments_approved',
                 'reject' => 'comments_rejected',
                 'spam' => 'comments_spammed',
@@ -175,9 +175,9 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
                 default => 'comments_deleted',
             };
             // Sobre una pieza se nombra; sobre varias se cuentan, y la frase la pone el panel.
-            $una = $piezas->count() === 1;
-            $this->registro->log('comment', $verbo, $una ? (string) $piezas->first() : '', '/comments', [
-                'params' => $una ? ['count' => $count] : ['count' => $count, 'posts' => $piezas->count()],
+            $one = $posts->count() === 1;
+            $this->activityLog->log('comment', $verb, $one ? (string) $posts->first() : '', '/comments', [
+                'params' => $one ? ['count' => $count] : ['count' => $count, 'posts' => $posts->count()],
             ]);
         }
 
@@ -199,16 +199,16 @@ class SnkKilkanaCommentsController extends CoreBaseApiController
             return $response;
         }
 
-        $comentario = $this->newQuery()->with('user.roles')->find($id);
-        if ($comentario === null) {
+        $comment = $this->newQuery()->with('user.roles')->find($id);
+        if ($comment === null) {
             return response()->json(['error' => 'Record not found'], 404);
         }
 
-        $autor = $comentario->user;
-        if (! $this->lectores->isReader($autor)) {
+        $author = $comment->user;
+        if (! $this->readers->isReader($author)) {
             return response()->json(['error' => 'Not a reader account'], 409);
         }
 
-        return response()->json(['blocked' => (string) $autor->getKey(), 'rejected' => $this->lectores->block($autor)]);
+        return response()->json(['blocked' => (string) $author->getKey(), 'rejected' => $this->readers->block($author)]);
     }
 }

@@ -66,7 +66,6 @@ class SnkKilkanaAuthController extends CoreAuthController
 
         $user = CoreUserModel::create([
             'name' => $data['name'],
-            'full_name' => $data['name'],
             'email' => $data['email'],
             'password' => $data['password'],
         ]);
@@ -110,8 +109,8 @@ class SnkKilkanaAuthController extends CoreAuthController
         if ($user !== null) {
             try {
                 app(SnkKilkanaAccountLinkService::class)->send($user, SnkKilkanaAccountLinkService::RESET, $request, queued: true);
-            } catch (\Throwable $fallo) {
-                report($fallo);
+            } catch (\Throwable $error) {
+                report($error);
             }
         }
 

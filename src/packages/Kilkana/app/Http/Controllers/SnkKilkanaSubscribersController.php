@@ -67,11 +67,11 @@ class SnkKilkanaSubscribersController extends CoreBaseApiController
 
         // Por id y no por alta: es orden total, y sin él dos altas del mismo segundo pueden
         // salir dos veces en la página siguiente o no salir en ninguna.
-        $pagina = $this->newQuery()->orderByDesc('id')->paginate($this->perPage());
+        $page = $this->newQuery()->orderByDesc('id')->paginate($this->perPage());
 
         return response()->json([
-            'data' => SnkKilkanaSubscriberResource::collection($pagina->getCollection()),
-            'meta' => $this->paginationMeta($pagina),
+            'data' => SnkKilkanaSubscriberResource::collection($page->getCollection()),
+            'meta' => $this->paginationMeta($page),
         ]);
     }
 
@@ -88,11 +88,11 @@ class SnkKilkanaSubscribersController extends CoreBaseApiController
         // Una dirección puede empezar por `=`, `+`, `-` o `@` y ser válida, y el fichero se
         // abre en una hoja de cálculo que la leería como fórmula. Un apóstrofo delante la deja
         // como texto, y quien la reimporte la recibe como dirección inválida en vez de ejecutarla.
-        $texto = fn (string $v) => preg_match('/^[=+\-@\t\r]/', $v) ? "'".$v : $v;
+        $safeCell = fn (string $v) => preg_match('/^[=+\-@\t\r]/', $v) ? "'".$v : $v;
         $out = fopen('php://temp', 'r+');
         fputcsv($out, ['email', 'status', 'consent_source', 'consent_at']);
-        SnkKilkanaSubscriberModel::query()->orderBy('id')->lazy()->each(function (SnkKilkanaSubscriberModel $s) use ($out, $texto) {
-            fputcsv($out, [$texto($s->email), $s->status->value, $s->consent_source?->value ?? '', $s->consent_at?->toIso8601String() ?? '']);
+        SnkKilkanaSubscriberModel::query()->orderBy('id')->lazy()->each(function (SnkKilkanaSubscriberModel $s) use ($out, $safeCell) {
+            fputcsv($out, [$safeCell($s->email), $s->status->value, $s->consent_source?->value ?? '', $s->consent_at?->toIso8601String() ?? '']);
         });
         rewind($out);
         $csv = (string) stream_get_contents($out);
@@ -123,60 +123,60 @@ class SnkKilkanaSubscribersController extends CoreBaseApiController
         ]);
 
         $handle = fopen($request->file('file')->getRealPath(), 'r');
-        $columnas = self::COLUMNS;
-        $filas = [];
-        $invalidas = 0;
-        while (($fila = fgetcsv($handle)) !== false) {
-            if ($fila === [null] || (count($fila) === 1 && trim((string) $fila[0]) === '')) {
+        $columns = self::COLUMNS;
+        $rows = [];
+        $invalid = 0;
+        while (($row = fgetcsv($handle)) !== false) {
+            if ($row === [null] || (count($row) === 1 && trim((string) $row[0]) === '')) {
                 continue;
             }
-            $fila = array_map(fn ($v) => trim((string) $v), $fila);
-            if ($filas === [] && $invalidas === 0 && strtolower($fila[0]) === 'email') {
-                $columnas = array_map('strtolower', $fila);
+            $row = array_map(fn ($v) => trim((string) $v), $row);
+            if ($rows === [] && $invalid === 0 && strtolower($row[0]) === 'email') {
+                $columns = array_map('strtolower', $row);
 
                 continue;
             }
-            if (count($filas) >= self::IMPORT_MAX) {
+            if (count($rows) >= self::IMPORT_MAX) {
                 fclose($handle);
 
                 return response()->json(['error' => 'Too many rows', 'max' => self::IMPORT_MAX], 422);
             }
-            $celda = fn (string $nombre) => $fila[array_search($nombre, $columnas, true)] ?? '';
-            $email = mb_strtolower($celda('email'));
+            $cell = fn (string $name) => $row[array_search($name, $columns, true)] ?? '';
+            $email = mb_strtolower($cell('email'));
             if (filter_var($email, FILTER_VALIDATE_EMAIL) === false || mb_strlen($email) > 255) {
-                $invalidas++;
+                $invalid++;
 
                 continue;
             }
-            $filas[$email] ??= [
-                'status' => SnkKilkanaSubscriberStatusEnum::tryFrom($celda('status')) ?? SnkKilkanaSubscriberStatusEnum::Confirmed,
-                'consent_at' => rescue(fn () => Carbon::parse($celda('consent_at')), now(), false),
+            $rows[$email] ??= [
+                'status' => SnkKilkanaSubscriberStatusEnum::tryFrom($cell('status')) ?? SnkKilkanaSubscriberStatusEnum::Confirmed,
+                'consent_at' => rescue(fn () => Carbon::parse($cell('consent_at')), now(), false),
             ];
         }
         fclose($handle);
 
-        $importadas = 0;
-        $ahora = now();
-        foreach (array_chunk(array_keys($filas), 500) as $correos) {
-            $existentes = SnkKilkanaSubscriberModel::query()->whereIn('email', $correos)->pluck('email')->all();
-            $nuevas = array_diff($correos, $existentes);
+        $imported = 0;
+        $now = now();
+        foreach (array_chunk(array_keys($rows), 500) as $emails) {
+            $existing = SnkKilkanaSubscriberModel::query()->whereIn('email', $emails)->pluck('email')->all();
+            $fresh = array_diff($emails, $existing);
             SnkKilkanaSubscriberModel::query()->insert(array_map(fn (string $email) => [
                 'email' => $email,
-                'status' => $filas[$email]['status']->value,
+                'status' => $rows[$email]['status']->value,
                 'consent_source' => SnkKilkanaConsentSourceEnum::Import->value,
-                'consent_at' => $filas[$email]['consent_at'],
-                'created_at' => $ahora,
-                'updated_at' => $ahora,
-            ], $nuevas));
-            $importadas += count($nuevas);
+                'consent_at' => $rows[$email]['consent_at'],
+                'created_at' => $now,
+                'updated_at' => $now,
+            ], $fresh));
+            $imported += count($fresh);
         }
 
-        app(SnkKilkanaActivityService::class)->log('newsletter', 'subscribers_imported', '', '/newsletter', ['params' => ['count' => $importadas]]);
+        app(SnkKilkanaActivityService::class)->log('newsletter', 'subscribers_imported', '', '/newsletter', ['params' => ['count' => $imported]]);
 
         return response()->json([
-            'imported' => $importadas,
-            'skipped' => count($filas) - $importadas,
-            'invalid' => $invalidas,
+            'imported' => $imported,
+            'skipped' => count($rows) - $imported,
+            'invalid' => $invalid,
         ]);
     }
 }

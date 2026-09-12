@@ -92,7 +92,7 @@ enum SnkKilkanaPostStatusEnum: string
     public static function publishing(): array
     {
         return array_values(array_column(
-            array_filter(self::cases(), fn (self $estado) => $estado->requiresPublishPermission()),
+            array_filter(self::cases(), fn (self $status) => $status->requiresPublishPermission()),
             'value',
         ));
     }

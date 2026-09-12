@@ -16,8 +16,8 @@ use Packages\Core\Support\CorePackageSelectorSupport;
 class CoreSeedCommand extends Command
 {
     protected $signature = 'core:seed
-        {--client= : Cliente (slug) del TENANT. Requiere --package.}
-        {--package= : Package del TENANT (StudlyCase). Requiere --client. Sin ambos = COMMANDER.}
+        {--client= : Tenant client (slug). Requires --package.}
+        {--package= : Tenant package (StudlyCase). Requires --client. Without both = COMMANDER.}
         {--class= : Specific seeder class to run}
         {--force : Force the operation to run in production}';
 
@@ -32,21 +32,21 @@ class CoreSeedCommand extends Command
         // dejarla ahí hace que lo siguiente que corra en el mismo proceso —otro job del worker,
         // un `db:seed` a pelo— herede el destino de esta siembra sin haberlo pedido. Se guarda
         // lo que había y se devuelve al salir, pase lo que pase.
-        $tenantPrevio = null;
+        $previousTenantConfig = null;
 
         if ($client !== null || $package !== null) {
             if ($client === null || $package === null) {
-                $this->fail('TENANT requiere --client Y --package. Sin ambos => commander.');
+                $this->fail('TENANT requires --client AND --package. Without both => commander.');
             }
 
             $discovery = CorePackageDiscoverySupport::fromEnvironment(base_path('packages'));
             $modules = $discovery->implementationModules($client, $package);
             if ($modules === []) {
-                $this->fail("No existe código compartido ni específico para [{$client}/{$package}].");
+                $this->fail("No shared or client-specific implementation exists for [{$client}/{$package}].");
             }
 
             $connection = 'tenant';
-            $tenantPrevio = config('database.connections.tenant');
+            $previousTenantConfig = config('database.connections.tenant');
             config([
                 'database.connections.tenant.database' => CorePackageSelectorSupport::validatedDatabaseIdentifier(
                     CorePackageSelectorSupport::databaseName($client, $package)
@@ -79,8 +79,8 @@ class CoreSeedCommand extends Command
         } finally {
             CorePackagesDatabaseSeeder::$targetPackage = null;
 
-            if ($tenantPrevio !== null) {
-                config(['database.connections.tenant' => $tenantPrevio]);
+            if ($previousTenantConfig !== null) {
+                config(['database.connections.tenant' => $previousTenantConfig]);
                 DB::purge('tenant');
             }
         }

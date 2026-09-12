@@ -58,8 +58,8 @@ class SnkKilkanaPostModel extends Model
             set: fn (?array $value) => $value === null ? null : json_encode(array_map(
                 // `array_replace` y no `+`: el segundo antepone la clave y cambia el orden
                 // del JSON, que es contrato para quien compara la respuesta entera.
-                fn (array $bloque) => array_replace($bloque, [
-                    'config' => (object) ($bloque['config'] ?? []),
+                fn (array $block) => array_replace($block, [
+                    'config' => (object) ($block['config'] ?? []),
                 ]),
                 $value,
             ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
@@ -261,13 +261,13 @@ class SnkKilkanaPostModel extends Model
     {
         // Con la papelera dentro: una pieza tirada sigue reservando su URL hasta que se purga,
         // que es lo que hace que restaurarla no rompa ningún enlace entrante.
-        $enArticulos = self::withTrashed()
+        $takenByPost = self::withTrashed()
             ->where('url_date', $date)
             ->where('slug', $slug)
             ->when($ignoreId, fn (Builder $query) => $query->whereKeyNot($ignoreId))
             ->exists();
 
-        if ($enArticulos) {
+        if ($takenByPost) {
             return true;
         }
 
@@ -306,12 +306,12 @@ class SnkKilkanaPostModel extends Model
             // cuando cambia algo que importa —el estado o la sección—, no en cada guardado.
             if ($post->status->requiresPublishPermission()
                 && ($post->isDirty('status') || $post->isDirty('category_id'))) {
-                $seccionViva = SnkKilkanaCategoryModel::query()
+                $categoryReachable = SnkKilkanaCategoryModel::query()
                     ->whereKey($post->category_id)
                     ->reachable()
                     ->exists();
 
-                if (! $seccionViva) {
+                if (! $categoryReachable) {
                     throw ValidationException::withMessages([
                         'category' => 'That section has not been launched yet; launch it or pick another.',
                     ]);
@@ -328,13 +328,13 @@ class SnkKilkanaPostModel extends Model
 
             // Se SELLA al publicar y solo la primera vez. Después, corregir `publish_at`
             // —para arreglar la hora de un cierre, por ejemplo— ya no mueve la URL.
-            $sellado = false;
+            $justStamped = false;
             if ($post->status === SnkKilkanaPostStatusEnum::Published && ! $post->url_date) {
                 // La cadena, no el atributo: el cast lo devuelve como Carbon en cuanto se lee.
                 $date = ($post->publish_at ?? now())->toDateString();
                 $post->url_date = $date;
                 $post->slug = self::freeSlug($post->slug, $date, $post->id);
-                $sellado = true;
+                $justStamped = true;
             }
 
             // Mover la URL de una pieza YA sellada es un acto deliberado, y se comprueba.
@@ -342,7 +342,7 @@ class SnkKilkanaPostModel extends Model
             // 500 con el SQL dentro— y hacia uno que estuviera en el historial de otro
             // artículo borraba su redirección. Aquí se para con un 422 que se explica, igual
             // que al elegir a mano la URL de una firma o de una etiqueta.
-            if (! $sellado && $post->url_date && ($post->isDirty('slug') || $post->isDirty('url_date'))) {
+            if (! $justStamped && $post->url_date && ($post->isDirty('slug') || $post->isDirty('url_date'))) {
                 $date = $post->url_date instanceof \DateTimeInterface
                     ? $post->url_date->format('Y-m-d')
                     : (string) $post->url_date;

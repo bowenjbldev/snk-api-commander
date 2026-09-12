@@ -24,37 +24,45 @@ class KilkanaSeedProfileTest extends TestCase
         parent::setUp();
 
         DB::setDefaultConnection('tenant');
-        foreach (['Core', 'Kilkana'] as $paquete) {
+        foreach (['Core', 'Kilkana'] as $package) {
             $this->artisan('migrate', [
                 '--database' => 'tenant',
-                '--path' => "packages/{$paquete}/database/migrations",
+                '--path' => "packages/{$package}/database/migrations",
             ])->run();
         }
 
         config(['kilkana.kilkana.seed_demo' => true]);
     }
 
-    /** Un periodico declarado sin datos de demo se queda con su cabecera y sin archivo ajeno. */
-    public function test_el_perfil_manda_sobre_el_interruptor_de_entorno(): void
+    /**
+     * Un periodico declarado sin datos de demo se queda con su cabecera y sin archivo ajeno. Si su
+     * perfil pide `accounts`, trae las dos cuentas conocidas para poder entrar, y ninguna mas.
+     */
+    public function test_the_profile_overrides_the_environment_switch(): void
     {
-        $this->sembrarComo('diario_norte_kilkana');
+        $this->seedAs('diario_norte_kilkana');
 
-        $ajustes = SnkKilkanaSettingModel::query()->find(1);
+        $settings = SnkKilkanaSettingModel::query()->find(1);
 
-        $this->assertSame('Diario Norte', $ajustes?->tenant_name);
+        $this->assertSame('Diario Norte', $settings?->tenant_name);
         $this->assertSame(0, SnkKilkanaPostModel::query()->count(), 'El archivo de otro no entra aqui.');
-        // Y las cuentas tampoco: una contrasena conocida dentro de la base de un cliente es un
-        // acceso ajeno a su panel, y `seedPermissions` corre ANTES de la puerta del archivo.
-        $this->assertSame(0, CoreUserModel::query()->count(), 'Ni una cuenta de demo.');
+        // Las cuentas las abre `accounts` y no el archivo: el administrador local y el lector de
+        // demo, sin la redaccion de otro periodico.
+        $this->assertEqualsCanonicalizing(
+            ['admin@snake.com', 'reader@snk.test'],
+            CoreUserModel::query()->pluck('email')->all(),
+            'Solo las cuentas para entrar.'
+        );
     }
 
     /** Un cliente real, sin perfil: ni identidad ni contenido. Se nombra al darse de alta. */
-    public function test_una_base_sin_perfil_no_recibe_nada(): void
+    public function test_a_database_without_a_profile_receives_nothing(): void
     {
-        $this->sembrarComo('cliente_nuevo_kilkana');
+        $this->seedAs('cliente_nuevo_kilkana');
 
         $this->assertNull(SnkKilkanaSettingModel::query()->find(1)?->tenant_name);
         $this->assertSame(0, SnkKilkanaPostModel::query()->count());
+        $this->assertSame(0, CoreUserModel::query()->count(), 'Sin perfil que las pida, ni una cuenta conocida.');
     }
 
     /**
@@ -64,31 +72,34 @@ class KilkanaSeedProfileTest extends TestCase
      * rechaza lo que no sea un identificador de inquilino. Un guion basta: la siembra entera
      * moria con `Unsafe tenant database identifier` antes de escribir una fila.
      */
-    public function test_un_nombre_de_base_invalido_no_tumba_la_siembra(): void
+    public function test_an_invalid_database_name_does_not_break_seeding(): void
     {
-        $this->sembrarComo('cliente-con-guion_kilkana');
+        $this->seedAs('cliente-con-guion_kilkana');
 
         $this->assertSame(0, SnkKilkanaPostModel::query()->count());
     }
 
     /** El catalogo no puede tener dos perfiles peleandose por el mismo cliente. */
-    public function test_ningun_cliente_aparece_en_dos_perfiles(): void
+    public function test_no_client_appears_in_two_profiles(): void
     {
-        $vistos = [];
+        $seen = [];
 
-        foreach (glob(base_path('packages/Kilkana/database/seeders/data/profiles/*.json')) as $ruta) {
-            $perfil = json_decode((string) file_get_contents($ruta), true, flags: JSON_THROW_ON_ERROR);
+        foreach (glob(base_path('packages/Kilkana/database/seeders/data/profiles/*.json')) as $path) {
+            $profile = json_decode((string) file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
 
-            $this->assertIsArray($perfil['clients'] ?? null, basename($ruta).' declara de quien es.');
-            $this->assertIsBool($perfil['demo'] ?? null, basename($ruta).' dice si trae datos de demo.');
+            $this->assertIsArray($profile['clients'] ?? null, basename($path).' declara de quien es.');
+            $this->assertIsBool($profile['demo'] ?? null, basename($path).' dice si trae datos de demo.');
+            if (array_key_exists('accounts', $profile)) {
+                $this->assertIsBool($profile['accounts'], basename($path).' dice si trae cuentas.');
+            }
 
-            foreach ($perfil['clients'] as $cliente) {
-                $this->assertArrayNotHasKey($cliente, $vistos, "{$cliente} lo reclaman dos perfiles.");
-                $vistos[$cliente] = basename($ruta);
+            foreach ($profile['clients'] as $client) {
+                $this->assertArrayNotHasKey($client, $seen, "{$client} lo reclaman dos perfiles.");
+                $seen[$client] = basename($path);
             }
         }
 
-        $this->assertNotSame([], $vistos, 'El catalogo de perfiles no puede estar vacio.');
+        $this->assertNotSame([], $seen, 'El catalogo de perfiles no puede estar vacio.');
     }
 
     /**
@@ -99,9 +110,9 @@ class KilkanaSeedProfileTest extends TestCase
      * sembrando. Purgarla aqui por simetria haria que la prueba intentase abrir un fichero
      * sqlite llamado `diario_norte_kilkana`.
      */
-    private function sembrarComo(string $base): void
+    private function seedAs(string $database): void
     {
-        config(['database.connections.tenant.database' => $base]);
+        config(['database.connections.tenant.database' => $database]);
 
         (new SnkKilkanaDatabaseSeeder)->run();
     }

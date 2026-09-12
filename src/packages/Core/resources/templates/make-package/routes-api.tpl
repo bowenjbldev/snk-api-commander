@@ -15,5 +15,5 @@ Route::middleware(['api'])->group(function () {
 });
 
 Route::middleware(['api', 'auth:sanctum'])->group(function () {
-    // Package business routes here
+    // Las rutas de negocio del package van aquí
 });

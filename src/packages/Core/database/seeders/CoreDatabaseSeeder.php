@@ -15,10 +15,10 @@ class CoreDatabaseSeeder extends Seeder
 
     public function run(): void
     {
-        // Create roles
+        // Crea los roles.
         $admin = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'sanctum']);
 
-        // Create permissions
+        // Crea los permisos.
         $resources = [
             'users',
         ];
@@ -34,7 +34,7 @@ class CoreDatabaseSeeder extends Seeder
             Permission::firstOrCreate(['name' => $permName, 'guard_name' => 'sanctum']);
         }
 
-        // Assign permissions to roles
+        // Asigna los permisos a los roles.
         $admin->givePermissionTo($allPermissions);
 
         // Nunca copies el admin global del control plane a un tenant. El provisioning crea el
@@ -54,8 +54,8 @@ class CoreDatabaseSeeder extends Seeder
         $user = CoreUserModel::firstOrCreate(
             ['email' => config('core.auth.admin_email', 'admin@snake.com')],
             [
-                'name' => 'Admin User',
-                'full_name' => 'Admin User',
+                'name' => 'Admin',
+                'lastname' => 'User',
                 'password' => $password,
             ]
         );

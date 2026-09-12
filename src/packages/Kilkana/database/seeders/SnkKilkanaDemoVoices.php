@@ -24,7 +24,7 @@ final class SnkKilkanaDemoVoices
             'El mercado en el polideportivo queda lejísimos para la gente mayor de la parte alta.',
             'Ojalá acabe antes de fiestas como dicen, pero yo no apostaría.',
         ],
-        'politica' => [
+        'politics' => [
             'Se aprueba por un voto y ya lo venden como consenso. Un poco de seriedad.',
             'Cuatro meses sin comisión de cuentas y nadie dimite. Así nos va.',
             'Que se auditen las facturas me parece bien venga de quien venga.',
@@ -34,7 +34,7 @@ final class SnkKilkanaDemoVoices
             'Ni con el gobierno ni con la oposición: con el pueblo, que paga la tasa devuelta.',
             'Gracias por publicar el informe de intervención entero. Es lo que hacía falta leer.',
         ],
-        'economia' => [
+        'economy' => [
             'Mi padre lleva cuarenta años en la cooperativa y este es el peor precio en origen que recuerda.',
             'Las ayudas con la condición de mantener plantilla dos años son para las grandes. Las pequeñas ni lo intentan.',
             'Se cierra la oficina y nos mandan al cajero. El cajero no te renueva una hipoteca.',
@@ -44,7 +44,7 @@ final class SnkKilkanaDemoVoices
             'El alquiler de los locales ha subido porque los dueños los prefieren vacíos. Cuéntenlo también.',
             'A ver si el programa de traspasos sirve para algo más que para hacerse la foto.',
         ],
-        'deportes' => [
+        'sports' => [
             'Estuve en el campo y con diez se mereció mucho más. La grada lo sabe.',
             'El portero es de lo mejor que ha salido de la cantera en años. Que no se lo lleven por cuatro duros.',
             'Nueve temporadas esperando. Yo entre ellos, con mi hijo, que ya tiene la edad que tenía yo entonces.',
@@ -54,7 +54,7 @@ final class SnkKilkanaDemoVoices
             'Enhorabuena a las chicas. Segundo año seguido en la fase de ascenso y casi nadie lo cuenta.',
             'Trece temporadas de la capitana. Ojalá el club le dé la despedida que merece.',
         ],
-        'cultura' => [
+        'culture' => [
             'Fui el sábado y el retablo impresiona. Catorce meses bien empleados.',
             'La biblioteca abriendo sábados por la tarde ha cambiado el barrio, y no exagero.',
             'Doce compañías y la mitad de aquí. Eso es lo que hace que el festival dure veinte años.',
@@ -64,7 +64,7 @@ final class SnkKilkanaDemoVoices
             'Ojalá la excavación siga el verano que viene. Lo que hay debajo de ese solar da para un museo.',
             'Estuve en el concierto del centenario y se me saltaron las lágrimas con la pieza final.',
         ],
-        'sucesos' => [
+        'crime' => [
             'Pasé por allí a las ocho y todavía había humo. Menos mal que no pasó a la nave de al lado.',
             'La curva de la salida es un peligro desde siempre. Esta vez sin heridos, la siguiente no sé.',
             'Lo del radar en la travesía se aprobó en el pleno de enero. ¿A qué esperan?',
@@ -84,7 +84,7 @@ final class SnkKilkanaDemoVoices
             'Cuando el periódico publica algo incómodo se nota en los comentarios. Sigan así.',
             'Buen texto, pero un poco de esperanza no vendría mal de vez en cuando.',
         ],
-        'ambiente' => [
+        'environment' => [
             'El embalse al treinta y ocho por ciento y los jardines públicos regados a mediodía. Explíquenlo.',
             'Doscientas hectáreas de placas en el secano de mis abuelos. Firmaré la alegación.',
             'Retirar los azudes sin uso es de sentido común. Llevaba años pidiéndolo el club de pesca.',

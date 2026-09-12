@@ -47,20 +47,20 @@ class SnkKilkanaNewsletterController extends CoreBaseApiController
         // traían las cuatro relaciones del modelo—, y el listado no tiene cota de números.
         // El borrador en blanco va en la misma tanda porque pregunta lo mismo que un borrador
         // sin piezas elegidas: qué llevaría un número nuevo.
-        $piezas = $this->newsletter->piecesFor($issues->collect()->push(new SnkKilkanaNewsletterIssueModel(['status' => SnkKilkanaNewsletterIssueModel::DRAFT])));
-        $cifras = $this->newsletter->countsFor($issues->modelKeys());
+        $posts = $this->newsletter->postsForIssues($issues->collect()->push(new SnkKilkanaNewsletterIssueModel(['status' => SnkKilkanaNewsletterIssueModel::DRAFT])));
+        $counts = $this->newsletter->countsFor($issues->modelKeys());
 
         return response()->json([
             'data' => SnkKilkanaNewsletterIssueResource::collection($issues->each(
-                function (SnkKilkanaNewsletterIssueModel $i, int $p) use ($piezas, $cifras) {
-                    $i->setAttribute('pieces', $piezas[$p]);
-                    $i->setAttribute('stats', $cifras[(int) $i->getKey()]);
+                function (SnkKilkanaNewsletterIssueModel $i, int $p) use ($posts, $counts) {
+                    $i->setAttribute('pieces', $posts[$p]);
+                    $i->setAttribute('stats', $counts[(int) $i->getKey()]);
                 },
             )),
             'list' => $this->newsletter->listStats(),
             // Lo que se puede elegir para un número: las veinte publicadas más recientes.
-            'candidates' => $this->titulos($this->newsletter->recent(20)),
-            'pieces' => $this->titulos($piezas->last()),
+            'candidates' => $this->titles($this->newsletter->recent(20)),
+            'pieces' => $this->titles($posts->last()),
             'sender' => config('mail.from.address'),
         ]);
     }
@@ -71,7 +71,7 @@ class SnkKilkanaNewsletterController extends CoreBaseApiController
             return $response;
         }
 
-        return response()->json(new SnkKilkanaNewsletterIssueResource($this->conCifras($this->newsletter->create(auth()->id() ? (int) auth()->id() : null))), 201);
+        return response()->json(new SnkKilkanaNewsletterIssueResource($this->withCounts($this->newsletter->create(auth()->id() ? (int) auth()->id() : null))), 201);
     }
 
     /** Asunto y preheader, y solo en un borrador: lo que hay en las bandejas no cambia. */
@@ -98,7 +98,7 @@ class SnkKilkanaNewsletterController extends CoreBaseApiController
         ]);
         $issue->fill($data)->save();
 
-        return response()->json(new SnkKilkanaNewsletterIssueResource($this->conCifras($issue->fresh())));
+        return response()->json(new SnkKilkanaNewsletterIssueResource($this->withCounts($issue->fresh())));
     }
 
     /** Sale ahora o no sale. Una vez, y a los confirmados de este momento. */
@@ -117,7 +117,7 @@ class SnkKilkanaNewsletterController extends CoreBaseApiController
         $client = (string) CorePackageSelectorSupport::subdomainFromHost($request->getHost());
         $recipients = $this->newsletter->send($issue, DB::connection()->getDatabaseName(), $client);
 
-        return response()->json(['recipients' => $recipients, 'issue' => new SnkKilkanaNewsletterIssueResource($this->conCifras($issue->fresh()))]);
+        return response()->json(['recipients' => $recipients, 'issue' => new SnkKilkanaNewsletterIssueResource($this->withCounts($issue->fresh()))]);
     }
 
     public function test(Request $request, $id = null): JsonResponse
@@ -132,13 +132,13 @@ class SnkKilkanaNewsletterController extends CoreBaseApiController
         $data = $request->validate(['to' => 'required|email|max:255']);
         try {
             $this->newsletter->sendTest($issue, $data['to'], (string) CorePackageSelectorSupport::subdomainFromHost($request->getHost()));
-        } catch (\Throwable $fallo) {
-            report($fallo);
+        } catch (\Throwable $error) {
+            report($error);
 
             return response()->json(['error' => 'Test could not be sent'], 502);
         }
 
-        return response()->json(new SnkKilkanaNewsletterIssueResource($this->conCifras($issue->fresh())));
+        return response()->json(new SnkKilkanaNewsletterIssueResource($this->withCounts($issue->fresh())));
     }
 
     /**
@@ -147,9 +147,9 @@ class SnkKilkanaNewsletterController extends CoreBaseApiController
      * El listado no pasa por aquí: las pide en una tanda para todos, que es lo que evita seis
      * consultas por fila. Aquí son dos, y es una fila.
      */
-    private function conCifras(SnkKilkanaNewsletterIssueModel $issue): SnkKilkanaNewsletterIssueModel
+    private function withCounts(SnkKilkanaNewsletterIssueModel $issue): SnkKilkanaNewsletterIssueModel
     {
-        $issue->setAttribute('pieces', $this->newsletter->pieces($issue));
+        $issue->setAttribute('pieces', $this->newsletter->postsOf($issue));
         $issue->setAttribute('stats', $this->newsletter->counts($issue));
 
         return $issue;
@@ -158,11 +158,11 @@ class SnkKilkanaNewsletterController extends CoreBaseApiController
     /**
      * Lo único que el panel necesita de una pieza en esta pantalla.
      *
-     * @param  Collection<int, SnkKilkanaPostModel>  $piezas
+     * @param  Collection<int, SnkKilkanaPostModel>  $posts
      * @return list<array{id: string, title: string}>
      */
-    private function titulos(Collection $piezas): array
+    private function titles(Collection $posts): array
     {
-        return $piezas->map(fn (SnkKilkanaPostModel $p) => ['id' => (string) $p->getKey(), 'title' => $p->title])->values()->all();
+        return $posts->map(fn (SnkKilkanaPostModel $p) => ['id' => (string) $p->getKey(), 'title' => $p->title])->values()->all();
     }
 }

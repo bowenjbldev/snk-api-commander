@@ -83,7 +83,7 @@ class CoreMeteringMiddleware
                 'created_at' => $now,
                 'updated_at' => $now,
                 'method' => $request->method(),
-                // route column is string(191); truncate so a long URI can't raise "Data too long".
+                // La columna route es string(191): se trunca para que una URI larga no lance «Data too long».
                 'route' => $route !== null ? Str::limit($route, 191, '') : null,
                 'path' => Str::limit($path, 255, ''),
                 'status' => $response->getStatusCode(),

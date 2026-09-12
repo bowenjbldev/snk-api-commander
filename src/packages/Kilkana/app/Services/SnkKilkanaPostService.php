@@ -55,13 +55,13 @@ class SnkKilkanaPostService
      * @param  T  $query
      * @return T
      */
-    public function withAudience($query, ?int $dias)
+    public function withAudience($query, ?int $days)
     {
-        $ventana = $dias === null
+        $window = $days === null
             ? fn (Builder $q) => $q
-            : fn (Builder $q) => $q->where('date', '>=', now()->subDays($dias - 1)->toDateString());
+            : fn (Builder $q) => $q->where('date', '>=', now()->subDays($days - 1)->toDateString());
 
-        return $query->withSum(['views as views_total' => $ventana], 'engaged');
+        return $query->withSum(['views as views_total' => $window], 'engaged');
     }
 
     public function find($id, int $userId, bool $canEditOthers): ?SnkKilkanaPostModel
@@ -116,8 +116,8 @@ class SnkKilkanaPostService
         'url_date', 'cover_media_id', 'og_image_id', 'noindex', 'featured',
         // Las foráneas de las relaciones incluidas. **Sin ellas la relación llega nula**: un
         // `belongsTo` empareja lo cargado con la clave de la fila, y si el recorte se la lleva,
-        // Eloquent no tiene con qué emparejar y no avisa. Es lo que el mapa `COLUMNS_FOR` sabía
-        // y esto sustituye: aquí quien incluye una relación pide también su llave, y se ve.
+        // Eloquent no tiene con qué emparejar y no avisa. Quien incluye una relación pide también
+        // su llave, y se ve.
         'category_id', 'author_id',
         'seo_title', 'seo_description', 'og_title', 'og_description',
         'categories.id', 'categories.name', 'categories.slug',
@@ -141,9 +141,9 @@ class SnkKilkanaPostService
      * libre invita a pedir mil días y a pagar la subconsulta entera sin que nadie mire el
      * resultado. Lo que no sea uno de los dos es «desde siempre», no un 422.
      */
-    public static function readsWindow(mixed $dias): ?int
+    public static function readsWindow(mixed $days): ?int
     {
-        return in_array((int) $dias, [7, 30], true) ? (int) $dias : null;
+        return in_array((int) $days, [7, 30], true) ? (int) $days : null;
     }
 
     /**
@@ -153,9 +153,9 @@ class SnkKilkanaPostService
      * por qué es lo que la validación en la frontera evita. Vive aquí y no en el controlador
      * porque es una consulta.
      */
-    public function knownCategory(string $nombre): ?string
+    public function knownCategory(string $name): ?string
     {
-        return SnkKilkanaCategoryModel::query()->where('name', $nombre)->exists() ? $nombre : null;
+        return SnkKilkanaCategoryModel::query()->where('name', $name)->exists() ? $name : null;
     }
 
     /**
@@ -177,14 +177,14 @@ class SnkKilkanaPostService
         }
 
         if (($category = $filters['category'] ?? null) !== null) {
-            $query->whereHas('category', fn (Builder $seccion) => $seccion->where('name', $category));
+            $query->whereHas('category', fn (Builder $section) => $section->where('name', $category));
         }
 
         if (($term = $filters['q'] ?? null) !== null) {
             $like = '%'.addcslashes($term, '%_\\').'%';
-            $query->where(fn (Builder $todo) => $todo
+            $query->where(fn (Builder $search) => $search
                 ->where('title', 'like', $like)
-                ->orWhereHas('author', fn (Builder $firma) => $this->matchesByline($firma, $like)));
+                ->orWhereHas('author', fn (Builder $byline) => $this->matchesByline($byline, $like)));
         }
 
         $column = self::SORTS[$filters['sort'] ?? 'date'] ?? 'publish_at';
@@ -218,14 +218,14 @@ class SnkKilkanaPostService
      */
     public function page(Builder|QueryBuilder $query, array $filters, int $perPage): LengthAwarePaginator
     {
-        $filtrada = $this->filter($query, $filters);
-        $pagina = (clone $filtrada)->paginate($perPage);
+        $filtered = $this->filter($query, $filters);
+        $page = (clone $filtered)->paginate($perPage);
 
-        if ($pagina->currentPage() > $pagina->lastPage() && $pagina->total() > 0) {
-            $pagina = $filtrada->paginate($perPage, ['*'], 'page', $pagina->lastPage());
+        if ($page->currentPage() > $page->lastPage() && $page->total() > 0) {
+            $page = $filtered->paginate($perPage, ['*'], 'page', $page->lastPage());
         }
 
-        return $pagina;
+        return $page;
     }
 
     /**
@@ -235,16 +235,16 @@ class SnkKilkanaPostService
      * las piezas firmadas «Redacción» al teclear el nombre de quien las escribió, que es
      * justo lo que la firma colectiva existe para no decir.
      */
-    private function matchesByline(Builder $firma, string $like): Builder
+    private function matchesByline(Builder $byline, string $like): Builder
     {
-        return $firma
-            ->where(fn (Builder $conAlias) => $conAlias
+        return $byline
+            ->where(fn (Builder $withAlias) => $withAlias
                 ->whereNotNull('alias')
                 ->where('alias', '<>', '')
                 ->where('alias', 'like', $like))
-            ->orWhere(fn (Builder $sinAlias) => $sinAlias
-                ->where(fn (Builder $vacio) => $vacio->whereNull('alias')->orWhere('alias', ''))
-                ->whereHas('user', fn ($cuenta) => $cuenta->where('name', 'like', $like)));
+            ->orWhere(fn (Builder $withoutAlias) => $withoutAlias
+                ->where(fn (Builder $empty) => $empty->whereNull('alias')->orWhere('alias', ''))
+                ->whereHas('user', fn ($account) => $account->where('name', 'like', $like)));
     }
 
     /**
@@ -292,16 +292,16 @@ class SnkKilkanaPostService
 
         $scoped = [];
         $all = [];
-        foreach (SnkKilkanaPostStatusEnum::cases() as $estado) {
-            $fila = $rows[$estado->value] ?? null;
-            $total = (int) ($fila->total ?? 0);
-            $propias = $canEditOthers ? $total : (int) ($fila->own ?? 0);
+        foreach (SnkKilkanaPostStatusEnum::cases() as $status) {
+            $row = $rows[$status->value] ?? null;
+            $total = (int) ($row->total ?? 0);
+            $own = $canEditOthers ? $total : (int) ($row->own ?? 0);
 
-            $scoped[$estado->value] = $propias;
+            $scoped[$status->value] = $own;
             // Sin `view others posts` la segunda escala **no se calla, se iguala**: el panel
             // deduce que hay una sola escala de que las dos cifras coincidan, asi que omitirla
             // le dejaria la barra sin saber que dibujar.
-            $all[$estado->value] = $canViewOthers ? $total : $propias;
+            $all[$status->value] = $canViewOthers ? $total : $own;
         }
 
         return ['scoped' => $scoped, 'all' => $all];
@@ -358,7 +358,7 @@ class SnkKilkanaPostService
     /** Una accion masiva es UNA decision de quien la pulsa: no puede aplicarse a medias. */
     public function bulk(array $ids, string $action, int $userId, bool $canEditOthers, array $tags = []): int
     {
-        $movidas = DB::transaction(function () use ($ids, $action, $userId, $canEditOthers, $tags) {
+        $moved = DB::transaction(function () use ($ids, $action, $userId, $canEditOthers, $tags) {
             $query = $this->scopeToOwner(SnkKilkanaPostModel::query(), $userId, $canEditOthers)
                 ->whereIn('id', $ids);
 
@@ -379,8 +379,8 @@ class SnkKilkanaPostService
 
             // El mapa vive en el enum: el controlador lo usa para decidir el permiso y aqui se
             // usa para escribir, y dos copias es como una acepta lo que la otra no sabe mover.
-            $destino = SnkKilkanaPostStatusEnum::fromBulkAction($action);
-            if ($destino === null) {
+            $target = SnkKilkanaPostStatusEnum::fromBulkAction($action);
+            if ($target === null) {
                 return 0;
             }
 
@@ -389,18 +389,18 @@ class SnkKilkanaPostService
             // y pulsar «Publicar» publicaba veinte piezas sin entradilla. Las que no estan
             // listas se quedan como estan y el recuento lo dice, en vez de fallar el lote
             // entero por una — el resto SI estaban listas.
-            $exigeEntradilla = in_array($destino->value, SnkKilkanaPostStatusEnum::publishing(), true);
+            $needsExcerpt = in_array($target->value, SnkKilkanaPostStatusEnum::publishing(), true);
 
             $count = 0;
             foreach ($query->get() as $post) {
-                if ($exigeEntradilla && ! $post->hasExcerpt()) {
+                if ($needsExcerpt && ! $post->hasExcerpt()) {
                     continue;
                 }
 
-                $post->status = $destino;
+                $post->status = $target;
                 // Publicar a mano una pieza programada la saca AHORA: dejarle la fecha prevista
                 // la ordenaria manana en la portada, el sitemap y el feed.
-                if ($destino === SnkKilkanaPostStatusEnum::Published
+                if ($target === SnkKilkanaPostStatusEnum::Published
                     && ($post->publish_at === null || $post->publish_at->isFuture())) {
                     $post->publish_at = now();
                 }
@@ -419,16 +419,16 @@ class SnkKilkanaPostService
         //
         // Va aquí y no en el controlador porque aquí está todo lo que se apunta —quién, qué, en
         // cuántas— sin tener que preguntárselo a la petición.
-        Log::info('kilkana: acción en tanda sobre artículos', [
+        Log::info('kilkana: bulk action on posts', [
             'action' => $action,
             'user_id' => $userId,
             'asked' => count($ids),
-            'moved' => $movidas,
+            'moved' => $moved,
             'ids' => $ids,
             'tags' => $tags,
         ]);
 
-        return $movidas;
+        return $moved;
     }
 
     /**
@@ -451,9 +451,9 @@ class SnkKilkanaPostService
             return null;
         }
 
-        $vacia = $wanted === null || trim($wanted) === '';
+        $empty = $wanted === null || trim($wanted) === '';
 
-        return $vacia || Carbon::parse($wanted)->isFuture() ? now()->toDateTimeString() : null;
+        return $empty || Carbon::parse($wanted)->isFuture() ? now()->toDateTimeString() : null;
     }
 
     /**
@@ -501,26 +501,26 @@ class SnkKilkanaPostService
      * programada sin fecha es un error de verdad, no una que haya que inventar—, y de eso se
      * ocupa `stampFor()`.
      *
-     * @param  array<string, mixed>  $entrada
+     * @param  array<string, mixed>  $input
      * @return array<string, mixed>
      */
-    public static function publishDefaults(SnkKilkanaPostModel $post, array $entrada): array
+    public static function publishDefaults(SnkKilkanaPostModel $post, array $input): array
     {
-        if (! in_array($entrada['status'] ?? null, SnkKilkanaPostStatusEnum::publishing(), true)) {
-            return $entrada;
+        if (! in_array($input['status'] ?? null, SnkKilkanaPostStatusEnum::publishing(), true)) {
+            return $input;
         }
 
-        $entrada += array_filter([
+        $input += array_filter([
             'excerpt' => $post->excerpt,
             'publish_at' => $post->publish_at?->toDateTimeString(),
         ], fn ($v) => $v !== null);
 
-        $sello = self::stampFor(
-            (string) $entrada['status'],
-            isset($entrada['publish_at']) ? (string) $entrada['publish_at'] : null,
+        $stamp = self::stampFor(
+            (string) $input['status'],
+            isset($input['publish_at']) ? (string) $input['publish_at'] : null,
         );
 
-        return $sello === null ? $entrada : [...$entrada, 'publish_at' => $sello];
+        return $stamp === null ? $input : [...$input, 'publish_at' => $stamp];
     }
 
     /**
@@ -538,15 +538,15 @@ class SnkKilkanaPostService
      * `updated_by` se sella igual que en un cambio de estado: etiquetar es editar.
      *
      * @param  Collection<int, SnkKilkanaPostModel>  $posts
-     * @param  string[]  $nombres
+     * @param  string[]  $names
      */
-    private function retag($posts, bool $anadir, array $nombres, int $userId): int
+    private function retag($posts, bool $add, array $names, int $userId): int
     {
-        $ids = collect($nombres)
-            ->map(fn (string $nombre) => trim($nombre))
+        $ids = collect($names)
+            ->map(fn (string $name) => trim($name))
             ->filter()
             ->unique()
-            ->map(fn (string $nombre) => SnkKilkanaTagModel::firstOrCreateByName($nombre)->id)
+            ->map(fn (string $name) => SnkKilkanaTagModel::firstOrCreateByName($name)->id)
             ->all();
 
         if ($ids === []) {
@@ -554,7 +554,7 @@ class SnkKilkanaPostService
         }
 
         foreach ($posts as $post) {
-            $anadir ? $post->tags()->syncWithoutDetaching($ids) : $post->tags()->detach($ids);
+            $add ? $post->tags()->syncWithoutDetaching($ids) : $post->tags()->detach($ids);
             $post->forceFill(['updated_by' => $userId])->save();
         }
 
@@ -562,7 +562,7 @@ class SnkKilkanaPostService
     }
 
     /**
-     * Publica lo programado cuya hora ya paso. Lo llama el scheduler, por tenant.
+     * Publica lo programado cuya hora ya pasó. Lo llama el programador, por tenant.
      *
      * Publicar es SOLO cambiar de estado: la fecha ya esta puesta y es la prevista. Cuando la
      * fecha prevista y la de publicacion eran dos columnas, aqui habia que copiar una en otra
@@ -587,23 +587,23 @@ class SnkKilkanaPostService
         // entonces este cron sacaria a la calle una pieza sin entradilla a las seis de la
         // manana sin que nadie lo viera. Se queda programada, que es un estado del que se
         // puede salir escribiendola.
-        [$listas, $aparcadas] = $due->partition->hasExcerpt();
+        [$ready, $parked] = $due->partition->hasExcerpt();
 
-        foreach ($listas as $post) {
+        foreach ($ready as $post) {
             $post->update(['status' => SnkKilkanaPostStatusEnum::Published]);
         }
 
         // Y se dice. Una pieza que no sale a su hora no rompe nada: simplemente no ocurre, y
         // quien la programo la ve «Programada» a mediodia sin entender por que. Esta linea es
         // la unica pista que va a existir de por que.
-        if ($aparcadas->isNotEmpty()) {
-            Log::warning('kilkana: piezas programadas sin entradilla, no publicadas', [
-                'count' => $aparcadas->count(),
-                'ids' => $aparcadas->pluck('id')->all(),
+        if ($parked->isNotEmpty()) {
+            Log::warning('kilkana: scheduled posts without an excerpt were not published', [
+                'count' => $parked->count(),
+                'ids' => $parked->pluck('id')->all(),
             ]);
         }
 
-        return $listas->count();
+        return $ready->count();
     }
 
     /**
@@ -631,7 +631,7 @@ class SnkKilkanaPostService
     {
         return SnkKilkanaPostRevisionModel::query()
             ->where('post_id', $postId)
-            ->with('user:id,name')
+            ->with('user:id,name,lastname')
             ->orderByDesc('created_at')
             ->get();
     }

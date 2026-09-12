@@ -17,29 +17,37 @@ use Packages\Core\Models\CoreUserModel;
 class CoreUsersController extends CoreBaseApiController
 {
     protected string $modelClass = CoreUserModel::class;
-    protected string $indexPermission   = 'index users';
-    protected string $showPermission    = 'show users';
-    protected string $storePermission   = 'create users';
-    protected string $updatePermission  = 'update users';
+
+    protected string $indexPermission = 'index users';
+
+    protected string $showPermission = 'show users';
+
+    protected string $storePermission = 'create users';
+
+    protected string $updatePermission = 'update users';
+
     protected string $destroyPermission = 'delete users';
+
     protected ?string $resourceClass = CoreUserResource::class;
 
     protected array $allowedIncludes = [
         'roles',
     ];
+
     protected array $validationRulesStore = [
         'email' => 'required|email|max:255|unique:users,email',
-        'full_name' => 'required|max:255',
-        'name' => 'nullable|max:255',
+        'name' => 'required|max:255',
+        'lastname' => 'required|max:255',
         'role' => 'required|string|exists:roles,name',
         'company' => 'nullable|max:255',
         'phone' => 'nullable|max:50',
         'password' => 'required',
     ];
+
     protected array $validationRulesUpdate = [
         'email' => 'nullable|email|max:255|unique:users,email,{id}',
-        'full_name' => 'nullable|max:255',
         'name' => 'nullable|max:255',
+        'lastname' => 'nullable|max:255',
         'role' => 'nullable|string|exists:roles,name',
         'company' => 'nullable|max:255',
         'phone' => 'nullable|max:50',
@@ -62,8 +70,8 @@ class CoreUsersController extends CoreBaseApiController
         description: 'Creates a new user.',
     )]
     #[BodyParameter('email', description: 'User email.', type: 'string', required: true, example: 'user@example.com')]
-    #[BodyParameter('full_name', description: 'Full name.', type: 'string', required: true, example: 'Jane Doe')]
-    #[BodyParameter('name', description: 'Short name.', type: 'string', example: 'jdoe')]
+    #[BodyParameter('name', description: 'First name.', type: 'string', required: true, example: 'Jane')]
+    #[BodyParameter('lastname', description: 'Last name.', type: 'string', required: true, example: 'Doe')]
     #[BodyParameter('role', description: 'Role name.', type: 'string', required: true, example: 'admin')]
     #[BodyParameter('company', description: 'Company name.', type: 'string', example: 'Company Ltd.')]
     #[BodyParameter('phone', description: 'Phone number.', type: 'string', example: '+1 555 0100')]
@@ -113,8 +121,8 @@ class CoreUsersController extends CoreBaseApiController
     )]
     #[PathParameter('id', description: 'User ID.', type: 'int', example: 1)]
     #[BodyParameter('email', description: 'User email.', type: 'string', example: 'user@example.com')]
-    #[BodyParameter('full_name', description: 'Full name.', type: 'string', example: 'Jane Doe')]
-    #[BodyParameter('name', description: 'Short name.', type: 'string', example: 'jdoe')]
+    #[BodyParameter('name', description: 'First name.', type: 'string', example: 'Jane')]
+    #[BodyParameter('lastname', description: 'Last name.', type: 'string', example: 'Doe')]
     #[BodyParameter('role', description: 'Role name.', type: 'string', example: 'admin')]
     #[BodyParameter('company', description: 'Company name.', type: 'string', example: 'Company Ltd.')]
     #[BodyParameter('phone', description: 'Phone number.', type: 'string', example: '+1 555 0100')]

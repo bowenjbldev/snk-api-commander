@@ -11,7 +11,8 @@ use Packages\Commander\Models\CommanderSettingModel;
 /**
  * Perfil + preferencias del operador (singleton, BD commander). Se guardan como UNA bolsa JSON
  * (`commander_settings.settings`) pero la API las expone/acepta PLANAS: show()/update() despliegan y
- * mergean con los defaults. El default_grace_hours alimenta el cálculo real de grace_until. La
+ * mergean con los defaults. default_grace_hours se siembra desde core.quotas.grace_hours y se guarda,
+ * pero el cálculo de grace_until lee esa config y no esta preferencia. La
  * ruta va bajo auth:sanctum, asi que solo un operador autenticado llega aqui.
  */
 #[Group('Settings')]

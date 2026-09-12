@@ -20,12 +20,12 @@ return new class extends Migration
         // Aislamiento FISICO por BD: cada package tiene su propia tabla users en su propia BD,
         // y la commander tiene la del operador. Sin instance_id: la separación es física por BD.
         // EXACTAMENTE la de Laravel, sin una columna de mas. Lo que necesite cada package
-        // —nombre completo, organizacion, telefono, foto— lo anade EL, con su propia
+        // —apellido, organizacion, telefono, foto— lo anade EL, con su propia
         // migracion en su propio path: `packages/Commander/…` para el operador y
         // `packages/<Cliente>/<Package>/…` para un tenant. Aqui vivian esas cuatro columnas
         // y obligaban a todos a cargar con el perfil de uno.
         //
-        // Contrato: quien monte `CoreUsersController` necesita `full_name`, `company` y
+        // Contrato: quien monte `CoreUsersController` necesita `lastname`, `company` y
         // `phone`, porque sus reglas los aceptan. Quien no las anada, que no use ese
         // controlador.
         Schema::create('users', function (Blueprint $table) {

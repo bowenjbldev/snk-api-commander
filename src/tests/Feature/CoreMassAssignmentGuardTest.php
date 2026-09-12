@@ -27,61 +27,61 @@ use Tests\TestCase;
  */
 class CoreMassAssignmentGuardTest extends TestCase
 {
-    public function test_toda_ruta_de_actualizacion_declara_que_acepta(): void
+    public function test_every_update_route_declares_what_it_accepts(): void
     {
-        $sinDeclarar = [];
+        $undeclared = [];
 
-        foreach (Route::getRoutes() as $ruta) {
-            if (! array_intersect(['PUT', 'PATCH'], $ruta->methods())) {
+        foreach (Route::getRoutes() as $route) {
+            if (! array_intersect(['PUT', 'PATCH'], $route->methods())) {
                 continue;
             }
 
-            $accion = $ruta->getActionName();
-            if (! str_contains($accion, '@')) {
+            $action = $route->getActionName();
+            if (! str_contains($action, '@')) {
                 continue;
             }
 
-            [$clase, $metodo] = explode('@', $accion);
-            if (! class_exists($clase) || ! is_subclass_of($clase, CoreBaseApiController::class)) {
+            [$class, $method] = explode('@', $action);
+            if (! class_exists($class) || ! is_subclass_of($class, CoreBaseApiController::class)) {
                 continue;
             }
 
-            $espejo = new ReflectionClass($clase);
+            $reflection = new ReflectionClass($class);
 
             // Un `update()` propio decide el solo lo que acepta: no pasa por la base.
-            if ($espejo->getMethod($metodo)->getDeclaringClass()->getName() !== CoreBaseApiController::class) {
+            if ($reflection->getMethod($method)->getDeclaringClass()->getName() !== CoreBaseApiController::class) {
                 continue;
             }
 
             // Las reglas pueden ponerse en el constructor —`rule()` es una llamada y una
             // propiedad no se inicializa con eso—, asi que se mira la INSTANCIA, no la clase.
-            $controlador = app($clase);
-            $reglas = $this->propiedad($espejo, $controlador, 'validationRulesUpdate');
+            $controller = app($class);
+            $rules = $this->property($reflection, $controller, 'validationRulesUpdate');
 
-            if ($reglas === []) {
-                $sinDeclarar[] = $ruta->uri().' → '.class_basename($clase);
+            if ($rules === []) {
+                $undeclared[] = $route->uri().' → '.class_basename($class);
             }
         }
 
-        $this->assertSame([], $sinDeclarar, implode("\n", [
+        $this->assertSame([], $undeclared, implode("\n", [
             'Estas rutas escriben lo que llegue en la peticion, columna a columna:',
-            ...$sinDeclarar,
+            ...$undeclared,
             'Declara `$validationRulesUpdate` o escribe su `update()`.',
         ]));
     }
 
-    private function propiedad(ReflectionClass $espejo, object $instancia, string $nombre): mixed
+    private function property(ReflectionClass $reflection, object $instance, string $name): mixed
     {
-        while (! $espejo->hasProperty($nombre)) {
-            $espejo = $espejo->getParentClass();
-            if ($espejo === false) {
+        while (! $reflection->hasProperty($name)) {
+            $reflection = $reflection->getParentClass();
+            if ($reflection === false) {
                 return null;
             }
         }
 
-        $propiedad = $espejo->getProperty($nombre);
-        $propiedad->setAccessible(true);
+        $property = $reflection->getProperty($name);
+        $property->setAccessible(true);
 
-        return $propiedad->isInitialized($instancia) ? $propiedad->getValue($instancia) : null;
+        return $property->isInitialized($instance) ? $property->getValue($instance) : null;
     }
 }

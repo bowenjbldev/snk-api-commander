@@ -3,6 +3,8 @@
 namespace Packages\Core\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -15,8 +17,8 @@ class CoreUserModel extends Authenticatable
 {
     protected $table = 'users';
 
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable, HasRoles;
+    /** @use HasFactory<UserFactory> */
+    use HasApiTokens, HasFactory, HasRoles, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -24,7 +26,7 @@ class CoreUserModel extends Authenticatable
      * @var list<string>
      */
     /**
-     * `full_name`, `company` y `phone` NO son columnas de Core: las anade cada package con su
+     * `lastname`, `company` y `phone` NO son columnas de Core: las anade cada package con su
      * propia migracion (ver `create_core_base_schema`). Siguen aqui porque son el perfil que
      * aceptan las reglas de `CoreUsersController`, y quien use ese controlador tiene que
      * haberlas creado.
@@ -34,8 +36,8 @@ class CoreUserModel extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'lastname',
         'email',
-        'full_name',
         'company',
         'phone',
         'password',
@@ -62,13 +64,17 @@ class CoreUserModel extends Authenticatable
         'updated_at' => 'datetime',
     ];
 
-    protected static function booted()
+    /**
+     * `name` es el nombre de pila y `lastname` el apellido; el nombre completo no se guarda,
+     * se compone. Va en `$appends` para que viaje en toda serializacion como si fuera columna.
+     */
+    protected $appends = ['full_name'];
+
+    protected function fullName(): Attribute
     {
-        static::saving(function (CoreUserModel $model) {
-            if ((string) $model->name === '' && !empty($model->full_name)) {
-                $model->name = $model->full_name;
-            }
-        });
+        // De los atributos crudos: una consulta recortada que no trajo `lastname` no debe
+        // lanzar al serializar, y `$appends` lo pide en toda serializacion.
+        return Attribute::get(fn () => trim(($this->attributes['name'] ?? '').' '.($this->attributes['lastname'] ?? '')));
     }
 
     public function setPasswordAttribute($value): void

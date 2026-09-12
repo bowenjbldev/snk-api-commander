@@ -11,11 +11,10 @@ use Packages\Kilkana\Services\SnkKilkanaMediaTaxonomyService;
 /**
  * Etiquetas y colecciones de la biblioteca tras un solo juego de rutas.
  *
- * `$taxonomy` es un parámetro de ruta y va DECLARADO, no leído de la petición. Aquí no
- * estaba, y los parámetros sin tipo se asignan por posición: `$id` recibía «tags», así que
- * `find('tags')` no encontraba nada y **renombrar o borrar una etiqueta respondía 404
- * siempre**. El listado y el alta funcionaban —no llevan `{id}`—, así que la mitad rota no
- * se veía desde fuera.
+ * `$taxonomy` es un parámetro de ruta y va DECLARADO, no leído de la petición: los parámetros
+ * sin tipo se asignan por posición, y sin él `$id` recibiría «tags», `find('tags')` no
+ * encontraría nada y **renombrar o borrar una etiqueta respondería 404 siempre**, mientras el
+ * listado y el alta —que no llevan `{id}`— seguirían funcionando.
  *
  * Los permisos los pone el middleware `can:` de las rutas, como en composición.
  */
@@ -61,8 +60,8 @@ class SnkKilkanaMediaTaxonomiesController
      */
     public function merge(Request $request, string $taxonomy, $id): JsonResponse
     {
-        $desde = $this->taxonomies->find($taxonomy, $id);
-        if (! $desde) {
+        $source = $this->taxonomies->find($taxonomy, $id);
+        if (! $source) {
             return response()->json(['error' => 'Record not found'], 404);
         }
 
@@ -73,19 +72,19 @@ class SnkKilkanaMediaTaxonomiesController
             'into' => [
                 'required',
                 'integer',
-                Rule::notIn([$desde->id]),
+                Rule::notIn([$source->id]),
                 'exists:'.$this->taxonomies->table($taxonomy).',id',
             ],
         ]);
 
-        $hasta = $this->taxonomies->find($taxonomy, $data['into']);
-        if (! $hasta) {
+        $target = $this->taxonomies->find($taxonomy, $data['into']);
+        if (! $target) {
             return response()->json(['error' => 'Record not found'], 404);
         }
 
         return response()->json([
-            'id' => (string) $hasta->id,
-            'moved' => $this->taxonomies->merge($desde, $hasta),
+            'id' => (string) $target->id,
+            'moved' => $this->taxonomies->merge($source, $target),
         ]);
     }
 

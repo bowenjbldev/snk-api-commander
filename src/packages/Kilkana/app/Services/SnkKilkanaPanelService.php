@@ -59,14 +59,14 @@ class SnkKilkanaPanelService
     public const PANEL_LOCALES = ['en', 'es'];
 
     public function __construct(
-        private readonly SnkKilkanaActivityService $registro,
-        private readonly SnkKilkanaBylineService $firmas,
-        private readonly SnkKilkanaCommentService $comentarios,
-        private readonly SnkKilkanaNewsletterService $boletin,
+        private readonly SnkKilkanaActivityService $activityLog,
+        private readonly SnkKilkanaBylineService $bylines,
+        private readonly SnkKilkanaCommentService $comments,
+        private readonly SnkKilkanaNewsletterService $newsletter,
         private readonly SnkKilkanaPlanService $plan,
-        private readonly SnkKilkanaPostService $piezas,
-        private readonly SnkKilkanaReaderService $lectores,
-        private readonly SnkKilkanaTrashService $papelera,
+        private readonly SnkKilkanaPostService $posts,
+        private readonly SnkKilkanaReaderService $readers,
+        private readonly SnkKilkanaTrashService $trash,
     ) {}
 
     /**
@@ -76,12 +76,12 @@ class SnkKilkanaPanelService
      */
     public function bootstrap(): array
     {
-        $clases = $this->papelera->kindsFor(auth()->user());
+        $kinds = $this->trash->kindsFor(auth()->user());
 
         // La única escritura de aquí, y es la misma regla que el alta de una cuenta: quien
         // puede escribir tiene firma. El administrador lo crea el provisioning, que no sabe de
         // periódicos, así que su firma nace la primera vez que abre el panel.
-        $this->firmas->ensureForUser((int) auth()->id());
+        $this->bylines->ensureForUser((int) auth()->id());
 
         return [
             // Lo que la puesta en marcha necesita para saber por dónde va, y lo que decide si el
@@ -97,13 +97,13 @@ class SnkKilkanaPanelService
             // El mismo scope y **el mismo Resource** que sirven `GET categories`, `authors` y
             // `tags`: el scope arma la consulta y el Resource la forma, justo para que las dos
             // puertas no puedan enseñar columnas distintas.
-            'categories' => $this->conPermiso('index categories', fn () => SnkKilkanaCategoryResource::collection(SnkKilkanaCategoryModel::query()->asCatalogue()->get())),
-            'authors' => $this->conPermiso('index authors', fn () => SnkKilkanaAuthorResource::collection(SnkKilkanaAuthorModel::query()->asCatalogue()->get())),
-            'tags' => $this->conPermiso('index tags', fn () => SnkKilkanaTagResource::collection(SnkKilkanaTagModel::query()->asCatalogue()->get())),
+            'categories' => $this->withPermission('index categories', fn () => SnkKilkanaCategoryResource::collection(SnkKilkanaCategoryModel::query()->asCatalogue()->get())),
+            'authors' => $this->withPermission('index authors', fn () => SnkKilkanaAuthorResource::collection(SnkKilkanaAuthorModel::query()->asCatalogue()->get())),
+            'tags' => $this->withPermission('index tags', fn () => SnkKilkanaTagResource::collection(SnkKilkanaTagModel::query()->asCatalogue()->get())),
             // Las cifras de las pestañas de Piezas, con la forma que les da `GET posts?summary=counts`:
             // el raíl cuenta lo mismo que la pestaña «Todas», acotado a lo que ve quien mira.
-            'posts' => $this->cifra('index posts', function () {
-                $counts = $this->piezas->countsByStatus(
+            'posts' => $this->countOrNull('index posts', function () {
+                $counts = $this->posts->countsByStatus(
                     (int) auth()->id(),
                     auth()->user()?->can('edit others posts') === true,
                     auth()->user()?->can('view others posts') === true,
@@ -111,32 +111,32 @@ class SnkKilkanaPanelService
 
                 return ['counts' => $counts['scoped'], 'counts_all' => $counts['all']];
             }),
-            'comments' => $this->cifra('index comments', fn () => [
-                'counts' => $this->comentarios->countsByStatus(),
-                'oldest_pending_at' => $this->comentarios->oldestPendingAt(),
+            'comments' => $this->countOrNull('index comments', fn () => [
+                'counts' => $this->comments->countsByStatus(),
+                'oldest_pending_at' => $this->comments->oldestPendingAt(),
             ]),
-            'readers' => $this->cifra('index readers', fn () => ['accounts' => $this->lectores->accounts()->count()]),
+            'readers' => $this->countOrNull('index readers', fn () => ['accounts' => $this->readers->accounts()->count()]),
             // La campana la guarda `can:view others posts` en su ruta, no un `indexPermission`.
-            'activity' => $this->cifra('view others posts', fn () => $this->registro->bell(self::BELL)),
+            'activity' => $this->countOrNull('view others posts', fn () => $this->activityLog->bell(self::BELL)),
             // La papelera no tiene un permiso suyo: se ve si se puede borrar algo de lo que hay.
-            'trash' => $clases === [] ? null : ['count' => $this->papelera->count($clases)],
-            'gate' => $this->cifra('index posts', fn () => ['failing' => SnkKilkanaGateResultModel::failingCount()]),
-            'newsletter' => $this->cifra('index subscribers', fn () => ['drafts' => $this->boletin->drafts()]),
+            'trash' => $kinds === [] ? null : ['count' => $this->trash->count($kinds)],
+            'gate' => $this->countOrNull('index posts', fn () => ['failing' => SnkKilkanaGateResultModel::failingCount()]),
+            'newsletter' => $this->countOrNull('index subscribers', fn () => ['drafts' => $this->newsletter->drafts()]),
         ];
     }
 
     /** @return array{launched_at: ?string, theme: ?string, published: int} */
     private function setup(): array
     {
-        $ajustes = SnkKilkanaSettingModel::query()
+        $settings = SnkKilkanaSettingModel::query()
             ->with('theme:id,slug')
             ->find(1, ['launched_at', 'theme_id', 'theme_spec']);
 
         return [
-            'launched_at' => $ajustes?->launched_at?->toIso8601String(),
+            'launched_at' => $settings?->launched_at?->toIso8601String(),
             // El slug del tema puesto, y nulo mientras vaya desnudo: es lo que Themes marca
             // como «live» y lo que da por hecho el primer paso.
-            'theme' => $ajustes?->theme_spec !== null ? $ajustes->theme?->slug : null,
+            'theme' => $settings?->theme_spec !== null ? $settings->theme?->slug : null,
             'published' => SnkKilkanaPostModel::query()->published()->count(),
         ];
     }
@@ -154,46 +154,46 @@ class SnkKilkanaPanelService
     public function dashboard(?int $reads): array
     {
         $userId = (int) auth()->id();
-        $puedeEditarAjenas = auth()->user()?->can('edit others posts') === true;
-        $cifras = $this->piezas->countsByStatus($userId, $puedeEditarAjenas, auth()->user()?->can('view others posts') === true);
+        $canEditOthers = auth()->user()?->can('edit others posts') === true;
+        $counts = $this->posts->countsByStatus($userId, $canEditOthers, auth()->user()?->can('view others posts') === true);
 
         // La misma página que sirve `GET posts`, y por la misma puerta: `KilkanaPanelCompositeTest`
         // compara sección a sección estas cuatro colas con las cuatro llamadas que sustituyen, y
         // lo que podía romper esa comparación era que aquí estuviera copiada.
-        $cola = function (array $filtros, int $cuantas, ?int $dias) use ($userId, $puedeEditarAjenas, $cifras) {
+        $queue = function (array $filters, int $count, ?int $days) use ($userId, $canEditOthers, $counts) {
             // Por el mismo builder que `GET posts`, y con el mismo techo: estas cuatro colas
             // **son** ese listado servido de otra manera, y `KilkanaPanelCompositeTest` compara
             // las dos respuestas con `assertSame`. Sin pasar por aquí, `?fields=` e `?include=`
             // funcionarían en una puerta y en la otra no.
-            $consulta = QueryBuilder::for($this->piezas->query($userId, $puedeEditarAjenas))
+            $query = QueryBuilder::for($this->posts->query($userId, $canEditOthers))
                 ->allowedFields(...SnkKilkanaPostService::FIELDS)
                 ->allowedIncludes(...SnkKilkanaPostService::INCLUDES);
 
-            $pagina = $this->piezas->page(
-                $this->piezas->withAudience($consulta, $dias),
-                $filtros,
-                $cuantas,
+            $page = $this->posts->page(
+                $this->posts->withAudience($query, $days),
+                $filters,
+                $count,
             );
 
             return [
-                'data' => SnkKilkanaPostResource::collection($pagina->getCollection()),
-                'meta' => CorePaginationSupport::meta($pagina),
-                'counts' => $cifras['scoped'],
-                'counts_all' => $cifras['all'],
+                'data' => SnkKilkanaPostResource::collection($page->getCollection()),
+                'meta' => CorePaginationSupport::meta($page),
+                'counts' => $counts['scoped'],
+                'counts_all' => $counts['all'],
             ];
         };
 
-        $filtro = fn (?string $estado, string $orden, string $dir) => [
-            'status' => $estado, 'category' => null, 'q' => null, 'sort' => $orden, 'dir' => $dir,
+        $filter = fn (?string $status, string $order, string $dir) => [
+            'status' => $status, 'category' => null, 'q' => null, 'sort' => $order, 'dir' => $dir,
         ];
 
         return [
             // La cola de revisión va del más antiguo al más nuevo, al revés que el resto del
             // panel: lo que lleva más tiempo esperando es lo que primero bloquea a otro.
-            'review' => $cola($filtro('review', 'date', 'asc'), self::QUEUE, null),
-            'scheduled' => $cola($filtro('scheduled', 'date', 'asc'), self::QUEUE, null),
-            'published' => $cola($filtro('published', 'date', 'desc'), self::QUEUE, null),
-            'reads' => $cola($filtro(null, 'reads', 'desc'), self::MOST_READ, $reads),
+            'review' => $queue($filter('review', 'date', 'asc'), self::QUEUE, null),
+            'scheduled' => $queue($filter('scheduled', 'date', 'asc'), self::QUEUE, null),
+            'published' => $queue($filter('published', 'date', 'desc'), self::QUEUE, null),
+            'reads' => $queue($filter(null, 'reads', 'desc'), self::MOST_READ, $reads),
             // El plan no tumba el tablero: es una tarjeta de facturación, y sin instancia
             // —o sin Commander delante— la pantalla se pinta igual sin ella.
             'plan' => $this->plan->payload(),
@@ -201,9 +201,9 @@ class SnkKilkanaPanelService
     }
 
     /** La sección que quien mira no puede ver llega nula, no cierra la pantalla. */
-    private function conPermiso(string $permiso, callable $seccion): mixed
+    private function withPermission(string $permission, callable $section): mixed
     {
-        return auth()->user()?->can($permiso) === true ? $seccion() : null;
+        return auth()->user()?->can($permission) === true ? $section() : null;
     }
 
     /**
@@ -216,12 +216,12 @@ class SnkKilkanaPanelService
      * paraba el armazón, que las pedía una a una; ahora vienen en la misma respuesta, así que
      * lo tiene que parar esto. Se reporta, no se traga.
      */
-    private function cifra(string $permiso, callable $seccion): mixed
+    private function countOrNull(string $permission, callable $section): mixed
     {
         try {
-            return $this->conPermiso($permiso, $seccion);
-        } catch (\Throwable $fallo) {
-            report($fallo);
+            return $this->withPermission($permission, $section);
+        } catch (\Throwable $error) {
+            report($error);
 
             return null;
         }

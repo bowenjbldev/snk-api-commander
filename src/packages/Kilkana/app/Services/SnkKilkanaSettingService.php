@@ -62,17 +62,17 @@ class SnkKilkanaSettingService
      */
     public function update(array $data): SnkKilkanaSettingModel
     {
-        $fila = $this->get();
+        $row = $this->get();
 
-        $fila->fill($this->columnsFrom($data));
+        $row->fill($this->columnsFrom($data));
         // Lanzar es un hecho, no un ajuste: se sella una vez y no se deshace desde aquí. Un
         // periódico que quiera desaparecer de la calle tiene `search_visible`, que es otra cosa.
         if (($data['launched'] ?? false) === true) {
-            $fila->launched_at ??= now();
+            $row->launched_at ??= now();
         }
-        $fila->save();
+        $row->save();
 
-        return $fila;
+        return $row;
     }
 
     /**
@@ -91,7 +91,7 @@ class SnkKilkanaSettingService
     public function resetSetup(): SnkKilkanaSettingModel
     {
         if (app()->environment('production')) {
-            throw new RuntimeException('La puesta en marcha no se reinicia en producción.');
+            throw new RuntimeException('Setup cannot be reset in production.');
         }
 
         return DB::transaction(function () {
@@ -104,8 +104,8 @@ class SnkKilkanaSettingService
             SnkKilkanaTagModel::query()->delete();
 
             // Desvestido también: elegir tema es el primer paso, y reiniciar es volver a él.
-            $fila = $this->get();
-            $fila->forceFill([
+            $row = $this->get();
+            $row->forceFill([
                 'launched_at' => null,
                 'theme_id' => null,
                 'theme_spec' => null,
@@ -113,34 +113,34 @@ class SnkKilkanaSettingService
                 'theme_overrides' => null,
             ])->save();
 
-            return $fila;
+            return $row;
         });
     }
 
-    public function payload(SnkKilkanaSettingModel $fila): array
+    public function payload(SnkKilkanaSettingModel $row): array
     {
-        $fila->loadMissing('theme');
+        $row->loadMissing('theme');
 
         return [
-            'theme_id' => $fila->theme_id,
+            'theme_id' => $row->theme_id,
             // El tema resuelto viaja entero —spec incluido— para evitar una segunda llamada. Es
             // siempre la copia congelada del periódico con su retoque encima, no la fila del
             // catálogo: vestir un tema lo copia primero.
-            'theme' => $fila->themePayload(),
-            'theme_update_available' => $this->wear->updateAvailable($fila),
+            'theme' => $row->themePayload(),
+            'theme_update_available' => $this->wear->updateAvailable($row),
             'tenant' => [
-                'name' => $fila->tenant_name,
-                'tagline' => $fila->tenant_tagline,
-                'city' => $fila->tenant_city,
-                'url' => $fila->tenant_url,
+                'name' => $row->tenant_name,
+                'tagline' => $row->tenant_tagline,
+                'city' => $row->tenant_city,
+                'url' => $row->tenant_url,
             ],
-            'launched_at' => $fila->launched_at?->toIso8601String(),
-            'lang' => $fila->lang,
-            'tz' => $fila->tz,
-            'search_visible' => (bool) $fila->search_visible,
-            'newsletter_reply_to' => $fila->newsletter_reply_to,
-            'legal' => self::group($fila->legal, SnkKilkanaSettingModel::LEGAL),
-            'social' => self::group($fila->social, SnkKilkanaSettingModel::SOCIAL),
+            'launched_at' => $row->launched_at?->toIso8601String(),
+            'lang' => $row->lang,
+            'tz' => $row->tz,
+            'search_visible' => (bool) $row->search_visible,
+            'newsletter_reply_to' => $row->newsletter_reply_to,
+            'legal' => self::group($row->legal, SnkKilkanaSettingModel::LEGAL),
+            'social' => self::group($row->social, SnkKilkanaSettingModel::SOCIAL),
         ];
     }
 
@@ -158,15 +158,15 @@ class SnkKilkanaSettingService
     }
 
     /** Un grupo abierto, siempre con todas sus claves: nula la que no se ha escrito. */
-    public static function group(?array $valor, array $claves): array
+    public static function group(?array $value, array $keys): array
     {
-        $grupo = [];
-        foreach ($claves as $clave) {
-            $v = $valor[$clave] ?? null;
-            $grupo[$clave] = is_string($v) && trim($v) !== '' ? trim($v) : null;
+        $group = [];
+        foreach ($keys as $key) {
+            $v = $value[$key] ?? null;
+            $group[$key] = is_string($v) && trim($v) !== '' ? trim($v) : null;
         }
 
-        return $grupo;
+        return $group;
     }
 
     /**
@@ -177,10 +177,10 @@ class SnkKilkanaSettingService
      */
     private function columnsFrom(array $data): array
     {
-        $columnas = collect($data)->only(['theme_overrides', 'lang', 'tz', 'search_visible', 'newsletter_reply_to'])->all();
-        foreach (['legal' => SnkKilkanaSettingModel::LEGAL, 'social' => SnkKilkanaSettingModel::SOCIAL] as $grupo => $claves) {
-            if (is_array($data[$grupo] ?? null)) {
-                $columnas[$grupo] = self::group($data[$grupo], $claves);
+        $columns = collect($data)->only(['theme_overrides', 'lang', 'tz', 'search_visible', 'newsletter_reply_to'])->all();
+        foreach (['legal' => SnkKilkanaSettingModel::LEGAL, 'social' => SnkKilkanaSettingModel::SOCIAL] as $group => $keys) {
+            if (is_array($data[$group] ?? null)) {
+                $columns[$group] = self::group($data[$group], $keys);
             }
         }
 
@@ -190,19 +190,19 @@ class SnkKilkanaSettingService
         // vacía lo movido, y mandar las dos cosas en la misma llamada tiene que dejar el retoque
         // nuevo puesto, no borrado.
         if (isset($data['theme_id'])) {
-            $tema = SnkKilkanaThemeModel::query()->find($data['theme_id']);
-            if ($tema) {
-                $this->wear->wear($tema);
+            $theme = SnkKilkanaThemeModel::query()->find($data['theme_id']);
+            if ($theme) {
+                $this->wear->wear($theme);
             }
         }
 
         $tenant = is_array($data['tenant'] ?? null) ? $data['tenant'] : [];
-        foreach (self::TENANT as $campo) {
-            if (array_key_exists($campo, $tenant)) {
-                $columnas["tenant_{$campo}"] = $tenant[$campo];
+        foreach (self::TENANT as $field) {
+            if (array_key_exists($field, $tenant)) {
+                $columns["tenant_{$field}"] = $tenant[$field];
             }
         }
 
-        return $columnas;
+        return $columns;
     }
 }

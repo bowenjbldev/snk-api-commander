@@ -18,9 +18,9 @@ class SnkKilkanaAuthorsController extends CoreBaseApiController
     /** `rule()` es una llamada, y una propiedad no se puede inicializar con eso: va aqui. */
     public function __construct()
     {
-        foreach (['validationRulesStore', 'validationRulesUpdate'] as $reglas) {
+        foreach (['validationRulesStore', 'validationRulesUpdate'] as $property) {
             // Que clase de firma es. Nace `contributor`, que es el alta mas comun.
-            $this->{$reglas}['kind'] = 'sometimes|'.SnkKilkanaAuthorKindEnum::rule();
+            $this->{$property}['kind'] = 'sometimes|'.SnkKilkanaAuthorKindEnum::rule();
         }
     }
 
@@ -98,9 +98,9 @@ class SnkKilkanaAuthorsController extends CoreBaseApiController
             return $response;
         }
 
-        $articulos = SnkKilkanaPostModel::query()->where('author_id', $id)->count();
-        if ($articulos > 0) {
-            return response()->json(['error' => 'Byline in use', 'posts' => $articulos], 409);
+        $posts = SnkKilkanaPostModel::query()->where('author_id', $id)->count();
+        if ($posts > 0) {
+            return response()->json(['error' => 'Byline in use', 'posts' => $posts], 409);
         }
 
         try {

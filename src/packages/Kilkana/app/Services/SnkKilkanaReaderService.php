@@ -21,7 +21,7 @@ use Packages\Kilkana\Models\SnkKilkanaSubscriberModel;
  */
 class SnkKilkanaReaderService
 {
-    public function __construct(private readonly SnkKilkanaActivityService $registro) {}
+    public function __construct(private readonly SnkKilkanaActivityService $activityLog) {}
 
     /**
      * El conjunto de las cuentas lectoras, como consulta.
@@ -46,10 +46,9 @@ class SnkKilkanaReaderService
      * Cuelga de cada cuenta lo que la pantalla de lectores enseña de ella: comentarios,
      * lecturas del mes y su estado en el boletín.
      *
-     * **Tres consultas para toda la página, no tres por fila.** Es la mitad de lo que hacía
-     * `asRows()` en el controlador; la otra mitad —la forma de la fila— la declara
-     * `SnkKilkanaReaderResource`. Estaban pegadas en un método de 63 líneas, y por eso ni una
-     * de las dos se podía probar sin la otra.
+     * **Tres consultas para toda la página, no tres por fila.** La forma de la fila la declara
+     * `SnkKilkanaReaderResource`: consulta y forma van por separado para que cada una se pruebe
+     * sin la otra.
      *
      * Va como atributos y no como un array aparte para que el Resource las lea con `whenHas()`,
      * igual que lee un `withCount`: para él no hay diferencia entre un agregado de la consulta
@@ -65,23 +64,23 @@ class SnkKilkanaReaderService
             return $users;
         }
 
-        $comentarios = [];
-        $ultimo = [];
+        $comments = [];
+        $last = [];
         SnkKilkanaCommentModel::query()
             ->whereIn('user_id', $ids)
             ->selectRaw('user_id, status, count(*) as total, max(created_at) as last_at')
             ->groupBy('user_id', 'status')
             ->get()
-            ->each(function ($fila) use (&$comentarios, &$ultimo) {
-                $comentarios[$fila->user_id] ??= ['total' => 0, 'rejected' => 0];
-                $comentarios[$fila->user_id]['total'] += (int) $fila->total;
-                if ($fila->status === SnkKilkanaCommentStatusEnum::Rejected) {
-                    $comentarios[$fila->user_id]['rejected'] += (int) $fila->total;
+            ->each(function ($row) use (&$comments, &$last) {
+                $comments[$row->user_id] ??= ['total' => 0, 'rejected' => 0];
+                $comments[$row->user_id]['total'] += (int) $row->total;
+                if ($row->status === SnkKilkanaCommentStatusEnum::Rejected) {
+                    $comments[$row->user_id]['rejected'] += (int) $row->total;
                 }
-                $ultimo[$fila->user_id] = max($ultimo[$fila->user_id] ?? '', (string) $fila->last_at);
+                $last[$row->user_id] = max($last[$row->user_id] ?? '', (string) $row->last_at);
             });
 
-        $lecturas = SnkKilkanaReaderReadModel::query()
+        $reads = SnkKilkanaReaderReadModel::query()
             ->whereIn('user_id', $ids)
             ->inMonth()
             ->selectRaw('user_id, count(*) as total, max(read_at) as last_at')
@@ -89,27 +88,27 @@ class SnkKilkanaReaderService
             ->get()
             ->keyBy('user_id');
 
-        $boletin = SnkKilkanaSubscriberModel::query()
+        $newsletter = SnkKilkanaSubscriberModel::query()
             ->whereIn('email', $users->pluck('email'))
             ->get(['email', 'status', 'consent_source', 'consent_at'])
             ->keyBy('email');
 
-        return $users->each(function (CoreUserModel $user) use ($comentarios, $ultimo, $lecturas, $boletin) {
+        return $users->each(function (CoreUserModel $user) use ($comments, $last, $reads, $newsletter) {
             $id = $user->getKey();
-            $lectura = $lecturas->get($id);
+            $read = $reads->get($id);
 
-            $user->setAttribute('comments_total', $comentarios[$id]['total'] ?? 0);
-            $user->setAttribute('comments_rejected', $comentarios[$id]['rejected'] ?? 0);
-            $user->setAttribute('reads_total', (int) ($lectura?->total ?? 0));
-            $user->setAttribute('newsletter', $boletin->get($user->email));
+            $user->setAttribute('comments_total', $comments[$id]['total'] ?? 0);
+            $user->setAttribute('comments_rejected', $comments[$id]['rejected'] ?? 0);
+            $user->setAttribute('reads_total', (int) ($read?->total ?? 0));
+            $user->setAttribute('newsletter', $newsletter->get($user->email));
 
             // Como fechas y no como cadenas: hoy las tres llegan de un agregado en
             // `Y-m-d H:i:s`, pero el día que una venga en ISO la `T` ordena por delante del
             // espacio y ganaría la más vieja.
             $user->setAttribute('last_seen_at', collect([
                 $user->getAttribute('last_token_at'),
-                $ultimo[$id] ?? null,
-                $lectura?->last_at,
+                $last[$id] ?? null,
+                $read?->last_at,
             ])->filter()->map(fn ($v) => Carbon::parse($v))->max());
         });
     }
@@ -119,7 +118,7 @@ class SnkKilkanaReaderService
         $roles = $user?->roles->pluck('name') ?? collect();
 
         return $roles->contains('reader')
-            && $roles->every(fn (string $rol) => in_array($rol, SnkKilkanaRoleCatalogService::WITHOUT_SEAT, true));
+            && $roles->every(fn (string $role) => in_array($role, SnkKilkanaRoleCatalogService::WITHOUT_SEAT, true));
     }
 
     /**
@@ -131,7 +130,7 @@ class SnkKilkanaReaderService
     {
         $user->forceFill(['suspended_at' => $user->suspended_at ?? now()])->save();
         $user->tokens()->delete();
-        $this->registro->log('comment', 'reader_blocked', $user->full_name ?: $user->name, '/readers');
+        $this->activityLog->log('comment', 'reader_blocked', $user->full_name, '/readers');
 
         return SnkKilkanaCommentModel::query()
             ->where('user_id', $user->getKey())
@@ -144,7 +143,7 @@ class SnkKilkanaReaderService
      *
      * Bloquea primero —sesiones fuera, pendientes rechazados— y después borra lo que identifica:
      * nombre, correo y contraseña. Los comentarios se quedan, que son parte de la conversación
-     * de cada pieza, firmados por «Reader» y sin nadie detrás; y si ese correo estaba en el
+     * de cada pieza, firmados por «Lector» y sin nadie detrás; y si ese correo estaba en el
      * boletín, se va de la lista. Cuenta como bloqueada para siempre, y no vuelve.
      */
     public function anonymize(CoreUserModel $user): void
@@ -152,19 +151,19 @@ class SnkKilkanaReaderService
         $email = (string) $user->email;
         $this->block($user);
         $user->forceFill([
-            'name' => 'Reader',
-            'full_name' => null,
+            'name' => 'Lector',
+            'lastname' => null,
             'email' => 'retired-'.$user->getKey().'@anonymised.invalid',
             'password' => Str::random(40),
         ])->save();
         SnkKilkanaSubscriberModel::query()->where('email', $email)->delete();
-        $this->registro->log('comment', 'reader_removed', '', '/readers');
+        $this->activityLog->log('comment', 'reader_removed', '', '/readers');
     }
 
     /** Vuelve a abrirla. Lo rechazado se queda rechazado: eso ya fue una decisión. */
     public function unblock(CoreUserModel $user): void
     {
         $user->forceFill(['suspended_at' => null])->save();
-        $this->registro->log('comment', 'reader_unblocked', $user->full_name ?: $user->name, '/readers');
+        $this->activityLog->log('comment', 'reader_unblocked', $user->full_name, '/readers');
     }
 }

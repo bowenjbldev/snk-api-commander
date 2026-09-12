@@ -72,21 +72,18 @@ Y se puede cambiar, pero **no vaciar**: la columna no admite nulo y el derivador
 al crear la firma, así que no hay nadie que rellene el hueco después. Una firma que ya
 existe tiene URL siempre.
 
-Al crear una firma sin slug, se deriva bajando dos peldaños y **parándose**:
+Al crear una firma sin slug, se deriva y **siempre sale una**:
 
 ```
-1.  alias, o si no el nombre de la cuenta   →  jorge-bowen
-2.  users.full_name (el segundo apellido)   →  jorge-bowen-lopez
-3.  no se inventa nada: error
+1.  alias, o si no `name` + `lastname` de la cuenta   →  jorge-bowen-lopez
+2.  ocupada: cuatro cifras al azar                     →  jorge-bowen-lopez-4821
+    (sin letras latinas en el nombre: firma-4821)
 ```
 
-Sin sufijos numéricos. Un `-2` automático fija para siempre una URL que nadie eligió y que
-nadie vuelve a revisar. Si los dos peldaños están ocupados —o el nombre no deja un slug
-utilizable—, el alta **falla sobre el campo `slug`** y alguien elige la URL a mano.
-
-Esa negativa no puede tumbar el alta de una **cuenta**: cuando una cuenta con permiso de
-escritura no consigue firma, la cuenta se guarda igual y queda sin ella, disponible para
-que alguien le asigne una URL después. Guardar un usuario no puede fallar por su firma.
+La URL con cifras no queda sellada: la ficha de la firma la deja cambiar y la anterior pasa
+al historial de redirecciones. Es lo que permite que toda cuenta con permiso de escritura
+tenga firma sin que nadie intervenga, y que crear una pieza no exija elegir firma: sin
+`author_id`, la pieza la firma la cuenta que la crea.
 
 ### `kilkana_author_slugs` — las URLs que dejó atrás
 

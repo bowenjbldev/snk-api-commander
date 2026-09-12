@@ -30,141 +30,141 @@ class SnkKilkanaThemeCatalogSyncService
     /**
      * @return array{written: int, skipped: int, categories: int, errors: list<string>}
      */
-    public function sync(?string $directorio = null): array
+    public function sync(?string $directory = null): array
     {
-        $directorio ??= base_path('packages/Kilkana/database/seeders/data/themes');
-        $resumen = ['written' => 0, 'skipped' => 0, 'categories' => 0, 'errors' => []];
+        $directory ??= base_path('packages/Kilkana/database/seeders/data/themes');
+        $summary = ['written' => 0, 'skipped' => 0, 'categories' => 0, 'errors' => []];
 
-        if (! is_dir($directorio)) {
-            $resumen['errors'][] = "No existe el directorio de temas: {$directorio}";
+        if (! is_dir($directory)) {
+            $summary['errors'][] = "Themes directory does not exist: {$directory}";
 
-            return $resumen;
+            return $summary;
         }
 
-        $resumen['categories'] = $this->syncCategories($directorio, $resumen);
+        $summary['categories'] = $this->syncCategories($directory, $summary);
 
         // Los ficheros con guion bajo delante son vocabulario, no temas.
-        foreach (glob($directorio.'/*.json') as $ruta) {
-            if (str_starts_with(basename($ruta), '_')) {
+        foreach (glob($directory.'/*.json') as $path) {
+            if (str_starts_with(basename($path), '_')) {
                 continue;
             }
 
-            $this->syncTheme($ruta, $resumen);
+            $this->syncTheme($path, $summary);
         }
 
-        return $resumen;
+        return $summary;
     }
 
-    private function syncCategories(string $directorio, array &$resumen): int
+    private function syncCategories(string $directory, array &$summary): int
     {
-        $ruta = $directorio.'/_categories.json';
-        if (! is_file($ruta)) {
+        $path = $directory.'/_categories.json';
+        if (! is_file($path)) {
             return 0;
         }
 
-        $categorias = $this->readJson($ruta, $resumen);
-        if (! is_array($categorias)) {
+        $categories = $this->readJson($path, $summary);
+        if (! is_array($categories)) {
             return 0;
         }
 
-        foreach ($categorias as $categoria) {
-            if (! isset($categoria['slug'], $categoria['name'])) {
-                $resumen['errors'][] = '_categories.json: una entrada sin slug o sin name';
+        foreach ($categories as $category) {
+            if (! isset($category['slug'], $category['name'])) {
+                $summary['errors'][] = '_categories.json: an entry without slug or name';
 
                 continue;
             }
 
             SnkKilkanaThemeCategoryModel::updateOrCreate(
-                ['slug' => $categoria['slug']],
-                ['name' => $categoria['name'], 'position' => $categoria['position'] ?? 0]
+                ['slug' => $category['slug']],
+                ['name' => $category['name'], 'position' => $category['position'] ?? 0]
             );
         }
 
-        return count($categorias);
+        return count($categories);
     }
 
-    private function syncTheme(string $ruta, array &$resumen): void
+    private function syncTheme(string $path, array &$summary): void
     {
-        $fichero = basename($ruta);
-        $datos = $this->readJson($ruta, $resumen);
-        if (! is_array($datos)) {
+        $file = basename($path);
+        $data = $this->readJson($path, $summary);
+        if (! is_array($data)) {
             return;
         }
 
-        if (! isset($datos['slug'], $datos['version'])) {
-            $resumen['errors'][] = "{$fichero}: falta slug o version";
+        if (! isset($data['slug'], $data['version'])) {
+            $summary['errors'][] = "{$file}: missing slug or version";
 
             return;
         }
 
-        $spec = is_array($datos['spec'] ?? null) ? $datos['spec'] : [];
+        $spec = is_array($data['spec'] ?? null) ? $data['spec'] : [];
         if ($spec === []) {
-            $resumen['errors'][] = "{$fichero}: un tema sin spec no se puede vestir";
+            $summary['errors'][] = "{$file}: a theme without a spec cannot be worn";
 
             return;
         }
 
         // Validar ANTES de escribir nada: publicar la mitad de un tema deja el catálogo en un
         // estado que nadie pidió.
-        $problemas = [];
+        $problems = [];
         foreach ($this->validator->validate($spec) as $error) {
-            $problemas[] = "{$fichero}: {$error}";
+            $problems[] = "{$file}: {$error}";
         }
 
-        $categorias = $this->resolveCategories($datos['categories'] ?? [], $fichero, $problemas);
+        $categories = $this->resolveCategories($data['categories'] ?? [], $file, $problems);
 
-        if ($problemas !== []) {
-            $resumen['errors'] = [...$resumen['errors'], ...$problemas];
+        if ($problems !== []) {
+            $summary['errors'] = [...$summary['errors'], ...$problems];
 
             return;
         }
 
-        $existente = SnkKilkanaThemeModel::query()->where('slug', $datos['slug'])->first();
-        if ($existente && $existente->version === $datos['version']) {
-            $resumen['skipped']++;
+        $existing = SnkKilkanaThemeModel::query()->where('slug', $data['slug'])->first();
+        if ($existing && $existing->version === $data['version']) {
+            $summary['skipped']++;
 
             return;
         }
 
-        $estado = $datos['status'] ?? SnkKilkanaThemeStatusEnum::Draft->value;
+        $status = $data['status'] ?? SnkKilkanaThemeStatusEnum::Draft->value;
         // Se sella la primera vez que sale publicado y no se recalcula: es la fecha por la que
         // ordena «novedades», y republicar una corrección no vuelve nuevo un tema de hace un año.
-        $publicadoEn = $estado === SnkKilkanaThemeStatusEnum::Published->value
-            ? ($existente?->published_at ?? now())
+        $publishedAt = $status === SnkKilkanaThemeStatusEnum::Published->value
+            ? ($existing?->published_at ?? now())
             : null;
 
-        DB::transaction(function () use ($datos, $spec, $categorias, $estado, $publicadoEn, &$resumen) {
-            $tema = SnkKilkanaThemeModel::updateOrCreate(['slug' => $datos['slug']], [
-                'name' => $datos['name'] ?? $datos['slug'],
-                'tagline' => $datos['tagline'] ?? null,
-                'description' => $datos['description'] ?? null,
-                'status' => $estado,
+        DB::transaction(function () use ($data, $spec, $categories, $status, $publishedAt, &$summary) {
+            $theme = SnkKilkanaThemeModel::updateOrCreate(['slug' => $data['slug']], [
+                'name' => $data['name'] ?? $data['slug'],
+                'tagline' => $data['tagline'] ?? null,
+                'description' => $data['description'] ?? null,
+                'status' => $status,
                 'spec' => $spec,
-                'featured' => (bool) ($datos['featured'] ?? false),
-                'position' => $datos['position'] ?? 0,
-                'popularity' => $datos['popularity'] ?? 0,
-                'version' => $datos['version'],
-                'thumbnail_path' => $datos['thumbnail_path'] ?? null,
-                'screenshots' => $datos['screenshots'] ?? null,
-                'demo_url' => $datos['demo_url'] ?? null,
-                'published_at' => $publicadoEn,
+                'featured' => (bool) ($data['featured'] ?? false),
+                'position' => $data['position'] ?? 0,
+                'popularity' => $data['popularity'] ?? 0,
+                'version' => $data['version'],
+                'thumbnail_path' => $data['thumbnail_path'] ?? null,
+                'screenshots' => $data['screenshots'] ?? null,
+                'demo_url' => $data['demo_url'] ?? null,
+                'published_at' => $publishedAt,
             ]);
 
-            $tema->categories()->sync($categorias);
+            $theme->categories()->sync($categories);
 
-            $resumen['written']++;
+            $summary['written']++;
         });
     }
 
     /** Una categoría que no está en el vocabulario es un error, no una categoría nueva. */
-    private function resolveCategories(mixed $slugs, string $fichero, array &$problemas): array
+    private function resolveCategories(mixed $slugs, string $file, array &$problems): array
     {
         $ids = [];
 
         foreach ((array) $slugs as $slug) {
             $id = SnkKilkanaThemeCategoryModel::query()->where('slug', $slug)->value('id');
             if ($id === null) {
-                $problemas[] = "{$fichero}: la categoría «{$slug}» no está en _categories.json";
+                $problems[] = "{$file}: category «{$slug}» is not in _categories.json";
 
                 continue;
             }
@@ -174,16 +174,16 @@ class SnkKilkanaThemeCatalogSyncService
         return $ids;
     }
 
-    private function readJson(string $ruta, array &$resumen): mixed
+    private function readJson(string $path, array &$summary): mixed
     {
-        $datos = json_decode((string) file_get_contents($ruta), true);
+        $data = json_decode((string) file_get_contents($path), true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            $resumen['errors'][] = basename($ruta).': JSON inválido — '.json_last_error_msg();
+            $summary['errors'][] = basename($path).': invalid JSON — '.json_last_error_msg();
 
             return null;
         }
 
-        return $datos;
+        return $data;
     }
 }

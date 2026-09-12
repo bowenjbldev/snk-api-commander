@@ -14,8 +14,8 @@ class CoreMigrateRefreshCommand extends Command
     use CorePackageDatabaseSupport;
 
     protected $signature = 'core:migrate:refresh
-        {--client= : Cliente del paquete (required, e.g. acme)}
-        {--package= : Paquete dentro del cliente (required, e.g. Shop)}
+        {--client= : Package client (required, e.g. acme)}
+        {--package= : Package inside the client (required, e.g. Shop)}
         {--seed : Run seeders after refreshing}
         {--force : Force the operation to run in production}';
 

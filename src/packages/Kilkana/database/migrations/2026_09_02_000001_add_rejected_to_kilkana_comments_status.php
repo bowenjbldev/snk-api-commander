@@ -34,13 +34,13 @@ return new class extends Migration
      */
     public function down(): void
     {
-        $rechazados = DB::table('kilkana_comments')
+        $rejectedCount = DB::table('kilkana_comments')
             ->where('status', SnkKilkanaCommentStatusEnum::Rejected->value)
             ->count();
 
-        if ($rechazados > 0) {
+        if ($rejectedCount > 0) {
             throw new RuntimeException(
-                "There are {$rechazados} rejected comment(s); decide them again before rolling back."
+                "There are {$rejectedCount} rejected comment(s); decide them again before rolling back."
             );
         }
 

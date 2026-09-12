@@ -39,8 +39,8 @@ class SnkKilkanaCommentModel extends Model
             // No es restricción de la base porque no puede serlo: MariaDB no admite
             // subconsultas en un `CHECK`, así que «tu padre no puede tener padre» solo cabe
             // aquí — y aquí pasan también el seeder y la consola.
-            $abuelo = self::query()->whereKey($comment->parent_id)->value('parent_id');
-            if ($abuelo !== null) {
+            $grandparentId = self::query()->whereKey($comment->parent_id)->value('parent_id');
+            if ($grandparentId !== null) {
                 throw ValidationException::withMessages([
                     'parent_id' => 'Replies go one level deep: answer the comment this one replies to.',
                 ]);

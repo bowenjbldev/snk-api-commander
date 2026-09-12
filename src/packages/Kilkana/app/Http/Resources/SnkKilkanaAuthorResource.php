@@ -12,11 +12,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * regla vive en el modelo porque decide qué se puede decir de quién. Sale con `alias`, que es la
  * columna de la que arranca — no se puede pedir por su nombre, porque no existe.
  *
- * Lo que ya no puede pasar: `user_id` **decía quién tiene cuenta**. La portada pública anida la
- * firma de cada pieza, así que cualquiera podía separar las firmas con asiento de las que no
+ * `user_id` no sale porque **dice quién tiene cuenta**. La portada pública anida la firma de
+ * cada pieza, así que con él cualquiera podría separar las firmas con asiento de las que no
  * —la distinción que el panel reserva a quien administra cuentas— y de paso contar cuántas
- * cuentas hay y en qué orden entraron. Antes lo tapaba un `$hidden` del modelo, global y por
- * tanto igual para las tres puertas; ahora simplemente no está declarado aquí.
+ * cuentas hay y en qué orden entraron. No está declarado aquí, y eso vale para las tres puertas.
  */
 class SnkKilkanaAuthorResource extends JsonResource
 {
