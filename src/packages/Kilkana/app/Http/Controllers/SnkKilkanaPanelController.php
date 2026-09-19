@@ -5,8 +5,6 @@ namespace Packages\Kilkana\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Packages\Kilkana\Services\SnkKilkanaPanelService;
 use Packages\Kilkana\Services\SnkKilkanaPostService;
 
@@ -37,25 +35,5 @@ class SnkKilkanaPanelController extends Controller
     public function dashboard(): JsonResponse
     {
         return response()->json($this->panel->dashboard(SnkKilkanaPostService::readsWindow(request()->query('reads'))));
-    }
-
-    /**
-     * En qué idioma quiere el panel quien está dentro.
-     *
-     * Sin permiso: cada cuenta cambia el suyo y solo el suyo, así que la sesión ya es toda la
-     * autorización que hace falta. `null` lo devuelve a «lo que diga el navegador», que no es lo
-     * mismo que elegir el idioma por defecto.
-     */
-    public function locale(Request $request): JsonResponse
-    {
-        $data = $request->validate([
-            'locale' => ['present', 'nullable', Rule::in(SnkKilkanaPanelService::PANEL_LOCALES)],
-        ]);
-
-        $user = $request->user();
-        $user->panel_locale = $data['locale'];
-        $user->save();
-
-        return response()->json(['locale' => $user->panel_locale]);
     }
 }
