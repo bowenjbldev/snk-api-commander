@@ -75,7 +75,7 @@ class SnkKilkanaBlockVocabularyTest extends TestCase
         // sitio de este repositorio que compone cuerpos, así que si el contrato se mueve sin
         // que se mueva él, la demo entera se guarda con la forma vieja.
         $post = [
-            'cat' => 'local',
+            'category' => 'local',
             'slug' => 'una-pieza-cualquiera',
             'title' => 'Una pieza cualquiera',
             'excerpt' => 'Con su entradilla.',

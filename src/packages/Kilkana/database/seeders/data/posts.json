@@ -1,6 +1,6 @@
 [
  {
-  "cat": "local",
+  "category": "local",
   "title": "El consistorio aprueba el nuevo plan de movilidad del centro histórico",
   "excerpt": "Las siete calles del casco antiguo quedan cerradas al tráfico de paso desde octubre, con una ventana de carga y descarga de seis a once de la mañana.",
   "author": "Marta Beneyto",
@@ -17,7 +17,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "La cosecha de alcachofa cae un 12 % por la sequía de abril",
   "excerpt": "La cooperativa cifra en 1,4 M€ lo que dejarán de ingresar sus 320 socios y pide adelantar a septiembre el reparto de agua del trasvase.",
   "author": "Iván Sagredo",
@@ -33,7 +33,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "El equipo local asciende a Segunda B tras nueve temporadas",
   "excerpt": "El club selló la promoción a domicilio con un gol en el minuto 88 y la afición esperó al autobús hasta las dos de la madrugada.",
   "author": "Óscar Tomás",
@@ -49,7 +49,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "Entrevista | «La comarca necesita médicos, no promesas»",
   "excerpt": "La jefa de urgencias cubre desde hace ocho años con seis plazas lo que el mapa sanitario firmó para once, y no espera relevo antes de 2027.",
   "author": "Nuria Espí",
@@ -64,7 +64,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "Las obras de la variante norte se retrasan hasta diciembre",
   "excerpt": "La empresa adjudicataria alega que el hallazgo de una acequia enterrada obliga a rehacer el trazado de los últimos cuatrocientos metros.",
   "author": "Ramón Clavel",
@@ -80,7 +80,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "Hallado un mosaico romano en las obras de la calle Mayor",
   "excerpt": "Los técnicos de patrimonio datan la pieza en el siglo II y piden quince días de parón para levantarla entera y trasladarla al museo.",
   "author": "Lucía Ferrándiz",
@@ -97,7 +97,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "El pleno rechaza la moción sobre el polígono del municipio",
   "excerpt": "La propuesta decayó por dos votos y deja sin calendario las treinta hectáreas industriales que el gobierno local prometió urbanizar antes de 2028.",
   "author": "Ramón Clavel",
@@ -113,7 +113,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Tres heridos leves en una colisión en la N-332",
   "excerpt": "El choque entre dos turismos y una furgoneta cortó el carril sur durante hora y media a la altura del cruce de la pedanía, en plena salida de playa.",
   "author": "Redacción",
@@ -129,7 +129,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "La feria de agosto vuelve al recinto ferial tras dos años",
   "excerpt": "El pregón, las peñas y la muestra de ganado recuperan su sitio junto al río después del traslado provisional al parque de la Estación.",
   "author": "Lucía Ferrándiz",
@@ -144,7 +144,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "El paro baja en 340 personas en la comarca durante junio",
   "excerpt": "La hostelería explica siete de cada diez contratos firmados, y el 62 % de ellos dura menos de tres meses, según los datos del servicio autonómico.",
   "author": "Iván Sagredo",
@@ -159,7 +159,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "Guía | Doce fuentes para sobrevivir a la ola de calor",
   "excerpt": "Dónde beber gratis entre las ocho de la mañana y la medianoche, qué horario tienen los cuatro parques con sombra y cómo pedir un vaso en la farmacia.",
   "author": "Nuria Espí",
@@ -175,7 +175,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "La biblioteca municipal abrirá los domingos desde octubre",
   "excerpt": "El horario de fin de semana suma catorce horas y llega con dos plazas nuevas de auxiliar, la primera ampliación de plantilla desde 2015.",
   "author": "Redacción",
@@ -190,7 +190,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "Reportaje | Los últimos alfareros de la comarca",
   "excerpt": "Quedan cuatro talleres en activo, ninguno con relevo generacional, y el barro que usan sale de una cantera que cierra el año que viene.",
   "author": "Lucía Ferrándiz",
@@ -206,7 +206,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "El presupuesto de fiestas crece un 8 % y llega a 410.000 €",
   "excerpt": "Casi la mitad del dinero se va en los cinco días de conciertos, mientras la partida de actos infantiles se queda igual que hace cuatro años.",
   "author": "Ramón Clavel",
@@ -223,7 +223,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "La depuradora vierte al barranco por tercera vez en un mes",
   "excerpt": "Los vecinos de la partida rural avisaron del olor a las seis de la mañana y la Confederación abre expediente a la empresa concesionaria.",
   "author": "Marta Beneyto",
@@ -239,7 +239,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "Opinión | El pacto que nadie quiere firmar",
   "excerpt": "Los dos grupos llevan cuatro meses negociando el reparto de las áreas de gobierno mientras la ciudad espera decisiones que dependen de ese reparto.",
   "author": "Marta Beneyto",
@@ -254,7 +254,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "El club firma a dos centrales para la pretemporada",
   "excerpt": "Llegan libres de dos clubes de la comarca, con contrato de un año y una cláusula de renovación automática si el equipo se salva en mayo.",
   "author": "Óscar Tomás",
@@ -269,7 +269,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "Las urgencias del hospital comarcal doblan su espera en julio",
   "excerpt": "La media pasa de 48 a 97 minutos en los días de más afluencia, con dos facultativos menos por turno y sin refuerzo previsto hasta el otoño.",
   "author": "Nuria Espí",
@@ -284,7 +284,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Cerrada la carretera de la sierra por el incendio del municipio vecino",
   "excerpt": "Las llamas han quemado ya cuarenta hectáreas de pinar y obligan a desalojar dos urbanizaciones; seis medios aéreos trabajan desde primera hora.",
   "author": "Redacción",
@@ -300,7 +300,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "El AVE a Madrid sumará una frecuencia en septiembre",
   "excerpt": "El convoy saldrá a las seis y cuarto y recortará en cuarenta minutos el enlace de la mañana, según el cuadro de horarios que publicó Renfe.",
   "author": "Iván Sagredo",
@@ -315,7 +315,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "Muere a los 94 años el maestro Vicente Ortuño",
   "excerpt": "Dio clase a tres generaciones en el colegio del Carmen, fundó la escuela de adultos en 1971 y siguió corrigiendo dictados pasados los ochenta.",
   "author": "Marta Beneyto",
@@ -330,7 +330,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "La liga local de pádel estrena categoría femenina",
   "excerpt": "Se han inscrito veintidós parejas, el doble de lo que calculaba el club, y las pistas cubiertas pasan a reservarse por turnos hasta noviembre.",
   "author": "Óscar Tomás",
@@ -345,7 +345,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "El museo del calzado cierra tres salas por obras de climatización",
   "excerpt": "La colección de hormas del siglo XIX viaja a un almacén de la capital durante cinco meses y la entrada se queda en dos euros mientras dure el traslado.",
   "author": "Redacción",
@@ -360,7 +360,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "Aprobada la ordenanza de terrazas tras cuatro meses de trámite",
   "excerpt": "Los bares tendrán que retirar las estufas de gas antes de marzo y pagarán por metro cuadrado según la calle, con tres tarifas distintas.",
   "author": "Ramón Clavel",
@@ -376,7 +376,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "El colegio Azorín estrena comedor tras dos cursos de espera",
   "excerpt": "Las obras han costado 380.000 € y el servicio arranca con 120 plazas, cuarenta menos de las que pidió el consejo escolar en su informe de mayo.",
   "author": "Nuria Espí",
@@ -391,7 +391,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "La comarca pierde 1.200 habitantes en cinco años",
   "excerpt": "Cuatro municipios del interior concentran el 80 % del descenso, y en dos de ellos la edad media supera ya los cincuenta y tres.",
   "author": "Iván Sagredo",
@@ -406,7 +406,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "El festival de jazz de la comarca anuncia su cartel",
   "excerpt": "Nueve conciertos entre el 12 y el 20 de septiembre, seis de ellos gratuitos en la plaza, con la Big Band de la capital como cierre.",
   "author": "Lucía Ferrándiz",
@@ -421,7 +421,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Detenido por robar cable de cobre en la subestación",
   "excerpt": "El corte dejó seis horas sin luz a las bombas de riego de la cooperativa y el arrestado acumula otras cuatro denuncias por hechos similares.",
   "author": "Redacción",
@@ -436,7 +436,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "El pádel municipal duplica sus abonados en un año",
   "excerpt": "Las cuatro pistas cubiertas pasan de 210 a 430 usuarios con cuota mensual, y el club reclama dos más antes de que empiece el invierno.",
   "author": "Óscar Tomás",
@@ -451,7 +451,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "Opinión | Doce años de promesas sobre el tren",
   "excerpt": "Cuatro gobiernos distintos han prometido lo mismo en campaña y el estudio informativo sigue sin salir a información pública en la comarca.",
   "author": "Josep Miralles",
@@ -466,7 +466,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "La cooperativa agrícola invierte 2 M€ en riego por goteo",
   "excerpt": "La instalación cubrirá 600 hectáreas de cítricos y promete recortar un tercio del consumo, con la mitad del coste cubierto por fondos europeos.",
   "author": "Iván Sagredo",
@@ -482,7 +482,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "El museo etnológico recupera el molino de la Acequia",
   "excerpt": "La rueda vuelve a girar por primera vez desde 1968 tras dieciocho meses de restauración y podrá verse en marcha los sábados por la mañana.",
   "author": "Lucía Ferrándiz",
@@ -498,7 +498,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "Aprobado el plan de emergencia por incendios de la sierra",
   "excerpt": "El documento fija tres rutas de evacuación, obliga a limpiar las parcelas urbanas antes de junio y prevé multas de hasta 3.000 € a quien no lo haga.",
   "author": "Ramón Clavel",
@@ -514,7 +514,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "Dos décadas del club de atletismo, en imágenes",
   "excerpt": "Las novecientas fotografías cedidas por las familias fundadoras se digitalizan en el archivo municipal y podrán consultarse en línea desde septiembre.",
   "author": "Óscar Tomás",
@@ -529,7 +529,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "Los vecinos del barrio piden un centro de día",
   "excerpt": "La asociación ha reunido 1.400 firmas y propone el antiguo consultorio, cerrado en 2019, para atender a los mayores que hoy viajan hasta la localidad vecina.",
   "author": "Nuria Espí",
@@ -544,7 +544,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "El consorcio de residuos sube la tasa un 6 %",
   "excerpt": "El recibo medio pasa de 92 a 98 € al año y el incremento se destina a la planta de compostaje que debe entrar en servicio en 2027.",
   "author": "Iván Sagredo",
@@ -560,7 +560,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "Hallan restos íberos en el paraje del Rincón",
   "excerpt": "Los fragmentos de cerámica aparecieron en una prospección previa a la ampliación del camino y podrían pertenecer a un poblado del siglo IV antes de Cristo.",
   "author": "Lucía Ferrándiz",
@@ -576,7 +576,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Cortada la avenida de la Estación por una fuga de agua",
   "excerpt": "La rotura de una tubería de fibrocemento dejó sin suministro a doscientos vecinos y abrió un socavón de tres metros junto al paso de peatones.",
   "author": "Redacción",
@@ -592,7 +592,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "El ayuntamiento saca a concurso el bar del polideportivo",
   "excerpt": "El pliego exige abrir de siete de la mañana a once de la noche y fija un canon de 900 € al mes, cien menos que en la anterior adjudicación.",
   "author": "Ramón Clavel",
@@ -607,7 +607,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "La liga comarcal de fútbol sala cierra con récord de equipos",
   "excerpt": "Han competido 34 conjuntos y 480 jugadores en cinco pabellones, y la organización estudia partir la competición en dos grupos el curso que viene.",
   "author": "Óscar Tomás",
@@ -622,7 +622,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "Análisis | Qué cambia con la nueva ordenanza de ruido",
   "excerpt": "Los límites bajan tres decibelios en el casco antiguo, la música en la calle acaba a la una y los locales tendrán un año para adaptar sus equipos.",
   "author": "Marta Beneyto",
@@ -638,7 +638,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "El paro juvenil baja al 18 % en la comarca",
   "excerpt": "Los contratos de formación han crecido un 40 % en el sector agroalimentario, aunque uno de cada tres menores de treinta sigue fuera del mercado.",
   "author": "Iván Sagredo",
@@ -653,7 +653,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "La banda municipal cierra la temporada con 900 personas en el auditorio",
   "excerpt": "El concierto de clausura duró dos horas e incluyó tres estrenos de un compositor del municipio vecino que dirigió la última pieza.",
   "author": "Lucía Ferrándiz",
@@ -668,7 +668,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "El club cierra la liga con un empate fuera de casa",
   "excerpt": "Un punto en el derbi deja al equipo séptimo, a cuatro de la promoción y con la peor racha visitante de las últimas seis temporadas.",
   "author": "Óscar Tomás",
@@ -683,7 +683,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "La gala del deporte premia a 34 deportistas de la comarca",
   "excerpt": "El acto del recinto ferial reconoció por primera vez a los técnicos de base y llenó las 600 butacas del auditorio.",
   "author": "Redacción",
@@ -698,7 +698,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "El equipo de baloncesto del municipio sube a Primera Nacional",
   "excerpt": "Ganó el último encuentro por doce puntos ante 900 personas y devuelve al club a la categoría que perdió en 2017.",
   "author": "Óscar Tomás",
@@ -713,7 +713,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Protección Civil monta el dispositivo para las fiestas de junio",
   "excerpt": "Serán cuarenta voluntarios en tres turnos, con un puesto sanitario en el recinto y otro junto a la carpa del barrio.",
   "author": "Marta Beneyto",
@@ -728,7 +728,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "El pleno aprueba el presupuesto de 2026 con 14,7 M€ y siete abstenciones",
   "excerpt": "Las cuentas salen adelante en la tercera votación y dejan 1,9 M€ para inversión, la cifra más baja desde que gobierna esta mayoría.",
   "author": "Ramón Clavel",
@@ -744,7 +744,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "El ayuntamiento aprueba el programa de fiestas con 31 actos y dos verbenas",
   "excerpt": "El presupuesto sube hasta 128.000 € y la orquesta del sábado se traslada al recinto ferial por las quejas de ruido.",
   "author": "Nuria Espí",
@@ -759,7 +759,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "El yacimiento íbero de la sierra saca a la luz un muro de 40 metros",
   "excerpt": "La campaña de primavera ha durado seis semanas y ha trabajado con dieciocho estudiantes de la universidad de la provincia.",
   "author": "Lucía Ferrándiz",
@@ -775,7 +775,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "La cosecha de alcachofa cierra con 4.200 toneladas, un 12 % menos",
   "excerpt": "El calor de abril adelantó el corte casi tres semanas y dejó fuera de precio buena parte del género de segunda categoría.",
   "author": "Iván Sagredo",
@@ -790,7 +790,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "El ayuntamiento adjudica el asfaltado de once calles por 780.000 €",
   "excerpt": "Los trabajos empiezan por el barrio y la empresa tiene ocho meses para terminarlos, con el firme del polígono fuera del contrato.",
   "author": "Ramón Clavel",
@@ -806,7 +806,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "Opinión | La variante norte lleva doce años en el mismo cajón",
   "excerpt": "Cada mandato promete sacar el tráfico pesado del casco urbano y cada uno acaba con la misma caravana junto al polígono.",
   "author": "Josep Miralles",
@@ -822,7 +822,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "La ola de calor adelanta la recogida del melón casi tres semanas",
   "excerpt": "Los 41 grados de la semana pasada han disparado el azúcar del fruto y los almacenes trabajan con turnos de noche desde el lunes.",
   "author": "Nuria Espí",
@@ -838,7 +838,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "El cine de verano estrena pantalla y adelanta las sesiones",
   "excerpt": "La nueva lona mide catorce metros y permite empezar a las diez y cuarto, media hora antes que en las tres ediciones anteriores.",
   "author": "Lucía Ferrándiz",
@@ -853,7 +853,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "La asociación de vecinos renueva su junta directiva con 240 votos",
   "excerpt": "Es la participación más alta desde 2009 y la candidatura ganadora se marca como primer objetivo el local de la plaza.",
   "author": "Nuria Espí",
@@ -868,7 +868,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "El polígono del municipio llena sus últimas seis parcelas libres",
   "excerpt": "Las naves nuevas suman 18.000 metros cuadrados y el suelo industrial de la comarca se queda sin oferta hasta el sector 4.",
   "author": "Iván Sagredo",
@@ -883,7 +883,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "El paro baja en la comarca a 4.180 personas, mínimo desde 2008",
   "excerpt": "La hostelería y las obras del hospital explican dos de cada tres altas de mayo, según el desglose del servicio autonómico.",
   "author": "Iván Sagredo",
@@ -898,7 +898,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "Dos empresas de logística ocupan las naves vacías del polígono",
   "excerpt": "Entre las dos anuncian 74 contratos antes de septiembre, la mitad para conductores con carné C, según el convenio firmado.",
   "author": "Ramón Clavel",
@@ -913,7 +913,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "El trasvase llega a la comarca con 12 hectómetros para junio",
   "excerpt": "La comisión aprueba el segundo envío del año y los usuarios calculan que cubre el riego de toda la huerta hasta agosto.",
   "author": "Iván Sagredo",
@@ -929,7 +929,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "La Guardia Civil investiga el robo del cableado del alumbrado",
   "excerpt": "Han desaparecido 800 metros de cobre en tres calles del polígono y la reposición costará unos 20.000 € al ayuntamiento.",
   "author": "Redacción",
@@ -944,7 +944,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "El campo no se queda sin manos, se queda sin quien las herede",
   "excerpt": "Ninguno de los hijos de los treinta socios más veteranos de la cooperativa agrícola ha pedido darse de alta este año.",
   "author": "Marta Beneyto",
@@ -960,7 +960,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "La marcha cicloturista de la sierra reúne a 620 participantes",
   "excerpt": "El trazado largo subió dos veces al alto del pueblo vecino y obligó a cortar la carretera comarcal durante cuatro horas.",
   "author": "Óscar Tomás",
@@ -976,7 +976,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "Seis agrupaciones se citan en el certamen comarcal de bandas",
   "excerpt": "Tocaron por orden de antigüedad y la municipal, fundada en 1902, abrió el pasacalle desde el recinto ferial.",
   "author": "Lucía Ferrándiz",
@@ -991,7 +991,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "El municipio pierde 148 vecinos en un año y baja de los 21.000",
   "excerpt": "El padrón confirma la sexta caída consecutiva y el saldo migratorio ya no compensa las defunciones, según los datos provisionales del INE.",
   "author": "Ramón Clavel",
@@ -1006,7 +1006,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "El conjunto comarcal renueva a su técnico por dos temporadas más",
   "excerpt": "La directiva cierra el acuerdo antes de que se abra el mercado y descarta los dos nombres que sonaron en enero.",
   "author": "Óscar Tomás",
@@ -1021,7 +1021,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "La torre de la iglesia estrena andamios para consolidar la cornisa",
   "excerpt": "La intervención costará 210.000 € y obligará a cortar el paso por la plaza durante tres fines de semana de junio.",
   "author": "Lucía Ferrándiz",
@@ -1037,7 +1037,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "Los talleres municipales de verano abren plazo el 1 de junio",
   "excerpt": "Son nueve cursos de mañana pensados para mayores de 65 años, con transporte gratuito desde las pedanías los martes.",
   "author": "Redacción",
@@ -1052,7 +1052,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "El tercer carril de la N-332 se retrasa a 2028 por el estudio de ruido",
   "excerpt": "Fomento tendrá que medir durante un año en las cuatro urbanizaciones que quedan a menos de 200 metros del futuro trazado.",
   "author": "Ramón Clavel",
@@ -1069,7 +1069,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "La oposición registra una moción de censura contra el alcalde",
   "excerpt": "El escrito llega con doce firmas, una más de las necesarias, y fija el debate para el último lunes de junio en sesión extraordinaria.",
   "author": "Marta Beneyto",
@@ -1084,7 +1084,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "El pabellón municipal cierra dos semanas por una avería del clima",
   "excerpt": "Los seis clubes que entrenan allí se reparten estos días entre las pistas del barrio y el colegio de la avenida.",
   "author": "Óscar Tomás",
@@ -1099,7 +1099,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "El centro de día amplía a 45 las plazas concertadas",
   "excerpt": "Son quince más y rebajan la lista de espera a cuatro meses, aunque la conselleria no financia el transporte adaptado.",
   "author": "Ramón Clavel",
@@ -1114,7 +1114,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "La hostelería cierra la Semana Santa con un 91 % de ocupación",
   "excerpt": "Son ocho puntos más que en 2025 y el gasto medio por visitante sube a 62 €, según el recuento de la asociación comarcal.",
   "author": "Iván Sagredo",
@@ -1129,7 +1129,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "El polígono industrial suma 210 empleos con tres naves nuevas",
   "excerpt": "Dos de las compañías vienen de fuera de la comarca y la tercera es una firma logística que atenderá los pedidos de toda la provincia.",
   "author": "Iván Sagredo",
@@ -1144,7 +1144,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Un vecino de 74 años muere atropellado en la travesía del municipio",
   "excerpt": "Cruzaba por un paso sin semáforo que los vecinos llevan desde 2023 pidiendo que se eleve, según recogen dos escritos al pleno.",
   "author": "Redacción",
@@ -1160,7 +1160,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "Los regantes del municipio pagarán un 9 % más por el agua desalada",
   "excerpt": "La subida del recibo eléctrico se traslada íntegra a la tarifa y encarece cada hectárea en unos 140 euros al año.",
   "author": "Iván Sagredo",
@@ -1175,7 +1175,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "El club de natación se queda sin calles libres para el verano",
   "excerpt": "El baño abierto al público ocupa cinco de las seis franjas y los 140 federados tendrán que entrenar en la piscina del municipio vecino.",
   "author": "Redacción",
@@ -1190,7 +1190,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "El programa de las fiestas patronales llega con 62 actos",
   "excerpt": "Se reparten 8.000 ejemplares por los buzones y la novedad es el pasacalles infantil del jueves, que sustituye a la cabalgata.",
   "author": "Lucía Ferrándiz",
@@ -1205,7 +1205,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "El pueblo vecino se queda con cuatro alfareros en activo y ningún aprendiz",
   "excerpt": "El más joven tiene cincuenta y siete años y el obrador que echó el cierre en marzo llevaba abierto desde 1931.",
   "author": "Lucía Ferrándiz",
@@ -1220,7 +1220,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "El colegio público perderá dos aulas prefabricadas en julio",
   "excerpt": "Conselleria confirma el derribo en cuanto termine el curso, siete años después de que se instalaran como solución de un año.",
   "author": "Nuria Espí",
@@ -1235,7 +1235,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "Análisis | Un presupuesto que se aprueba sin que nadie lo lea",
   "excerpt": "Ciento ochenta páginas repartidas cuarenta y ocho horas antes explican bastante bien el debate que hubo después.",
   "author": "Ramón Clavel",
@@ -1251,7 +1251,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "El filial se salva del descenso en la última jornada",
   "excerpt": "El triunfo a domicilio y la derrota del rival comarcal en el mismo minuto dejan la permanencia decidida por un solo gol.",
   "author": "Redacción",
@@ -1266,7 +1266,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "El teatro aficionado estrena su montaje número cuarenta en el municipio",
   "excerpt": "Son dieciocho vecinos sin oficio de actor y una obra escrita en el barrio sobre la riada que anegó la huerta en 1987.",
   "author": "Lucía Ferrándiz",
@@ -1281,7 +1281,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "El pleno aprueba por unanimidad el reglamento de participación",
   "excerpt": "El texto obliga a someter a consulta vecinal cualquier obra que supere los 300.000 € y crea dos consejos de barrio.",
   "author": "Ramón Clavel",
@@ -1296,7 +1296,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "Los ocho ayuntamientos crearán un consorcio de emergencias en 2027",
   "excerpt": "Compartirán un parque de bomberos en el kilómetro 42 y una sola central de avisos, que hoy están repartidos en cuatro sedes.",
   "author": "Ramón Clavel",
@@ -1311,7 +1311,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "El municipio recibe 380.000 € de la Generalitat para el plan de barrios",
   "excerpt": "El dinero se repartirá entre la pedanía y el casco antiguo, y obliga a aportar un 20 % de fondos propios antes de octubre.",
   "author": "Ramón Clavel",
@@ -1326,7 +1326,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "La línea 2 llegará cada veinte minutos al barrio a partir de junio",
   "excerpt": "El refuerzo suma dos autobuses en hora punta y responde a las 1.100 firmas que la asociación entregó en diciembre.",
   "author": "Ramón Clavel",
@@ -1341,7 +1341,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "El convenio del campo se firma con una subida del 3,5 % para 2026",
   "excerpt": "El acuerdo cubre a 6.200 trabajadores de la comarca e incorpora por primera vez el pago del desplazamiento a la finca.",
   "author": "Iván Sagredo",
@@ -1356,7 +1356,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "La planta solar del secano entra en servicio con 11 M€ invertidos",
   "excerpt": "Ocupa 22 hectáreas de la partida alta, cubrirá el consumo de 6.400 hogares y deja un canon anual de 74.000 € al ayuntamiento.",
   "author": "Iván Sagredo",
@@ -1371,7 +1371,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "La media maratón de la comarca reúne a 1.400 corredores",
   "excerpt": "El trazado cambió para esquivar la travesía y obligó a cortar el acceso al polígono del municipio durante tres horas.",
   "author": "Óscar Tomás",
@@ -1387,7 +1387,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Reportaje | Una noche en la ambulancia del hospital comarcal",
   "excerpt": "Doce avisos entre las diez y las siete, dos de ellos a cuarenta kilómetros, y una tripulación que no cenó hasta las tres.",
   "author": "Marta Beneyto",
@@ -1402,7 +1402,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "El pleno aprueba un presupuesto de 6,4 M€ con el voto de calidad",
   "excerpt": "La cuenta sale adelante tras dos horas de debate y con el empate deshecho por el alcalde, que ya avanzó que no la retiraría.",
   "author": "Ramón Clavel",
@@ -1418,7 +1418,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "La cooperativa agrícola cierra el ejercicio con 18,4 M€ facturados",
   "excerpt": "Son dos millones más que en 2025 pese a haber comercializado menos kilos, un efecto directo de los precios en origen.",
   "author": "Redacción",
@@ -1433,7 +1433,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "La gimnasia rítmica de la comarca logra tres oros en el autonómico",
   "excerpt": "Las 18 competidoras viajaron con el autobús pagado por el ayuntamiento, una partida que se estrenó en enero.",
   "author": "Óscar Tomás",
@@ -1448,7 +1448,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "Las fiestas del municipio vecino adelantan su programa al 20 de agosto",
   "excerpt": "La comisión evita así coincidir con las de otro pueblo de la comarca y espera recuperar las peñas que se marcharon allí los dos veranos pasados.",
   "author": "Redacción",
@@ -1463,7 +1463,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "El archivo municipal digitaliza 12.000 actas del siglo XIX",
   "excerpt": "El trabajo ha durado catorce meses y deja consultable desde casa el padrón más antiguo que se conserva en la comarca.",
   "author": "Redacción",
@@ -1479,7 +1479,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "El trasvase se discute en Madrid y se paga en los bancales de aquí",
   "excerpt": "Llevamos tres décadas hablando de metros cúbicos y ninguna de explicar qué cultivo sobrevive con la mitad de ellos.",
   "author": "Josep Miralles",
@@ -1495,7 +1495,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "Reportaje | Quién monta el mercadillo a las cinco de la mañana",
   "excerpt": "Cuarenta furgonetas, dos horas de descarga y un oficio que en la comarca sostienen once familias desde hace tres generaciones.",
   "author": "Lucía Ferrándiz",
@@ -1511,7 +1511,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "La feria de mayo se traslada al recinto ferial tras sesenta años",
   "excerpt": "Los feriantes ganan 40 plazas de aparcamiento y pierden el paso por el casco antiguo, que era donde vendían la mitad del género.",
   "author": "Redacción",
@@ -1526,7 +1526,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "El femenino del barrio jugará la fase de ascenso",
   "excerpt": "Es la primera vez que un equipo de la comarca llega a esa eliminatoria, y lo hace con la plantilla más joven del grupo.",
   "author": "Óscar Tomás",
@@ -1542,7 +1542,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "El gobierno municipal pierde la mayoría tras la marcha de dos ediles",
   "excerpt": "Los dos concejales pasan al grupo de no adscritos y dejan la corporación en un empate que tendrá que resolver el voto de calidad.",
   "author": "Marta Beneyto",
@@ -1557,7 +1557,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "La biblioteca municipal presta 14.200 libros en el primer trimestre",
   "excerpt": "La cifra sube un 9 % respecto a 2025 y el club de lectura de los jueves ha pasado de doce socios a treinta y cuatro.",
   "author": "Redacción",
@@ -1572,7 +1572,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "El plan de accesibilidad rebaja 96 pasos de peatones en la zona",
   "excerpt": "La obra durará hasta octubre, cuesta 310.000 € y llega después de que el barrio quedara fuera del reparto de 2024.",
   "author": "Nuria Espí",
@@ -1588,7 +1588,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "El alquiler de local en el centro sube un 12 % en solo un año",
   "excerpt": "La renta media se sitúa en 9,40 € por metro cuadrado y catorce bajos de la calle Mayor siguen vacíos desde hace dos temporadas.",
   "author": "Iván Sagredo",
@@ -1603,7 +1603,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "El pleno aprueba el reglamento de instalaciones deportivas",
   "excerpt": "El texto fija por primera vez las horas de uso gratuito para los equipos de cantera y llega con dos años de retraso.",
   "author": "Redacción",
@@ -1618,7 +1618,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "La sierra estrena dos cámaras de detección temprana de humo",
   "excerpt": "Cubren 4.000 hectáreas, avisan en menos de tres minutos y han costado 78.000 € del plan comarcal contra incendios.",
   "author": "Redacción",
@@ -1634,7 +1634,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "El ayuntamiento convoca 14 plazas de policía local y peón",
   "excerpt": "Es la mayor oferta municipal en once años y el plazo de solicitudes se abre el lunes con veinte días naturales.",
   "author": "Redacción",
@@ -1650,7 +1650,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "La rotonda de la N-332 en el polígono se corta cinco semanas",
   "excerpt": "El desvío obliga a los camiones a cruzar por el casco urbano y el ayuntamiento pide vigilancia en la calle del colegio.",
   "author": "Ramón Clavel",
@@ -1666,7 +1666,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "Detectada la mosca del Mediterráneo en doce parcelas de la huerta",
   "excerpt": "Sanidad Vegetal ordena tratar en un radio de dos kilómetros y los propietarios tienen diez días para hacerlo.",
   "author": "Iván Sagredo",
@@ -1682,7 +1682,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "El mosaico romano de la villa del río se cubrirá hasta octubre",
   "excerpt": "Los técnicos temen que otro verano al descubierto agriete las teselas del cuadrante levantado el año pasado.",
   "author": "Lucía Ferrándiz",
@@ -1697,7 +1697,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "Análisis | Por qué el área de salud no consigue retener a sus médicos",
   "excerpt": "Treinta y cuatro plazas sin cubrir, contratos de seis meses y un complemento de difícil cobertura que aquí no se aplica desde 2016.",
   "author": "Nuria Espí",
@@ -1712,7 +1712,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "El comarcal de petanca vuelve al parque del barranco tras 4 años",
   "excerpt": "Se apuntaron 64 tripletas, la mitad de ellas de jubilados del barrio, y la final se jugó bajo los pinos.",
   "author": "Óscar Tomás",
@@ -1727,7 +1727,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "Una exposición reúne cien programas de fiestas desde 1948",
   "excerpt": "El archivo municipal los ha restaurado uno a uno y la muestra se puede ver en la sala de abajo hasta el 30 de junio.",
   "author": "Lucía Ferrándiz",
@@ -1743,7 +1743,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "Las urgencias del comarcal no se arreglan con un cartel nuevo",
   "excerpt": "Hay ocho médicos donde la plantilla aprobada dice catorce, y eso no lo corrige ninguna campaña de imagen ni una nota.",
   "author": "Marta Beneyto",
@@ -1758,7 +1758,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "El consultorio del barrio abrirá también por las tardes en junio",
   "excerpt": "Conselleria envía una médica y una enfermera tres días a la semana, la primera ampliación del servicio desde que se puso en marcha en 2008.",
   "author": "Nuria Espí",
@@ -1773,7 +1773,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "El municipal estrena césped híbrido tras cinco meses de obras",
   "excerpt": "La instalación ha costado 340.000 € y obliga a un riego nocturno que el club tendrá que asumir dentro de su cuota.",
   "author": "Redacción",
@@ -1789,7 +1789,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "El mercadillo de los jueves vuelve al aparcamiento tras seis meses",
   "excerpt": "Los 58 puestos recuperan su sitio con luz nueva y una toma de agua, y los feriantes calculan un tercio más de clientes.",
   "author": "Nuria Espí",
@@ -1805,7 +1805,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "El premio de novela corta de la comarca llega a su edición veinticinco",
   "excerpt": "Se presentaron 214 originales, la cifra más alta desde que existe el galardón, y la mitad llegaron de fuera de la provincia.",
   "author": "Lucía Ferrándiz",
@@ -1820,7 +1820,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "El portal de transparencia publica ya cada factura de más de 3.000 €",
   "excerpt": "La herramienta llevaba dos años anunciada y arranca con 1.240 documentos cargados, aunque todavía no deja descargarlos en bloque.",
   "author": "Ramón Clavel",
@@ -1835,7 +1835,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "El ayuntamiento estudia cubrir las pistas del barrio",
   "excerpt": "La memoria previa cifra la obra en 410.000 € y avisa de que el vecindario se quedaría sin campo de tierra todo un verano.",
   "author": "Redacción",
@@ -1850,7 +1850,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "La feria de empleo del recinto ferial cierra con 1.900 visitas",
   "excerpt": "Cuarenta compañías recogieron currículos y once de ellas se comprometieron a cerrar contrataciones antes del verano.",
   "author": "Iván Sagredo",
@@ -1865,7 +1865,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "Reportaje | Lo que queda de la industria del calzado en la comarca",
   "excerpt": "Sobreviven nueve talleres y 210 trabajadores donde en 2008 había cuarenta empresas, y siete de cada diez pares llegan ya de fuera.",
   "author": "Iván Sagredo",
@@ -1880,7 +1880,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "El hospital atiende doce golpes de calor en el primer aviso",
   "excerpt": "La temperatura llegó a 39 grados el martes y ocho de los ingresos eran jornaleros que trabajaban al mediodía en la huerta.",
   "author": "Redacción",
@@ -1896,7 +1896,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "La pedanía tendrá agua potable de red a partir de octubre",
   "excerpt": "Los 140 vecinos llevan cuarenta años bebiendo de pozo y la obra sale de un remanente que caducaba en diciembre.",
   "author": "Nuria Espí",
@@ -1911,7 +1911,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "Reportaje | Los jornaleros que el campo ya no encuentra",
   "excerpt": "Cinco cuadrillas se han quedado a medias esta campaña y las empresas de servicios agrarios rechazan encargos por falta de manos.",
   "author": "Iván Sagredo",
@@ -1927,7 +1927,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "Cultura declara BIC el molino de la Acequia tras nueve años de espera",
   "excerpt": "La resolución protege el tramo de canal y las dos muelas, y obliga al ayuntamiento a redactar un plan de usos.",
   "author": "Agencia EFE",
@@ -1943,7 +1943,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "Muere a los 94 años Dolores Penalva, la última partera de la villa",
   "excerpt": "Asistió más de mil nacimientos entre 1954 y 1979, cuando el municipio aún no tenía centro de salud ni ambulancia propia.",
   "author": "Nuria Espí",
@@ -1958,7 +1958,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "El pabellón reservará dos tardes semanales al balonmano base",
   "excerpt": "El reparto de horas se negocia todavía con los otros cinco clubes y no se aplicará hasta el curso que viene.",
   "author": "Redacción",
@@ -1973,7 +1973,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "La comisión de fiestas busca cien voluntarios para agosto",
   "excerpt": "Hacen falta manos para el montaje, la barra y el reparto del programa, con dos reuniones abiertas en el centro social.",
   "author": "Redacción",
@@ -1988,7 +1988,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "La ordenanza de terrazas se retrasa hasta septiembre por 40 alegaciones",
   "excerpt": "La mitad de los escritos vienen de la asociación de hosteleros, que pide mantener los veladores en la calle Mayor todo el verano.",
   "author": "Marta Beneyto",
@@ -2003,7 +2003,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "Opinión | El centro histórico se vacía mientras se debate su plan",
   "excerpt": "Once bajos cerrados en la misma calle desde noviembre, y la reforma que iba a salvarla sigue en fase de alegaciones.",
   "author": "Josep Miralles",
@@ -2018,7 +2018,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "Reportaje | La cantera que sostiene al club local",
   "excerpt": "Nueve de los dieciocho fichas del primer equipo salieron del campo anexo, y ninguno costó un euro en traspasos.",
   "author": "Óscar Tomás",
@@ -2033,7 +2033,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "La sala de exposiciones abre con obra de once artistas de la comarca",
   "excerpt": "Ninguna pieza pasa del metro de lado y todas se han pintado en los dos últimos años, según el criterio del comisario.",
   "author": "Lucía Ferrándiz",
@@ -2048,7 +2048,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "La comarca recibe 5,8 M€ del plan estatal de caminos rurales",
   "excerpt": "Se arreglarán 118 km de firme y once pasos sobre acequias, con la condición de que ninguna actuación toque el dominio del cauce.",
   "author": "Ramón Clavel",
@@ -2064,7 +2064,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "Los transportistas piden un carril lento en la N-332 hasta el pueblo vecino",
   "excerpt": "El tramo concentra 4.100 vehículos pesados al día y los tiempos de reparto se han alargado veinte minutos desde el corte del puente.",
   "author": "Redacción",
@@ -2080,7 +2080,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "La comarca suma once medallas en el autonómico de base",
   "excerpt": "Ocho de los premiados no llegan a los dieciséis años y seis compiten en clubes que no tienen sede en la zona.",
   "author": "Óscar Tomás",
@@ -2095,7 +2095,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "El ayuntamiento comprará la pinada de la ladera del barrio",
   "excerpt": "Son 3,2 hectáreas por 480.000 € que el barrio reclama como parque desde que se frenó el plan de 78 viviendas.",
   "author": "Ramón Clavel",
@@ -2110,7 +2110,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "Un incendio arrasa una nave de palés en el polígono industrial",
   "excerpt": "Cinco dotaciones trabajaron hasta las cuatro de la madrugada y la columna de humo obligó a cerrar el carril de servicio.",
   "author": "Redacción",
@@ -2125,7 +2125,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Dos heridos en un choque frontal en la carretera comarcal",
   "excerpt": "Uno de los conductores dio positivo en alcohol y al otro tuvieron que excarcelarlo los bomberos con las cizallas.",
   "author": "Marta Beneyto",
@@ -2140,7 +2140,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "El instituto del municipio estrena 60 plazas de formación dual",
   "excerpt": "Los alumnos pasarán la mitad del curso en once empresas del polígono, que se han comprometido a tutorizar cada puesto.",
   "author": "Iván Sagredo",
@@ -2155,7 +2155,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "El museo etnológico cierra dos salas por humedades en la cubierta",
   "excerpt": "Las piezas de esparto se han llevado al depósito del archivo mientras se repara un tejado que data de 1978.",
   "author": "Redacción",
@@ -2170,7 +2170,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "El precio del limón en origen cae a 0,22 € el kilo en plena campaña",
   "excerpt": "Es la cotización más baja desde 2019 y deja la caja por debajo de lo que cuesta recolectarla, según el propio sector.",
   "author": "Iván Sagredo",
@@ -2185,7 +2185,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "El atletismo comarcal estrena tacos de salida tras nueve años",
   "excerpt": "El lote costó 7.200 € y sustituye a un material de 2017 que la federación ya no admitía en pruebas oficiales.",
   "author": "Óscar Tomás",
@@ -2200,7 +2200,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "El barrio publica el programa de sus fiestas",
   "excerpt": "Cuatro días con paella popular, verbena y una carrera de cintas que la comisión recupera después de once años sin correrse.",
   "author": "Lucía Ferrándiz",
@@ -2215,7 +2215,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "El pleno tumba por segunda vez la ordenanza de ruidos del centro",
   "excerpt": "El texto decaía por un informe jurídico y vuelve a comisión con el encargo de fijar horarios distintos para el casco antiguo.",
   "author": "Ramón Clavel",
@@ -2231,7 +2231,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "Editorial | Un pleno no es el sitio para ajustar cuentas viejas",
   "excerpt": "Tres horas de sesión, cuarenta minutos de reproches personales y ni una sola pregunta sobre lo que costaba la obra.",
   "author": "Redacción",
@@ -2246,7 +2246,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "Dos expulsiones y un penalti dejan al club sin play-off",
   "excerpt": "El equipo jugó cuarenta minutos con nueve y encajó el gol decisivo en el descuento, cuando ya solo le valía ganar.",
   "author": "Óscar Tomás",
@@ -2261,7 +2261,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "Los vecinos denuncian ocho solares sin vallar en el mismo barrio",
   "excerpt": "Dos acumulan escombros desde 2019 y el consistorio admite que solo ha abierto expediente a uno de los propietarios.",
   "author": "Ramón Clavel",
@@ -2276,7 +2276,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "Muere a los 88 años Vicente Alenda, motor de la cooperativa agrícola",
   "excerpt": "La presidió entre 1971 y 1994, cuando pasó de 60 a 1.100 socios, y fue quien negoció la primera venta directa a Francia.",
   "author": "Nuria Espí",
@@ -2292,7 +2292,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "El plan de movilidad baja a 30 la velocidad en todo el casco urbano",
   "excerpt": "La señalización costará 96.000 € y llega con dos años de retraso sobre el calendario que fijó la ordenanza de 2024.",
   "author": "Ramón Clavel",
@@ -2308,7 +2308,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "El cine de verano vuelve al recinto ferial con doce sesiones gratis",
   "excerpt": "La pantalla se monta los viernes de julio y agosto, y por primera vez habrá dos pases infantiles antes de que anochezca.",
   "author": "Redacción",
@@ -2323,7 +2323,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "El mercado de abastos recupera doce puestos tras la reforma",
   "excerpt": "La obra ha durado catorce meses, ha costado 780.000 € y suma una zona de degustación que abrirá también los viernes por la tarde.",
   "author": "Iván Sagredo",
@@ -2338,7 +2338,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "Los vestuarios del complejo municipal reabren tras nueve meses",
   "excerpt": "La obra ha costado 218.000 € y añade una sala de fisioterapia que el consultorio comarcal usará por las mañanas.",
   "author": "Redacción",
@@ -2353,7 +2353,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "El mercado de los martes se muda mientras duren las obras",
   "excerpt": "Los treinta y dos puestos pierden nueve metros de frente y los feriantes piden que el traslado no pase de septiembre.",
   "author": "Nuria Espí",
@@ -2368,7 +2368,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "El hospital comarcal saca 78 plazas de enfermería a concurso",
   "excerpt": "Son las primeras de carácter fijo desde 2021 y pretenden cubrir las bajas que dejaron dos plantas sin personal en invierno.",
   "author": "Iván Sagredo",
@@ -2383,7 +2383,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Catorce denuncias por una estafa telefónica a mayores del municipio",
   "excerpt": "Se hacían pasar por el banco para pedir las claves y la Policía Local dará charlas de prevención en el centro de salud.",
   "author": "Redacción",
@@ -2398,7 +2398,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "La sequía deja las acequias de la pedanía secas por segundo año",
   "excerpt": "El azud lleva cerrado desde febrero y las huertas de la partida dependen ya solo de los pozos privados de la zona.",
   "author": "Iván Sagredo",
@@ -2414,7 +2414,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "El balonmano del barrio se juega la permanencia en la última jornada",
   "excerpt": "El club fleta dos autobuses para llevar a 90 seguidores hasta el pueblo vecino y depende de que su rival directo no gane en casa.",
   "author": "Óscar Tomás",
@@ -2429,7 +2429,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "El turismo rural de la sierra encadena su cuarto año de récord",
   "excerpt": "Las 34 casas registradas rozan las 19.000 pernoctaciones y el 62 % de quienes reservan llega desde la capital y las ciudades del litoral.",
   "author": "Iván Sagredo",
@@ -2444,7 +2444,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "Guía | Todo lo que cambia en la zona azul del centro desde mayo",
   "excerpt": "Sesenta plazas nuevas, tarifa por tramos de quince minutos y una hora gratuita al día para quien esté empadronado en el municipio.",
   "author": "Redacción",
@@ -2460,7 +2460,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "La sala de estudio abrirá en exámenes hasta la una de la madrugada",
   "excerpt": "Son cuarenta plazas y tres semanas de horario ampliado que se pagan con el remanente de la biblioteca central.",
   "author": "Nuria Espí",
@@ -2475,7 +2475,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "Aparecen dos silos íberos en las obras del colector del barrio",
   "excerpt": "La excavación de urgencia detuvo la zanja doce días y ha recuperado medio centenar de fragmentos de cerámica.",
   "author": "Lucía Ferrándiz",
@@ -2491,7 +2491,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "La cooperativa monta un mercado agrícola los sábados de mayo",
   "excerpt": "Venderán directamente al público veintiocho socios de la huerta, con un puesto de alcachofa y otro de cítricos del pueblo de al lado.",
   "author": "Redacción",
@@ -2506,7 +2506,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "El tren que nos prometieron vuelve a caber en un folleto",
   "excerpt": "El estudio informativo cambia de nombre cada cuatro años y el horario de la línea sigue siendo el que se fijó en 1998.",
   "author": "Ramón Clavel",
@@ -2521,7 +2521,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "El embalse baja al 21 % y activa el nivel de alerta por sequía",
   "excerpt": "Es el segundo abril consecutivo por debajo del umbral y el comité de gestión se reunirá cada quince días hasta septiembre.",
   "author": "Nuria Espí",
@@ -2537,7 +2537,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "El taller de cerámica de la casa de cultura duplica sus plazas",
   "excerpt": "Pasa de veinte a cuarenta alumnos tras dos cursos con lista de espera y estrena dos tornos pagados con el remanente.",
   "author": "Lucía Ferrándiz",
@@ -2553,7 +2553,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "El club presenta unas cuentas con 40.000 € de superávit",
   "excerpt": "Es el primer ejercicio en positivo desde 2019 y llega tras renegociar el alquiler del campo con el ayuntamiento.",
   "author": "Redacción",
@@ -2569,7 +2569,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "La diputación asume el arreglo del camino de la sierra por 620.000 €",
   "excerpt": "La obra incluye once kilómetros de firme nuevo y dos pasos sobre el barranco, y no empezará hasta que termine la campaña de recogida.",
   "author": "Ramón Clavel",
@@ -2584,7 +2584,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "La depuradora municipal vierte al barranco cuatro días seguidos",
   "excerpt": "Confederación abre expediente y el ayuntamiento culpa a una bomba averiada que esperaba recambio desde febrero.",
   "author": "Ramón Clavel",
@@ -2600,7 +2600,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "El deporte escolar comarcal llega a 2.100 alumnos este curso",
   "excerpt": "La cifra crece un 12 % y por primera vez entran los colegios de los dos municipios vecinos, que hasta ahora iban por su cuenta.",
   "author": "Redacción",
@@ -2615,7 +2615,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "Una empresa de la localidad vecina presenta un ERTE que afecta a 45 empleados",
   "excerpt": "La firma de calzado alega la caída de pedidos de Francia y plantea seis meses de suspensión parcial de la jornada.",
   "author": "Agencia EFE",
@@ -2630,7 +2630,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Muere un trabajador de 47 años en la cooperativa agrícola",
   "excerpt": "Quedó atrapado en una cinta de la línea de envasado y la inspección de trabajo ha abierto expediente por el protocolo.",
   "author": "Redacción",
@@ -2646,7 +2646,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "Aprobado un plan de 2,1 M€ para modernizar el riego de la huerta",
   "excerpt": "La inversión sustituye ocho kilómetros de canal abierto por tubería enterrada y promete ahorrar un tercio del caudal.",
   "author": "Iván Sagredo",
@@ -2662,7 +2662,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "Un atropello en la avenida principal reabre el debate del radar",
   "excerpt": "La mujer, de 71 años, cruzaba por un paso sin semáforo que la asociación pide elevar desde hace tres plenos.",
   "author": "Redacción",
@@ -2677,7 +2677,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "La pedanía vota en consulta el destino de 200.000 € del remanente",
   "excerpt": "Participan 612 vecinos, un 14 % del censo del barrio, y gana la propuesta de cubrir la pista deportiva frente al arreglo del parque.",
   "author": "Marta Beneyto",
@@ -2692,7 +2692,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "Reportaje | El barro de la comarca, seis siglos de oficio y ningún relevo",
   "excerpt": "Quedan cuatro tornos girando, dos hornos de leña apagados desde 2019 y una escuela taller que nadie ha vuelto a convocar.",
   "author": "Lucía Ferrándiz",
@@ -2708,7 +2708,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "El recinto ferial acoge el torneo comarcal de pádel en mayo",
   "excerpt": "Son 64 parejas repartidas en cuatro categorías, con las semifinales del sábado por la noche en la pista cubierta.",
   "author": "Redacción",
@@ -2723,7 +2723,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "El ayuntamiento compra la casa de los Sirvent por 190.000 €",
   "excerpt": "El edificio del siglo XVIII llevaba once años apuntalado y albergará el archivo histórico y una sala de exposiciones.",
   "author": "Ramón Clavel",
@@ -2739,7 +2739,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "Las pistas de pádel municipales pasan a reserva por aplicación",
   "excerpt": "El sistema sustituye a la lista de papel del conserje y limita a dos horas semanales lo que coge cada abonado.",
   "author": "Redacción",
@@ -2754,7 +2754,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "La cooperativa invierte 1,2 M€ en una línea de frío en el municipio",
   "excerpt": "Permitirá guardar el género tres semanas más y creará dieciocho empleos fijos, doce de ellos para mujeres del almacén actual.",
   "author": "Nuria Espí",
@@ -2770,7 +2770,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "Opinión | Las fiestas son de todos hasta que hay que pagar la carpa",
   "excerpt": "La partida festera crece un doce por ciento y las peñas siguen adelantando de su bolsillo lo que luego nadie devuelve.",
   "author": "Marta Beneyto",
@@ -2785,7 +2785,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "Entrevista | «Aquí se ficha con el presupuesto de un bar»",
   "excerpt": "El técnico repasa doce años en los banquillos de la comarca y explica por qué rechazó dos ofertas de Tercera este invierno.",
   "author": "Óscar Tomás",
@@ -2800,7 +2800,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "La cooperativa agrícola factura 14 M€ y abre una línea de zumos",
   "excerpt": "La planta ocupará la nave contigua, dará salida a la fruta de segunda categoría y empezará a envasar antes de septiembre.",
   "author": "Iván Sagredo",
@@ -2815,7 +2815,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "La ermita de la pedanía reabre tras dieciocho meses de andamios",
   "excerpt": "La restauración ha costado 210.000 € y ha sacado a la luz un artesonado del XVIII que nadie tenía catalogado.",
   "author": "Nuria Espí",
@@ -2830,7 +2830,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "Reportaje | Lo que cuesta sostener un club en la comarca",
   "excerpt": "Cuotas, arbitrajes, autobuses y fichas federativas: cuatro entidades abren sus cuentas y ninguna baja de los 40.000 € al año.",
   "author": "Óscar Tomás",
@@ -2846,7 +2846,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "Solo uno de cada cinco inscritos encuentra trabajo por la agencia",
   "excerpt": "El balance de la red comarcal recoge 1.240 altas de demandantes y 248 colocaciones efectivas en el último ejercicio.",
   "author": "Iván Sagredo",
@@ -2861,7 +2861,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "Muere a los 88 años Vicente Poveda, maestro de la banda municipal",
   "excerpt": "Estuvo treinta y un años al frente de la agrupación y firmó el pasodoble que suena cada septiembre en la entrada.",
   "author": "Lucía Ferrándiz",
@@ -2877,7 +2877,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Análisis | Por qué la N-332 concentra un tercio de los accidentes",
   "excerpt": "Nueve kilómetros sin arcén, tres cruces sin carril de espera y el 34 % de los siniestros de la comarca en cinco años.",
   "author": "Marta Beneyto",
@@ -2893,7 +2893,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "El consultorio suma una segunda consulta de pediatría",
   "excerpt": "Atenderá dos tardes por semana y descarga a un cupo que llevaba desde octubre por encima de los mil niños.",
   "author": "Nuria Espí",
@@ -2908,7 +2908,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "El archivo abre al público los planos del ensanche de 1926",
   "excerpt": "Son once láminas que dibujan calles que nunca se trazaron y una plaza donde hoy está el polígono industrial.",
   "author": "Redacción",
@@ -2923,7 +2923,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "Los ganaderos de la sierra pierden 300 cabezas por la lengua azul",
   "excerpt": "El foco obliga a vacunar todo el ovino de la comarca y cierra el movimiento de animales durante seis semanas.",
   "author": "Iván Sagredo",
@@ -2939,7 +2939,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "El club de atletismo cumple 50 años y publica su historia",
   "excerpt": "El volumen recoge 340 fotografías cedidas por los socios y se presentará en la sala de arriba de la biblioteca.",
   "author": "Óscar Tomás",
@@ -2955,7 +2955,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "Aparecen tres silos íberos en la excavación de la calle Horno",
   "excerpt": "El hallazgo obliga a parar la obra del aparcamiento y la Generalitat decidirá en dos meses si el yacimiento se conserva o se documenta.",
   "author": "Agencia EFE",
@@ -2971,7 +2971,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "La feria del libro ocupará el paseo el último fin de semana de abril",
   "excerpt": "Habrá catorce casetas, tres firmas de autores de la comarca y un mercadillo de saldo con fondos retirados de la biblioteca.",
   "author": "Lucía Ferrándiz",
@@ -2986,7 +2986,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "El interventor advierte de que el plan de ajuste vence en diciembre",
   "excerpt": "El informe calcula que la deuda viva bajará a 2,4 M€ y recuerda que sin prórroga el consistorio no podrá contratar personal nuevo.",
   "author": "Ramón Clavel",
@@ -3001,7 +3001,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "La localidad vecina soterrará el cableado del casco antiguo por 480.000 €",
   "excerpt": "La obra afecta a nueve calles, durará catorce meses y se paga con el remanente de tesorería de los dos últimos ejercicios.",
   "author": "Ramón Clavel",
@@ -3017,7 +3017,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "La huerta no es paisaje, es un oficio con nóminas y facturas",
   "excerpt": "Se defiende su valor sentimental en cada acto público y se olvida que quien la trabaja necesita márgenes, no elogios.",
   "author": "Josep Miralles",
@@ -3033,7 +3033,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "El pleno rechaza la moción para bajar el IBI un 4 % en 2027",
   "excerpt": "El equipo de gobierno alega que la rebaja costaría 190.000 € y que ese dinero está comprometido en el plan de aceras.",
   "author": "Ramón Clavel",
@@ -3048,7 +3048,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "El equipo del municipio asalta el liderato en el derbi comarcal",
   "excerpt": "Dos mil personas en la grada, la mejor entrada del año, vieron cómo se decidía todo en un córner del minuto 88.",
   "author": "Óscar Tomás",
@@ -3063,7 +3063,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "El ayuntamiento destina 180.000 € a la programación cultural del año",
   "excerpt": "Son un 12 % más que en 2025 y por primera vez queda una partida fija para las compañías que ensayan en el municipio.",
   "author": "Redacción",
@@ -3079,7 +3079,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "Los precios de la cesta comarcal suben un 3,4 % en marzo",
   "excerpt": "El aceite y la fruta de hueso tiran del índice, mientras que la carne y los lácteos se mantienen planos por tercer mes seguido.",
   "author": "Redacción",
@@ -3094,7 +3094,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "El ayuntamiento reparte 96.000 € en ayudas al deporte base",
   "excerpt": "Las 27 entidades beneficiarias tendrán que justificar cada factura antes de octubre o devolver el anticipo cobrado.",
   "author": "Redacción",
@@ -3110,7 +3110,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "El paro juvenil de la comarca se queda en el 21 % en marzo",
   "excerpt": "Baja cuatro puntos en un año, aunque nueve de cada diez contratos firmados por menores de treinta duran menos de un mes.",
   "author": "Iván Sagredo",
@@ -3125,7 +3125,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Un incendio en el recinto ferial obliga a suspender la feria",
   "excerpt": "Ardió el cuadro eléctrico media hora antes de abrir y los feriantes perdieron la jornada de más público del puente.",
   "author": "Marta Beneyto",
@@ -3140,7 +3140,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "El polígono industrial tendrá una planta de destrío de cítricos",
   "excerpt": "La instalación procesará el descarte de tres cooperativas y creará cuarenta puestos fijos a partir del próximo otoño.",
   "author": "Iván Sagredo",
@@ -3156,7 +3156,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "La restauración del retablo mayor descubre una firma de 1602",
   "excerpt": "El nombre apareció bajo dos capas de repinte y corrige la atribución que figuraba en el catálogo desde 1954.",
   "author": "Lucía Ferrándiz",
@@ -3171,7 +3171,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "La escuela infantil se queda sin plazas con 38 niños en espera",
   "excerpt": "Son catorce más que el curso pasado y el ayuntamiento estudia habilitar un aula en el antiguo consultorio de la pedanía.",
   "author": "Nuria Espí",
@@ -3186,7 +3186,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "El riego de las zonas verdes del barrio pasa a agua regenerada",
   "excerpt": "El cambio ahorra 14.000 metros cúbicos al año y obliga a sustituir los aspersores de los cuatro parques principales.",
   "author": "Ramón Clavel",
@@ -3202,7 +3202,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "El baloncesto femenino de la localidad vecina jugará el play-off de ascenso",
   "excerpt": "Es el segundo equipo de la comarca que llega a esa ronda y lo hace con seis jugadoras salidas del colegio del barrio.",
   "author": "Óscar Tomás",
@@ -3217,7 +3217,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "El recinto ferial acoge la feria de maquinaria con 84 expositores",
   "excerpt": "Son once más que en la edición anterior y por primera vez hay una zona dedicada al riego por sensores y a los drones de campo.",
   "author": "Redacción",
@@ -3232,7 +3232,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "El comedor del colegio se queda sin plazas para veintidós familias",
   "excerpt": "La lista de espera dobla la del curso pasado y la asociación de familias pide reabrir el segundo turno que se cerró en 2023.",
   "author": "Nuria Espí",
@@ -3247,7 +3247,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "Una ruta guiada recorrerá el barranco el domingo de Pascua",
   "excerpt": "Son ocho kilómetros con dos paradas para explicar la fauna del cauce y la inscripción se cierra al llegar a cincuenta personas.",
   "author": "Lucía Ferrándiz",
@@ -3262,7 +3262,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "Lo que aprendí esperando cuatro horas en el hospital comarcal",
   "excerpt": "Una noche de sábado en el pasillo de admisión enseña más del sistema que cualquier memoria anual de la consejería.",
   "author": "Marta Beneyto",
@@ -3277,7 +3277,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "Un cantautor de la comarca llena el auditorio en su primer bolo en casa",
   "excerpt": "Vendió las 420 entradas en nueve días después de once años tocando en salas pequeñas de Madrid y de Valencia.",
   "author": "Lucía Ferrándiz",
@@ -3292,7 +3292,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "Guía | Las nueve rutas de senderismo señalizadas de la comarca",
   "excerpt": "Desde los 3 km del palmeral hasta los 21 del barranco, con desnivel, tiempo estimado y dónde aparcar en cada punto de salida.",
   "author": "Redacción",
@@ -3307,7 +3307,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "La federación cambia el horario de los partidos de mayo",
   "excerpt": "Los encuentros de las dos últimas jornadas se jugarán a la misma hora para evitar que ninguno condicione al otro.",
   "author": "Agencia EFE",
@@ -3322,7 +3322,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "La piscina cubierta abrirá los domingos a partir de octubre",
   "excerpt": "La concejalía amplía el horario tras dos años de peticiones y contratará a dos socorristas más para ese turno.",
   "author": "Óscar Tomás",
@@ -3337,7 +3337,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "Entrevista | «Aquí se busca soldador y no aparece ninguno»",
   "excerpt": "La responsable del centro de formación comarcal lleva dos años con la misma lista de oficios sin cubrir en el polígono.",
   "author": "Iván Sagredo",
@@ -3352,7 +3352,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "El alcalde comparece por el contrato de limpieza y niega irregularidades",
   "excerpt": "La sesión dura tres horas y termina sin acuerdo sobre si la comisión seguirá pidiendo papeles a la empresa adjudicataria.",
   "author": "Marta Beneyto",
@@ -3367,7 +3367,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Detenida una pareja por diez robos en viviendas del pueblo de al lado",
   "excerpt": "Ella tiene 31 años y él 35, entraban por ventanas de plantas bajas del casco antiguo y les han intervenido joyas de siete casas.",
   "author": "Redacción",
@@ -3382,7 +3382,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "Los columpios del parque grande llevan cinco meses precintados",
   "excerpt": "El informe técnico pide sustituir el suelo amortiguante entero y la partida no aparece en el presupuesto de este año.",
   "author": "Nuria Espí",
@@ -3397,7 +3397,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "Entrevista | «Sin agua no hay relevo, y sin relevo no hay huerta»",
   "excerpt": "El presidente de la comunidad de regantes cumple veinte años en el cargo y admite que ya no sabe qué contar a los jóvenes.",
   "author": "Iván Sagredo",
@@ -3413,7 +3413,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "El museo del calzado suma 1.400 visitas durante la Semana Santa",
   "excerpt": "Son cuatrocientas más que el año pasado y la mitad llegaron en autobuses concertados desde fuera de la provincia.",
   "author": "Redacción",
@@ -3428,7 +3428,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "Entrevista | «El ayuntamiento no puede ser la única empresa del pueblo»",
   "excerpt": "La concejala de Hacienda repasa cuatro años de mandato y explica por qué el consistorio dejará de contratar personal fijo en 2027.",
   "author": "Nuria Espí",
@@ -3444,7 +3444,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "La feria de artesanía reúne a 46 puestos en la plaza del ayuntamiento",
   "excerpt": "Es la edición con más expositores desde 2018 y por primera vez ocupa también la calle que baja hacia el lavadero.",
   "author": "Nuria Espí",
@@ -3460,7 +3460,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "La travesía a nado del río reúne a 180 participantes",
   "excerpt": "La prueba se recuperó tras siete años parada y el caudal se midió dos veces antes de autorizar los tres kilómetros.",
   "author": "Óscar Tomás",
@@ -3476,7 +3476,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "La escuela de verano municipal ofrece 240 plazas y dos turnos",
   "excerpt": "Cuesta 60 € al mes con comedor incluido y reserva el treinta por ciento de las plazas a familias derivadas por servicios sociales.",
   "author": "Redacción",
@@ -3491,7 +3491,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "El río recupera la anguila tras cuatro años de repoblación",
   "excerpt": "Los técnicos han contado 3.400 ejemplares en el tramo comarcal, donde la especie había desaparecido por los vertidos de 2018.",
   "author": "Nuria Espí",
@@ -3507,7 +3507,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "Los grupos pactan reservar el 2 % del presupuesto para patrimonio",
   "excerpt": "El acuerdo llega tras el desprendimiento de la torre y fija que ese dinero no podrá desviarse a otras partidas dentro del mismo año.",
   "author": "Ramón Clavel",
@@ -3522,7 +3522,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "Opinión | Rehabilitar no es tirar la fachada y poner una placa",
   "excerpt": "En el barrio quedan siete casas del XIX en pie y ninguna figura en el catálogo que el ayuntamiento revisó en enero.",
   "author": "Josep Miralles",
@@ -3538,7 +3538,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "El Atlético de la comarca encadena su séptima victoria seguida",
   "excerpt": "Nadie en el grupo ha hecho una racha igual desde que existe la categoría, y el equipo aún no ha encajado en casa.",
   "author": "Óscar Tomás",
@@ -3553,7 +3553,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "La feria del libro reúne 26 casetas y a nueve autores de la comarca",
   "excerpt": "Se celebra el fin de semana en el paseo, con firmas por la mañana y un recital de poesía al caer la tarde del sábado.",
   "author": "Lucía Ferrándiz",
@@ -3568,7 +3568,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "Las escuelas municipales pierden 40 plazas por falta de monitores",
   "excerpt": "Ninguna de las tres ofertas publicadas en enero recibió candidatos con la titulación que exige el pliego nuevo.",
   "author": "Redacción",
@@ -3583,7 +3583,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "El comercio del centro pierde nueve locales en el primer trimestre",
   "excerpt": "Las bajas se concentran en el textil y en los bazares, y solo tres de los cierres han encontrado relevo antes de acabar el mes.",
   "author": "Iván Sagredo",
@@ -3598,7 +3598,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "Los sindicatos convocan huelga en la limpieza viaria municipal",
   "excerpt": "El comité reclama la subida pactada en 2024 y advierte de que el paro coincidirá con la semana de las fiestas patronales.",
   "author": "Iván Sagredo",
@@ -3614,7 +3614,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "El barrio celebra sus fiestas con un pasacalles nuevo",
   "excerpt": "Cuatro días de programa, 22.000 € de gasto y una comida popular que este año se hará en la pinada y no en la calzada.",
   "author": "Nuria Espí",
@@ -3629,7 +3629,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Los bomberos apagan cinco fuegos de rastrojos en cuatro días",
   "excerpt": "Todos empezaron en quemas agrícolas fuera de horario y el parque comarcal recuerda que la autorización caduca el 31 de mayo.",
   "author": "Redacción",
@@ -3645,7 +3645,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "La cooperativa cierra la campaña de la alcachofa con un 12 % menos",
   "excerpt": "Los socios achacan la caída al precio del agua de riego y a un febrero sin heladas, que adelantó el corte casi tres semanas.",
   "author": "Ramón Clavel",
@@ -3660,7 +3660,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "El pleno aprueba el catálogo de 74 edificios protegidos del casco",
   "excerpt": "La lista incluye doce fachadas modernistas y prohíbe derribar sin informe previo en todo el perímetro amurallado.",
   "author": "Redacción",
@@ -3676,7 +3676,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "Arranca la campaña de la alcachofa con 900 jornaleros contratados",
   "excerpt": "Son ciento veinte menos que el año pasado y por primera vez las empresas han tenido que buscar gente fuera de la comarca.",
   "author": "Iván Sagredo",
@@ -3692,7 +3692,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "Reportaje | Los cuarenta años del grupo de teatro del barrio",
   "excerpt": "Empezó con seis vecinos en un almacén de naranjas y hoy sostiene media programación de invierno de la casa de cultura.",
   "author": "Lucía Ferrándiz",
@@ -3707,7 +3707,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "La mancomunidad proyecta catorce puntos limpios hasta 2028",
   "excerpt": "Hoy hay cuatro para 96.000 personas y el plan exige que ninguno quede a más de diez minutos en coche de un casco urbano.",
   "author": "Redacción",
@@ -3722,7 +3722,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "El pabellón del municipio estrena un suelo de 96.000 €",
   "excerpt": "La obra duró cinco semanas y obligó a los cuatro clubes a repartirse las pistas descubiertas del barrio.",
   "author": "Redacción",
@@ -3738,7 +3738,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "El paro juvenil baja a 214 personas tras el plan del polígono",
   "excerpt": "Las nueve empresas adheridas se comprometieron a contratar durante seis meses y catorce de esos contratos ya se han convertido en fijos.",
   "author": "Redacción",
@@ -3753,7 +3753,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "El cine de verano vuelve al recinto ferial con doce películas",
   "excerpt": "Las sesiones son los viernes de julio y agosto, la silla cuesta un euro y la recaudación va al banco de alimentos.",
   "author": "Lucía Ferrándiz",
@@ -3768,7 +3768,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "La N-332 se cierra dos noches por las obras del enlace del polígono",
   "excerpt": "El desvío obligará a los camiones a cruzar por el casco urbano entre las once de la noche y las seis de la mañana.",
   "author": "Redacción",
@@ -3784,7 +3784,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "Análisis | Tres años de sequía y ni un solo pozo clausurado",
   "excerpt": "Las restricciones se anuncian en junio, se levantan en octubre y nadie mide lo que se saca del acuífero mientras tanto.",
   "author": "Ramón Clavel",
@@ -3800,7 +3800,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "Análisis | Tres años de plenos y solo once mociones aprobadas",
   "excerpt": "El repaso a 96 sesiones revela que la mitad del tiempo se va en ruegos y preguntas y que catorce puntos se retiraron sin votarse.",
   "author": "Marta Beneyto",
@@ -3815,7 +3815,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "Un gol en el 92 mete al equipo del barrio en la Copa Federación",
   "excerpt": "El portero subió a rematar la última falta del partido y la metió de cabeza, en la jugada que decide la temporada.",
   "author": "Óscar Tomás",
@@ -3831,7 +3831,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "La construcción firma 620 contratos en la comarca en un trimestre",
   "excerpt": "Es el mejor arranque de año desde 2007 y lo sostienen tres promociones de vivienda y la reforma del centro histórico.",
   "author": "Iván Sagredo",
@@ -3846,7 +3846,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "La carrera solidaria de la localidad vecina recauda 8.400 € para el hospital",
   "excerpt": "Los 1.100 inscritos recorrieron cinco kilómetros por el centro y el dinero irá a la sala de espera de pediatría.",
   "author": "Óscar Tomás",
@@ -3862,7 +3862,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "Cierran cuatro comercios de la avenida en lo que va de año",
   "excerpt": "La asociación lo achaca a los alquileres y a las obras, y pide que el plan de comercio local llegue también a la periferia.",
   "author": "Ramón Clavel",
@@ -3877,7 +3877,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Rescatado un hombre atrapado en un pozo de riego de la huerta",
   "excerpt": "Cayó seis metros al ceder la tapa, estuvo dos horas hasta que lo sacaron con arnés y salió con una fractura de tobillo.",
   "author": "Marta Beneyto",
@@ -3893,7 +3893,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "El pleno destina 260.000 € a caminos rurales dañados por la riada",
   "excerpt": "La partida cubre catorce tramos y la reparación del vado que dejó incomunicadas seis fincas en el temporal de enero.",
   "author": "Redacción",
@@ -3909,7 +3909,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "La comarca gana 1.900 habitantes y rompe diez años de caída",
   "excerpt": "El crecimiento se concentra en los tres municipios con polígono y siete de los ocho pueblos pequeños siguen perdiendo padrón.",
   "author": "Redacción",
@@ -3924,7 +3924,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "Un vecino entrega 300 fotografías del molino a la colección municipal",
   "excerpt": "Las hizo su abuelo entre 1955 y 1971, y son las únicas imágenes conocidas de la acequia antes de que se entubara.",
   "author": "Lucía Ferrándiz",
@@ -3939,7 +3939,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "Los caminos de la pedanía se arreglan con 80.000 € del plan comarcal",
   "excerpt": "Son once kilómetros de firme que los tractores dejaron impracticables el invierno pasado y que no se tocaban desde 2011.",
   "author": "Ramón Clavel",
@@ -3955,7 +3955,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "Reportaje | Los 140 nadadores que entrenan antes de ir a clase",
   "excerpt": "Doce familias se turnan para llevarlos al vaso a las siete de la mañana y el pediatra del centro avisa del sueño perdido.",
   "author": "Óscar Tomás",
@@ -3970,7 +3970,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "La banda ofrece su concierto de Semana Santa en el auditorio",
   "excerpt": "Interpretará dos marchas escritas por músicos de la comarca y la entrada se recoge en la conserjería desde el lunes.",
   "author": "Lucía Ferrándiz",
@@ -3985,7 +3985,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "Una empresa de logística compra la antigua fábrica de conservas",
   "excerpt": "La operación ronda los 2,4 M€ y prevé una plataforma de reparto de última milla que empezaría a operar a finales de 2027.",
   "author": "Iván Sagredo",
@@ -4000,7 +4000,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "El relevo en el campo empieza por lo que se paga la hora",
   "excerpt": "Mientras el jornal quede por debajo del almacén del polígono, ningún joven de la comarca elegirá subir al bancal.",
   "author": "Marta Beneyto",
@@ -4016,7 +4016,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "Las obras del colector del barranco arrancan con 2,1 M€ europeos",
   "excerpt": "El tubo de 1.800 metros debe evitar que la avenida de la sierra se inunde, como pasó tres veces el invierno pasado.",
   "author": "Ramón Clavel",
@@ -4032,7 +4032,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "La junta de portavoces acuerda emitir los plenos en directo desde junio",
   "excerpt": "La grabación quedará colgada siete días y el acta escrita seguirá siendo el único documento con valor legal, según el secretario.",
   "author": "Ramón Clavel",
@@ -4047,7 +4047,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "La casa de cultura reabre tras once meses de obras y 620.000 €",
   "excerpt": "El edificio gana un ascensor, aislamiento acústico en la sala grande y un almacén para el material de las compañías.",
   "author": "Redacción",
@@ -4063,7 +4063,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "El ayuntamiento amplía el aparcamiento del estadio",
   "excerpt": "Las ochenta plazas nuevas responden a las quejas por los coches en el arcén de la carretera de la sierra los domingos.",
   "author": "Redacción",
@@ -4079,7 +4079,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "El club de deporte adaptado estrena seis sillas de competición",
   "excerpt": "El material llega de una donación de la cooperativa agrícola y permite salir a competir fuera de la provincia.",
   "author": "Óscar Tomás",
@@ -4094,7 +4094,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "Reportaje | Un día en el centro que sostiene a 45 familias del barrio",
   "excerpt": "Ocho profesionales, dos rutas de furgoneta y una lista de espera que explica por qué esta zona envejece más rápido que el resto.",
   "author": "Nuria Espí",
@@ -4109,7 +4109,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "El ayuntamiento destina 480.000 € a los planes de empleo local",
   "excerpt": "La partida contrata a sesenta personas durante medio año, la mitad mayores de cincuenta y cinco y sin prestación.",
   "author": "Iván Sagredo",
@@ -4125,7 +4125,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "Reportaje | El yacimiento que apareció bajo la nave 14 del polígono",
   "excerpt": "Las obras llevan seis meses paradas, hay dos silos ibéricos documentados y ninguna administración quiere pagar la excavación.",
   "author": "Ramón Clavel",
@@ -4140,7 +4140,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "La Policía Local estrena dos etilómetros y multiplica los controles",
   "excerpt": "Se harán de madrugada los fines de semana y en la salida del polígono a la hora del cambio de turno, según la jefatura.",
   "author": "Redacción",
@@ -4155,7 +4155,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "La ruta de los yacimientos abre con visitas guiadas los domingos",
   "excerpt": "Son tres paradas, doce plazas por turno y un guía que baja hasta el barranco por un sendero recién desbrozado.",
   "author": "Lucía Ferrándiz",
@@ -4171,7 +4171,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "La cooperativa estrena una línea de envasado que dobla su capacidad",
   "excerpt": "La máquina prepara veinte mil kilos por turno y permite atender a dos cadenas alemanas que exigían formato propio.",
   "author": "Iván Sagredo",
@@ -4186,7 +4186,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "La villa instala 320 luminarias led y ahorrará 61.000 € al año",
   "excerpt": "La sustitución empieza por el barrio y el resto del municipio quedará cubierto antes de diciembre, según el pliego adjudicado en enero.",
   "author": "Ramón Clavel",
@@ -4202,7 +4202,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "El balonmano femenino gana su primer título comarcal",
   "excerpt": "La final se jugó dentro del programa de las fiestas del barrio y llenó las dos gradas del pabellón viejo.",
   "author": "Óscar Tomás",
@@ -4217,7 +4217,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "El presupuesto del municipio vecino sale adelante con una sola enmienda",
   "excerpt": "El único cambio aceptado añade 45.000 € para el comedor social, y las otras 23 propuestas decayeron en menos de dos horas.",
   "author": "Ramón Clavel",
@@ -4232,7 +4232,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "Aparece un tramo de acequia del siglo XVI en las obras del pueblo vecino",
   "excerpt": "Mide 60 metros, conserva el revestimiento de mortero original y los arqueólogos piden integrarlo en el paseo proyectado.",
   "author": "Agencia EFE",
@@ -4248,7 +4248,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "La excavación del castillo abre al público dos jornadas en abril",
   "excerpt": "El equipo enseña los tres silos hallados en la campaña de otoño y limita cada pase a quince visitantes por seguridad.",
   "author": "Lucía Ferrándiz",
@@ -4264,7 +4264,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "Media hora para cruzar el municipio no es cosa de los semáforos",
   "excerpt": "Cuarenta mil vehículos al día atraviesan el casco urbano porque la alternativa nunca pasó de la fase de estudio.",
   "author": "Josep Miralles",
@@ -4280,7 +4280,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "El club local cae en casa y se complica la permanencia",
   "excerpt": "La derrota deja al equipo a dos puntos del descenso cuando quedan cinco jornadas y tres desplazamientos largos.",
   "author": "Óscar Tomás",
@@ -4295,7 +4295,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "El festival de música antigua programa cinco conciertos en iglesias",
   "excerpt": "La organización ha elegido cuatro templos de la comarca y el molino de la Acequia para la sesión de clausura.",
   "author": "Lucía Ferrándiz",
@@ -4311,7 +4311,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "El pleno rechaza subir las tasas de las instalaciones deportivas",
   "excerpt": "La propuesta del 18 % se cayó con los votos de los dos grupos de la oposición y de un concejal del gobierno local.",
   "author": "Redacción",
@@ -4327,7 +4327,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "El bono de comercio local agota sus 90.000 € en once días",
   "excerpt": "Se han canjeado 6.100 vales en 138 establecimientos adheridos y el ayuntamiento estudia una segunda tanda para el otoño.",
   "author": "Iván Sagredo",
@@ -4342,7 +4342,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "El barrio se lleva 180.000 € de los presupuestos participativos",
   "excerpt": "Las tres propuestas ganadoras son el arreglo del local, la pista cubierta y el alumbrado de la calle que sube a la sierra.",
   "author": "Ramón Clavel",
@@ -4358,7 +4358,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "Guía | Cómo preparar las oposiciones municipales de este año",
   "excerpt": "Temarios, plazos, tasas y los seis errores que dejaron fuera a la cuarta parte de los aspirantes en la última tanda.",
   "author": "Redacción",
@@ -4373,7 +4373,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "Un camión vuelca en la N-332 y corta el acceso al polígono seis horas",
   "excerpt": "El conductor salió ileso, la carga de naranjas quedó esparcida en la calzada y el desvío llegó hasta la salida del municipio vecino.",
   "author": "Redacción",
@@ -4389,7 +4389,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Un ciclista de 52 años herido grave al ser arrollado en la N-332",
   "excerpt": "Ocurrió en el tramo sin arcén de la salida al pueblo vecino, el mismo punto donde hubo otro atropello el pasado mes de septiembre.",
   "author": "Marta Beneyto",
@@ -4405,7 +4405,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "Entrevista | «Un yacimiento sin vallar dura lo que tarda en pasar un tractor»",
   "excerpt": "La arqueóloga que dirige las campañas de la sierra lleva catorce años pidiendo un cierre perimetral y vigilancia.",
   "author": "Lucía Ferrándiz",
@@ -4421,7 +4421,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "Los pozos de la comarca bajan cinco metros en un solo invierno",
   "excerpt": "La confederación advierte de que el descenso es el mayor desde que hay registro y pide limitar las extracciones en verano.",
   "author": "Iván Sagredo",
@@ -4437,7 +4437,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "Guía | Horarios y recorridos de las cuatro procesiones",
   "excerpt": "La del Silencio adelanta media hora su salida y la del Encuentro estrena tramo por la calle del Hospital hasta el arco.",
   "author": "Lucía Ferrándiz",
@@ -4453,7 +4453,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "Los hosteleros avisan de que no encuentran camareros para el verano",
   "excerpt": "El sector calcula 180 vacantes sin cubrir en la comarca y apunta al precio de la vivienda de temporada como principal freno.",
   "author": "Iván Sagredo",
@@ -4468,7 +4468,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "El pleno aprueba cubrir dos pistas de pádel del complejo",
   "excerpt": "La inversión asciende a 148.000 € y la concejalía calcula recuperarla en siete años con las tarifas de invierno.",
   "author": "Redacción",
@@ -4484,7 +4484,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "El pleno rechaza subir el recibo del agua un 6 % este ejercicio",
   "excerpt": "La concesionaria alega que el coste de bombeo ha crecido un 19 % y anuncia que llevará la negativa municipal a los tribunales.",
   "author": "Ramón Clavel",
@@ -4500,7 +4500,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "La ordenanza de veladores entra en su tercer borrador en un año",
   "excerpt": "El nuevo texto reduce a la mitad las mesas permitidas en la plaza y fija por primera vez una distancia mínima con los portales.",
   "author": "Marta Beneyto",
@@ -4515,7 +4515,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "El hospital comarcal abrirá consulta externa en el municipio de al lado",
   "excerpt": "Traumatología y dermatología pasarán tres días por semana y evitarán 11.000 desplazamientos al año a los vecinos del sur.",
   "author": "Nuria Espí",
@@ -4530,7 +4530,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "La comarca no pierde habitantes, pierde a los que iban a quedarse",
   "excerpt": "Se marchan a los veintitrés y vuelven de visita en agosto, y esa ha sido toda nuestra política demográfica.",
   "author": "Marta Beneyto",
@@ -4546,7 +4546,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "Entrevista | «Sin autobús no hay deporte base en la comarca»",
   "excerpt": "El presidente de la federación provincial calcula que los desplazamientos se llevan un tercio de lo que ingresa un equipo modesto.",
   "author": "Óscar Tomás",
@@ -4561,7 +4561,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "El veterano Paco Sirvent se retira tras 400 partidos",
   "excerpt": "Debutó con dieciséis años y ha jugado en los cuatro clubes de la comarca sin salir nunca de la provincia.",
   "author": "Óscar Tomás",
@@ -4576,7 +4576,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "Entrevista | «Aquí se hace teatro con lo que sobra del presupuesto»",
   "excerpt": "La directora del grupo más veterano de la comarca repasa cuatro décadas de escenarios prestados y salas sin calefacción.",
   "author": "Lucía Ferrándiz",
@@ -4591,7 +4591,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "Las obras de la calle Mayor acaban con dos meses de retraso",
   "excerpt": "La empresa alega la aparición de una conducción que no estaba en los planos y el ayuntamiento renuncia a penalizarla.",
   "author": "Ramón Clavel",
@@ -4606,7 +4606,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "El comercio del centro histórico pierde 80 empleos en dos años",
   "excerpt": "Las bajas se concentran en los locales de menos de tres trabajadores, según el censo que acaba de cerrar la asociación.",
   "author": "Iván Sagredo",
@@ -4621,7 +4621,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "El consistorio contrata a doce parados de larga duración por seis meses",
   "excerpt": "El taller de empleo se destinará a limpiar barrancos y a pintar el colegio, y se resolvió con 87 solicitudes sobre la mesa.",
   "author": "Nuria Espí",
@@ -4637,7 +4637,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Dos años de cárcel por verter purines al cauce del río",
   "excerpt": "La sentencia obliga además a pagar 48.000 € por la limpieza y es la primera condena firme por vertidos en la comarca.",
   "author": "Agencia EFE",
@@ -4653,7 +4653,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "Guía | Qué ayudas agrarias se pueden pedir hasta el 30 de abril",
   "excerpt": "Once líneas abiertas, del seguro de heladas a la compra de maquinaria, con los plazos y la documentación de cada una.",
   "author": "Redacción",
@@ -4668,7 +4668,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "El museo etnológico recupera un molino de esparto de 1890",
   "excerpt": "Estaba desmontado en un pajar del municipio vecino y ha necesitado ocho meses de trabajo para volver a girar sin forzar la madera.",
   "author": "Lucía Ferrándiz",
@@ -4683,7 +4683,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "Los vecinos de la pedanía cortan la N-332 por el paso de peatones",
   "excerpt": "Llevan seis años pidiendo un semáforo en el cruce del colegio, donde Fomento ha contabilizado nueve atropellos desde 2019.",
   "author": "Nuria Espí",
@@ -4699,7 +4699,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "La gimnasia de base se queda sin sala en el colegio del barrio",
   "excerpt": "Las 90 alumnas se reparten en dos turnos prestados y el club pide una cesión estable antes de septiembre.",
   "author": "Redacción",
@@ -4714,7 +4714,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "Los agricultores cortan la N-332 para reclamar agua del trasvase",
   "excerpt": "Unos 400 tractores pararon el tráfico durante cinco horas entre los dos accesos al polígono industrial.",
   "author": "Nuria Espí",
@@ -4731,7 +4731,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "La escuela de música cierra la matrícula con 310 alumnos",
   "excerpt": "Son cuarenta más que el curso pasado y obligan a habilitar dos aulas en el antiguo edificio de los juzgados.",
   "author": "Redacción",
@@ -4746,7 +4746,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "La terminal de mercancías del polígono mueve 41.000 palés en un año",
   "excerpt": "El volumen crece un 9 % y la mitad de la carga sale hacia Francia, pero la falta de aparcamiento para camiones sigue sin resolverse.",
   "author": "Iván Sagredo",
@@ -4761,7 +4761,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "Abierta la convocatoria de ayudas a las asociaciones festeras",
   "excerpt": "El reparto es de 96.000 € entre veintidós entidades y por primera vez puntúa el gasto en seguridad de cada acto.",
   "author": "Redacción",
@@ -4777,7 +4777,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "Opinión | La transparencia no es publicar el archivo más tarde",
   "excerpt": "El portal municipal cuelga los contratos menores con seis meses de retraso y eso también es una forma de no contarlos.",
   "author": "Josep Miralles",
@@ -4793,7 +4793,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "Entrevista | «Aquí se receta transporte, no solo pastillas»",
   "excerpt": "La médica de familia lleva once años en el consultorio y explica por qué la mitad de sus faltas de cita son un problema de bus.",
   "author": "Nuria Espí",
@@ -4808,7 +4808,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "Análisis | El empleo de la comarca depende de tres meses al año",
   "excerpt": "Entre marzo y mayo se firman cuatro de cada diez contratos de la comarca, y de ahí sale la curva que se repite desde 2011.",
   "author": "Iván Sagredo",
@@ -4823,7 +4823,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "El ayuntamiento devuelve 90.000 € de una subvención sin justificar",
   "excerpt": "El dinero era para el taller de formación de 2024 y se pierde porque las facturas se presentaron once días después del plazo.",
   "author": "Ramón Clavel",
@@ -4838,7 +4838,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "El club de fútbol sala pide compartir el pabellón",
   "excerpt": "La solicitud coincide con la revisión del reglamento de instalaciones, que el pleno tiene previsto aprobar en otoño.",
   "author": "Redacción",
@@ -4853,7 +4853,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "La sequía obliga a regar los campos de tierra con agua reciclada",
   "excerpt": "El ayuntamiento instala dos depósitos junto al barranco y prohíbe usar la red potable en seis instalaciones al aire libre.",
   "author": "Redacción",
@@ -4869,7 +4869,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "La biblioteca municipal abrirá también los sábados por la mañana",
   "excerpt": "El horario nuevo suma seis horas semanales y sale de un convenio con la diputación que cubre media plaza hasta 2027.",
   "author": "Nuria Espí",
@@ -4884,7 +4884,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Un rayo provoca un fuego en la sierra que quema doce hectáreas",
   "excerpt": "Trabajaron cuatro autobombas y dos helicópteros desde el amanecer, y el humo llegó a verse desde la N-332 a mediodía.",
   "author": "Marta Beneyto",
@@ -4899,7 +4899,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "La ermita de la sierra se cae a trozos y no tiene dueño reconocido",
   "excerpt": "El obispado y dos familias se declaran ajenos a la propiedad, y sin titular no hay quien pida la subvención.",
   "author": "Lucía Ferrándiz",
@@ -4915,7 +4915,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "Cuatro cooperativas de la comarca negocian fusionarse en una sola",
   "excerpt": "Sumarían 1.800 socios y 60 M€ de facturación, aunque el reparto de los almacenes sigue frenando el acuerdo.",
   "author": "Iván Sagredo",
@@ -4930,7 +4930,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "El centro de salud suma dos pediatras y baja la espera a seis días",
   "excerpt": "Las plazas estaban sin cubrir desde 2023 y el cupo pasa de 1.400 a 900 tarjetas por profesional en el área del municipio.",
   "author": "Nuria Espí",
@@ -4945,7 +4945,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "El coro municipal cantará en la catedral de la capital el 21 de marzo",
   "excerpt": "Es la primera salida de la agrupación fuera de la comarca desde 2019 y viajará con cincuenta y dos voces.",
   "author": "Redacción",
@@ -4960,7 +4960,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "El baloncesto del municipio encadena catorce victorias y lidera el grupo",
   "excerpt": "Ningún equipo de la provincia lleva una racha igual y el pabellón se ha quedado pequeño en las tres últimas citas.",
   "author": "Óscar Tomás",
@@ -4975,7 +4975,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "La oposición pide una comisión sobre el sobrecoste de la plaza mayor",
   "excerpt": "Las obras han pasado de 1,1 a 1,6 M€ en dos modificados y llevan cinco meses de retraso sobre el calendario firmado en 2025.",
   "author": "Marta Beneyto",
@@ -4990,7 +4990,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "El taller de cerámica abre un segundo grupo por la lista de espera",
   "excerpt": "Quedaron fuera sesenta personas en enero y el ayuntamiento paga doce sesiones más con el remanente del área de cultura.",
   "author": "Lucía Ferrándiz",
@@ -5005,7 +5005,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "Plantan 320 árboles en la ladera quemada de la sierra",
   "excerpt": "La repoblación se hace con pino carrasco y algarrobo, y sale del convenio con la cooperativa agrícola firmado en enero.",
   "author": "Redacción",
@@ -5020,7 +5020,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "El regadío de la huerta pierde 340 hectáreas en cinco años",
   "excerpt": "Casi la mitad se ha convertido en suelo urbanizable y el resto está en barbecho por falta de agua, según el catastro agrario.",
   "author": "Nuria Espí",
@@ -5036,7 +5036,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "Sin la N-332 arreglada, el polígono seguirá siendo una promesa",
   "excerpt": "Las empresas que iban a instalarse allí preguntan siempre lo mismo y siempre reciben el mismo cronograma de respuesta.",
   "author": "Ramón Clavel",
@@ -5052,7 +5052,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "El municipio acoge el comarcal escolar con 900 participantes",
   "excerpt": "Los chavales llegaron en 22 autobuses y se repartieron por cuatro sedes distintas a lo largo de toda la jornada.",
   "author": "Óscar Tomás",
@@ -5067,7 +5067,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "El derbi se aplaza por el temporal de levante",
   "excerpt": "El campo acumulaba ocho centímetros de agua a mediodía y el árbitro suspendió una hora antes del inicio previsto.",
   "author": "Redacción",
@@ -5082,7 +5082,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "Entrevista | «El municipio no puede pagar dos veces el mismo servicio»",
   "excerpt": "El alcalde defiende la salida del consorcio de basuras y admite que la ruptura le costará al pueblo un año de transición.",
   "author": "Ramón Clavel",
@@ -5097,7 +5097,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "Dos empresas del polígono trasladan su producción fuera de la comunidad",
   "excerpt": "Entre las dos emplean a ciento diez personas y alegan que el suelo industrial de la comarca lleva seis años sin ampliarse.",
   "author": "Iván Sagredo",
@@ -5112,7 +5112,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "El nuevo mercadillo de los martes se queda sin adjudicatario",
   "excerpt": "Ninguna de las dos empresas presentadas alcanza la puntuación mínima y el servicio seguirá gestionado por el ayuntamiento.",
   "author": "Redacción",
@@ -5127,7 +5127,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "El hospital comarcal simula un accidente con veinte heridos",
   "excerpt": "El simulacro midió el tiempo de triaje en urgencias y detectó que faltan camillas para atender más de doce críticos a la vez.",
   "author": "Redacción",
@@ -5142,7 +5142,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "La torre vigía cierra dos meses para consolidar el muro sur",
   "excerpt": "El desprendimiento de enero dejó una grieta de once metros y la intervención se pagará con el 1,5 % cultural del Estado.",
   "author": "Ramón Clavel",
@@ -5157,7 +5157,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "Una gotera del depósito daña 40 legajos del archivo municipal",
   "excerpt": "Los documentos, del reparto de aguas de 1878, se han congelado para frenar el moho antes de intentar separarlos.",
   "author": "Lucía Ferrándiz",
@@ -5172,7 +5172,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "El agua industrial sube un 19 % y las conserveras piden tarifa propia",
   "excerpt": "Las cuatro plantas de la comarca gastan tanto como 3.000 hogares y avisan de que el recibo se come ya el 6 % de sus costes.",
   "author": "Iván Sagredo",
@@ -5187,7 +5187,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "El río baja con el caudal más pobre registrado desde 1995",
   "excerpt": "El aforo del municipio marca 1,8 metros cúbicos por segundo, la mitad de lo que la ley fija como mínimo ecológico.",
   "author": "Redacción",
@@ -5203,7 +5203,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "El nuevo trazado de la CV-849 recorta once kilómetros hasta la sierra",
   "excerpt": "La obra cuesta 6,3 M€, evita el paso por dos cascos urbanos y estará terminada en el primer trimestre del año que viene.",
   "author": "Ramón Clavel",
@@ -5219,7 +5219,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "La marcha ciclista escolar corta la travesía del municipio",
   "excerpt": "Participaron 400 alumnos y la policía local desvió el paso de vehículos hacia el camino del polígono dos horas.",
   "author": "Redacción",
@@ -5235,7 +5235,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "El mercadillo suma diez puestos de alimentación en marzo",
   "excerpt": "Vuelven al recinto ferial los pescaderos que dejaron la plaza en 2019 y el horario se alarga hasta las tres de la tarde.",
   "author": "Redacción",
@@ -5250,7 +5250,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "El barrio pierde la parada de la avenida por las obras hasta agosto",
   "excerpt": "La provisional queda a 400 metros y sin marquesina, y los usuarios del centro de día han pedido un servicio puerta a puerta.",
   "author": "Ramón Clavel",
@@ -5266,7 +5266,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "Un pediatra para toda la comarca no es un dato, es un aviso",
   "excerpt": "La consulta de un pueblo cerró en febrero y las familias del vecino conducen ahora treinta kilómetros para una revisión.",
   "author": "Marta Beneyto",
@@ -5281,7 +5281,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "El equipo local ficha a un delantero cedido por el Hércules",
   "excerpt": "Llega hasta junio con la ficha pagada por el club de origen, una fórmula que la directiva quiere repetir el año que viene.",
   "author": "Óscar Tomás",
@@ -5296,7 +5296,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "El museo del calzado dedica una sala al diseño de los años setenta",
   "excerpt": "Reúne ochenta pares cedidos por seis fábricas de la comarca y un archivo de dibujos que llevaba veinte años en cajas.",
   "author": "Lucía Ferrándiz",
@@ -5312,7 +5312,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "La piscina municipal cambia el cloro por sal tras 22 años",
   "excerpt": "El sistema nuevo ahorra 9.000 € anuales en producto químico y obliga a vaciar el vaso grande durante quince días.",
   "author": "Redacción",
@@ -5328,7 +5328,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "Voluntarios retiran 3,4 toneladas de basura del barranco",
   "excerpt": "Salieron dos sofás, ochenta neumáticos y un depósito de gasoil de una ladera que el consistorio limpió hace nueve meses.",
   "author": "Redacción",
@@ -5343,7 +5343,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "El pleno aprueba bonificar el IBI a las empresas que contraten",
   "excerpt": "La rebaja llega al 50 % durante tres años si el puesto es indefinido y la persona figuraba inscrita en la comarca.",
   "author": "Redacción",
@@ -5359,7 +5359,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "El pleno aprueba por unanimidad blindar el lavadero del barrio",
   "excerpt": "La protección impide tocar el edificio del siglo XIX y obliga a redactar un plan de usos antes de que termine el ejercicio.",
   "author": "Ramón Clavel",
@@ -5375,7 +5375,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Una tormenta desborda el barranco y corta tres caminos rurales",
   "excerpt": "Cayeron 62 litros en dos horas, el vado quedó impracticable hasta el mediodía y hubo que rescatar a un coche atrapado.",
   "author": "Marta Beneyto",
@@ -5391,7 +5391,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "La villa romana del río entra en el mapa turístico de la comarca",
   "excerpt": "El folleto comarcal la incluye con horario fijo por primera vez, aunque solo se puede visitar de octubre a mayo.",
   "author": "Lucía Ferrándiz",
@@ -5407,7 +5407,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "El mural de la fábrica vieja se restaura con 12.000 €",
   "excerpt": "Lo pintaron en 1998 ochenta vecinos y una tormenta se llevó media pared, que ahora se recupera con el proyecto original.",
   "author": "Nuria Espí",
@@ -5422,7 +5422,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "La alcachofa de la comarca logra la marca de calidad autonómica",
   "excerpt": "El sello ampara a 340 productores y obliga a un cuaderno de campo digital que muchas explotaciones pequeñas aún no llevan.",
   "author": "Iván Sagredo",
@@ -5437,7 +5437,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "La feria del stock deja 340.000 € de ventas en solo tres días",
   "excerpt": "Participan 52 comercios del centro y del barrio, y el ticket medio se queda en 34 €, cuatro menos que en la edición pasada.",
   "author": "Iván Sagredo",
@@ -5452,7 +5452,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "El ayuntamiento saca a concurso el bar del recinto ferial",
   "excerpt": "Sale por 18.000 € anuales y con la obligación de abrir durante las fiestas de agosto, después de dos años cerrado.",
   "author": "Redacción",
@@ -5467,7 +5467,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "La villa recupera la quema del ninot tras cuatro años sin hoguera",
   "excerpt": "El acto vuelve al recinto ferial con un cortafuegos de doce metros y una limitación de aforo que no existía en 2021.",
   "author": "Nuria Espí",
@@ -5482,7 +5482,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "La feria de artesanía abre la inscripción para treinta puestos",
   "excerpt": "Se celebra el último domingo de abril en el paseo y este año reserva ocho plazas a oficios que no se practican en la comarca.",
   "author": "Lucía Ferrándiz",
@@ -5497,7 +5497,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "La piscina cubierta amplía a seis las calles de competición",
   "excerpt": "La reforma del vaso pequeño costó 62.000 € y permite acoger por fin fases autonómicas de categoría infantil.",
   "author": "Redacción",
@@ -5513,7 +5513,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "La mancomunidad se queda sin gerente y encadena tres dimisiones",
   "excerpt": "El puesto lleva vacante ocho de los últimos catorce meses y los expedientes de subvención se han retrasado por esa razón.",
   "author": "Ramón Clavel",
@@ -5528,7 +5528,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "El consistorio y el del pueblo vecino firman el convenio comarcal de aguas",
   "excerpt": "El acuerdo unifica la lectura de contadores de los dos municipios y prevé una tarifa única a partir del primer trimestre de 2027.",
   "author": "Ramón Clavel",
@@ -5543,7 +5543,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "El barranco se limpia cuando ya ha llovido demasiado",
   "excerpt": "Las brigadas entran en octubre porque el presupuesto se libera entonces, no porque sea el momento bueno para entrar.",
   "author": "Josep Miralles",
@@ -5559,7 +5559,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "Guía | Las nueve carreras populares de la comarca hasta junio",
   "excerpt": "Del cross del barranco a la nocturna del recinto ferial, con distancias, precios de inscripción y fecha de cierre.",
   "author": "Redacción",
@@ -5574,7 +5574,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "El certamen literario escolar recibe 640 relatos de doce colegios",
   "excerpt": "El jurado premiará a tres alumnos por categoría y publicará una antología que se repartirá en las aulas en junio.",
   "author": "Redacción",
@@ -5589,7 +5589,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "Guía | Dónde ver los partidos de la comarca este fin de semana",
   "excerpt": "Once encuentros repartidos en seis campos, con horarios, precios de entrada y las tres citas que decidirán algo.",
   "author": "Redacción",
@@ -5604,7 +5604,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "La campaña de la alcachofa deja 900 contratos de menos de un mes",
   "excerpt": "Ocho de cada diez se firmaron a través de empresas de servicios agrarios, que ya mueven la mitad del jornal de la huerta.",
   "author": "Iván Sagredo",
@@ -5619,7 +5619,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Detenido un hombre de la localidad vecina por catorce robos en huertos",
   "excerpt": "Tiene 38 años y se llevaba la fruta de madrugada con una furgoneta, según la denuncia conjunta de once agricultores.",
   "author": "Redacción",
@@ -5634,7 +5634,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "La hoguera vecinal reúne a 1.400 personas en la explanada",
   "excerpt": "Es la mejor cifra desde que el acto se sacó de la plaza, y este año hubo por primera vez una zona sin música para mayores.",
   "author": "Redacción",
@@ -5649,7 +5649,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "Análisis | Por qué la comarca no retiene a sus empresas medianas",
   "excerpt": "Siete compañías de más de cincuenta plantillas se han mudado a la capital o a la provincia vecina en cinco años, y todas citan el suelo y la conexión.",
   "author": "Iván Sagredo",
@@ -5664,7 +5664,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "Los agricultores cortan la N-332 tres horas por los precios",
   "excerpt": "Ciento treinta tractores salieron del recinto ferial a las nueve y la circulación no se restableció hasta media tarde.",
   "author": "Iván Sagredo",
@@ -5681,7 +5681,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "El taller municipal recupera el vidriado verde de los cántaros",
   "excerpt": "La fórmula se había perdido con la jubilación del último maestro y se ha reconstruido analizando piezas del museo.",
   "author": "Lucía Ferrándiz",
@@ -5696,7 +5696,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "Una muestra recupera 120 carteles de las fiestas desde 1954",
   "excerpt": "Los originales estaban repartidos entre cuatro colecciones particulares y se han digitalizado uno a uno antes de colgarlos.",
   "author": "Lucía Ferrándiz",
@@ -5712,7 +5712,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "El desfile de carnaval cambia de recorrido por las obras",
   "excerpt": "Las diecisiete comparsas saldrán desde el paseo y no desde la plaza, con dos horas de corte al tráfico en la calle mayor.",
   "author": "Lucía Ferrándiz",
@@ -5728,7 +5728,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "El club de petanca del barrio estrena bolas hechas en la comarca",
   "excerpt": "Las fabrica un tornero jubilado que tardó siete meses en sacar las cuarenta y no ha cobrado nada por el encargo.",
   "author": "Óscar Tomás",
@@ -5743,7 +5743,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "El gobierno saca adelante la tasa de basuras con el voto de calidad",
   "excerpt": "El recibo medio sube 18 € al año para cumplir la ley estatal que obliga a cubrir el coste real del servicio de residuos.",
   "author": "Marta Beneyto",
@@ -5759,7 +5759,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "El autobús a la localidad vecina pasará por el pueblo ocho veces cada día",
   "excerpt": "La concesión nueva añade dos servicios de tarde y una parada en el polígono que los sindicatos pedían desde 2019.",
   "author": "Agencia EFE",
@@ -5774,7 +5774,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "Dos municipios vecinos compartirán el servicio de aguas desde marzo",
   "excerpt": "La fórmula ahorra 140.000 € al año a cada consistorio y unifica la tarifa, que en uno de los dos era un 12 % más cara.",
   "author": "Ramón Clavel",
@@ -5789,7 +5789,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "La biblioteca no es un gasto cultural, es un sitio con calefacción",
   "excerpt": "Ochenta personas mayores pasan allí las tardes de enero y ninguna de ellas aparece en la estadística de préstamos.",
   "author": "Marta Beneyto",
@@ -5804,7 +5804,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "Reportaje | Las doce calles del municipio que siguen sin aceras",
   "excerpt": "Viven en ellas 1.240 personas, casi todas en el norte del casco, y el plan de accesibilidad de 2019 no llegó a ejecutarse.",
   "author": "Ramón Clavel",
@@ -5819,7 +5819,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "Tres equipos de la comarca siguen invictos en casa",
   "excerpt": "Entre los tres suman treinta y un partidos sin perder en su campo, un dato que no se daba desde la temporada 2014-15.",
   "author": "Óscar Tomás",
@@ -5834,7 +5834,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "El centro de formación abre un curso de instalador de placas",
   "excerpt": "Las veinte plazas se cubrieron en cuatro días y la lista de espera dobla ya el número de personas admitidas.",
   "author": "Iván Sagredo",
@@ -5849,7 +5849,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "El polígono del municipio cede una nave para el deporte urbano",
   "excerpt": "La cesión dura cuatro años y llega tras el cierre de la fábrica de calzado que ocupaba los 1.200 metros cuadrados.",
   "author": "Óscar Tomás",
@@ -5864,7 +5864,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Protección Civil suma quince voluntarios y estrena vehículo",
   "excerpt": "La agrupación pasa de 22 a 37 personas y el todoterreno nuevo, cofinanciado por la Diputación, sustituye a uno de 2004.",
   "author": "Redacción",
@@ -5879,7 +5879,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "El barrio recibe el 9 % de la inversión municipal con el 17 % del padrón",
   "excerpt": "El dato sale del propio anexo de inversiones y la concejalía responde que el barrio tiene menos calles que arreglar.",
   "author": "Ramón Clavel",
@@ -5894,7 +5894,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "El museo del calzado abre su almacén con 4.000 hormas de madera",
   "excerpt": "Estaban apiladas sin inventariar desde que cerró la fábrica de la carretera, y ahora se pueden ver dos tardes por semana.",
   "author": "Redacción",
@@ -5909,7 +5909,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "El centro histórico será peatonal todos los fines de semana",
   "excerpt": "La prueba dura cuatro meses, afecta a seis calles y deja veinte plazas de carga que solo funcionarán hasta mediodía.",
   "author": "Ramón Clavel",
@@ -5925,7 +5925,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "Por qué la naranja de la huerta vale menos cada mes de enero",
   "excerpt": "La entrada de género del hemisferio sur y el calendario de las grandes superficies explican una caída que dura ocho campañas.",
   "author": "Iván Sagredo",
@@ -5940,7 +5940,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "El colegio Miguel Hernández estrena comedor para 220 alumnos",
   "excerpt": "La cocina es propia y sustituye al catering que servía desde fuera de la comarca, un cambio que las familias reclamaban desde hacía cuatro cursos.",
   "author": "Nuria Espí",
@@ -5955,7 +5955,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "Reportaje | Doce pueblos, un solo autobús y tres horas de espera",
   "excerpt": "Ir al hospital comarcal desde el último pueblo de la línea y volver el mismo día ocupa una jornada entera, y no hay ninguna directa entre las dos cabeceras.",
   "author": "Ramón Clavel",
@@ -5970,7 +5970,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "El auditorio agota las entradas del concierto de carnaval en dos días",
   "excerpt": "Actuarán tres grupos de la comarca y la recaudación irá entera al fondo de becas de la escuela municipal de música.",
   "author": "Lucía Ferrándiz",
@@ -5985,7 +5985,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "El derbi de baloncesto llena el pabellón con 1.100 personas",
   "excerpt": "Fue la mejor entrada desde 2019 y el club tuvo que cerrar la venta de localidades cuarenta minutos antes del salto.",
   "author": "Óscar Tomás",
@@ -6000,7 +6000,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "Entrevista | «Un pleno de cuatro horas no es participación»",
   "excerpt": "La portavoz de la oposición defiende recortar los ruegos, publicar los informes con 72 horas de antelación y abrir el turno vecinal.",
   "author": "Marta Beneyto",
@@ -6015,7 +6015,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "El ayuntamiento rebaja el IBI industrial un 8 % durante dos años",
   "excerpt": "La bonificación se aplicará a las naves que amplíen plantilla y costará 210.000 € al año a las arcas municipales.",
   "author": "Iván Sagredo",
@@ -6030,7 +6030,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "El consistorio convoca 180 becas de comedor para el tercer trimestre",
   "excerpt": "Las ayudas llegan a 300 € por alumno, el plazo dura veinte días hábiles y el único baremo es la renta del ejercicio 2025.",
   "author": "Redacción",
@@ -6045,7 +6045,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "Opinión | Las fiestas del barrio no necesitan ser más grandes",
   "excerpt": "Cada año se añade una jornada al programa y cada año hay menos gente en la parte que sostenían los vecinos de siempre.",
   "author": "Josep Miralles",
@@ -6060,7 +6060,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "Muere a los 76 años Vicente Poveda, alma del deporte comarcal",
   "excerpt": "Presidió la federación durante dieciocho temporadas, fundó la escuela de atletismo y no cobró nunca por ninguno de los dos cargos.",
   "author": "Redacción",
@@ -6075,7 +6075,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "El femenino estrena vestuarios propios en el anexo",
   "excerpt": "Hasta ahora se cambiaban en el pabellón y cruzaban la calle con la equipación puesta, algo que el club llevaba tres años reclamando.",
   "author": "Óscar Tomás",
@@ -6090,7 +6090,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "El paro registrado sube en 190 personas tras la campaña cítrica",
   "excerpt": "El aumento es el habitual de febrero, aunque este año llega con doscientas altas menos que en el mismo mes de 2025.",
   "author": "Redacción",
@@ -6106,7 +6106,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "Un reventón deja sin agua a 900 viviendas durante doce horas",
   "excerpt": "La tubería es de fibrocemento de 1974 y es la cuarta avería en el mismo tramo desde que empezó el invierno.",
   "author": "Agencia EFE",
@@ -6121,7 +6121,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Un camión vuelca en la N-332 y derrama 300 litros de gasoil",
   "excerpt": "El conductor salió ileso y el vertido obligó a cerrar un carril hasta las tres de la tarde para limpiar la calzada.",
   "author": "Marta Beneyto",
@@ -6137,7 +6137,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "Un incendio en una nave del polígono obliga a desalojar dos calles",
   "excerpt": "Ardieron 900 palés y la columna de humo se vio desde los pueblos vecinos; no hubo heridos y los bomberos tardaron seis horas en darlo por extinguido.",
   "author": "Redacción",
@@ -6152,7 +6152,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "El consultorio de la pedanía pasa de un día a tres por semana",
   "excerpt": "La medida llega tras año y medio de firmas y cubre a 140 vecinos que hasta ahora bajaban catorce kilómetros al ambulatorio.",
   "author": "Nuria Espí",
@@ -6167,7 +6167,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "Entrevista | «Un club de balonmano vive de rifas y de bares»",
   "excerpt": "La presidenta del equipo del barrio explica cómo cuadra un presupuesto de 31.000 € sin ningún patrocinador fijo.",
   "author": "Óscar Tomás",
@@ -6182,7 +6182,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "El paro agrario sube un 6 % tras el final de la campaña cítrica",
   "excerpt": "Son 410 personas más en las listas de la comarca, casi todas mujeres y con contratos de menos de tres meses.",
   "author": "Iván Sagredo",
@@ -6198,7 +6198,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "Aflora un lienzo de muralla bajo un solar de la calle Nueva",
   "excerpt": "Mide catorce metros, es del siglo XV y paraliza una promoción de nueve viviendas que tenía licencia desde enero.",
   "author": "Lucía Ferrándiz",
@@ -6214,7 +6214,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "Vuelve el ciclo de cine mudo de la biblioteca con seis títulos",
   "excerpt": "Las proyecciones son los jueves a las siete y la entrada es libre hasta completar las noventa butacas de la sala de abajo.",
   "author": "Lucía Ferrándiz",
@@ -6229,7 +6229,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "Los artesanos del esparto abren una tienda conjunta en la plaza",
   "excerpt": "Nueve talleres del municipio y de la localidad vecina comparten local y turnos de venta, con la mitad del alquiler cubierta por el plan de barrios.",
   "author": "Redacción",
@@ -6244,7 +6244,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "La biblioteca abrirá los sábados por la tarde a partir de marzo",
   "excerpt": "El horario nuevo suma seis horas semanales y responde a una petición que firmaron 340 usuarios en noviembre.",
   "author": "Redacción",
@@ -6259,7 +6259,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "Editorial | El equipo de gobierno debe explicar el sobrecoste",
   "excerpt": "Ciento veinte mil euros de más en una obra menor merecen algo mejor que una nota de prensa de cuatro líneas.",
   "author": "Redacción",
@@ -6275,7 +6275,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "El conjunto del municipio despide a su entrenador tras cuatro derrotas",
   "excerpt": "Se marcha con el equipo a un punto de la zona de peligro y después de veintidós meses, el mandato más largo del club en una década.",
   "author": "Redacción",
@@ -6290,7 +6290,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "La villa y el municipio vecino acuerdan una bolsa de empleo compartida",
   "excerpt": "El pacto permite a los inscritos de un municipio optar a los planes del otro y entra en vigor en la próxima convocatoria.",
   "author": "Iván Sagredo",
@@ -6305,7 +6305,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "El consejo comarcal aprueba un plan de instalaciones a diez años",
   "excerpt": "El documento prioriza el pabellón y la piscina de los dos municipios vecinos, y deja el polideportivo del tercero para 2032.",
   "author": "Redacción",
@@ -6320,7 +6320,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "El pueblo de al lado recupera su horno moruno tras dos años de trabajos",
   "excerpt": "La pieza del siglo XVII volverá a encenderse una vez al mes y el taller de alfarería la usará para cocer botijos.",
   "author": "Redacción",
@@ -6336,7 +6336,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "La Generalitat aplaza a 2027 la ampliación del hospital comarcal",
   "excerpt": "El proyecto de las 40 camas nuevas se queda otra vez sin partida y la lista de espera quirúrgica supera ya los 128 días de media.",
   "author": "Ramón Clavel",
@@ -6351,7 +6351,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "El taller de esparto cierra el curso con 34 alumnos",
   "excerpt": "La mitad tiene menos de treinta años y el local, cedido por la asociación, se ha quedado pequeño para el curso que viene.",
   "author": "Nuria Espí",
@@ -6366,7 +6366,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "Patrimonio frena la reforma de una casa señorial del siglo XVIII",
   "excerpt": "El proyecto preveía sustituir la escalera y abrir dos huecos en la fachada que da a la plaza de la iglesia.",
   "author": "Lucía Ferrándiz",
@@ -6381,7 +6381,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Juicio por la estafa de los abonos a la cooperativa agrícola",
   "excerpt": "La fiscalía pide seis años para el comercial que cobró 190.000 € por fertilizante que nunca llegó a los ochenta socios.",
   "author": "Redacción",
@@ -6396,7 +6396,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "La pista de atletismo cierra un mes por el cambio del tartán",
   "excerpt": "Los 240 federados se entrenarán en el camino del azud y la obra se paga con el remanente que sobró del año pasado.",
   "author": "Redacción",
@@ -6411,7 +6411,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "El polideportivo viejo estrena dos pistas de pádel",
   "excerpt": "La obra ha costado 96.000 € y sustituye a la pista de tenis que llevaba cerrada desde el temporal de enero de 2024.",
   "author": "Redacción",
@@ -6426,7 +6426,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "Entrevista | «Sin la N-332 arreglada aquí no se instala nadie»",
   "excerpt": "El presidente de la patronal comarcal repasa veinte años de promesas sobre el desdoblamiento y pone fecha a su propia paciencia.",
   "author": "Iván Sagredo",
@@ -6441,7 +6441,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "Las heladas de enero arruinan el 30 % de la cosecha de hortaliza",
   "excerpt": "Tres noches seguidas por debajo de dos grados bajo cero dejaron sin producto los bancales sin cubrir del barranco.",
   "author": "Iván Sagredo",
@@ -6457,7 +6457,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "El polígono tendrá una lanzadera de autobús para los turnos",
   "excerpt": "La concesionaria pide cuatro salidas diarias y el reparto del coste entre las compañías que han solicitado el servicio.",
   "author": "Redacción",
@@ -6472,7 +6472,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "El ayuntamiento saca a concurso el cartel de las fiestas de agosto",
   "excerpt": "El premio sube a 1.500 € y por primera vez se admiten obras digitales, con un plazo que se cierra el 15 de marzo.",
   "author": "Redacción",
@@ -6487,7 +6487,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "Lo que cuesta de verdad vivir sin transporte público en la sierra",
   "excerpt": "Dos coches por familia en los pueblos altos no son un lujo, son la factura de una línea de autobús suprimida en 2011.",
   "author": "Ramón Clavel",
@@ -6502,7 +6502,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "El interventor tumba doce facturas del área de fiestas por 51.000 €",
   "excerpt": "Los reparos afectan a contratos verbales con orquestas y montajes, y la corporación tendrá que levantarlos uno a uno para pagar.",
   "author": "Marta Beneyto",
@@ -6518,7 +6518,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "El ciclo de cine documental llena la sala pequeña cuatro jueves",
   "excerpt": "Las cuatro proyecciones tuvieron coloquio con sus directores y la última se prolongó hasta pasada la medianoche.",
   "author": "Lucía Ferrándiz",
@@ -6533,7 +6533,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "Los clubes pagarán el seguro de sus fichas desde septiembre",
   "excerpt": "La medida traslada 34.000 € del presupuesto municipal a las entidades y llega después de dos temporadas de aviso.",
   "author": "Óscar Tomás",
@@ -6548,7 +6548,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "El mercado municipal pierde ocho puestos en dieciocho meses",
   "excerpt": "Quedan veintitrés de los treinta y uno que había en 2019, y el ayuntamiento estudia rebajar la tasa para atraer nuevos placeros.",
   "author": "Ramón Clavel",
@@ -6563,7 +6563,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "La N-332 sumó 41 accidentes en 2025, doce más que el año anterior",
   "excerpt": "Tres de cada cuatro se concentraron entre el cruce del municipio y el de la localidad vecina, el tramo donde Fomento aún no ha puesto mediana.",
   "author": "Ramón Clavel",
@@ -6579,7 +6579,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "La escuela municipal cierra la inscripción con 280 niños",
   "excerpt": "Son sesenta más que el curso pasado y obligan a abrir dos grupos nuevos en horario de tarde a partir de marzo.",
   "author": "Redacción",
@@ -6594,7 +6594,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "Muere a los 94 años Encarna Ripoll, la primera presidenta del barrio",
   "excerpt": "Fundó la asociación en 1977 en un bajo sin luz y consiguió el alcantarillado que la zona no tuvo hasta bien entrados los ochenta.",
   "author": "Redacción",
@@ -6609,7 +6609,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Un incendio en un piso del barrio obliga a realojar a nueve vecinos",
   "excerpt": "El fuego salió de un brasero, no hubo heridos y el ayuntamiento ha pagado dos noches de hotel a las tres familias afectadas.",
   "author": "Marta Beneyto",
@@ -6624,7 +6624,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "El molino de la Acequia abrirá en 2027 como aula del agua",
   "excerpt": "El proyecto reserva la planta baja a la maquinaria original y la cámara alta a los grupos escolares de la comarca.",
   "author": "Lucía Ferrándiz",
@@ -6640,7 +6640,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "Análisis | El municipio gasta el doble de agua por vecino que la comarca",
   "excerpt": "Los contadores dicen 214 litros al día por habitante, y la mitad de la diferencia se explica por una red con fugas sin mapear.",
   "author": "Ramón Clavel",
@@ -6656,7 +6656,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "Dos nadadores de la comarca logran la mínima para el nacional",
   "excerpt": "Los dos se meten al agua en el turno de las seis de la mañana antes de entrar a trabajar en el polígono industrial.",
   "author": "Óscar Tomás",
@@ -6671,7 +6671,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "Los regantes recurren ante el Supremo el recorte del trasvase",
   "excerpt": "El escrito defiende que la revisión de las reglas de explotación se aprobó sin el informe económico que exige la norma.",
   "author": "Agencia EFE",
@@ -6687,7 +6687,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "Guía | Las veintidós citas culturales de la comarca en febrero",
   "excerpt": "Conciertos, teatro y exposiciones con precios, horarios y las tres convocatorias que ya tienen media sala vendida.",
   "author": "Redacción",
@@ -6702,7 +6702,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "El polígono estrena depuradora propia tras seis años de espera",
   "excerpt": "Da servicio a 61 naves, ha costado 1,3 M€ entre la diputación y las empresas, y libera capacidad en la planta municipal.",
   "author": "Iván Sagredo",
@@ -6718,7 +6718,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "El pleno aprueba el reglamento de participación tras dos años parado",
   "excerpt": "El texto crea un consejo vecinal con doce plazas y obliga a responder por escrito toda propuesta que reúna 300 firmas.",
   "author": "Ramón Clavel",
@@ -6733,7 +6733,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "La biblioteca municipal abrirá los sábados tras 4.100 firmas",
   "excerpt": "El horario de mañana costará 22.000 € al año en personal y se probará durante un curso antes de hacerlo permanente.",
   "author": "Nuria Espí",
@@ -6748,7 +6748,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "La hostelería no cubre 130 puestos para la Semana Santa",
   "excerpt": "Los empresarios achacan la falta de candidatos a los sueldos de convenio y a que no hay alojamiento para quien viene de fuera.",
   "author": "Iván Sagredo",
@@ -6763,7 +6763,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "El castillo reabre las visitas guiadas con aforo de veinte plazas",
   "excerpt": "Hay dos pases cada sábado, la reserva es por teléfono y la subida se cierra si el viento supera los cuarenta kilómetros por hora.",
   "author": "Lucía Ferrándiz",
@@ -6778,7 +6778,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "Se ha ido la maestra que nos enseñó a llamar a las cosas por su nombre",
   "excerpt": "Dio clase a cuatro generaciones en la escuela vieja y corregía a los alcaldes con la misma paciencia que a los críos.",
   "author": "Marta Beneyto",
@@ -6793,7 +6793,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "El frontón del municipio vecino cumple 90 años y pide una rehabilitación",
   "excerpt": "El edificio de la calle Mayor conserva la techumbre original de madera y lleva cuatro años sin licencia de actividad.",
   "author": "Óscar Tomás",
@@ -6809,7 +6809,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "Un árbitro suspende el partido por insultos desde la grada",
   "excerpt": "El acta recoge veinte minutos de interrupción y el comité abre expediente al club local, que se enfrenta a jugar a puerta cerrada.",
   "author": "Óscar Tomás",
@@ -6824,7 +6824,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "Los ocho municipios pactan un plan conjunto contra las inundaciones",
   "excerpt": "El acuerdo reparte 900.000 € en limpieza de cauces y crea un protocolo único de avisos que sustituye a los ocho vigentes.",
   "author": "Ramón Clavel",
@@ -6839,7 +6839,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "Los coches de la avenida aparcarán en línea y no en batería",
   "excerpt": "El cambio quita 140 plazas y gana un carril bici de 1,3 kilómetros que conectará el barrio con el hospital comarcal.",
   "author": "Ramón Clavel",
@@ -6855,7 +6855,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "Las catorce ayudas abiertas al pequeño comercio caducan en junio",
   "excerpt": "Ocho salen del ayuntamiento y seis de la Generalitat, y solo dos admiten gastos hechos antes de presentar la solicitud.",
   "author": "Redacción",
@@ -6870,7 +6870,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "La Guardia Civil desmantela un punto de venta de droga en el barrio",
   "excerpt": "Cuatro detenidos de entre 24 y 41 años y una intervención que llega dos años después de la primera queja vecinal en el pleno.",
   "author": "Redacción",
@@ -6885,7 +6885,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "La sala de musculación municipal duplica su horario de tarde",
   "excerpt": "Las dos plazas de técnico salieron de la bolsa de empleo en diciembre y el aforo pasa de 24 a 40 personas por turno.",
   "author": "Redacción",
@@ -6900,7 +6900,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "El museo etnológico cataloga 2.600 piezas con seis voluntarios",
   "excerpt": "Han trabajado dos tardes por semana durante año y medio, y el inventario anterior era una libreta de 1994.",
   "author": "Redacción",
@@ -6915,7 +6915,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "La ordenanza de terrazas sale adelante en el pleno por unanimidad",
   "excerpt": "Fija un metro y medio de paso libre, prohíbe la música después de la una y da a los bares hasta junio para adaptarse.",
   "author": "Ramón Clavel",
@@ -6930,7 +6930,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "El mercado en origen de la comarca reabrirá los martes en verano",
   "excerpt": "La decisión depende de que al menos veinte comercializadores confirmen puesto antes de que acabe el mes de mayo.",
   "author": "Redacción",
@@ -6945,7 +6945,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "Los talleres de artes plásticas se quedan sin sitio en la casa de cultura",
   "excerpt": "Cuatro grupos comparten un aula de treinta metros y el ayuntamiento estudia trasladarlos al antiguo cuartel.",
   "author": "Lucía Ferrándiz",
@@ -6961,7 +6961,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "El barrio tendrá centro de día tras nueve años de reclamación",
   "excerpt": "Ocupará la antigua escuela de párvulos, contará con treinta plazas y la Generalitat aporta el 70 % de los 1,1 M€ que cuesta la reforma.",
   "author": "Nuria Espí",
@@ -6976,7 +6976,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "La cooperativa cierra la campaña de alcachofa con 6.200 toneladas",
   "excerpt": "Son un 9 % menos que el año pasado, pero el precio medio en origen ha subido a 1,08 € el kilo y salva las cuentas de los socios.",
   "author": "Nuria Espí",
@@ -6991,7 +6991,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "Guía | Todo lo que abre en la comarca este fin de semana",
   "excerpt": "Cinco conciertos, dos rutas guiadas y la feria del embutido de la localidad vecina, con horarios, precios y aparcamiento de cada cita.",
   "author": "Redacción",
@@ -7006,7 +7006,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "El servicio de empleo abre una oficina de atención en el barrio",
   "excerpt": "Atenderá dos días por semana y evita el desplazamiento hasta el centro a unas mil doscientas personas del barrio.",
   "author": "Iván Sagredo",
@@ -7021,7 +7021,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "El agua que se ahorra en la ciudad no llega nunca al bancal",
   "excerpt": "Los contadores urbanos bajan un cuatro por ciento y el reparto de la comunidad de regantes sigue igual que en 2019.",
   "author": "Josep Miralles",
@@ -7037,7 +7037,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "Análisis | Por qué el club local no gana fuera de casa",
   "excerpt": "Doce desplazamientos, dos puntos y un patrón que se repite: el equipo concede el primer gol antes del minuto veinte.",
   "author": "Óscar Tomás",
@@ -7052,7 +7052,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "El ayuntamiento contrata a ocho socorristas para todo el año",
   "excerpt": "Es la primera vez que las plazas salen a concurso fuera de la temporada de verano y los cuatro vasos abren en enero.",
   "author": "Redacción",
@@ -7067,7 +7067,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "Reportaje | Quién manda de verdad en los cinco ayuntamientos de la comarca",
   "excerpt": "Un repaso a las áreas, los sueldos y las dedicaciones exclusivas muestra que tres concejalías concentran el 70 % del gasto corriente.",
   "author": "Marta Beneyto",
@@ -7082,7 +7082,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "El pleno estudia ceder a los vecinos el local de la plaza diez años",
   "excerpt": "La cesión llega con la condición de abrirlo a otras entidades y con un informe de secretaría que pide tasar el uso.",
   "author": "Ramón Clavel",
@@ -7097,7 +7097,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Rescatan a un senderista con la pierna rota en el barranco",
   "excerpt": "El aviso entró a las cuatro y el helicóptero lo evacuó al hospital comarcal cuando ya casi no había luz en el cauce.",
   "author": "Marta Beneyto",
@@ -7112,7 +7112,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "El turismo de invierno crece un 17 % por las rutas del barranco",
   "excerpt": "Los senderos señalizados el año pasado atraen a 4.200 visitantes entre noviembre y enero, la mayoría en grupos de un solo día.",
   "author": "Iván Sagredo",
@@ -7127,7 +7127,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "Muere a los 88 años Vicente Grau, que fue alcalde en los ochenta",
   "excerpt": "Llevó el agua potable al casco urbano, abrió el colegio actual y dejó el cargo sin haber cobrado nunca dedicación exclusiva.",
   "author": "Redacción",
@@ -7142,7 +7142,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "Los ganaderos de la comarca venden un tercio del rebaño por el pienso",
   "excerpt": "La cebada ha subido un 40 % en un año y las explotaciones pequeñas de la sierra ya no cubren lo que les cuesta criar.",
   "author": "Iván Sagredo",
@@ -7157,7 +7157,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "El ciclismo de base pierde su circuito por las obras del azud",
   "excerpt": "Los 60 chavales se han mudado al camino de la cooperativa, sin asfaltar y con dos cruces sin señalizar.",
   "author": "Óscar Tomás",
@@ -7172,7 +7172,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "La Generalitat aporta 95.000 € para excavar el poblado de la sierra",
   "excerpt": "Es la primera ayuda autonómica que recibe la campaña desde 2018 y cubre dos meses de trabajo y la analítica de carbono.",
   "author": "Lucía Ferrándiz",
@@ -7188,7 +7188,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "El festival de teatro de calle se adelanta a junio por el calor",
   "excerpt": "La organización mueve las cinco funciones tras el episodio de julio pasado, cuando dos pases acabaron suspendidos.",
   "author": "Lucía Ferrándiz",
@@ -7204,7 +7204,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "La banda municipal estrena director en el concierto de San Antón",
   "excerpt": "Llega desde el conservatorio del municipio vecino y hereda una formación de 52 músicos con doce plazas de viento sin cubrir.",
   "author": "Lucía Ferrándiz",
@@ -7219,7 +7219,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "Tres oficios que la comarca ya no sabe enseñar a nadie",
   "excerpt": "Del último maestro guarnicionero al taller de cerámica que cerró sin relevo, un recorrido por las escuelas que faltan.",
   "author": "Iván Sagredo",
@@ -7234,7 +7234,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "La subvención autonómica de la biblioteca se queda en la mitad",
   "excerpt": "El recorte deja 24.000 € para el fondo y las actividades, y el servicio de préstamo de los sábados se retirará en otoño.",
   "author": "Ramón Clavel",
@@ -7249,7 +7249,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "Opinión | Nadie defiende un patrimonio que no sabe que tiene",
   "excerpt": "El inventario municipal lleva veinte años sin actualizarse y la mitad de los vecinos no sabría señalar tres edificios.",
   "author": "Marta Beneyto",
@@ -7265,7 +7265,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "La calle Mayor cierra al tráfico tres meses por el saneamiento",
   "excerpt": "Los autobuses desvían su recorrido por la ronda y los 34 comercios afectados podrán aplazar el pago de la tasa de basuras.",
   "author": "Ramón Clavel",
@@ -7281,7 +7281,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "La sierra estrena tres rutas señalizadas para carrera de montaña",
   "excerpt": "Los 42 kilómetros balizados salen del área recreativa y esquivan las tres fincas privadas que cortaban el paso.",
   "author": "Óscar Tomás",
@@ -7296,7 +7296,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "El club del barrio recupera su segundo equipo tras seis años",
   "excerpt": "La plantilla se ha formado con juveniles que se quedaban sin sitio y con cuatro jugadores que habían dejado de competir.",
   "author": "Redacción",
@@ -7311,7 +7311,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "El río baja de los cuatro metros cúbicos por segundo en el tramo bajo",
   "excerpt": "Es el caudal más bajo registrado en enero desde 1995 y la Confederación descarta por ahora restringir el abastecimiento urbano.",
   "author": "Nuria Espí",
@@ -7327,7 +7327,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "Las dos pistas de pádel nuevas abrirán con reserva por app",
   "excerpt": "El sistema cobra tres euros la hora y sustituye a la lista de papel que se colgaba los lunes en el local de la asociación.",
   "author": "Nuria Espí",
@@ -7342,7 +7342,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Detenidos dos jóvenes por doce robos en naves del municipio",
   "excerpt": "Tienen 19 y 23 años, son vecinos de la comarca y la Guardia Civil les atribuye un botín de 26.000 € en cobre y herramienta.",
   "author": "Redacción",
@@ -7357,7 +7357,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "Muere Josefa Cremades, la última alfarera que cocía con leña en la comarca",
   "excerpt": "Tenía 91 años, aprendió el oficio a los once en el obrador de su padre y donó su horno al museo en 2014.",
   "author": "Lucía Ferrándiz",
@@ -7373,7 +7373,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "Los veteranos de baloncesto montan una liga de doce equipos",
   "excerpt": "Jugarán los viernes por la noche en el pabellón viejo y cada plantilla pagará 200 € por la temporada completa.",
   "author": "Redacción",
@@ -7388,7 +7388,7 @@
   ]
  },
  {
-  "cat": "municipios",
+  "category": "municipios",
   "title": "El antiguo lavadero entra en el catálogo de bienes protegidos",
   "excerpt": "La ficha lo data en 1904, obliga a mantener las cubiertas de teja y bloquea el aparcamiento que el bar de al lado pedía.",
   "author": "Nuria Espí",
@@ -7403,7 +7403,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "El polígono pide un servicio de autobús para los turnos de noche",
   "excerpt": "Las empresas calculan 340 personas sin coche propio en los relevos de las diez y piden compartir la línea con el hospital comarcal.",
   "author": "Redacción",
@@ -7418,7 +7418,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "Tres generaciones en la misma hectárea de huerta en la pedanía",
   "excerpt": "El abuelo plantó pimiento, el hijo puso naranjos y la nieta ha vuelto a la alcachofa porque aguanta el agua salada.",
   "author": "Iván Sagredo",
@@ -7433,7 +7433,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "El reparto de las áreas deja fuera al edil de urbanismo",
   "excerpt": "El concejal conserva el acta pero pierde las competencias de licencias, que asume directamente el primer teniente de alcalde.",
   "author": "Marta Beneyto",
@@ -7448,7 +7448,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "Abierto el plazo de los talleres municipales de invierno",
   "excerpt": "Son once cursos, 120 plazas y una matrícula de 25 € que se devuelve a quien acuda al ochenta por ciento de las sesiones.",
   "author": "Lucía Ferrándiz",
@@ -7463,7 +7463,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "El convenio del metal encalla en la revisión salarial de marzo",
   "excerpt": "La patronal ofrece un 2 % y los sindicatos piden ligar la subida al índice de precios con una cláusula de garantía.",
   "author": "Redacción",
@@ -7478,7 +7478,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "El polígono municipal necesita empresas, no más asfalto",
   "excerpt": "Se han urbanizado once hectáreas nuevas mientras siguen vacías las catorce que se prepararon en el mandato anterior.",
   "author": "Ramón Clavel",
@@ -7494,7 +7494,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "El equipo local arranca el año con una goleada en el campo del vecino",
   "excerpt": "Cinco goles en la primera media hora, el primer hat-trick de la temporada en toda la categoría y la mejor entrada del año fuera de casa.",
   "author": "Óscar Tomás",
@@ -7509,7 +7509,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "La escritora Amparo Ripoll gana el premio de las letras valencianas",
   "excerpt": "Nació en la localidad vecina, publicó su primer libro a los cincuenta y dos años y ha escrito los seis en valenciano.",
   "author": "Agencia EFE",
@@ -7524,7 +7524,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "El barranco tendrá un circuito de calistenia antes del verano",
   "excerpt": "El proyecto ocupa 600 metros cuadrados junto al azud y sustituye al aparcamiento de tierra que se usaba en feria.",
   "author": "Redacción",
@@ -7539,7 +7539,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "La comarca pierde otra oficina bancaria y ya solo le quedan tres",
   "excerpt": "Cuatro mil vecinos se quedan con un cajero y un furgón que para dos mañanas por semana en la plaza del ayuntamiento.",
   "author": "Redacción",
@@ -7554,7 +7554,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "El hospital comarcal cierra 2025 con 9.400 urgencias, un 8 % más",
   "excerpt": "El pico se dio en la semana de Nochevieja y la dirección atribuye el aumento a la gripe y al cierre vespertino del consultorio.",
   "author": "Nuria Espí",
@@ -7569,7 +7569,7 @@
   ]
  },
  {
-  "cat": "barrios",
+  "category": "barrios",
   "title": "El barrio tarda 38 minutos en llegar al hospital comarcal en autobús",
   "excerpt": "El trayecto en coche son once, y la asociación ha cronometrado durante dos semanas las tres combinaciones posibles.",
   "author": "Nuria Espí",
@@ -7585,7 +7585,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "La partida de patrimonio se queda en 310.000 € para todo 2026",
   "excerpt": "Es la misma cantidad que hace tres años y no llega para las cuatro intervenciones que el catálogo marca como urgentes.",
   "author": "Redacción",
@@ -7601,7 +7601,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "El comercio del centro cierra las rebajas con un 6 % menos de venta",
   "excerpt": "Los tenderos achacan la caída al adelanto de las compras a noviembre y a dos fines de semana seguidos de lluvia y levante.",
   "author": "Iván Sagredo",
@@ -7616,7 +7616,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Un incendio de madrugada calcina dos naves del polígono",
   "excerpt": "Ardieron 1.400 metros cuadrados de material de embalaje y los bomberos tardaron cinco horas en dar el fuego por controlado.",
   "author": "Marta Beneyto",
@@ -7631,7 +7631,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "El cross del barranco reúne a 540 corredores en su décima cita",
   "excerpt": "La organización cambió el circuito por el barro de la semana anterior y recortó el recorrido en 800 metros.",
   "author": "Óscar Tomás",
@@ -7646,7 +7646,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "El recinto ferial acogerá la muestra agrícola comarcal en octubre",
   "excerpt": "La organización espera setenta expositores y negocia con la cooperativa el traslado de la maquinaria más pesada.",
   "author": "Redacción",
@@ -7662,7 +7662,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "El presupuesto de fiestas crece un 8 % y suma dos días de programa",
   "excerpt": "La comisión repartirá 240.000 € y estrena una carpa en el recinto ferial para los actos que acaban de madrugada.",
   "author": "Redacción",
@@ -7678,7 +7678,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "El hospital comarcal cierra 2025 con 60 eventuales menos",
   "excerpt": "La plantilla estructural crece en cuarenta plazas, pero el refuerzo de verano se recorta por segundo ejercicio seguido.",
   "author": "Iván Sagredo",
@@ -7693,7 +7693,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "La biblioteca abrirá los sábados por la tarde desde febrero",
   "excerpt": "El horario nuevo suma seis horas semanales y sale de una encuesta con 340 respuestas entre los usuarios del carné juvenil.",
   "author": "Lucía Ferrándiz",
@@ -7708,7 +7708,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "El ayuntamiento crea una brigada de barrio con seis operarios",
   "excerpt": "Atenderá los avisos pequeños en menos de 48 horas y su primer destino será el polígono, donde hay 90 farolas averiadas.",
   "author": "Redacción",
@@ -7723,7 +7723,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "Lo que un año electoral le hace a la agenda de un ayuntamiento",
   "excerpt": "Todo lo incómodo se aplaza a después de mayo y todo lo vistoso se adelanta a marzo, y eso no lo decide ningún técnico.",
   "author": "Josep Miralles",
@@ -7738,7 +7738,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "El deporte municipal cierra 2025 con 4.800 abonados, un récord",
   "excerpt": "El dato incluye por primera vez a los usuarios de las salas de barrio, que hasta 2024 se contaban por separado.",
   "author": "Óscar Tomás",
@@ -7753,7 +7753,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "La confederación hidrográfica recorta un 15 % el riego para este año",
   "excerpt": "La decisión afecta a 14.600 hectáreas y los regantes calculan que dejarán de plantar una de cada cinco de melón y alcachofa.",
   "author": "Nuria Espí",
@@ -7770,7 +7770,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "El fondo de cooperación reparte 4,1 M€ entre los municipios de la comarca",
   "excerpt": "La Generalitat calcula el reparto por población y superficie, y el consistorio recibe 512.000 €, un 6 % menos que el ejercicio anterior.",
   "author": "Agencia EFE",
@@ -7785,7 +7785,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "Muere a los 81 años Ginés Ortuño, fundador del equipo local",
   "excerpt": "Puso el dinero de la primera equipación en 1968 y presidió el club durante veintitrés temporadas sin cobrar un sueldo.",
   "author": "Redacción",
@@ -7801,7 +7801,7 @@
   ]
  },
  {
-  "cat": "sucesos",
+  "category": "sucesos",
   "title": "Un choque en cadena en la N-332 deja cuatro heridos leves",
   "excerpt": "Siete vehículos implicados a la altura del polígono, con la calzada cortada dos horas y retenciones hasta la rotonda del pueblo vecino.",
   "author": "Redacción",
@@ -7817,7 +7817,7 @@
   ]
  },
  {
-  "cat": "economia",
+  "category": "economia",
   "title": "La comarca cierra 2025 con 214 visados de vivienda nueva",
   "excerpt": "Es la mejor cifra desde 2009, aunque cuatro de cada diez proyectos se concentran en la franja del litoral y no en el interior.",
   "author": "Agencia EFE",
@@ -7832,7 +7832,7 @@
   ]
  },
  {
-  "cat": "polideportivo",
+  "category": "polideportivo",
   "title": "La comarca cierra 2025 con 31 medallas en campeonatos estatales",
   "excerpt": "El balance lo firman 19 deportistas de siete clubes distintos y la natación aporta casi la mitad del total.",
   "author": "Agencia EFE",
@@ -7847,7 +7847,7 @@
   ]
  },
  {
-  "cat": "patrimonio",
+  "category": "patrimonio",
   "title": "El archivo trasladará sus fondos al antiguo cuartel en septiembre",
   "excerpt": "Gana cuatrocientos metros de depósito con clima estable, pero deja la consulta cerrada durante siete semanas.",
   "author": "Redacción",
@@ -7863,7 +7863,7 @@
   ]
  },
  {
-  "cat": "agenda",
+  "category": "agenda",
   "title": "El mercadillo de los martes se traslada al recinto ferial",
   "excerpt": "Las obras de la plaza obligan a mover los cuarenta puestos durante ocho semanas, con parada de autobús provisional en la avenida.",
   "author": "Redacción",
@@ -7879,7 +7879,7 @@
   ]
  },
  {
-  "cat": "agricultura",
+  "category": "agricultura",
   "title": "El regadío de la comarca pierde 1.100 hectáreas en cinco años",
   "excerpt": "El abandono se concentra en las parcelas de menos de una tahúlla, según el mapa de cultivos que publica la conselleria.",
   "author": "Iván Sagredo",
@@ -7895,7 +7895,7 @@
   ]
  },
  {
-  "cat": "futbol",
+  "category": "futbol",
   "title": "El presupuesto municipal de deportes crece un 11 %",
   "excerpt": "La partida llega a 1,2 M€ y la mitad se irá en mantenimiento de instalaciones, no en subvenciones a los clubes.",
   "author": "Redacción",
@@ -7911,7 +7911,7 @@
   ]
  },
  {
-  "cat": "cultura",
+  "category": "cultura",
   "title": "El museo etnológico cierra 2025 con 9.400 visitas, su mejor dato",
   "excerpt": "Las escolares explican dos de cada tres, y la sala de aperos abierta en mayo es la parada más larga del recorrido.",
   "author": "Redacción",
@@ -7927,7 +7927,7 @@
   ]
  },
  {
-  "cat": "deportes",
+  "category": "deportes",
   "title": "La cooperativa agrícola patrocinará el deporte base tres años",
   "excerpt": "El acuerdo aporta 25.000 € anuales, ropa para 14 equipos y obliga a llevar el logotipo en las camisetas de entreno.",
   "author": "Agencia EFE",
@@ -7943,7 +7943,7 @@
   ]
  },
  {
-  "cat": "local",
+  "category": "local",
   "title": "El pleno aprueba el presupuesto de 2026 con 14,7 M€ y dos votos en contra",
   "excerpt": "Inversiones se lleva 3,9 M€, casi el doble que el año pasado, y la deuda viva del consistorio baja por primera vez desde 2018.",
   "author": "Ramón Clavel",
@@ -7959,7 +7959,7 @@
   ]
  },
  {
-  "cat": "politica",
+  "category": "politica",
   "title": "El ayuntamiento arranca el año con 2,3 M€ de remanente sin gastar",
   "excerpt": "La cifra equivale al 16 % del gasto anual y solo puede destinarse a inversión o a amortizar deuda, según la regla estatal.",
   "author": "Ramón Clavel",
@@ -7974,7 +7974,7 @@
   ]
  },
  {
-  "cat": "comarca",
+  "category": "comarca",
   "title": "La mancomunidad aprueba 3,4 M€ para la recogida de residuos",
   "excerpt": "El contrato sale por ocho años y obliga a que los ocho municipios tengan quinto contenedor antes del verano de 2027.",
   "author": "Ramón Clavel",
@@ -7989,7 +7989,7 @@
   ]
  },
  {
-  "cat": "empleo",
+  "category": "empleo",
   "title": "El año arranca con 4.610 parados, el peor enero desde 2021",
   "excerpt": "La comarca pierde ochocientas afiliaciones respecto a diciembre, casi todas de contratos temporales del comercio.",
   "author": "Iván Sagredo",
@@ -8004,7 +8004,7 @@
   ]
  },
  {
-  "cat": "opinion",
+  "category": "opinion",
   "title": "Editorial | Doce meses para dejar de hablar siempre de lo mismo",
   "excerpt": "La comarca empieza el año con los mismos cuatro asuntos pendientes que abrieron el anterior y el anterior a ese.",
   "author": "Redacción",
@@ -8020,7 +8020,7 @@
   ]
  },
  {
-  "cat": "medio-ambiente",
+  "category": "medio-ambiente",
   "title": "El embalse arranca el verano al 38 % y los regantes adelantan las restricciones",
   "excerpt": "La comunidad de regantes fija dos días de riego por semana desde junio, doce puntos por debajo de la media de la última década para estas fechas.",
   "author": "Iván Sagredo",
@@ -8037,7 +8037,7 @@
   ]
  },
  {
-  "cat": "medio-ambiente",
+  "category": "medio-ambiente",
   "title": "El humedal cuenta 104 parejas reproductoras, veinte más que el año pasado",
   "excerpt": "El censo de primavera confirma por primera vez la cría de dos especies que hasta ahora solo estaban de paso, según el informe de los técnicos.",
   "author": "Redacción",
@@ -8054,7 +8054,7 @@
   ]
  },
  {
-  "cat": "medio-ambiente",
+  "category": "medio-ambiente",
   "title": "La confederación retirará los tres azudes sin uso del tramo medio del río",
   "excerpt": "La obra, presupuestada para el próximo ejercicio, renaturaliza dos kilómetros de cauce y abre el paso a la fauna que lleva décadas cortado.",
   "author": "Marta Beneyto",
@@ -8071,7 +8071,7 @@
   ]
  },
  {
-  "cat": "medio-ambiente",
+  "category": "medio-ambiente",
   "title": "Reportaje | Tercer verano seguido por encima de la media: qué dicen las estaciones de la comarca",
   "excerpt": "La serie histórica arranca en 1961 y no registra tres veranos consecutivos tan cálidos; los técnicos advierten de que el dato importa más por la noche que por el día.",
   "author": "Iván Sagredo",
@@ -8088,7 +8088,7 @@
   ]
  },
  {
-  "cat": "medio-ambiente",
+  "category": "medio-ambiente",
   "title": "La planta de compostaje tratará ocho mil toneladas al año de la orgánica de quince municipios",
   "excerpt": "La mancomunidad arranca en enero la recogida separada y calcula que la mitad de lo que hoy va al vertedero se convertirá en abono.",
   "author": "Redacción",
@@ -8105,7 +8105,7 @@
   ]
  },
  {
-  "cat": "medio-ambiente",
+  "category": "medio-ambiente",
   "title": "El parque solar de doscientas hectáreas recibe 130 alegaciones, la mayoría de agricultores",
   "excerpt": "La plataforma vecinal pide que la instalación se traslade a suelo sin uso agrícola y el ayuntamiento remite la decisión a la consejería.",
   "author": "Marta Beneyto",
@@ -8122,7 +8122,7 @@
   ]
  },
  {
-  "cat": "medio-ambiente",
+  "category": "medio-ambiente",
   "title": "Análisis | Reciclar en la comarca: del 41 % al 65 % que exige el plan para 2030",
   "excerpt": "Ningún municipio de la mancomunidad supera hoy la mitad, y la diferencia con los que sí lo hacen está en la recogida puerta a puerta.",
   "author": "Iván Sagredo",
@@ -8139,7 +8139,7 @@
   ]
  },
  {
-  "cat": "medio-ambiente",
+  "category": "medio-ambiente",
   "title": "Los voluntarios retiran cuatrocientos kilos de residuos del cauce en la jornada de limpieza",
   "excerpt": "Plásticos, neumáticos y restos de poda: el grupo ecologista reúne a ochenta personas en un sábado de marzo y anuncia una segunda jornada en otoño.",
   "author": "Redacción",
@@ -8156,7 +8156,7 @@
   ]
  },
  {
-  "cat": "medio-ambiente",
+  "category": "medio-ambiente",
   "title": "La colonia de murciélagos de la cueva llega a ocho mil ejemplares y el acceso se cierra durante la cría",
   "excerpt": "Es la mayor de la provincia, según el seguimiento de la universidad, y el ayuntamiento señalizará el cierre desde abril hasta septiembre.",
   "author": "Marta Beneyto",
@@ -8173,7 +8173,7 @@
   ]
  },
  {
-  "cat": "medio-ambiente",
+  "category": "medio-ambiente",
   "title": "El ayuntamiento plantará mil quinientos árboles en cinco años, primero en los patios de los colegios",
   "excerpt": "El plan de sombra aprobado en el pleno prioriza colegios y paradas de autobús, y descarta las rotondas que concentraban las plantaciones anteriores.",
   "author": "Iván Sagredo",

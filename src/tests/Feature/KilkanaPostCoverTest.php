@@ -38,7 +38,7 @@ class KilkanaPostCoverTest extends TestCase
     public function test_the_cover_is_set_by_id_cleared_with_null_and_a_fake_id_creates_nothing(): void
     {
         $marta = CoreUserModel::create(['name' => 'Marta Beneyto', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
-        $marta->assignRole('director');
+        $marta->assignRole('editor_in_chief');
         $this->actingAs($marta, 'sanctum');
 
         $section = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
@@ -67,7 +67,7 @@ class KilkanaPostCoverTest extends TestCase
     public function test_saving_from_a_stale_version_returns_who_wrote_over_it(): void
     {
         $marta = CoreUserModel::create(['name' => 'Marta Beneyto', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
-        $marta->assignRole('director');
+        $marta->assignRole('editor_in_chief');
         $this->actingAs($marta, 'sanctum');
         $section = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
         $byline = SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);
@@ -94,7 +94,7 @@ class KilkanaPostCoverTest extends TestCase
     public function test_a_post_with_a_takedown_time_returns_to_draft_when_due(): void
     {
         $marta = CoreUserModel::create(['name' => 'Marta Beneyto', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
-        $marta->assignRole('director');
+        $marta->assignRole('editor_in_chief');
         $this->actingAs($marta, 'sanctum');
         $section = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
         $byline = SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);

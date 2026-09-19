@@ -161,7 +161,7 @@ class KilkanaReadersTest extends TestCase
     private function asModerator(): CoreUserModel
     {
         $elena = CoreUserModel::create(['name' => 'Elena', 'email' => 'elena@eldiario.example', 'password' => 'secret1234']);
-        $elena->assignRole('moderador');
+        $elena->assignRole('moderator');
         $this->actingAs($elena, 'sanctum');
 
         return $elena;
@@ -290,7 +290,7 @@ class KilkanaReadersTest extends TestCase
     public function test_removing_a_reader_erases_identifying_data_and_leaves_their_comments_anonymous(): void
     {
         $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
-        $marta->assignRole('director');
+        $marta->assignRole('editor_in_chief');
         $this->actingAs($marta, 'sanctum');
         $neighbour = $this->reader('vecina@lectores.example', 'Vecina Curiosa');
         $post = $this->makePost('Plan');

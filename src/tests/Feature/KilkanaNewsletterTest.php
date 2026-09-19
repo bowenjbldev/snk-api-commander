@@ -200,7 +200,7 @@ class KilkanaNewsletterTest extends TestCase
     private function asModerator(): CoreUserModel
     {
         $elena = CoreUserModel::create(['name' => 'Elena', 'email' => 'elena@eldiario.example', 'password' => 'secret1234']);
-        $elena->assignRole('moderador');
+        $elena->assignRole('moderator');
         $this->actingAs($elena, 'sanctum');
 
         return $elena;

@@ -53,15 +53,15 @@ es único y es lo que identifica a alguien**, no el nombre.
 
 ### Los siete roles
 
-| Rol           | Para quién                                                                                       |
-| ------------- | ------------------------------------------------------------------------------------------------ |
-| `admin`       | Control total, incluida la gestión de cuentas.                                                   |
-| `director`    | Dirección: publica, edita cualquier pieza y compone la portada.                                  |
-| `editor`      | Mesa de edición: publica y edita piezas ajenas.                                                  |
-| `redactor`    | Plantilla: escribe lo suyo y lo manda a revisión; **no publica**. Ve el sumario de la redacción. |
-| `colaborador` | Escribe lo suyo pero **no publica**: entrega y espera. Único rol fuera de la sala.               |
-| `moderador`   | Comentarios, lectores y suscriptores. No escribe artículos.                                      |
-| `reader`      | Cuenta de lectura registrada. Sin acceso editorial.                                              |
+| Rol               | Para quién                                                                                       |
+| ----------------- | ------------------------------------------------------------------------------------------------ |
+| `admin`           | Control total, incluida la gestión de cuentas.                                                   |
+| `editor_in_chief` | Dirección: publica, edita cualquier pieza y compone la portada.                                  |
+| `editor`          | Mesa de edición: publica y edita piezas ajenas.                                                  |
+| `reporter`        | Plantilla: escribe lo suyo y lo manda a revisión; **no publica**. Ve el sumario de la redacción. |
+| `contributor`     | Escribe lo suyo pero **no publica**: entrega y espera. Único rol fuera de la sala.               |
+| `moderator`       | Comentarios, lectores y suscriptores. No escribe artículos.                                      |
+| `reader`          | Cuenta de lectura registrada. Sin acceso editorial.                                              |
 
 El reparto lo escribe `SnkKilkanaRoleCatalogService` (`PANEL_ROLES` son los seis que abren el
 panel; `WITHOUT_SEAT`, `reader` y `service`), y lo reaplica `kilkana:sync-permissions` en cada
@@ -88,7 +88,7 @@ entre la dirección y la mesa de edición.
 ### Ver lo ajeno y editarlo son dos preguntas
 
 Si un solo permiso contestara las dos, el sumario de la redacción se serviría a cualquiera que
-abriese el panel —`colaborador` incluido— o no se serviría a nadie que no pudiera editar.
+abriese el panel —`contributor` incluido— o no se serviría a nadie que no pudiera editar.
 Ninguna de las dos es correcta: la primera publica actividad editorial ajena a quien entrega
 desde fuera; la segunda deja al redactor con su «Published 34» al lado de una sección con 40
 del periódico entero, que se lee como una contradicción.
@@ -101,14 +101,14 @@ y **no hay ajuste por cliente**: para recortar visibilidad ya existe una palanca
 mecanismos que hacen lo mismo por caminos distintos son dos fuentes de verdad que un día
 discrepan.
 
-`moderador` entra aunque por necesidad no le haga falta —modera comentarios de piezas ya
+`moderator` entra aunque por necesidad no le haga falta —modera comentarios de piezas ya
 publicadas—: dejarlo fuera reintroduce la excepción por rol que este permiso viene a quitar.
 
 **`edit others posts` implica ver, y la implicación es de la consulta.** Quien edita lo ajeno lo
 tiene delante en el listado, así que `countsByStatus()` le devuelve las dos escalas iguales sin
-mirar el segundo permiso: a `director` y `editor` se les concede `view others posts` para que el
+mirar el segundo permiso: a `editor_in_chief` y `editor` se les concede `view others posts` para que el
 reparto se lea entero en una columna, pero quitárselo no les cambiaría el tablero. Donde el
-permiso decide de verdad es en `redactor` y `moderador`, que no editan lo ajeno.
+permiso decide de verdad es en `reporter` y `moderator`, que no editan lo ajeno.
 
 Esa implicación es lo que disfraza un despliegue a medias: si el permiso no llega a un periódico
 —**`core:migrate --all-tenants` rechaza `--seed`**, así que no llega solo—, los tres roles que

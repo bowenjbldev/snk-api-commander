@@ -36,12 +36,22 @@ vocabulario de TypeScript.
   y la calle y el panel dicen quién firma; el asunto de un número nuevo lo manda el panel en el
   idioma de quien lo crea.
 
-## Lo que no se renombra aunque esté en español
+## Los contratos también van en inglés
 
-**Un contrato publicado conserva su vocabulario**: rutas, claves de payload, tablas y columnas,
-permisos, nombres de cola, de evento y de configuración, y las claves de los ficheros de datos del
-seeder (`data/*.json`). Cambiar uno de esos es un cambio de contrato, con su migración y sus dos
-lados, y no un renombrado.
+**Lo que entiende el otro lado también es código**: rutas y sus parámetros, claves de payload de
+petición y de respuesta, los valores que viajan o se guardan y que el código compara —roles,
+estados, códigos de error, tipos de evento—, tablas y columnas, permisos, nombres de cola, de evento
+y de configuración, y las claves de los ficheros de datos del seeder (`data/*.json`). Un contrato
+nuevo nace en inglés.
+
+**Uno en castellano que ya existe se renombra como cambio de contrato**, no como renombrado: los dos
+lados —la API y el panel— en el mismo cambio, lo guardado migrado o, mientras Kilkana no esté en
+producción, resembrado, y las pruebas de los dos lados.
+
+**La frontera con los datos**: lo que el código compara con un literal es vocabulario de máquina y va
+en inglés; lo que una persona escribe para que otra lo lea —un titular, el slug de una sección, el
+nombre de una firma— es dato y va en el idioma del periódico. El rótulo de un valor de máquina lo
+traduce quien lo pinta, nunca el propio valor: el panel dice «Redactor» leyendo `reporter`.
 
 Los nombres propios de las fixtures —`$marta`, `$ramon`— no son palabras españolas: se quedan.
 
@@ -59,7 +69,11 @@ Algunas palabras tienen ya un nombre inglés fijo, y se usa ese:
 | el servicio del registro de actividad, inyectado | `$activityLog` | `$record`, `$registro` |
 | el estado de una sección que aún no se ve | `draft` | `preparation` |
 | una pieza del periódico | `post` | `piece`, `article` |
-| aplicar un tema | `wear` en la ruta publicada `themes/{id}/wear`, que es contrato | — |
+| aplicar un tema | `wear`, en la ruta `themes/{id}/wear` | — |
+| la dirección del periódico, el rol | `editor_in_chief` | `director` |
+| quien escribe en plantilla, el rol | `reporter` | `redactor`, `writer` |
+| quien escribe desde fuera, el rol | `contributor` | `colaborador` |
+| quien modera la comunidad, el rol | `moderator` | `moderador` |
 
 ## Se traduce por significado, no palabra a palabra
 

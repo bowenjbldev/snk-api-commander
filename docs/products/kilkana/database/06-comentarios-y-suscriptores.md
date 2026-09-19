@@ -110,7 +110,7 @@ vio por última vez —lo más reciente entre usar una sesión, comentar y abrir
 `readers` es un recurso del catálogo aparte de `comments` y de `subscribers`
 ([`01-cuentas-y-permisos.md`](01-cuentas-y-permisos.md)): una cuenta lectora y un correo del
 boletín son dos listas que se cruzan y no se contienen —se recibe el boletín sin cuenta—, y
-gobernar personas no es moderar frases. Lo tienen `director` y `moderador`.
+gobernar personas no es moderar frases. Lo tienen `editor_in_chief` y `moderator`.
 
 ### Lo que el panel lee y escribe de los lectores
 

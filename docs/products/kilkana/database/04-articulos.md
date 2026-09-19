@@ -258,7 +258,7 @@ siga siendo el que el editor escribe, y porque la calle no tiene con qué pedirl
 mediateca es del panel. `public/site` da la cabecera del periódico y el tema resuelto
 (`themePayload()`), o `null` mientras no se haya vestido ninguno.
 
-`public/posts` es la lista de tarjetas —sin cuerpo— ordenada por fecha, con `cat`, `author`,
+`public/posts` es la lista de tarjetas —sin cuerpo— ordenada por fecha, con `category`, `author`,
 `tag`, `q`, `count` (hasta 100) y `page`: la hemeroteca de la calle es esa misma lista más atrás,
 y no hay `total` porque la calle pide una tarjeta de más para saber si hay página siguiente.
 `public/tags/{slug}` rotula una etiqueta (`name`, `slug`) para `/tag/{slug}`, cuyas piezas son

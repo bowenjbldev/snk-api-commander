@@ -29,13 +29,13 @@ use Spatie\Permission\Models\Role;
  * **`edit others posts` implica ver, y no hace falta declararlo.** Quien edita lo ajeno lo
  * tiene delante en el listado, así que `SnkKilkanaPostService::countsByStatus()` le da las dos
  * escalas iguales sin mirar el segundo permiso. Se le concede igual a los tres roles que lo
- * tienen para que el reparto se lea entero en una columna: un `director` sin
+ * tienen para que el reparto se lea entero en una columna: un `editor_in_chief` sin
  * `view others posts` funcionaría, y el día que alguien le quite el de editar perdería el
  * sumario sin que nadie lo hubiera decidido.
  *
  * `readers` es un recurso aparte de `comments` porque bloquear a una persona no es moderar
  * una frase: la mesa de edición modera y no bloquea, y esa es la diferencia entre `editor` y
- * `moderador` que la matriz del panel enseña. Y aparte de `subscribers`, porque una cuenta
+ * `moderator` que la matriz del panel enseña. Y aparte de `subscribers`, porque una cuenta
  * lectora y un correo del boletín son dos listas que se cruzan y no se contienen.
  *
  * La portada NO necesita permiso propio: componerla ya es `update layouts`, y separarla de
@@ -44,7 +44,7 @@ use Spatie\Permission\Models\Role;
 class SnkKilkanaRoleCatalogService
 {
     /** Los que abren el panel y ocupan asiento, en el orden en que la matriz los pinta. */
-    public const PANEL_ROLES = ['admin', 'director', 'editor', 'redactor', 'colaborador', 'moderador'];
+    public const PANEL_ROLES = ['admin', 'editor_in_chief', 'editor', 'reporter', 'contributor', 'moderator'];
 
     /** Los que tienen cuenta y no asiento: un lector comenta, y una cuenta de servicio no es nadie. */
     public const WITHOUT_SEAT = ['reader', 'service'];
@@ -87,7 +87,7 @@ class SnkKilkanaRoleCatalogService
         $roles = [
             // Dirección editorial: manda en el periódico entero, incluida la portada y la
             // identidad. No administra la instalación (usuarios) — eso es otro oficio.
-            'director' => [
+            'editor_in_chief' => [
                 ...$crud('posts', 'categories', 'authors', 'media', 'tags', 'comments', 'readers', 'subscribers', 'layouts', 'settings', 'themes'),
                 'publish posts', 'edit others posts', 'view others posts',
             ],
@@ -100,7 +100,7 @@ class SnkKilkanaRoleCatalogService
             ],
             // Plantilla: escribe lo suyo y lo manda a revisión. NO publica: la diferencia
             // real con un externo es que borra lo suyo, ve el sumario y clasifica.
-            'redactor' => [
+            'reporter' => [
                 ...$crud('posts'),
                 ...$crud('media'),
                 'index tags', 'create tags',
@@ -113,7 +113,7 @@ class SnkKilkanaRoleCatalogService
             // Colaborador externo: escribe lo suyo y lo deja «en revisión». No publica y no
             // borra: una pieza entregada no la retira quien la escribió. Y no ve el sumario:
             // es el único rol de fuera de la redacción.
-            'colaborador' => [
+            'contributor' => [
                 'index posts', 'show posts', 'create posts', 'update posts',
                 'index media', 'show media', 'create media',
                 'index tags',
@@ -121,7 +121,7 @@ class SnkKilkanaRoleCatalogService
             ],
             // Comunidad: comentarios, lectores y boletín. Ni un permiso sobre artículos, que
             // es justo por lo que este rol existe.
-            'moderador' => [
+            'moderator' => [
                 ...$crud('comments', 'readers', 'subscribers'),
                 ...$read('posts'),
                 // Está en la casa, así que ve el sumario. Por necesidad no le hace falta

@@ -59,17 +59,17 @@ class KilkanaAccountsTest extends TestCase
     public function test_the_list_covers_the_newsroom_and_shows_status_and_usage(): void
     {
         $this->asAdmin();
-        $ivan = $this->account('ivan@eldiario.example', 'redactor');
+        $ivan = $this->account('ivan@eldiario.example', 'reporter');
         $this->makePost($ivan, 'Pleno de julio');
         $this->makePost($ivan, 'Carril bici');
-        $this->account('pau@eldiario.example', 'colaborador')->forceFill(['invited_at' => now()])->save();
-        $this->account('elena@eldiario.example', 'moderador')->forceFill(['suspended_at' => now()])->save();
+        $this->account('pau@eldiario.example', 'contributor')->forceFill(['invited_at' => now()])->save();
+        $this->account('elena@eldiario.example', 'moderator')->forceFill(['suspended_at' => now()])->save();
         $this->account('lector@eldiario.example', 'reader');
 
         $rows = collect($this->users()->index()->getData(true))->keyBy('email');
 
         $this->assertArrayNotHasKey('lector@eldiario.example', $rows, 'Un lector no ocupa asiento y no sale.');
-        $this->assertSame('redactor', $rows['ivan@eldiario.example']['role']);
+        $this->assertSame('reporter', $rows['ivan@eldiario.example']['role']);
         $this->assertSame('active', $rows['ivan@eldiario.example']['state']);
         $this->assertSame(2, $rows['ivan@eldiario.example']['posts_count']);
         $this->assertSame('invited', $rows['pau@eldiario.example']['state']);
@@ -83,12 +83,12 @@ class KilkanaAccountsTest extends TestCase
         $this->asAdmin();
 
         $response = $this->users()->invite(Request::create('/', 'POST', [
-            'email' => 'pau@eldiario.example', 'name' => 'Pau', 'lastname' => 'Server', 'role' => 'colaborador',
+            'email' => 'pau@eldiario.example', 'name' => 'Pau', 'lastname' => 'Server', 'role' => 'contributor',
         ]));
 
         $this->assertSame(201, $response->getStatusCode());
         $this->assertSame('invited', $response->getData(true)['state']);
-        $this->assertSame('colaborador', $response->getData(true)['role']);
+        $this->assertSame('contributor', $response->getData(true)['role']);
         Mail::assertSent(SnkKilkanaAccountLinkMail::class, fn (SnkKilkanaAccountLinkMail $email) => $email->kind === 'invite' && $email->hasTo('pau@eldiario.example') && str_contains($email->url, '/admin/password?'));
     }
 
@@ -111,7 +111,7 @@ class KilkanaAccountsTest extends TestCase
         $this->asAdmin();
 
         $response = $this->users()->invite(Request::create('/', 'POST', [
-            'email' => 'pau@eldiario.example', 'name' => 'Pau', 'lastname' => 'Server', 'role' => 'colaborador',
+            'email' => 'pau@eldiario.example', 'name' => 'Pau', 'lastname' => 'Server', 'role' => 'contributor',
         ]));
 
         $this->assertSame(502, $response->getStatusCode());
@@ -121,7 +121,7 @@ class KilkanaAccountsTest extends TestCase
     public function test_suspending_drops_sessions_and_blocks_login_until_restored(): void
     {
         $this->asAdmin();
-        $elena = $this->account('elena@eldiario.example', 'moderador');
+        $elena = $this->account('elena@eldiario.example', 'moderator');
         $elena->createToken('login');
 
         $response = $this->users()->suspend(Request::create('/', 'POST'), $elena->id);
@@ -145,7 +145,7 @@ class KilkanaAccountsTest extends TestCase
 
         $this->assertSame(409, $users->suspend(Request::create('/', 'POST'), $admin->id)->getStatusCode());
         $this->assertSame(409, $users->destroy($admin->id)->getStatusCode());
-        $this->assertSame(422, $users->update(Request::create('/', 'PUT', ['role' => 'redactor']), $admin->id)->getStatusCode());
+        $this->assertSame(422, $users->update(Request::create('/', 'PUT', ['role' => 'reporter']), $admin->id)->getStatusCode());
         $this->assertTrue($admin->fresh()->hasRole('admin'));
     }
 
@@ -153,8 +153,8 @@ class KilkanaAccountsTest extends TestCase
     {
         Mail::fake();
         $this->asAdmin();
-        $ivan = $this->account('ivan@eldiario.example', 'redactor');
-        $pau = $this->account('pau@eldiario.example', 'colaborador');
+        $ivan = $this->account('ivan@eldiario.example', 'reporter');
+        $pau = $this->account('pau@eldiario.example', 'contributor');
         $pau->forceFill(['invited_at' => now()])->save();
 
         $this->assertSame(409, $this->users()->resendInvitation(Request::create('/', 'POST'), $ivan->id)->getStatusCode());
@@ -168,7 +168,7 @@ class KilkanaAccountsTest extends TestCase
 
     public function test_redeeming_the_link_sets_the_password_and_closes_the_invitation(): void
     {
-        $pau = $this->account('pau@eldiario.example', 'colaborador');
+        $pau = $this->account('pau@eldiario.example', 'contributor');
         $pau->forceFill(['invited_at' => now()])->save();
         $token = Password::broker()->createToken($pau);
         $auth = new SnkKilkanaAuthController;
@@ -186,23 +186,23 @@ class KilkanaAccountsTest extends TestCase
     public function test_roles_include_their_permissions_and_how_many_accounts_hold_them(): void
     {
         $this->asAdmin();
-        $this->account('ivan@eldiario.example', 'redactor');
+        $this->account('ivan@eldiario.example', 'reporter');
         $this->account('lector@eldiario.example', 'reader');
 
         $roles = collect((new SnkKilkanaRolesController)->index()->getData(true))->keyBy('name');
 
         $this->assertCount(7, $roles);
         $this->assertSame(1, $roles['admin']['users_count']);
-        $this->assertSame(1, $roles['redactor']['users_count']);
-        $this->assertNotContains('publish posts', $roles['redactor']['permissions'], 'Un redactor manda a revisión y no publica.');
+        $this->assertSame(1, $roles['reporter']['users_count']);
+        $this->assertNotContains('publish posts', $roles['reporter']['permissions'], 'Un redactor manda a revisión y no publica.');
         $this->assertContains('publish posts', $roles['editor']['permissions']);
         $this->assertFalse($roles['reader']['seat']);
-        $this->assertTrue($roles['redactor']['seat']);
+        $this->assertTrue($roles['reporter']['seat']);
     }
 
     public function test_only_whoever_assigns_seats_can_see_the_roles(): void
     {
-        $this->actingAs($this->account('ivan@eldiario.example', 'redactor'), 'sanctum');
+        $this->actingAs($this->account('ivan@eldiario.example', 'reporter'), 'sanctum');
 
         $this->assertSame(403, (new SnkKilkanaRolesController)->index()->getStatusCode());
     }
@@ -247,8 +247,8 @@ class KilkanaAccountsTest extends TestCase
     public function test_a_forgotten_password_requests_a_link_and_the_response_reveals_nobody(): void
     {
         Mail::fake();
-        $ivan = $this->account('ivan@eldiario.example', 'redactor');
-        $pau = $this->account('pau@eldiario.example', 'colaborador');
+        $ivan = $this->account('ivan@eldiario.example', 'reporter');
+        $pau = $this->account('pau@eldiario.example', 'contributor');
         $pau->forceFill(['invited_at' => now()])->save();
         $request = fn (string $email) => (new SnkKilkanaAuthController)->sendPasswordLink(Request::create('/', 'POST', ['email' => $email]));
 

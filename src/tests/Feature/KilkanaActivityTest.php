@@ -42,7 +42,7 @@ class KilkanaActivityTest extends TestCase
 
     public function test_a_post_records_its_status_and_who_moved_it(): void
     {
-        $marta = $this->account('marta@eldiario.example', 'Marta Beneyto', 'director');
+        $marta = $this->account('marta@eldiario.example', 'Marta Beneyto', 'editor_in_chief');
         $this->actingAs($marta, 'sanctum');
 
         $post = $this->makePost('Plan de aparcamientos', 'draft');
@@ -55,7 +55,7 @@ class KilkanaActivityTest extends TestCase
         $this->assertSame(['draft_created', 'sent_to_review', 'published', 'edited', 'unpublished'], $verbs);
         $row = SnkKilkanaActivityModel::query()->where('verb', 'published')->first();
         $this->assertSame('Marta Beneyto', $row->actor_name);
-        $this->assertSame('director', $row->actor_role);
+        $this->assertSame('editor_in_chief', $row->actor_role);
         $this->assertSame($marta->id, $row->user_id);
         $this->assertSame('publish', $row->kind);
     }
@@ -77,7 +77,7 @@ class KilkanaActivityTest extends TestCase
 
     public function test_a_moderation_batch_is_logged_as_a_batch_and_quiet_mode_stays_quiet(): void
     {
-        $elena = $this->account('elena@eldiario.example', 'Elena Vara', 'moderador');
+        $elena = $this->account('elena@eldiario.example', 'Elena Vara', 'moderator');
         $this->actingAs($elena, 'sanctum');
         $post = app(SnkKilkanaActivityService::class)->quiet(fn () => $this->makePost('Plan de aparcamientos', 'published'));
         $this->assertSame(0, SnkKilkanaActivityModel::query()->count(), 'Callado no cuenta.');
@@ -115,13 +115,13 @@ class KilkanaActivityTest extends TestCase
     public function test_the_log_filters_and_hides_seats_from_whoever_does_not_manage_them(): void
     {
         $activityLog = app(SnkKilkanaActivityService::class);
-        $marta = $this->account('marta@eldiario.example', 'Marta Beneyto', 'director');
+        $marta = $this->account('marta@eldiario.example', 'Marta Beneyto', 'editor_in_chief');
         $activityLog->log('seat', 'seat_invited', 'paula@eldiario.example', '/roles', ['user' => $marta, 'params' => ['role' => 'editor']]);
         $activityLog->log('publish', 'published', 'Plan de aparcamientos', '/posts', ['user' => $marta]);
         $activityLog->log('publish', 'published', 'Fiestas de agosto', '/posts', ['user' => null]);
         $activityLog->log('theme', 'theme_applied', 'Folio', '/themes', ['user' => $marta, 'before' => 'Chronicle', 'after' => 'Folio']);
 
-        $this->actingAs($this->account('elena@eldiario.example', 'Elena Vara', 'moderador'), 'sanctum');
+        $this->actingAs($this->account('elena@eldiario.example', 'Elena Vara', 'moderator'), 'sanctum');
         $all = $this->activityController()->index()->getData(true);
         $this->assertSame(['theme', 'publish', 'publish'], array_column($all['data'], 'kind'), 'Sin asientos, del más reciente al más antiguo.');
         $this->assertSame(['Marta Beneyto', 'Scheduler'], $all['people']);
@@ -157,7 +157,7 @@ class KilkanaActivityTest extends TestCase
     /** La campana sabe hasta cuándo miró cada cuenta, y abrirla lo pone al día. */
     public function test_the_bell_counts_since_last_seen_and_opening_it_catches_up(): void
     {
-        $marta = $this->account('marta@eldiario.example', 'Marta', 'director');
+        $marta = $this->account('marta@eldiario.example', 'Marta', 'editor_in_chief');
         $this->actingAs($marta, 'sanctum');
         $this->makePost('Una', 'published');
 

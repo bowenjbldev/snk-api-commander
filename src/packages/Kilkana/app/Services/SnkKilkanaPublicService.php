@@ -140,10 +140,10 @@ class SnkKilkanaPublicService
             ->orderByDesc('publish_at')
             ->orderByDesc('id');
 
-        if (! empty($filters['cat'])) {
+        if (! empty($filters['category'])) {
             $query->whereHas('category', fn ($q) => $q
-                ->where('slug', $filters['cat'])
-                ->orWhereHas('parent', fn ($parent) => $parent->where('slug', $filters['cat'])));
+                ->where('slug', $filters['category'])
+                ->orWhereHas('parent', fn ($parent) => $parent->where('slug', $filters['category'])));
         }
         if (! empty($filters['author'])) {
             $query->whereHas('author', fn ($q) => $q->where('slug', $filters['author']));

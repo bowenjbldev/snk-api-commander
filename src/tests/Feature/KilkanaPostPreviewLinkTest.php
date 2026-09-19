@@ -37,7 +37,7 @@ class KilkanaPostPreviewLinkTest extends TestCase
     public function test_the_link_opens_the_draft_and_a_tampered_or_expired_signature_does_not(): void
     {
         $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
-        $marta->assignRole('director');
+        $marta->assignRole('editor_in_chief');
         $this->actingAs($marta, 'sanctum');
         $section = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
         $byline = SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);

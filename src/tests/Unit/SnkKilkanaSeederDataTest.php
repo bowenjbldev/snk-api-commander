@@ -61,7 +61,7 @@ class SnkKilkanaSeederDataTest extends TestCase
             $this->assertSame(
                 [],
                 array_diff(
-                    ['cat', 'title', 'excerpt', 'author', 'publish_at', 'reads', 'image', 'status', 'content_tier', 'slug', 'tags'],
+                    ['category', 'title', 'excerpt', 'author', 'publish_at', 'reads', 'image', 'status', 'content_tier', 'slug', 'tags'],
                     array_keys($post),
                 ),
             );
@@ -85,7 +85,7 @@ class SnkKilkanaSeederDataTest extends TestCase
     public function test_each_post_points_to_an_existing_section_and_byline(): void
     {
         foreach ($this->snapshot() as $post) {
-            $this->assertContains($post['cat'], self::CATEGORIES, "sección desconocida en «{$post['slug']}»");
+            $this->assertContains($post['category'], self::CATEGORIES, "sección desconocida en «{$post['slug']}»");
             $this->assertContains($post['author'], self::BYLINES, "firma desconocida en «{$post['slug']}»");
         }
     }

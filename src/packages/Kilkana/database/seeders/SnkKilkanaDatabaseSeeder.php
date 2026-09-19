@@ -221,26 +221,26 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      */
     private function seedTrash(): void
     {
-        $director = CoreUserModel::query()
-            ->whereHas('roles', fn ($q) => $q->where('name', 'director'))
+        $editorInChief = CoreUserModel::query()
+            ->whereHas('roles', fn ($q) => $q->where('name', 'editor_in_chief'))
             ->first() ?? CoreUserModel::query()->whereHas('roles', fn ($q) => $q->whereIn('name', SnkKilkanaRoleCatalogService::PANEL_ROLES))->first();
-        if ($director === null) {
+        if ($editorInChief === null) {
             return;
         }
         $activityLog = app(SnkKilkanaActivityService::class);
-        $discard = function (SnkKilkanaPostModel|SnkKilkanaMediaModel $item, int $ago, string $title, string $href) use ($director, $activityLog) {
+        $discard = function (SnkKilkanaPostModel|SnkKilkanaMediaModel $item, int $ago, string $title, string $href) use ($editorInChief, $activityLog) {
             if ($item->trashed()) {
                 return;
             }
             $at = now()->subDays($ago)->setTime(10 + $ago % 8, 5 + $ago * 7 % 50);
             $item->delete();
-            $item->newQueryWithoutScopes()->whereKey($item->getKey())->update(['deleted_at' => $at, 'deleted_by' => $director->getKey()]);
+            $item->newQueryWithoutScopes()->whereKey($item->getKey())->update(['deleted_at' => $at, 'deleted_by' => $editorInChief->getKey()]);
             if (SnkKilkanaActivityModel::query()->where(['kind' => 'delete', 'what' => $title, 'created_at' => $at])->exists()) {
                 return;
             }
             Carbon::setTestNow($at);
             try {
-                $activityLog->log('delete', 'deleted', $title, $href, ['user' => $director, 'force' => true]);
+                $activityLog->log('delete', 'deleted', $title, $href, ['user' => $editorInChief, 'force' => true]);
             } finally {
                 Carbon::setTestNow();
             }
@@ -294,9 +294,9 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             ->whereHas('roles', fn ($q) => $q->whereIn('name', SnkKilkanaRoleCatalogService::PANEL_ROLES))
             ->with('roles:id,name')
             ->get()->keyBy('email');
-        $director = $staff->first(fn (CoreUserModel $u) => $u->roles->pluck('name')->contains('director')) ?? $staff->first();
-        $moderator = $staff->first(fn (CoreUserModel $u) => $u->roles->pluck('name')->contains('moderador')) ?? $director;
-        if ($director === null) {
+        $editorInChief = $staff->first(fn (CoreUserModel $u) => $u->roles->pluck('name')->contains('editor_in_chief')) ?? $staff->first();
+        $moderator = $staff->first(fn (CoreUserModel $u) => $u->roles->pluck('name')->contains('moderator')) ?? $editorInChief;
+        if ($editorInChief === null) {
             return;
         }
         $byUser = $staff->keyBy(fn (CoreUserModel $u) => $u->getKey());
@@ -317,7 +317,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         foreach ($posts as $post) {
             // De madrugada publica el programador: nadie pulsa a las cinco.
             $hour = (int) $post->publish_at->format('G');
-            $who = $hour < 7 ? null : ($byUser->get($post->author?->user_id) ?? $director);
+            $who = $hour < 7 ? null : ($byUser->get($post->author?->user_id) ?? $editorInChief);
             $logActivity('publish', 'published', $post->title, '/posts', $post->publish_at, $who);
         }
 
@@ -327,7 +327,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             if ($revision->post === null) {
                 continue;
             }
-            $logActivity('edit', 'edited', $revision->post->title, '/posts', $revision->created_at, $byUser->get($revision->user_id) ?? $director);
+            $logActivity('edit', 'edited', $revision->post->title, '/posts', $revision->created_at, $byUser->get($revision->user_id) ?? $editorInChief);
         }
 
         // Un lote por día con aprobados: la moderadora vacía la cola por la tarde.
@@ -349,11 +349,11 @@ class SnkKilkanaDatabaseSeeder extends Seeder
 
         // Lo que pasa de vez en cuando, con la fecha atada a hoy para que no envejezca.
         $today = now();
-        $logActivity('theme', 'theme_applied', 'Folio', '/themes', $today->copy()->subDays(41)->setTime(11, 20), $director, ['before' => 'Chronicle', 'after' => 'Folio']);
-        $logActivity('category', 'category_renamed', 'Pueblos → Municipios', '/categories', $today->copy()->subDays(23)->setTime(9, 48), $director, ['before' => 'Pueblos', 'after' => 'Municipios']);
-        $logActivity('tag', 'tags_merged', 'movilidad', '/tags', $today->copy()->subDays(12)->setTime(16, 5), $director, ['before' => 'movilidad-urbana', 'after' => 'movilidad']);
-        $logActivity('front', 'front_changed', '', '/front', $today->copy()->subDays(1)->setTime(8, 2), $director, ['params' => ['layout' => 'front']]);
-        $logActivity('seat', 'seat_invited', 'paula.roig@eldiario.example', '/roles', $today->copy()->subDays(6)->setTime(12, 31), $director, ['params' => ['role' => 'editor']]);
+        $logActivity('theme', 'theme_applied', 'Folio', '/themes', $today->copy()->subDays(41)->setTime(11, 20), $editorInChief, ['before' => 'Chronicle', 'after' => 'Folio']);
+        $logActivity('category', 'category_renamed', 'Pueblos → Municipios', '/categories', $today->copy()->subDays(23)->setTime(9, 48), $editorInChief, ['before' => 'Pueblos', 'after' => 'Municipios']);
+        $logActivity('tag', 'tags_merged', 'movilidad', '/tags', $today->copy()->subDays(12)->setTime(16, 5), $editorInChief, ['before' => 'movilidad-urbana', 'after' => 'movilidad']);
+        $logActivity('front', 'front_changed', '', '/front', $today->copy()->subDays(1)->setTime(8, 2), $editorInChief, ['params' => ['layout' => 'front']]);
+        $logActivity('seat', 'seat_invited', 'paula.roig@eldiario.example', '/roles', $today->copy()->subDays(6)->setTime(12, 31), $editorInChief, ['params' => ['role' => 'editor']]);
         $logActivity('comment', 'reader_blocked', 'u9902', '/readers', $today->copy()->subDays(3)->setTime(18, 44), $moderator);
     }
 
@@ -444,7 +444,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             'email' => 'marta@eldiario.example',
             // Dirige el periódico: manda en la portada y en la identidad, y su rol tiene que
             // decir lo mismo que su cargo.
-            'role' => 'director',
+            'role' => 'editor_in_chief',
             'job_title' => 'Editora jefe',
             'bio' => 'Dirige El Diario desde 2021. Antes cubrió tribunales en la prensa provincial durante doce años.',
             'website' => 'https://martabeneyto.es',
@@ -500,7 +500,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      * Quien firma sin estar en plantilla.
      *
      * Una firma del snapshot que no sale en `STAFF` no cabe en el molde de la plantilla
-     * —`redactor`, organización «El Diario» y correo `@eldiario.example`—: ese molde convierte
+     * —`reporter`, organización «El Diario» y correo `@eldiario.example`—: ese molde convierte
      * a una agencia de noticias en una redactora del periódico con permiso para publicar, que es
      * exactamente lo que la demo no tiene que enseñar — y borra la diferencia entre la
      * plantilla, quien colabora desde fuera y lo que llega por teletipo.
@@ -531,7 +531,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             'role' => null,
         ],
         // Columnista: escribe de verdad y entra al CMS, pero no es plantilla. Sin organización
-        // —la suya es ninguna— y con `colaborador`, que no puede publicar lo que firma.
+        // —la suya es ninguna— y con `contributor`, que no puede publicar lo que firma.
         'Josep Miralles' => [
             'email' => 'josep.miralles@colaboradores.eldiario.example',
             'name' => 'Josep Miralles',
@@ -540,7 +540,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             'bio' => 'Escribe la columna de los jueves. Fue jefe de Local entre 1998 y 2014.',
             'public_email' => 'josep.miralles@colaboradores.eldiario.example',
             'kind' => SnkKilkanaAuthorKindEnum::Contributor,
-            'role' => 'colaborador',
+            'role' => 'contributor',
         ],
     ];
 
@@ -565,7 +565,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      * `STAFF`, o uno local y determinista para una firma del snapshot que no esté en el mapa.
      * Las de `EXTERNAL_BYLINES` las resuelve `externalByline()`.
      *
-     * El rol sale de la ficha y `redactor` es el de por defecto: escribe y publica lo suyo, que
+     * El rol sale de la ficha y `reporter` es el de por defecto: escribe y publica lo suyo, que
      * es el rol de plantilla y con el que la demo enseña el acotado por `created_by`. Los otros
      * dos que abren el panel —dirección y mesa— tienen que existir en el juego de datos o no hay
      * forma de probar lo que los separa: publicar lo ajeno, componer la portada, tocar la
@@ -596,7 +596,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         ], fn ($v) => $v !== null))->save();
         // `syncRoles` y no `assignRole`: reaplicar el catálogo corrige el rol de una cuenta que
         // ya existía con otro.
-        $user->syncRoles([$record['role'] ?? 'redactor']);
+        $user->syncRoles([$record['role'] ?? 'reporter']);
 
         // Sin alias ni cargo aquí: la firma nace publicando el nombre de la cuenta y su URL
         // se deriva de él. Lo editorial lo pone después `seedAuthorProfiles`.
@@ -646,14 +646,14 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 // Su organización es la SUYA, no el periódico: colabora desde fuera, y esa
                 // diferencia es lo que la columna «Organización» sirve para ver.
                 'full_name' => 'Elena Vara Ruiz', 'company' => 'Estudio Vara Urbanismo',
-                'phone' => '+34 962 401 209', 'role' => 'colaborador',
+                'phone' => '+34 962 401 209', 'role' => 'contributor',
                 'job_title' => 'Colaboradora de Urbanismo',
                 'bio' => 'Escribe de urbanismo y memoria de barrio desde fuera de la redacción. Entrega y espera al cierre.',
             ],
             [
                 'name' => 'Rubén Nieto', 'email' => 'ruben.nieto@eldiario.example',
                 'full_name' => 'Rubén Nieto Salas', 'company' => self::NEWSPAPER,
-                'phone' => '+34 962 401 210', 'role' => 'moderador',
+                'phone' => '+34 962 401 210', 'role' => 'moderator',
                 'job_title' => null,
                 'bio' => null,
             ],
@@ -1582,8 +1582,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             // resolución que hace la web pública con un enlace antiguo, y sin ella una sección
             // renombrada dejaría la siembra a medias con un `ModelNotFound`.
             $category = SnkKilkanaCategoryModel::query()
-                ->where('slug', $post['cat'])
-                ->orWhereHas('retiredSlugs', fn ($retiredPath) => $retiredPath->where('path', $post['cat']))
+                ->where('slug', $post['category'])
+                ->orWhereHas('retiredSlugs', fn ($retiredPath) => $retiredPath->where('path', $post['category']))
                 // Ordenado aunque hoy sea único por construcción: si el muro que impide tomar
                 // un slug retirado cambiara alguna vez, esto elegiría una cualquiera sin avisar.
                 ->orderBy('id')

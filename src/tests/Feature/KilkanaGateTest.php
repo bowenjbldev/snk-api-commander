@@ -35,7 +35,7 @@ class KilkanaGateTest extends TestCase
 
     public function test_a_new_run_replaces_the_previous_one_and_an_unbuilt_route_does_not_fail(): void
     {
-        $this->actingAs($this->account('marta@eldiario.example', 'director'), 'sanctum');
+        $this->actingAs($this->account('marta@eldiario.example', 'editor_in_chief'), 'sanctum');
         $allPassing = array_fill(0, 9, true);
         $withFailure = $allPassing;
         $withFailure[6] = false;
@@ -64,7 +64,7 @@ class KilkanaGateTest extends TestCase
 
     public function test_running_it_needs_publish_rights_and_reading_it_needs_panel_access(): void
     {
-        $this->actingAs($this->account('ana@eldiario.example', 'redactor'), 'sanctum');
+        $this->actingAs($this->account('ana@eldiario.example', 'reporter'), 'sanctum');
         $this->assertSame(200, $this->gate()->index()->getStatusCode());
         $this->assertSame(403, $this->gate()->store($this->gateRun([['url' => '/', 'kind' => 'front page', 'passing' => null]]))->getStatusCode());
         $this->assertSame(0, SnkKilkanaGateResultModel::query()->count());

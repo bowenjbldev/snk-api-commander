@@ -81,7 +81,7 @@ class KilkanaTagsTest extends TestCase
         $urbanOnly->tags()->attach($urban);
         $both->tags()->attach([$urban->id, $mobility->id]);
 
-        $response = $this->asDirector()->merge(Request::create('/', 'POST', ['into' => $mobility->id]), $urban->id);
+        $response = $this->asEditorInChief()->merge(Request::create('/', 'POST', ['into' => $mobility->id]), $urban->id);
 
         $this->assertSame(200, $response->getStatusCode());
         $this->assertSame(2, $response->getData(true)['moved']);
@@ -101,7 +101,7 @@ class KilkanaTagsTest extends TestCase
         $plenary = SnkKilkanaTagModel::create(['name' => 'pleno']);
         $this->makePost('Pleno de julio', '2026-07-01 08:00:00')->tags()->attach($plenary);
 
-        $response = $this->asDirector()->destroy($plenary->id);
+        $response = $this->asEditorInChief()->destroy($plenary->id);
 
         $this->assertSame(1, $response->getData(true)['detached']);
         $this->assertNull(SnkKilkanaTagModel::query()->find($plenary->id));
@@ -116,7 +116,7 @@ class KilkanaTagsTest extends TestCase
         $this->expectException(ValidationException::class);
 
         try {
-            $this->asDirector()->merge(Request::create('/', 'POST', ['into' => $one->id]), $one->id);
+            $this->asEditorInChief()->merge(Request::create('/', 'POST', ['into' => $one->id]), $one->id);
         } finally {
             $this->assertNotNull(SnkKilkanaTagModel::query()->find($one->id), 'Y sigue ahí.');
         }
@@ -134,7 +134,7 @@ class KilkanaTagsTest extends TestCase
         $other = SnkKilkanaTagModel::create(['name' => 'movilidad urbana']);
 
         $writer = CoreUserModel::create(['name' => 'Iván', 'email' => 'ivan@eldiario.example', 'password' => 'secret1234']);
-        $writer->assignRole('redactor');
+        $writer->assignRole('reporter');
         $this->actingAs($writer, 'sanctum');
 
         $response = (new SnkKilkanaTagsController)->merge(Request::create('/', 'POST', ['into' => $other->id]), $one->id);
@@ -143,13 +143,13 @@ class KilkanaTagsTest extends TestCase
         $this->assertNotNull(SnkKilkanaTagModel::query()->find($one->id), 'Y sigue ahí.');
     }
 
-    private function asDirector(): SnkKilkanaTagsController
+    private function asEditorInChief(): SnkKilkanaTagsController
     {
         $user = CoreUserModel::firstOrCreate(
             ['email' => 'marta@eldiario.example'],
             ['name' => 'Marta', 'password' => 'secret1234']
         );
-        $user->assignRole('director');
+        $user->assignRole('editor_in_chief');
         $this->actingAs($user, 'sanctum');
 
         return new SnkKilkanaTagsController;

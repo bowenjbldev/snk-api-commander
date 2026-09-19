@@ -44,7 +44,7 @@ class KilkanaTrashTest extends TestCase
 
     public function test_a_trashed_post_keeps_its_url_and_returns_as_draft(): void
     {
-        $marta = $this->account('marta@eldiario.example', 'Marta Beneyto', 'director');
+        $marta = $this->account('marta@eldiario.example', 'Marta Beneyto', 'editor_in_chief');
         $this->actingAs($marta, 'sanctum');
         $post = $this->makePost('Plan de aparcamientos');
         $path = $post->url_path;
@@ -70,7 +70,7 @@ class KilkanaTrashTest extends TestCase
 
     public function test_trashed_media_lists_the_posts_using_it_and_purging_removes_it(): void
     {
-        $this->actingAs($this->account('marta@eldiario.example', 'Marta Beneyto', 'director'), 'sanctum');
+        $this->actingAs($this->account('marta@eldiario.example', 'Marta Beneyto', 'editor_in_chief'), 'sanctum');
         $photo = SnkKilkanaMediaModel::create(['url' => 'https://cdn.example/a.jpg', 'url_hash' => sha1('a'), 'title' => 'Plaza mayor', 'width' => 1600, 'height' => 900, 'size_bytes' => 120000]);
         $coveredPost = $this->makePost('Plan de aparcamientos', ['cover_media_id' => $photo->id]);
         $this->makePost('Fiestas de agosto', ['body_blocks' => [['type' => 'image', 'config' => ['media_id' => $photo->id]]]]);
@@ -90,7 +90,7 @@ class KilkanaTrashTest extends TestCase
 
     public function test_emptying_purges_and_the_nightly_purge_respects_the_retention(): void
     {
-        $this->actingAs($this->account('marta@eldiario.example', 'Marta Beneyto', 'director'), 'sanctum');
+        $this->actingAs($this->account('marta@eldiario.example', 'Marta Beneyto', 'editor_in_chief'), 'sanctum');
         $old = $this->makePost('Vieja');
         $recent = $this->makePost('Nueva');
         $old->delete();
@@ -108,18 +108,18 @@ class KilkanaTrashTest extends TestCase
     /** Cada clase entra con el permiso de borrarla: la mesa de edición ve piezas y medios; la moderación, nada. */
     public function test_each_kind_requires_the_permission_to_delete_it(): void
     {
-        $director = $this->account('marta@eldiario.example', 'Marta Beneyto', 'director');
-        $this->actingAs($director, 'sanctum');
+        $editorInChief = $this->account('marta@eldiario.example', 'Marta Beneyto', 'editor_in_chief');
+        $this->actingAs($editorInChief, 'sanctum');
         $this->makePost('Plan de aparcamientos')->delete();
 
-        $this->actingAs($this->account('elena@eldiario.example', 'Elena Vara', 'moderador'), 'sanctum');
+        $this->actingAs($this->account('elena@eldiario.example', 'Elena Vara', 'moderator'), 'sanctum');
         $this->assertSame(403, $this->trash()->index()->getStatusCode());
         $this->assertSame(403, $this->trash()->empty()->getStatusCode());
 
-        $this->actingAs($this->account('ruben@eldiario.example', 'Rubén Nieto', 'colaborador'), 'sanctum');
+        $this->actingAs($this->account('ruben@eldiario.example', 'Rubén Nieto', 'contributor'), 'sanctum');
         $this->assertSame(403, $this->trash()->index()->getStatusCode());
 
-        $this->actingAs($director, 'sanctum');
+        $this->actingAs($editorInChief, 'sanctum');
         $this->assertSame(404, $this->trash()->restore('banana', 1)->getStatusCode());
         $this->assertSame(1, $this->trash(['counts' => '1'])->index()->getData(true)['count']);
     }

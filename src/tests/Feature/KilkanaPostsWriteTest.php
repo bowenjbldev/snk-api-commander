@@ -45,7 +45,7 @@ class KilkanaPostsWriteTest extends TestCase
 
     public function test_creating_returns_the_post_and_validation_errors_come_at_the_root(): void
     {
-        $this->asRole('director');
+        $this->asRole('editor_in_chief');
 
         $creation = $this->controller()->store($this->makeRequest(['title' => 'El pleno aprueba el presupuesto']));
 
@@ -64,7 +64,7 @@ class KilkanaPostsWriteTest extends TestCase
 
     public function test_without_a_chosen_byline_the_creator_signs(): void
     {
-        $writer = $this->asRole('redactor');
+        $writer = $this->asRole('reporter');
 
         $creation = $this->controller()->store($this->makeRequest(['title' => 'Sin firma elegida', 'author_id' => null]));
 
@@ -77,7 +77,7 @@ class KilkanaPostsWriteTest extends TestCase
     /** El muro entre escribir y publicar, en sus tres puertas. */
     public function test_publishing_is_not_decided_by_the_writer(): void
     {
-        $writer = $this->asRole('redactor');
+        $writer = $this->asRole('reporter');
         $own = $this->makePost('Lo mío', $writer->id);
         $version = SnkKilkanaPostRevisionModel::create([
             'post_id' => $own->id,
@@ -103,7 +103,7 @@ class KilkanaPostsWriteTest extends TestCase
      */
     public function test_publishing_a_draft_needs_neither_a_date_nor_an_excerpt(): void
     {
-        $marta = $this->asRole('director');
+        $marta = $this->asRole('editor_in_chief');
         $draft = $this->makePost('Sin fecha', $marta->id);
 
         $saved = $this->controller()->update($this->makeRequest(['status' => 'published']), $draft->id);
@@ -116,9 +116,9 @@ class KilkanaPostsWriteTest extends TestCase
     /** Una pieza ajena no existe: 404, y no 403, que confirmaría cuántas hay. */
     public function test_someone_elses_post_does_not_exist_for_whoever_cannot_touch_it(): void
     {
-        $marta = $this->asRole('director');
+        $marta = $this->asRole('editor_in_chief');
         $own = $this->makePost('De la jefa', $marta->id);
-        $this->asRole('redactor');
+        $this->asRole('reporter');
 
         $this->assertSame(404, $this->controller()->update($this->makeRequest(['title' => 'Mía ahora']), $own->id)->getStatusCode());
         $this->assertSame(404, $this->controller()->revisions($own->id)->getStatusCode());
@@ -127,7 +127,7 @@ class KilkanaPostsWriteTest extends TestCase
 
     public function test_the_batch_requires_the_permission_for_its_action_and_reports_how_many_moved(): void
     {
-        $writer = $this->asRole('redactor');
+        $writer = $this->asRole('reporter');
         $one = $this->makePost('Una', $writer->id);
         $other = $this->makePost('Otra', $writer->id);
         $ids = [$one->id, $other->id];
@@ -146,7 +146,7 @@ class KilkanaPostsWriteTest extends TestCase
     /** Eliminar en tanda es la papelera; programar en tanda no existe, porque un lote no trae fecha. */
     public function test_the_batch_sends_to_the_trash_and_does_not_schedule(): void
     {
-        $marta = $this->asRole('director');
+        $marta = $this->asRole('editor_in_chief');
         $one = $this->makePost('Una', $marta->id);
 
         $deleted = $this->controller()->bulk(Request::create('/', 'POST', ['ids' => [$one->id], 'action' => 'delete']));
@@ -160,7 +160,7 @@ class KilkanaPostsWriteTest extends TestCase
 
     public function test_revisions_are_listed_per_post_and_restoring_one_brings_back_its_title(): void
     {
-        $marta = $this->asRole('director');
+        $marta = $this->asRole('editor_in_chief');
         $post = $this->makePost('Titular viejo', $marta->id);
         $this->controller()->update($this->makeRequest(['title' => 'Titular nuevo']), $post->id);
 

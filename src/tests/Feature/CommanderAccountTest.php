@@ -161,7 +161,7 @@ class CommanderAccountTest extends CommanderTestCase
         });
         DB::connection('tenant')->table('roles')->insert([
             ['id' => 1, 'name' => 'reader'],
-            ['id' => 2, 'name' => 'redactor'],
+            ['id' => 2, 'name' => 'reporter'],
             ['id' => 3, 'name' => 'service'],
         ]);
         DB::connection('tenant')->table('model_has_roles')->insert([

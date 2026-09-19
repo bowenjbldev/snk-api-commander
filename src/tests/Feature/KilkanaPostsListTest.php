@@ -60,7 +60,7 @@ class KilkanaPostsListTest extends TestCase
     public function test_an_out_of_range_page_shows_the_last_one_not_an_empty_table(): void
     {
         $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
-        $marta->assignRole('director');
+        $marta->assignRole('editor_in_chief');
         $this->actingAs($marta, 'sanctum');
         $section = $this->category('Local', 'local');
         $byline = $this->author('Redacción', alias: 'Redacción');
@@ -87,7 +87,7 @@ class KilkanaPostsListTest extends TestCase
     public function test_unrecognised_query_values_fall_back_to_the_default(): void
     {
         $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
-        $marta->assignRole('director');
+        $marta->assignRole('editor_in_chief');
         $this->actingAs($marta, 'sanctum');
         $section = $this->category('Local', 'local');
         $byline = $this->author('Redacción', alias: 'Redacción');
@@ -116,7 +116,7 @@ class KilkanaPostsListTest extends TestCase
     public function test_sort_is_one_parameter_and_a_minus_means_descending(): void
     {
         $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
-        $marta->assignRole('director');
+        $marta->assignRole('editor_in_chief');
         $this->actingAs($marta, 'sanctum');
         $section = $this->category('Local', 'local');
         $byline = $this->author('Redacción', alias: 'Redacción');
@@ -152,7 +152,7 @@ class KilkanaPostsListTest extends TestCase
     public function test_counts_are_sent_only_when_requested(): void
     {
         $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
-        $marta->assignRole('director');
+        $marta->assignRole('editor_in_chief');
         $this->actingAs($marta, 'sanctum');
         $this->makePost('Una', $this->category('Local', 'local'), $this->author('Redacción', alias: 'Redacción'), 'draft', null, $marta->id);
 
@@ -539,7 +539,7 @@ class KilkanaPostsListTest extends TestCase
     public function test_the_row_includes_the_requested_columns_and_nothing_else(): void
     {
         $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
-        $marta->assignRole('director');
+        $marta->assignRole('editor_in_chief');
         $this->actingAs($marta, 'sanctum');
 
         $local = $this->category('Local', 'local');
@@ -597,7 +597,7 @@ class KilkanaPostsListTest extends TestCase
     public function test_what_is_not_requested_is_not_sent(): void
     {
         $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
-        $marta->assignRole('director');
+        $marta->assignRole('editor_in_chief');
         $this->actingAs($marta, 'sanctum');
         $this->makePost('Una', $this->category('Local', 'local'), $this->author('Redacción', alias: 'Redacción'), 'draft', null, $marta->id);
 
@@ -618,7 +618,7 @@ class KilkanaPostsListTest extends TestCase
         $post = $this->makePost('Una pieza', $local, $byline, 'draft');
 
         $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
-        $marta->assignRole('director');
+        $marta->assignRole('editor_in_chief');
         $this->actingAs($marta, 'sanctum');
         request()->query->replace(['include' => 'category,author,tags,coverMedia']);
 

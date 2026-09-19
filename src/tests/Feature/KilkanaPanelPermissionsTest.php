@@ -45,7 +45,7 @@ class KilkanaPanelPermissionsTest extends TestCase
         // Los seis que abren el panel. La tarjeta de plan se le enseña a toda la redacción por
         // decisión del usuario, así que la puerta del endpoint tiene que dejar pasar a los seis:
         // colgarla de `show settings` dejaría fuera a cuatro de ellos.
-        foreach (['admin', 'director', 'editor', 'redactor', 'colaborador', 'moderador'] as $role) {
+        foreach (['admin', 'editor_in_chief', 'editor', 'reporter', 'contributor', 'moderator'] as $role) {
             $this->assertTrue($canList($role), "El rol {$role} abre el panel y no puede listar piezas.");
         }
     }
@@ -66,18 +66,18 @@ class KilkanaPanelPermissionsTest extends TestCase
         $has = fn (string $role, string $permission) => Role::findByName($role, 'sanctum')
             ->hasPermissionTo($permission);
 
-        foreach (['admin', 'director', 'editor', 'redactor', 'moderador'] as $role) {
+        foreach (['admin', 'editor_in_chief', 'editor', 'reporter', 'moderator'] as $role) {
             $this->assertTrue($has($role, 'view others posts'), "El rol {$role} está en la sala y no ve el sumario.");
         }
 
         // Quien entrega desde fuera ve lo suyo: ni el sumario ni la copia de nadie.
-        $this->assertFalse($has('colaborador', 'view others posts'));
-        $this->assertFalse($has('colaborador', 'edit others posts'));
+        $this->assertFalse($has('contributor', 'view others posts'));
+        $this->assertFalse($has('contributor', 'edit others posts'));
 
         // Y ver no arrastra editar: sin esto, conceder el sumario a la plantilla le daría de
         // paso la pieza de cualquiera.
-        $this->assertFalse($has('redactor', 'edit others posts'));
-        $this->assertFalse($has('moderador', 'edit others posts'));
+        $this->assertFalse($has('reporter', 'edit others posts'));
+        $this->assertFalse($has('moderator', 'edit others posts'));
     }
 
     /**
@@ -90,7 +90,7 @@ class KilkanaPanelPermissionsTest extends TestCase
      */
     public function test_reapplying_the_grants_restores_a_missing_role_permission(): void
     {
-        $writer = Role::findByName('redactor', 'sanctum');
+        $writer = Role::findByName('reporter', 'sanctum');
         $before = $writer->permissions->pluck('name')->sort()->values()->all();
 
         $writer->revokePermissionTo('view others posts');
@@ -98,7 +98,7 @@ class KilkanaPanelPermissionsTest extends TestCase
 
         app(SnkKilkanaRoleCatalogService::class)->sync();
 
-        $after = Role::findByName('redactor', 'sanctum')->permissions->pluck('name')->sort()->values()->all();
+        $after = Role::findByName('reporter', 'sanctum')->permissions->pluck('name')->sort()->values()->all();
         $this->assertSame($before, $after, 'el rol tiene que volver exactamente a como estaba');
     }
 
@@ -116,7 +116,7 @@ class KilkanaPanelPermissionsTest extends TestCase
     /** Un redactor escribe y manda a revisión. Publicar es de la mesa: es lo que separa los dos papeles. */
     public function test_a_writer_cannot_publish(): void
     {
-        $this->assertFalse(Role::findByName('redactor', 'sanctum')->hasPermissionTo('publish posts'));
+        $this->assertFalse(Role::findByName('reporter', 'sanctum')->hasPermissionTo('publish posts'));
         $this->assertTrue(Role::findByName('editor', 'sanctum')->hasPermissionTo('publish posts'));
     }
 }

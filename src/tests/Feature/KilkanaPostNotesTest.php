@@ -34,7 +34,7 @@ class KilkanaPostNotesTest extends TestCase
     public function test_a_note_is_written_on_a_block_resolved_and_removed_with_the_post(): void
     {
         $marta = CoreUserModel::create(['name' => 'Marta Beneyto', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
-        $marta->assignRole('director');
+        $marta->assignRole('editor_in_chief');
         $this->actingAs($marta, 'sanctum');
         $section = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
         $byline = SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);

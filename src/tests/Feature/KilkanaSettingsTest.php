@@ -34,7 +34,7 @@ class KilkanaSettingsTest extends TestCase
         }
         app(SnkKilkanaRoleCatalogService::class)->sync();
         $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
-        $marta->assignRole('director');
+        $marta->assignRole('editor_in_chief');
         $this->actingAs($marta, 'sanctum');
     }
 

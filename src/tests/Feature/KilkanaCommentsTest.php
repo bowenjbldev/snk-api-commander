@@ -133,7 +133,7 @@ class KilkanaCommentsTest extends TestCase
     {
         $this->asModerator();
         $staffWriter = CoreUserModel::create(['name' => 'Lucia', 'email' => 'lucia@eldiario.example', 'password' => 'secret1234']);
-        $staffWriter->assignRole('redactor');
+        $staffWriter->assignRole('reporter');
         $post = $this->makePost('Plan de aparcamientos');
         $staffComment = $this->comment($staffWriter, $post, 'Gracias por el aviso.', 'approved');
         $orphan = SnkKilkanaCommentModel::create(['post_id' => $post->id, 'user_id' => null, 'body' => 'Sin cuenta.', 'status' => 'pending']);
@@ -169,7 +169,7 @@ class KilkanaCommentsTest extends TestCase
     public function test_read_only_accounts_cannot_block(): void
     {
         $writer = CoreUserModel::create(['name' => 'Ivan', 'email' => 'ivan@eldiario.example', 'password' => 'secret1234']);
-        $writer->assignRole('redactor');
+        $writer->assignRole('reporter');
         $this->actingAs($writer, 'sanctum');
 
         $this->assertSame(403, app(SnkKilkanaCommentsController::class)->blockAuthor(1)->getStatusCode());
@@ -202,7 +202,7 @@ class KilkanaCommentsTest extends TestCase
     private function asModerator(): CoreUserModel
     {
         $elena = CoreUserModel::create(['name' => 'Elena', 'email' => 'elena@eldiario.example', 'password' => 'secret1234']);
-        $elena->assignRole('moderador');
+        $elena->assignRole('moderator');
         $this->actingAs($elena, 'sanctum');
 
         return $elena;

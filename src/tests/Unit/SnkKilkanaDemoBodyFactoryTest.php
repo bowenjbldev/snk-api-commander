@@ -16,11 +16,11 @@ use PHPUnit\Framework\TestCase;
 class SnkKilkanaDemoBodyFactoryTest extends TestCase
 {
     /** @return array<string, mixed> */
-    private function makePost(string $slug, string $cat = 'local', string $tier = 'free'): array
+    private function makePost(string $slug, string $category = 'local', string $tier = 'free'): array
     {
         return [
             'slug' => $slug,
-            'cat' => $cat,
+            'category' => $category,
             'title' => 'Titular de prueba',
             'excerpt' => 'Primera frase de la entradilla. Segunda frase, con mas detalle.',
             'tags' => ['pleno', 'movilidad'],
@@ -41,8 +41,8 @@ class SnkKilkanaDemoBodyFactoryTest extends TestCase
     {
         foreach (['a-b-c', 'pleno-de-julio', 'la-feria-vuelve', 'obras-en-la-ronda', 'x'] as $slug) {
             foreach (array_keys(SnkKilkanaDemoProse::MATERIAL) as $family) {
-                $cat = array_search($family, SnkKilkanaDemoBodyFactory::FAMILY_OF, true);
-                $paragraphs = $this->paragraphs(SnkKilkanaDemoBodyFactory::blocks($this->makePost($slug, $cat), 7));
+                $category = array_search($family, SnkKilkanaDemoBodyFactory::FAMILY_OF, true);
+                $paragraphs = $this->paragraphs(SnkKilkanaDemoBodyFactory::blocks($this->makePost($slug, $category), 7));
 
                 $this->assertSame(count($paragraphs), count(array_unique($paragraphs)), "{$family}/{$slug} repite un párrafo.");
                 $this->assertGreaterThanOrEqual(9, count($paragraphs));

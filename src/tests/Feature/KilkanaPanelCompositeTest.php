@@ -55,7 +55,7 @@ class KilkanaPanelCompositeTest extends TestCase
 
     public function test_the_shell_matches_the_nine_calls_section_by_section(): void
     {
-        $this->asDirector();
+        $this->asEditorInChief();
         $this->content();
 
         $panel = $this->body(app(SnkKilkanaPanelController::class)->bootstrap());
@@ -86,7 +86,7 @@ class KilkanaPanelCompositeTest extends TestCase
     {
         $this->content();
         $elena = CoreUserModel::create(['name' => 'Elena', 'email' => 'elena@eldiario.example', 'password' => 'secret1234']);
-        $elena->assignRole('moderador');
+        $elena->assignRole('moderator');
         $this->actingAs($elena, 'sanctum');
 
         $panel = $this->body(app(SnkKilkanaPanelController::class)->bootstrap());
@@ -110,7 +110,7 @@ class KilkanaPanelCompositeTest extends TestCase
      */
     public function test_a_failing_count_does_not_take_down_the_shell(): void
     {
-        $this->asDirector();
+        $this->asEditorInChief();
         $this->content();
         $this->app->bind(SnkKilkanaCommentService::class, fn () => new class extends SnkKilkanaCommentService
         {
@@ -129,7 +129,7 @@ class KilkanaPanelCompositeTest extends TestCase
 
     public function test_the_dashboard_matches_the_four_queue_calls(): void
     {
-        $this->asDirector();
+        $this->asEditorInChief();
         $this->content();
 
         $dashboard = $this->body(app(SnkKilkanaPanelController::class)->dashboard());
@@ -150,7 +150,7 @@ class KilkanaPanelCompositeTest extends TestCase
     /** La ventana de «lo más leído» es la del listado: siete, treinta, o desde siempre. */
     public function test_the_most_read_window_is_not_chosen_by_the_caller(): void
     {
-        $this->asDirector();
+        $this->asEditorInChief();
         $this->content();
 
         foreach (['7' => 7, '30' => 30, '1000' => null, 'banana' => null] as $requested => $_) {
@@ -183,10 +183,10 @@ class KilkanaPanelCompositeTest extends TestCase
         return app(SnkKilkanaPostsController::class)->index()->getData(true);
     }
 
-    private function asDirector(): CoreUserModel
+    private function asEditorInChief(): CoreUserModel
     {
         $marta = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
-        $marta->assignRole('director');
+        $marta->assignRole('editor_in_chief');
         $this->actingAs($marta, 'sanctum');
 
         return $marta;

@@ -30,7 +30,7 @@ class SnkKilkanaPublicController extends Controller
     public function posts(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'cat' => 'nullable|string|max:32',
+            'category' => 'nullable|string|max:32',
             'author' => 'nullable|string|max:255',
             'tag' => 'nullable|string|max:64',
             'q' => 'nullable|string|min:2|max:128',

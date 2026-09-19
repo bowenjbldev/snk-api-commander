@@ -36,7 +36,7 @@ final class SnkKilkanaDemoBodyFactory
      * comarcal y el relleno menos llamativo.
      *
      * Una sección con ruta retirada entra con los dos slugs: el snapshot trae el retirado en
-     * `cat` —`sucesos`, con el que se compone el cuerpo— y la base guarda el del catálogo
+     * `category` —`sucesos`, con el que se compone el cuerpo— y la base guarda el del catálogo
      * —`sucesos-y-tribunales`, con el que se eligen las voces de los comentarios—.
      */
     public const FAMILY_OF = [
@@ -59,7 +59,7 @@ final class SnkKilkanaDemoBodyFactory
      */
     public static function blocks(array $post, ?int $coverId): array
     {
-        $family = self::familyOf((string) $post['cat']);
+        $family = self::familyOf((string) $post['category']);
         $material = SnkKilkanaDemoProse::MATERIAL[$family];
         $hash = crc32((string) $post['slug']);
         $pick = fn (array $pool, int $offset) => $pool[intdiv($hash, $offset) % count($pool)];
@@ -139,9 +139,9 @@ final class SnkKilkanaDemoBodyFactory
     }
 
     /** La familia de prosa de una sección; una que no esté en la tabla cae en `local`. */
-    public static function familyOf(string $cat): string
+    public static function familyOf(string $category): string
     {
-        return self::FAMILY_OF[$cat] ?? 'local';
+        return self::FAMILY_OF[$category] ?? 'local';
     }
 
     /**
