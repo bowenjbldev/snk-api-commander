@@ -1,8 +1,7 @@
 # Idioma del código
 
 El código habla inglés y la prosa, español. Esta es la regla de todo `src/`, de los paquetes y de
-los tests, y la misma que sigue [kilkana.app](../../kilkana.app/docs/code-language.md) con su
-vocabulario de TypeScript.
+los tests, y la misma que sigue kilkana.app, que la toma de la skill `code-language`.
 
 ## En inglés
 
