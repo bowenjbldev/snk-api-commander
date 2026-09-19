@@ -57,7 +57,7 @@ class SnkKilkanaRoleCatalogService
     public function sync(): array
     {
         $names = [];
-        foreach (['posts', 'categories', 'authors', 'media', 'tags', 'comments', 'readers', 'subscribers', 'layouts', 'settings', 'themes'] as $resource) {
+        foreach (['posts', 'categories', 'authors', 'media', 'tags', 'comments', 'readers', 'subscribers', 'layouts', 'settings', 'themes', 'dictionary'] as $resource) {
             foreach (['index', 'show', 'create', 'update', 'delete'] as $action) {
                 $names[] = "$action $resource";
             }
@@ -88,13 +88,13 @@ class SnkKilkanaRoleCatalogService
             // Dirección editorial: manda en el periódico entero, incluida la portada y la
             // identidad. No administra la instalación (usuarios) — eso es otro oficio.
             'editor_in_chief' => [
-                ...$crud('posts', 'categories', 'authors', 'media', 'tags', 'comments', 'readers', 'subscribers', 'layouts', 'settings', 'themes'),
+                ...$crud('posts', 'categories', 'authors', 'media', 'tags', 'comments', 'readers', 'subscribers', 'layouts', 'settings', 'themes', 'dictionary'),
                 'publish posts', 'edit others posts', 'view others posts',
             ],
             // Mesa de edición: publica y corrige lo de cualquiera, modera y gestiona el
             // material. NO compone la portada ni cambia la identidad del periódico.
             'editor' => [
-                ...$crud('posts', 'media', 'tags', 'comments'),
+                ...$crud('posts', 'media', 'tags', 'comments', 'dictionary'),
                 ...$read('categories', 'authors'),
                 'publish posts', 'edit others posts', 'view others posts',
             ],
@@ -104,6 +104,9 @@ class SnkKilkanaRoleCatalogService
                 ...$crud('posts'),
                 ...$crud('media'),
                 'index tags', 'create tags',
+                // El diccionario del corrector, igual que las etiquetas: lo amplía quien escribe
+                // y lo recorta la mesa.
+                'index dictionary', 'create dictionary',
                 ...$read('categories', 'authors', 'comments'),
                 // Escribe lo suyo, pero está en la reunión de sumario: ve en qué anda el resto
                 // sin poder tocarlo. Aquí el permiso SÍ decide algo, porque no hay implicación
@@ -117,6 +120,7 @@ class SnkKilkanaRoleCatalogService
                 'index posts', 'show posts', 'create posts', 'update posts',
                 'index media', 'show media', 'create media',
                 'index tags',
+                'index dictionary', 'create dictionary',
                 ...$read('categories', 'authors'),
             ],
             // Comunidad: comentarios, lectores y boletín. Ni un permiso sobre artículos, que

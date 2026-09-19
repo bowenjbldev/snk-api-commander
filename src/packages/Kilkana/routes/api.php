@@ -7,6 +7,7 @@ use Packages\Kilkana\Http\Controllers\SnkKilkanaAuthController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaAuthorsController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaCategoriesController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaCommentsController;
+use Packages\Kilkana\Http\Controllers\SnkKilkanaDictionaryWordsController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaGateController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaLayoutsController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaMediaController;
@@ -146,6 +147,8 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     // taxonomías de medios y las portadas, aplicado a lo que se puede destruir.
     Route::post('tags/{id}/merge', [SnkKilkanaTagsController::class, 'merge'])->whereNumber('id');
     Route::apiResource('tags', SnkKilkanaTagsController::class)->whereNumber('tag');
+    // El diccionario de la redacción: se lista, se añade y se quita. Una palabra no se edita.
+    Route::apiResource('dictionary-words', SnkKilkanaDictionaryWordsController::class)->only(['index', 'store', 'destroy'])->whereNumber('dictionary_word');
     // Antes del apiResource, como en posts: si no, `show` se traga «bulk» como id.
     Route::post('comments/bulk', [SnkKilkanaCommentsController::class, 'bulk']);
     Route::post('comments/{id}/block-author', [SnkKilkanaCommentsController::class, 'blockAuthor'])->whereNumber('id');

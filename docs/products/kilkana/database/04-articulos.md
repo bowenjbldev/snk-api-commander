@@ -232,6 +232,24 @@ Lo que la redacción se dice sobre una pieza mientras se escribe: `user_id` (SET
 leen con `show posts` y se escriben con `update posts`. No se borran: se resuelven, y se van con
 la pieza cuando se purga (CASCADE). Nunca llegan a un lector.
 
+## `kilkana_dictionary_words` — el diccionario de la redacción
+
+Las palabras que el corrector del editor marcaba y la redacción da por buenas: nombres propios,
+topónimos, siglas. Una columna, `word` (64, UNIQUE), y es **del periódico entero**, sin `user_id`:
+el valor está en que un apellido se añade una vez y deja de marcarse para todos.
+
+`word` lleva intercalación **binaria** en MySQL/MariaDB (`utf8mb4_bin`): con la de serie, «Roma» y
+«roma» serían la misma fila y «Almería» daría por buena «Almeria», y para un corrector son palabras
+distintas. La validación admite una sola palabra —letras, con apóstrofo, punto volado o guion
+dentro—, que es lo que el panel parte como palabra.
+
+`GET/POST dictionary-words` y `DELETE dictionary-words/{id}`; no hay `show` ni `update`, una palabra
+no se edita. **Añadir una que ya está devuelve 200 con la que hay**, no 422: dos redactores con el
+mismo apellido la misma tarde no son un fallo. Permisos `index|create|delete dictionary`, con el
+reparto de las etiquetas: añade quien escribe (`reporter`, `contributor`), quita la mesa (`editor`,
+`editor_in_chief`, `admin`). `moderator` no lo ve. Lo fija `KilkanaDictionaryWordsTest`, sobre
+sqlite: **la intercalación binaria no la cubre**, porque sqlite ya compara así.
+
 ## La retirada programada
 
 `unpublish_at` es la otra mitad de `publish_at`: una pieza publicada con esa hora cumplida vuelve
