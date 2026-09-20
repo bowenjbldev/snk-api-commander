@@ -41,6 +41,9 @@ class SnkKilkanaContextualSpellcheckController extends Controller
             'paragraphs.*.typos.*.word' => ['required', 'string', 'max:'.$s::MAX_WORD_CHARS],
             'paragraphs.*.typos.*.candidates' => ['required', 'array', 'min:1', 'max:'.$s::MAX_CANDIDATES],
             'paragraphs.*.typos.*.candidates.*' => ['required', 'string', 'max:'.$s::MAX_WORD_CHARS],
+            // Una duda —un parónimo— trae qué distingue a cada forma, la escrita incluida.
+            'paragraphs.*.typos.*.glosses' => ['sometimes', 'array', 'max:'.($s::MAX_CANDIDATES + 1)],
+            'paragraphs.*.typos.*.glosses.*' => ['required', 'string', 'max:120'],
         ]);
 
         foreach ($data['paragraphs'] as $paragraph) {

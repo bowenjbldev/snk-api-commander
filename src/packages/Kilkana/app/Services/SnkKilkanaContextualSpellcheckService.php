@@ -120,11 +120,20 @@ class SnkKilkanaContextualSpellcheckService
         $questions = [];
         foreach ($paragraph['typos'] as $typo) {
             $criteria = [];
-            foreach ($typo['candidates'] as $candidate) {
-                $criteria[$candidate] = "«{$candidate}»: es la palabra que el periodista quiso escribir en el lugar marcado; la frase queda correcta y con sentido.";
+            $glosses = $typo['glosses'] ?? null;
+            if (is_array($glosses)) {
+                // Una duda: la palabra escrita es una opción más, con su definición, y no hay
+                // salidas de escape —una de las formas es la buena—.
+                foreach ($glosses as $form => $gloss) {
+                    $criteria[$form] = "«{$form}»: {$gloss}. Es la forma que pide el sentido de la frase en ese lugar.";
+                }
+            } else {
+                foreach ($typo['candidates'] as $candidate) {
+                    $criteria[$candidate] = "«{$candidate}»: es la palabra que el periodista quiso escribir en el lugar marcado; la frase queda correcta y con sentido.";
+                }
+                $criteria[self::KEEP] = 'La palabra marcada está bien como está y no debe cambiarse: es un nombre propio, un apellido, un topónimo, una marca, una sigla, un extranjerismo o un tecnicismo que el diccionario no conoce.';
+                $criteria[self::NONE] = 'La palabra marcada está mal escrita, pero ninguna de las otras opciones es la que el periodista quiso escribir.';
             }
-            $criteria[self::KEEP] = 'La palabra marcada está bien como está y no debe cambiarse: es un nombre propio, un apellido, un topónimo, una marca, una sigla, un extranjerismo o un tecnicismo que el diccionario no conoce.';
-            $criteria[self::NONE] = 'La palabra marcada está mal escrita, pero ninguna de las otras opciones es la que el periodista quiso escribir.';
 
             $questions["t{$typo['mark']}"] = [
                 'type' => 'choice',
@@ -160,14 +169,17 @@ class SnkKilkanaContextualSpellcheckService
         foreach ($paragraph['typos'] as $typo) {
             $answer = $payload['answers']["t{$typo['mark']}"] ?? null;
             $choice = is_array($answer) ? ($answer['choice'] ?? null) : null;
-            if (! is_string($choice) || ! in_array($choice, [...$typo['candidates'], self::KEEP, self::NONE], true)) {
+            $offered = [...$typo['candidates'], ...array_keys($typo['glosses'] ?? []), self::KEEP, self::NONE];
+            if (! is_string($choice) || ! in_array($choice, $offered, true)) {
                 continue;
             }
+            // En una duda, elegir la forma escrita es «déjala como está».
+            $keep = $choice === self::KEEP || mb_strtolower($choice) === mb_strtolower($typo['word']);
             $decided[] = [
                 'paragraph' => $paragraph['id'],
                 'mark' => $typo['mark'],
-                'choice' => in_array($choice, [self::KEEP, self::NONE], true) ? null : $choice,
-                'keep' => $choice === self::KEEP,
+                'choice' => $keep || $choice === self::NONE ? null : $choice,
+                'keep' => $keep,
                 'confidence' => round((float) ($answer['confidence'] ?? 0), 3),
             ];
         }

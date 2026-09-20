@@ -119,6 +119,30 @@ class KilkanaContextualSpellcheckTest extends TestCase
         }
     }
 
+    public function test_a_doubt_asks_between_the_forms_with_their_meanings_and_the_written_one_means_keep(): void
+    {
+        $this->enable();
+        Http::fake(['api.typesafe.ai/*' => Http::response($this->answers(['t1' => 'tubo', 't2' => 'tuvo']))]);
+
+        $glosses = ['tubo' => 'pieza cilíndrica hueca', 'tuvo' => 'forma del verbo tener'];
+        $body = [
+            'paragraphs' => [[
+                'id' => 0,
+                'text' => 'La rotura de un [[1:tubo]] dejó sin agua; el alcalde [[2:tubo]] que salir.',
+                'typos' => [
+                    ['mark' => 1, 'word' => 'tubo', 'candidates' => ['tuvo'], 'glosses' => $glosses],
+                    ['mark' => 2, 'word' => 'tubo', 'candidates' => ['tuvo'], 'glosses' => $glosses],
+                ],
+            ]],
+        ];
+        $choices = $this->choose($body)->getData(true)['choices'];
+
+        $this->assertSame([null, true], [$choices[0]['choice'], $choices[0]['keep']], 'La forma escrita es la buena: se deja.');
+        $this->assertSame(['tuvo', false], [$choices[1]['choice'], $choices[1]['keep']]);
+        Http::assertSent(fn (ClientRequest $request) => array_keys($request->data()['questions']['t1']['criteria']) === ['tubo', 'tuvo']
+            && str_contains($request->data()['questions']['t1']['criteria']['tuvo'], 'verbo tener'));
+    }
+
     public function test_a_provider_failure_or_timeout_leaves_no_decision_and_no_error(): void
     {
         $this->enable();
