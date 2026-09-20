@@ -14,6 +14,10 @@ Esta skill **no repite la arquitectura**: eso es de [`AGENTS.md`](../../../AGENT
 [`docs/`](../../../docs/README.md), que son la fuente única. Aquí está lo que no está escrito en
 ningún sitio: **la forma de la línea**.
 
+Lo que vale para todos los repositorios del usuario vive en skills globales y no se repite aquí:
+el idioma y los comentarios en `code-language`, la voz del commit en `commit-es` y la forma de la
+documentación en `project-docs`.
+
 ## Lo que no se negocia
 
 - **La lógica vive en `src/packages`, no en `src/app`.** Config propia siempre namespaced.
@@ -28,8 +32,6 @@ ningún sitio: **la forma de la línea**.
 - **Valida nombres de host, BD y usuario en toda frontera.** Nada de interpolar entrada sin validar
   en DDL.
 - **El worker `provisioner` es el único con DDL.** El usuario runtime solo tiene CRUD.
-- **Comenta el porqué de lo no obvio**, en español, en presente. Nunca lo que el código ya dice,
-  nunca la historia, nunca una arquitectura futura como si existiera.
 
 ## Qué leer antes de tocar
 

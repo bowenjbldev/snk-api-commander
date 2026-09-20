@@ -174,12 +174,12 @@ public function __construct(private readonly SnkKilkanaPostService $posts)
     $this->validationRulesStore['status'] = 'required|'.SnkKilkanaPostStatusEnum::rule();
     $this->validationRulesUpdate['status'] = 'sometimes|required|'.SnkKilkanaPostStatusEnum::rule();
 
-    $alPublicar = 'required_if:status,'.implode(',', SnkKilkanaPostStatusEnum::publishing());
+    $onPublish = 'required_if:status,'.implode(',', SnkKilkanaPostStatusEnum::publishing());
 
-    foreach (['validationRulesStore', 'validationRulesUpdate'] as $reglas) {
-        $this->{$reglas}['content_tier'] = 'nullable|'.SnkKilkanaContentTierEnum::rule();
-        $this->{$reglas}['excerpt'] = $alPublicar.'|nullable|string';
-        $this->{$reglas}['publish_at'] = $alPublicar.'|nullable|date';
+    foreach (['validationRulesStore', 'validationRulesUpdate'] as $property) {
+        $this->{$property}['content_tier'] = 'nullable|'.SnkKilkanaContentTierEnum::rule();
+        $this->{$property}['excerpt'] = $onPublish.'|nullable|string';
+        $this->{$property}['publish_at'] = $onPublish.'|nullable|date';
     }
 }
 ```
@@ -284,11 +284,11 @@ dentro, 422 validación, 202 aviso aceptado, 402 kill-switch, 503 base del inqui
 El 409 se comprueba antes y se protege después:
 
 ```php
-if ($posts > 0 || $subsecciones > 0) {
+if ($posts > 0 || $subsections > 0) {
     return response()->json([
         'error' => 'Section in use',
         'posts' => $posts,
-        'subsections' => $subsecciones,
+        'subsections' => $subsections,
     ], 409);
 }
 
@@ -351,7 +351,7 @@ class SnkKilkanaPostModel extends Model
 Y la razón se escribe: **el seeder y la consola no pasan por la validación de la API**.
 
 ```php
-if (! $seccionViva) {
+if (! $categoryReachable) {
     throw ValidationException::withMessages([
         'category' => 'That section has not been launched yet; launch it or pick another.',
     ]);
@@ -372,7 +372,7 @@ ese es el orden con el que la base ordena.
 trait SnkKilkanaEnumValuesSupport
 {
     /**
-     * Los valores en crudo, para que la migracion declare la columna con esta misma lista.
+     * Los valores en crudo, para que la migración declare la columna con esta misma lista.
      *
      * @return list<string>
      */
@@ -381,7 +381,7 @@ trait SnkKilkanaEnumValuesSupport
         return array_column(self::cases(), 'value');
     }
 
-    /** Regla de validacion de la API, derivada. */
+    /** Regla de validación de la API, derivada. */
     public static function rule(): string
     {
         return 'in:'.implode(',', self::values());
@@ -418,11 +418,11 @@ son CRUD.
 
 ```php
 /**
- * Guardar un articulo son VARIAS escrituras, y o entran todas o no entra ninguna.
+ * Guardar un artículo son VARIAS escrituras, y o entran todas o no entra ninguna.
  *
  * Un alta toca el post, puede dar de alta el medio de portada y da de alta las etiquetas
- * que no existan mas su pivote. Sin transaccion, un fallo a mitad deja el desecho puesto y
- * el cliente recibe un error: cree que no ha pasado nada y si ha pasado.
+ * que no existan más su pivote. Sin transacción, un fallo a mitad deja el desecho puesto y
+ * el cliente recibe un error: cree que no ha pasado nada y sí ha pasado.
  */
 public function create(array $data, int $userId): SnkKilkanaPostModel
 {
@@ -465,7 +465,7 @@ class SnkKilkanaPostResource extends JsonResource
 
 El controlador lo declara con `protected ?string $resourceClass = …::class;` y el CRUD del base
 envuelve `index()` y `show()`. Donde la respuesta se compone a mano —un listado con su `meta` y
-sus cifras— se usa `Resource::collection($coleccion)` dentro del array.
+sus cifras— se usa `Resource::collection($collection)` dentro del array.
 
 **Un Resource no consulta la base.** La precarga y los agregados van en el servicio, que los pide
 en una tanda para toda la página y los cuelga de la fila con `setAttribute()`; el Resource los lee
@@ -563,10 +563,10 @@ enfatizar, comillas angulares.
 
 ```php
 /**
- * Lo que devuelve una fila del listado, y **nada mas**.
+ * Lo que devuelve una fila del listado, y **nada más**.
  *
- * Es una lista blanca y no una de ocultos a proposito: con una lista de ocultos, cada
- * columna nueva de la tabla sale al JSON el dia que se anade y nadie lo decide.
+ * Es una lista blanca y no una de ocultos a propósito: con una lista de ocultos, cada
+ * columna nueva de la tabla sale al JSON el día que se añade y nadie lo decide.
  *
  * **Y no es aseo, es tiempo.** Medido con 522 piezas: serializar veinticinco filas pasa de
  * 28,0 a 14,5 ms y de 59,7 a 14,2 kB.
@@ -581,8 +581,7 @@ enfatizar, comillas angulares.
 
 - **`ponytail:`** marca una simplificación deliberada con su techo conocido.
 - **Cero `TODO` / `FIXME` / `XXX`** en todo el repositorio. No se estrena uno.
-- Las tildes son inconsistentes: los ficheros antiguos van sin ellas, los recientes con ellas.
-  **En lo nuevo, con tildes.**
+- **Los comentarios llevan tildes.** Uno antiguo sin ellas se corrige cuando se toca su trozo.
 
 ---
 
@@ -590,8 +589,9 @@ enfatizar, comillas angulares.
 
 PHPUnit 12, no Pest. Suites `tests/Unit` y `tests/Feature`, **todas en `src/tests/`**.
 
-- Nombre de método: `test_` + frase en español snake_case, con tildes y ñ.
-  `test_el_lote_no_publica_una_pieza_sin_entradilla()`
+- Nombre de método: `test_` + frase **en inglés** snake_case, traducida por significado; en
+  PHPUnit el nombre es un método y un método es código.
+  `test_the_batch_does_not_publish_a_post_without_an_excerpt()`
 - **No hay factories de modelo.** Los datos se construyen con helpers privados al final de la clase
   (`private function category(...)`, `private function makePost(...)`).
 - **Se prueban servicios, no rutas HTTP**, y el docblock de la clase dice por qué.
@@ -606,7 +606,7 @@ $this->artisan('migrate', ['--database' => 'tenant', '--path' => 'packages/Kilka
 ```
 
 - Los mensajes de aserción van en español, con comillas angulares:
-  `"«{$campo}» es de la ficha, no de la fila del listado"`.
+  `"«{$field}» es de la ficha, no de la fila del listado"`.
 - Hay tests que fijan **el coste**, no solo el resultado: contar consultas con `DB::enableQueryLog()`
   para que un N+1 no vuelva, o comprobar el SQL con `->toSql()`.
 - **Las pruebas gemelas**: `SnkKilkanaBlockVocabularyTest`, `SnkKilkanaPostsListRowTest` y
@@ -633,7 +633,7 @@ $this->artisan('migrate', ['--database' => 'tenant', '--path' => 'packages/Kilka
 - Config de paquete se lee con doble nombre: `config('kilkana.kilkana.seed_demo', false)`.
 - **`preventAccessingMissingAttributes()` está encendido fuera de producción.** Leer una columna
   que la consulta no seleccionó revienta en vez de devolver `null`. Lo que puede no estar se lee
-  del array crudo: `$modelo->getAttributes()['x'] ?? null`. Pasa más de lo que parece — un modelo
+  del array crudo: `$model->getAttributes()['x'] ?? null`. Pasa más de lo que parece — un modelo
   recién creado solo lleva lo que se le pasó a `create()`, y `actingAs()` conserva ese objeto.
 - **Un `try/catch` que protege algo accesorio puede esconder un fallo evitable.** El registro de
   actividad leía una columna que podía faltar, lanzaba, y su `catch` con `report()` se lo tragaba:

@@ -4,64 +4,22 @@
 
 ## 1. La voz del commit
 
-Conventional Commits en la cabecera, y **el asunto en español, narrativo, contando el efecto**.
-Nunca la implementación. Casi siempre dos cláusulas unidas por «, y …»: lo que ahora pasa, y lo que
-ha dejado de pasar.
+La voz entera —cabecera, los cuatro movimientos del cuerpo y lo que no va— es de la skill global
+`commit-es`. Aquí solo lo propio de este repositorio.
+
+**Ámbitos, en español**: la parte tocada —`api`, `core`, `kilkana`, `commander`, `commander-web`,
+`siembra`, `seguridad`, `base`, `rendimiento`—. Los nombres de paquete y las siglas se quedan como
+están. `!` para el cambio de contrato.
 
 ```
 fix(api): publicar una pieza es AHORA, y la fecha deja de pedirse a quien no la tiene
-feat(seed): la fototeca estrena firma y estante, que salían en blanco en la mediateca
-fix(api): subir el mismo fichero dos veces a la vez es un duplicado, no un error
+feat(siembra): la fototeca estrena firma y estante, que salían en blanco en la mediateca
 perf(core): la caché de permisos se acota al inquilino y deja de rehacerse en cada petición
-chore(security): la IP real llega a Laravel, y los tokens caducados dejan de acumularse
+chore(seguridad): la IP real llega a Laravel, y los tokens caducados dejan de acumularse
 feat(kilkana)!: un tema es un spec, y el vestido baja a los ajustes
 ```
 
-Tipos vivos: `feat`, `fix`, `perf`, `refactor`, `chore`, `docs`, `test`. Ámbitos: el que nombra la
-puerta tocada (`api`, `core`, `seed`, `seeder`, `kilkana`, `commander`, `commander-web`,
-`security`, `docs`). `!` para el cambio de contrato.
-
-### La anatomía del cuerpo
-
-Cuatro movimientos, en este orden:
-
-1. **El síntoma, en negrita, y en la primera frase.** Y si no era una regresión, se dice.
-2. **Por qué pasaba.** El mecanismo concreto, con el nombre del método y el mensaje de error
-   literal si lo hubo.
-3. **La regla que se establece**, en lista con negritas cuando son varios casos.
-4. **La evidencia**: qué se comprobó, contra qué, y qué salió.
-
-```
-fix(api): publicar una pieza es AHORA, y la fecha deja de pedirse a quien no la tiene
-
-**Desde el editor no se podía publicar una pieza**, y no era una regresión: nunca
-se ha podido. Lo destapó la auditoría cruzada probando con una pieza completa.
-
-Un borrador tiene `publish_at` nulo —se sella al salir a la calle—, así que el
-relleno que `update()` hace desde la fila no tenía nada con que rellenar y
-`required_if` rechazaba con «The publish at field is required when status is
-published».
-
-`stampFor()` recoge la regla entera, en el servicio y no en el controlador, para
-que se pueda probar:
-
-- sin fecha → ahora;
-- **fecha futura → ahora**, que es lo que ya hacía el `bulk`;
-- fecha pasada → se respeta, que es una decisión editorial;
-- **`scheduled` no entra**: una programada sin fecha es un error de verdad.
-
-Comprobado contra la API en las cuatro combinaciones, con piezas de usar y tirar
-que se borraron después.
-```
-
-Firma al final:
-
-```
-Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
-```
-
-**Lo que no va en un commit**: «se ha refactorizado X», «se han añadido tests», «mejoras varias».
-Si el asunto no dice qué cambia para quien usa esto, no está terminado.
+La evidencia del cuerpo cierra con los tests que cubren el cambio y el total de la suite.
 
 ---
 
