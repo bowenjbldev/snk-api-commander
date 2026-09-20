@@ -136,6 +136,7 @@ class SnkKilkanaSettingService
             'lang' => $row->lang,
             'tz' => $row->tz,
             'search_visible' => (bool) $row->search_visible,
+            'contextual_spellcheck' => (bool) $row->contextual_spellcheck,
             'newsletter_reply_to' => $row->newsletter_reply_to,
             'legal' => self::group($row->legal, SnkKilkanaSettingModel::LEGAL),
             'social' => self::group($row->social, SnkKilkanaSettingModel::SOCIAL),
@@ -175,7 +176,7 @@ class SnkKilkanaSettingService
      */
     private function columnsFrom(array $data): array
     {
-        $columns = collect($data)->only(['theme_overrides', 'lang', 'tz', 'search_visible', 'newsletter_reply_to'])->all();
+        $columns = collect($data)->only(['theme_overrides', 'lang', 'tz', 'search_visible', 'contextual_spellcheck', 'newsletter_reply_to'])->all();
         foreach (['legal' => SnkKilkanaSettingModel::LEGAL, 'social' => SnkKilkanaSettingModel::SOCIAL] as $group => $keys) {
             if (is_array($data[$group] ?? null)) {
                 $columns[$group] = self::group($data[$group], $keys);

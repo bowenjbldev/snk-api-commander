@@ -7,6 +7,7 @@ use Packages\Kilkana\Http\Controllers\SnkKilkanaAuthController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaAuthorsController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaCategoriesController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaCommentsController;
+use Packages\Kilkana\Http\Controllers\SnkKilkanaContextualSpellcheckController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaDictionaryWordsController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaGateController;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaLayoutsController;
@@ -148,6 +149,9 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::post('tags/{id}/merge', [SnkKilkanaTagsController::class, 'merge'])->whereNumber('id');
     Route::apiResource('tags', SnkKilkanaTagsController::class)->whereNumber('tag');
     // El diccionario de la redacción: se lista, se añade y se quita. Una palabra no se edita.
+    // La corrección por contexto: sale a un proveedor externo, así que va tras el permiso de
+    // escribir piezas y con su propio límite por persona.
+    Route::post('spellcheck/contextual', [SnkKilkanaContextualSpellcheckController::class, 'choose'])->middleware(['can:update posts', 'throttle:kilkana-spellcheck']);
     Route::apiResource('dictionary-words', SnkKilkanaDictionaryWordsController::class)->only(['index', 'store', 'destroy'])->whereNumber('dictionary_word');
     // Antes del apiResource, como en posts: si no, `show` se traga «bulk» como id.
     Route::post('comments/bulk', [SnkKilkanaCommentsController::class, 'bulk']);

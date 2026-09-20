@@ -12,6 +12,22 @@ return [
      * Se lee de la cabecera antes de decodificar; por encima, 422. Con 20 y `memory_limit` 512M
      * la subida cabe; la generación parte del máster y no del original, y cabe de sobra.
      */
+    /*
+     * El corrector por contexto del editor: Jev, de TypeSafe AI, por HTTP.
+     *
+     * **La versión va fijada y no `jev-latest`**: el banco de pruebas de kilkana.app
+     * (`tests/jev-bench.mjs`) se midió contra esta, y subirla obliga a repetirlo. Sin clave, el
+     * servicio no puede llamar y el panel se queda con Hunspell.
+     */
+    'spellcheck' => [
+        'key' => env('KILKANA_TYPESAFE_API_KEY'),
+        'endpoint' => 'https://api.typesafe.ai/v1/systemone',
+        'model' => 'jev-1.13.0',
+        // Segundos. Un worker de Octane atiende una petición a la vez: una llamada colgada es
+        // un doceavo de la capacidad.
+        'timeout' => 2,
+    ],
+
     // Se lee como `kilkana.kilkana.media.*`: el proveedor fusiona este fichero bajo `kilkana`.
     'media' => [
         'max_megapixels' => (int) env('KILKANA_MEDIA_MAX_MEGAPIXELS', 20),

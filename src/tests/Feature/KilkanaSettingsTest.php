@@ -44,6 +44,7 @@ class KilkanaSettingsTest extends TestCase
         $this->assertSame('es-ES', $defaults['lang']);
         $this->assertSame('Europe/Madrid', $defaults['tz']);
         $this->assertTrue($defaults['search_visible']);
+        $this->assertFalse($defaults['contextual_spellcheck'], 'Mandar texto a un proveedor externo nace apagado.');
         $this->assertSame(['name' => null, 'email' => null], $defaults['legal']);
 
         $saved = $this->save([
@@ -51,6 +52,7 @@ class KilkanaSettingsTest extends TestCase
             'lang' => 'en-GB',
             'tz' => 'Atlantic/Canary',
             'search_visible' => false,
+            'contextual_spellcheck' => true,
             'newsletter_reply_to' => 'redaccion@eldiario.example',
             'legal' => ['name' => 'El Diario SL', 'email' => 'hola@eldiario.example', 'cif' => 'no entra'],
             'social' => ['x' => 'https://x.com/eldiario'],
@@ -59,6 +61,7 @@ class KilkanaSettingsTest extends TestCase
         $this->assertSame('en-GB', $saved['lang']);
         $this->assertSame('Atlantic/Canary', $saved['tz']);
         $this->assertFalse($saved['search_visible']);
+        $this->assertTrue($saved['contextual_spellcheck']);
         $this->assertSame('redaccion@eldiario.example', $saved['newsletter_reply_to']);
         $this->assertSame(['name' => 'El Diario SL', 'email' => 'hola@eldiario.example'], $saved['legal'], 'Solo las claves del grupo, recortadas.');
         $this->assertSame(['x' => 'https://x.com/eldiario', 'facebook' => null, 'instagram' => null], $saved['social']);

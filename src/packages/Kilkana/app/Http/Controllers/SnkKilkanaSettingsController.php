@@ -55,6 +55,7 @@ class SnkKilkanaSettingsController extends Controller
             'lang' => ['sometimes', 'string', Rule::in(SnkKilkanaSettingModel::LANGS)],
             'tz' => 'sometimes|string|timezone:all',
             'search_visible' => 'sometimes|boolean',
+            'contextual_spellcheck' => 'sometimes|boolean',
             'newsletter_reply_to' => 'nullable|email|max:255',
             'legal' => 'nullable|array',
             'legal.name' => 'nullable|string|max:255',

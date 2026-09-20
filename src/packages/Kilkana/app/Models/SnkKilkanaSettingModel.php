@@ -72,6 +72,7 @@ class SnkKilkanaSettingModel extends Model
         'lang' => self::DEFAULT_LANG,
         'tz' => self::DEFAULT_TZ,
         'search_visible' => true,
+        'contextual_spellcheck' => false,
     ];
 
     /**
@@ -98,6 +99,7 @@ class SnkKilkanaSettingModel extends Model
         return [
             'launched_at' => 'datetime',
             'search_visible' => 'boolean',
+            'contextual_spellcheck' => 'boolean',
             'theme_spec' => 'array',
             'theme_overrides' => 'array',
             'legal' => 'array',

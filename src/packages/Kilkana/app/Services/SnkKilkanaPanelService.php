@@ -79,6 +79,9 @@ class SnkKilkanaPanelService
             // panel manda a ella: la fecha de apertura, si hay tema puesto y cuántas piezas han
             // salido. Sin permiso propio porque no descubre nada que la calle no diga.
             'setup' => $this->setup(),
+            // Si el editor puede pedir la corrección por contexto. Viaja aquí y no en `settings`
+            // porque lo necesita quien escribe, que no tiene permiso para leer los ajustes.
+            'contextual_spellcheck' => (bool) SnkKilkanaSettingModel::query()->value('contextual_spellcheck'),
             // El mismo scope y **el mismo Resource** que sirven `GET categories`, `authors` y
             // `tags`: el scope arma la consulta y el Resource la forma, justo para que las dos
             // puertas no puedan enseñar columnas distintas.

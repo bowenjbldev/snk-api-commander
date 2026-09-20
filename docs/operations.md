@@ -105,6 +105,9 @@ El contenido demo está desactivado por defecto:
 
 ```text
 KILKANA_SEED_DEMO=false
+# El corrector por contexto del editor (TypeSafe AI). Sin clave, el endpoint falla en silencio
+# y el panel se queda con Hunspell. Los workers la leen al arrancar: cambiarla pide recargarlos.
+KILKANA_TYPESAFE_API_KEY=
 ```
 
 Consulta [La demo de Kilkana](products/kilkana/demo.md) antes de resembrar contenido.

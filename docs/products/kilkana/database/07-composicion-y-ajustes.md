@@ -190,6 +190,18 @@ se va a pintar y nadie lo sabría.
 
 `GET settings` (`show settings`) y `PUT settings` (`update settings`).
 
+### `contextual_spellcheck`: la única columna que manda texto fuera
+
+Booleano, `false` de serie. Encendido, `POST spellcheck/contextual` —tras `update posts` y con
+`throttle:kilkana-spellcheck`, 30 por minuto y persona— recibe del panel los párrafos con erratas
+marcadas y sus candidatos, y pregunta a Jev (TypeSafe AI) qué candidato encaja; con la columna a
+`false` responde 409 sin llamar a nadie. `SnkKilkanaContextualSpellcheckService` acota la petición,
+comprueba que lo elegido estaba entre lo enviado, guarda **decisiones** siete días —con el inquilino
+en la clave, porque el prefijo de la caché es de la instalación— y registra cifras, nunca texto.
+La clave es `KILKANA_TYPESAFE_API_KEY` y la versión del modelo va fijada en `config/kilkana.php`.
+`panel/bootstrap` lleva la columna para que quien escribe, que no lee `settings`, sepa si puede
+pedirlo. Lo fija `KilkanaContextualSpellcheckTest`.
+
 ### Sin control de concurrencia, y dicho en voz alta
 
 `theme_id` es clave foránea y no un `varchar` con el slug: la base rechaza vestir un tema que no

@@ -35,6 +35,13 @@ class KilkanaServiceProvider extends ServiceProvider
                 return Limit::perMinute($limit)->by("{$tenant}:{$request->ip()}");
             });
         }
+        // Por persona y no por IP: es una llamada autenticada y cara, y una redacción entera
+        // comparte la IP de su oficina.
+        RateLimiter::for('kilkana-spellcheck', function (Request $request) {
+            $tenant = $this->app->make(CoreActiveInstanceSupport::class)->id() ?? 'unknown';
+
+            return Limit::perMinute(30)->by("{$tenant}:".($request->user()?->getAuthIdentifier() ?? $request->ip()));
+        });
 
         // El registro de actividad escucha a los modelos desde aquí: un solo enganche, para que
         // ninguna escritura del panel pase sin dejar rastro.
