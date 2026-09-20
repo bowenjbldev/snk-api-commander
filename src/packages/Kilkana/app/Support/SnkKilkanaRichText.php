@@ -6,14 +6,14 @@ use HTMLPurifier;
 use HTMLPurifier_Config;
 
 /**
- * Saneado en el servidor del HTML rico del editor (Tiptap) antes de persistirlo. Solo admite
- * estas etiquetas y, en <p>, `text-align`. Es la frontera de confianza: lo guardado ya es seguro para su
- * renderizado posterior sin depender del cliente.
+ * Saneado en el servidor del HTML rico del editor antes de persistirlo. Solo admite estas
+ * etiquetas, `text-align` en <p> y enlaces `http`, `https` o `mailto`. Es la frontera de
+ * confianza: lo guardado ya es seguro para su renderizado posterior sin depender del cliente.
  */
 class SnkKilkanaRichText
 {
-    /** Etiquetas permitidas y `text-align` solo en <p>. */
-    private const ALLOWED = 'p[style],br,strong,b,em,i,s,code';
+    /** Etiquetas permitidas, `text-align` solo en <p> y el destino de un enlace. */
+    private const ALLOWED = 'p[style],br,strong,b,em,i,s,code,a[href]';
 
     private static ?HTMLPurifier $purifier = null;
 
@@ -56,6 +56,8 @@ class SnkKilkanaRichText
             $config = HTMLPurifier_Config::createDefault();
             $config->set('HTML.Allowed', self::ALLOWED);
             $config->set('CSS.AllowedProperties', 'text-align');
+            // Un enlace del cuerpo lleva a una web o a un correo; `javascript:` y `data:` se caen.
+            $config->set('URI.AllowedSchemes', ['http' => true, 'https' => true, 'mailto' => true]);
             // Sin caché en disco: la definición es fija y trivial, no necesita serializarse.
             $config->set('Cache.DefinitionImpl', null);
             self::$purifier = new HTMLPurifier($config);

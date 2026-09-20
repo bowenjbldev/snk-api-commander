@@ -111,10 +111,17 @@ class SnkKilkanaCategoriesController extends CoreBaseApiController
             return $response;
         }
 
+        // Con `with_posts` la sección se lleva sus piezas, y eso es borrar piezas: pide también
+        // ese permiso.
+        $withPosts = request()->boolean('with_posts');
+        if ($withPosts && ($response = $this->requirePermission('delete posts'))) {
+            return $response;
+        }
+
         $posts = SnkKilkanaPostModel::query()->where('category_id', $id)->count();
         $subsections = SnkKilkanaCategoryModel::query()->where('parent_id', $id)->count();
 
-        if ($posts > 0 || $subsections > 0) {
+        if (($posts > 0 && ! $withPosts) || $subsections > 0) {
             return response()->json([
                 'error' => 'Section in use',
                 'posts' => $posts,
@@ -123,7 +130,14 @@ class SnkKilkanaCategoriesController extends CoreBaseApiController
         }
 
         try {
-            return parent::destroy($id);
+            return SnkKilkanaCategoryModel::query()->getConnection()->transaction(function () use ($id) {
+                // Lo que está en la papelera no se cuenta arriba, pero la clave foránea sí lo ve: se
+                // purga con la sección, porque sin ella no tiene adónde volver. Con `with_posts`,
+                // las vivas también.
+                SnkKilkanaPostModel::withTrashed()->where('category_id', $id)->get()->each->forceDelete();
+
+                return parent::destroy($id);
+            });
         } catch (QueryException) {
             // Red de seguridad: entre el recuento y el borrado cabe una escritura, y mañana
             // puede haber una tercera clave foránea que este método no conozca. Nunca un 500

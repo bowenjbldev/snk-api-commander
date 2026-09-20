@@ -25,12 +25,21 @@ class SnkKilkanaRichTextTest extends TestCase
         $this->assertStringContainsString('hola', $out);
     }
 
-    public function test_blocks_javascript_links(): void
+    public function test_keeps_web_and_mail_links(): void
     {
-        // No hay <a> en el allowlist: se elimina el tag, sobrevive el texto.
-        $out = SnkKilkanaRichText::clean('<a href="javascript:alert(1)">click</a>');
-        $this->assertStringNotContainsString('javascript', $out);
-        $this->assertStringNotContainsString('<a', $out);
+        $html = '<a href="https://eldiario.example/pleno">el pleno</a> y <a href="mailto:redaccion@eldiario.example">la redacción</a>';
+        $this->assertSame($html, SnkKilkanaRichText::clean($html));
+    }
+
+    public function test_blocks_javascript_and_data_links(): void
+    {
+        // El enlace pierde el destino y el texto sobrevive.
+        foreach (['javascript:alert(1)', 'data:text/html;base64,PHNjcmlwdD4='] as $href) {
+            $out = SnkKilkanaRichText::clean('<a href="'.$href.'">click</a>');
+            $this->assertStringNotContainsString('javascript', $out);
+            $this->assertStringNotContainsString('data:', $out);
+            $this->assertStringContainsString('click', $out);
+        }
     }
 
     public function test_only_allows_text_align_on_paragraphs(): void

@@ -79,6 +79,16 @@ Y conviene contar las dos cosas **antes** de intentarlo, no descubrirlas por el 
 base informa solo del primer obstáculo con el que tropieza, así que quien vacíe los
 artículos para luego chocar con las subsecciones hace el viaje dos veces.
 
+**La papelera no cuenta, pero la clave foránea sí la ve.** Una pieza tirada tiene `deleted_at` y
+sigue apuntando a su sección, así que el recuento la ignora y el `RESTRICT` no. Por eso borrar
+una sección purga antes, en la misma transacción, lo suyo que solo queda en la papelera: sin la
+sección no tendría adónde volver. Sin esto, una sección cuyas piezas están todas tiradas pasaba el
+recuento y chocaba con la base, que devolvía un `409` sin cuentas.
+
+**Y con `?with_posts=1` se va con todas sus piezas**, vivas o tiradas, purgadas para siempre. Es
+borrar piezas, así que exige además `delete posts`. Las subsecciones siguen bloqueando: una rama
+se mueve, no se borra de paso.
+
 ## Una subsección necesita que algo la enlace
 
 Una hija sin ningún enlace entrante es una página huérfana: existe, se puede anunciar en un

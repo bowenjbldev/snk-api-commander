@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -239,6 +240,74 @@ class KilkanaCategoriesTest extends TestCase
     }
 
     /** El listado tal como sale por la API, sin pasar por HTTP: lo que se prueba es la consulta. */
+    /** Una sección con piezas no se va sola; con `with_posts` se va con todas, también las de la papelera. */
+    public function test_a_section_with_posts_is_deleted_only_together_with_them(): void
+    {
+        $this->actingWith(role: 'editor_in_chief');
+        $local = $this->category('Local', 'local', 'draft');
+        $byline = $this->author('Ada Prat');
+        $this->makePost('Borrador', $local, $byline, 'draft');
+        $this->makePost('Tirada', $local, $byline, 'draft')->delete();
+
+        $refused = $this->deleteSection($local->id);
+        $this->assertSame(409, $refused->getStatusCode());
+        $this->assertSame(1, $refused->getData(true)['posts'], 'La papelera no cuenta como contenido de la sección.');
+
+        $this->assertSame(200, $this->deleteSection($local->id, withPosts: true)->getStatusCode());
+        $this->assertNull(SnkKilkanaCategoryModel::query()->find($local->id));
+        $this->assertSame(0, SnkKilkanaPostModel::withTrashed()->count());
+    }
+
+    /** Lo que solo queda en la papelera no bloquea: se purga con la sección, en vez de un 409 sin cuentas. */
+    public function test_posts_in_the_trash_do_not_block_deleting_their_section(): void
+    {
+        $this->actingWith(role: 'editor_in_chief');
+        $local = $this->category('Local', 'local', 'draft');
+        $this->makePost('Tirada', $local, $this->author('Ada Prat'), 'draft')->delete();
+
+        $this->assertSame(200, $this->deleteSection($local->id)->getStatusCode());
+        $this->assertSame(0, SnkKilkanaPostModel::withTrashed()->count());
+    }
+
+    /** Llevarse las piezas es borrar piezas: sin ese permiso no se toca nada. */
+    public function test_deleting_a_section_with_its_posts_needs_the_permission_to_delete_posts(): void
+    {
+        $this->actingWith(permission: 'delete categories');
+        $local = $this->category('Local', 'local', 'draft');
+        $this->makePost('Borrador', $local, $this->author('Ada Prat'), 'draft');
+
+        $this->assertSame(403, $this->deleteSection($local->id, withPosts: true)->getStatusCode());
+        $this->assertSame(1, SnkKilkanaPostModel::query()->count());
+        $this->assertNotNull(SnkKilkanaCategoryModel::query()->find($local->id));
+    }
+
+    /** Las subsecciones bloquean aunque se pida llevarse las piezas: una rama se mueve, no se borra de paso. */
+    public function test_subsections_block_deleting_even_with_its_posts(): void
+    {
+        $this->actingWith(role: 'editor_in_chief');
+        $local = $this->category('Local', 'local', 'draft');
+        SnkKilkanaCategoryModel::create(['name' => 'Barrios', 'slug' => 'barrios', 'status' => 'draft', 'position' => 0, 'parent_id' => $local->id]);
+
+        $refused = $this->deleteSection($local->id, withPosts: true);
+        $this->assertSame(409, $refused->getStatusCode());
+        $this->assertSame(1, $refused->getData(true)['subsections']);
+    }
+
+    private function actingWith(?string $role = null, ?string $permission = null): void
+    {
+        app(SnkKilkanaRoleCatalogService::class)->sync();
+        $user = CoreUserModel::create(['name' => 'Marta', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
+        $role !== null ? $user->assignRole($role) : $user->givePermissionTo($permission);
+        $this->actingAs($user, 'sanctum');
+    }
+
+    private function deleteSection(int $id, bool $withPosts = false): JsonResponse
+    {
+        $this->app->instance('request', Request::create('/', 'DELETE', $withPosts ? ['with_posts' => '1'] : []));
+
+        return app(SnkKilkanaCategoriesController::class)->destroy($id);
+    }
+
     private function index(): array
     {
         $controller = new class extends SnkKilkanaCategoriesController
