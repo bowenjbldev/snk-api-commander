@@ -107,7 +107,7 @@ class SnkKilkanaPostService
     public const FIELDS = [
         'id', 'title', 'excerpt', 'slug', 'status', 'content_tier',
         'publish_at', 'unpublish_at', 'updated_at', 'created_at',
-        'url_date', 'cover_media_id', 'og_image_id', 'noindex', 'featured',
+        'url_date', 'cover_media_id', 'cover_alt', 'cover_caption', 'og_image_id', 'noindex', 'featured',
         // Las foráneas de las relaciones incluidas. **Sin ellas la relación llega nula**: un
         // `belongsTo` empareja lo cargado con la clave de la fila, y si el recorte se la lleva,
         // Eloquent no tiene con qué emparejar y no avisa. Quien incluye una relación pide también

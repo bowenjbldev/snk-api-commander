@@ -148,6 +148,12 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             $this->{$property}['publish_at'] = $onPublish.'|nullable|date';
             // La retirada programada: nula es «no se retira»; con fecha, siempre por delante.
             $this->{$property}['unpublish_at'] = 'sometimes|nullable|date|after:now';
+            // El alt y el pie de la foto en esta pieza, de la portada y de cada bloque de imagen.
+            // Vacíos heredan los de la ficha de la mediateca.
+            $this->{$property}['cover_alt'] = 'nullable|string|max:500';
+            $this->{$property}['cover_caption'] = 'nullable|string|max:500';
+            $this->{$property}['body_blocks.*.config.alt'] = 'sometimes|nullable|string|max:500';
+            $this->{$property}['body_blocks.*.config.caption'] = 'sometimes|nullable|string|max:500';
         }
     }
 

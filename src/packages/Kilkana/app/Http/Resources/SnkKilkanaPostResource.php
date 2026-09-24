@@ -31,6 +31,10 @@ class SnkKilkanaPostResource extends JsonResource
             // Columna de verdad, no el objeto `cover` de la relación: el panel solo
             // guarda el id para pedirle la imagen a la mediateca.
             'cover_media_id' => $this->whenHas('cover_media_id'),
+            // El alt y el pie de la portada en esta pieza. Nulos heredan los de la ficha, y la
+            // herencia la resuelve quien pinta: aquí va lo guardado.
+            'cover_alt' => $this->whenHas('cover_alt'),
+            'cover_caption' => $this->whenHas('cover_caption'),
             // El alias del `withSum` de audiencia. Solo está si la consulta lo pidió, y por eso
             // se declara igual que una columna: para el Resource no hay diferencia.
             'views_total' => $this->whenHas('views_total'),

@@ -69,7 +69,7 @@ class SnkKilkanaPublicService
         'id', 'title', 'excerpt', 'slug', 'status', 'content_tier',
         'publish_at', 'unpublish_at', 'updated_at', 'url_date',
         'noindex', 'seo_title', 'seo_description', 'og_title', 'og_description', 'og_image_id',
-        'category_id', 'author_id', 'cover_media_id',
+        'category_id', 'author_id', 'cover_media_id', 'cover_alt', 'cover_caption',
         'categories.id', 'categories.name', 'categories.slug', 'categories.parent_id',
         'authors.id', 'authors.alias', 'authors.slug', 'authors.noindex', 'authors.user_id',
         'authors.avatar_media_id',

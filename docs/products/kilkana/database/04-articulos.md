@@ -13,6 +13,8 @@ audiencia, sus notas de mesa y sus etiquetas.
 | `author_id`                 | bigint unsigned             | no                | Firma. Quién aparece firmando.                                                                                                               |
 | `category_id`               | bigint unsigned             | no                | Sección. Una y solo una.                                                                                                                     |
 | `cover_media_id`            | bigint unsigned             | sí                | Foto de portada.                                                                                                                             |
+| `cover_alt`                 | varchar(500)                | sí                | Alt de la portada en esta pieza. Nulo hereda el de la ficha.                                                                                 |
+| `cover_caption`             | varchar(500)                | sí                | Pie de la portada en esta pieza. Nulo hereda el de la ficha.                                                                                 |
 | `og_image_id`               | bigint unsigned             | sí                | Imagen para redes, cuando la portada no vale.                                                                                                |
 | `title`                     | varchar(500)                | no                | Titular.                                                                                                                                     |
 | `excerpt`                   | text                        | sí                | Entradilla. **Nula = todavía no escrita**: un borrador nace con el titular y poco más. La API la exige al pasar a `scheduled` o `published`. |
@@ -273,7 +275,10 @@ cuál de las tres cosas pasó. Lleva el freno `kilkana-signed`, como los enlaces
 del cuerpo, **`media`**: las fotos que los bloques de imagen nombran por `media_id`, resueltas a
 `url`, `alt`, `caption`, `credit` y medidas. Van aparte y no dentro del bloque para que el bloque
 siga siendo el que el editor escribe, y porque la calle no tiene con qué pedirlas una a una: la
-mediateca es del panel. `public/site` da la cabecera del periódico y el tema resuelto
+mediateca es del panel. Un bloque de imagen puede llevar además `config.alt` y `config.caption` —hasta 500
+caracteres—, y la portada `cover_alt` y `cover_caption`: son el alt y el pie de la foto **en esa
+pieza**. La API devuelve lo guardado y **la herencia la resuelve quien pinta**: vacío usa el de la
+ficha de `media` o de `cover`. `public/site` da la cabecera del periódico y el tema resuelto
 (`themePayload()`), o `null` mientras no se haya vestido ninguno.
 
 `public/posts` es la lista de tarjetas —sin cuerpo— ordenada por fecha, con `category`, `author`,

@@ -63,6 +63,40 @@ class KilkanaPostCoverTest extends TestCase
         $this->assertNull($post->fresh()->cover_media_id, 'Vacío quita la foto.');
     }
 
+    /** El alt y el pie de la foto en esta pieza se guardan tal cual; nulos, heredan los de la ficha. */
+    public function test_the_cover_and_image_blocks_keep_their_own_alt_and_caption(): void
+    {
+        $marta = CoreUserModel::create(['name' => 'Marta Beneyto', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
+        $marta->assignRole('editor_in_chief');
+        $this->actingAs($marta, 'sanctum');
+        $section = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
+        $byline = SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);
+        $photo = SnkKilkanaMediaModel::create(['url' => '/storage/a.jpg', 'url_hash' => sha1('a'), 'alt' => 'La plaza']);
+        $post = SnkKilkanaPostModel::create(['title' => 'Plan', 'slug' => 'plan', 'category_id' => $section->id, 'author_id' => $byline->id, 'status' => 'draft', 'body_blocks' => [], 'created_by' => $marta->id, 'updated_by' => $marta->id]);
+        $save = fn (array $body) => app(SnkKilkanaPostsController::class)->update(Request::create('/', 'PUT', $body), $post->id);
+
+        $image = ['id' => 'b1', 'type' => 'image', 'config' => ['media_id' => $photo->id, 'alt' => 'La plaza, vacía al amanecer', 'caption' => 'Antes de la feria.']];
+        $this->assertSame(200, $save([
+            'cover_media_id' => $photo->id,
+            'cover_alt' => 'La plaza llena de puestos',
+            'cover_caption' => 'El primer día de la feria.',
+            'body_blocks' => [$image],
+        ])->getStatusCode());
+        $fresh = $post->fresh();
+        $this->assertSame('La plaza llena de puestos', $fresh->cover_alt);
+        $this->assertSame('El primer día de la feria.', $fresh->cover_caption);
+        $this->assertSame('La plaza, vacía al amanecer', $fresh->body_blocks[0]['config']['alt']);
+        $this->assertSame('La plaza', $photo->fresh()->alt, 'La ficha de la mediateca no se toca.');
+
+        $long = str_repeat('a', 501);
+        $this->assertSame(422, $save(['cover_alt' => $long])->getStatusCode());
+        $image['config']['alt'] = $long;
+        $this->assertSame(422, $save(['body_blocks' => [$image]])->getStatusCode(), 'El alt de un bloque tiene el mismo tope.');
+
+        $this->assertSame(200, $save(['cover_alt' => null, 'cover_caption' => null])->getStatusCode());
+        $this->assertNull($post->fresh()->cover_alt, 'Vacío vuelve a heredar.');
+    }
+
     /** Quien guarda desde una versión vieja no pisa la nueva: se le dice quién y cuándo. */
     public function test_saving_from_a_stale_version_returns_who_wrote_over_it(): void
     {
