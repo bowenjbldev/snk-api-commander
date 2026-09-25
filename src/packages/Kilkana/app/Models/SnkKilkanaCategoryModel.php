@@ -83,6 +83,9 @@ class SnkKilkanaCategoryModel extends Model
             ->withCount('posts')
             ->withMax(['posts as last_published_at' => fn ($q) => $q->published()], 'publish_at')
             ->with(['retiredSlugs' => fn ($q) => $q->orderByDesc('created_at')])
+            // La madre, para `parent_slug` y `parent_name`: el panel dibuja las secciones en
+            // árbol, y sin ella una hija se lee como una sección de primer nivel.
+            ->with('parent:id,name,slug')
             ->orderBy('position')
             ->orderBy('id');
     }
