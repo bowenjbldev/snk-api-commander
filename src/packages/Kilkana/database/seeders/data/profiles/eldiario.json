@@ -3,8 +3,8 @@
  "demo": true,
  "theme": "folio",
  "tenant": {
-  "name": "El Diario",
-  "tagline": "La comarca, contada despacio · Edición digital",
+  "name": "El Pregonero",
+  "tagline": "Noticias de plaza en plaza",
   "city": "Alzira"
  },
  "launched": true

@@ -494,7 +494,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
      * El periódico de la demo. `users.company` es la ORGANIZACIÓN de cada cuenta: para la
      * plantilla, esta; para quien colabora desde fuera, la suya.
      */
-    private const NEWSPAPER = 'El Diario';
+    private const NEWSPAPER = 'El Pregonero';
 
     /**
      * Quien firma sin estar en plantilla.
