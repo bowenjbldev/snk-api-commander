@@ -57,7 +57,6 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
     {
         $spec = [
             'specVersion' => 2,
-            'masthead' => 'daily',
             'grid' => ['sheet' => 1200, 'columns' => 12, 'gutter' => 24],
             'tokens' => [
                 'brand' => '#121212', 'brandDark' => '#000000', 'brandSoft' => '#f2f2f2',
@@ -145,14 +144,6 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
 
         $this->assertNotSame([], $errors);
         $this->assertStringContainsString('accent', $errors[0]);
-    }
-
-    public function test_it_refuses_a_masthead_that_no_component_can_paint(): void
-    {
-        $spec = $this->spec();
-        $spec['masthead'] = 'neon';
-
-        $this->assertStringContainsString('masthead', $this->validator()->validate($spec)[0]);
     }
 
     /** Un color que falta no puede pasar por bueno solo porque los demás estén. */

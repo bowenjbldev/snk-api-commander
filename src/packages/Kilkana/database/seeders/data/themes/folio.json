@@ -14,7 +14,6 @@
     ],
     "spec": {
         "specVersion": 2,
-        "masthead": "daily",
         "grid": {
             "sheet": 1200,
             "columns": 12,
@@ -46,11 +45,12 @@
         "type": {
             "display": "Georgia, 'Times New Roman', serif",
             "text": "Geist, system-ui, -apple-system, sans-serif",
+            "masthead": "Fraunces, Georgia, serif",
             "steps": {
                 "masthead": {
-                    "size": 46,
-                    "weight": 700,
-                    "tracking": "-0.03em",
+                    "size": 68,
+                    "weight": 600,
+                    "tracking": "-0.025em",
                     "leading": 1
                 },
                 "hero": {

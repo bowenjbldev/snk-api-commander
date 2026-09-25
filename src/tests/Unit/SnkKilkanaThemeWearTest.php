@@ -111,7 +111,7 @@ class SnkKilkanaThemeWearTest extends TestCase
     public function test_a_theme_without_overrides_serialises_them_as_an_empty_object(): void
     {
         $settings = new SnkKilkanaSettingModel([
-            'theme_spec' => ['masthead' => 'daily', 'tokens' => ['brand' => '#121212']],
+            'theme_spec' => ['specVersion' => 2, 'tokens' => ['brand' => '#121212']],
             'theme_version' => '2.0.0',
         ]);
 
@@ -175,7 +175,7 @@ class SnkKilkanaThemeWearTest extends TestCase
 
         $settings = new SnkKilkanaSettingModel([
             'theme_id' => 3,
-            'theme_spec' => ['masthead' => 'daily', 'tokens' => ['brand' => '#121212']],
+            'theme_spec' => ['specVersion' => 2, 'tokens' => ['brand' => '#121212']],
             'theme_version' => '2.0.0',
             'tenant_name' => 'The Beacon',
             'tenant_city' => 'Springfield',
@@ -187,7 +187,7 @@ class SnkKilkanaThemeWearTest extends TestCase
 
         $this->assertSame(3, $payload['theme_id']);
         // El tema viaja con su spec resuelto: quien pinta no necesita otra llamada.
-        $this->assertSame('daily', $payload['theme']['spec']->masthead);
+        $this->assertSame(2, $payload['theme']['spec']->specVersion);
         $this->assertSame('folio', $payload['theme']['slug']);
         $this->assertSame(['name' => 'The Beacon', 'tagline' => null, 'city' => 'Springfield', 'url' => null], $payload['tenant']);
         $this->assertSame('2026-09-07T10:00:00+00:00', $payload['launched_at']);

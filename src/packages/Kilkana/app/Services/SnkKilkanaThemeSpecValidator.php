@@ -33,9 +33,6 @@ class SnkKilkanaThemeSpecValidator
      */
     public const SPEC_VERSION = 2;
 
-    /** Cabeceras soportadas por el contrato del producto; no son datos libres. */
-    public const MASTHEADS = ['compact', 'daily'];
-
     /**
      * Los peldaños de la escala tipográfica: diez, y los diez obligatorios.
      *
@@ -117,7 +114,7 @@ class SnkKilkanaThemeSpecValidator
     /**
      * El presupuesto de una plantilla, y la métrica de Lighthouse que protege cada tope.
      *
-     * **Un tema es un dato: se publica sin desplegar nada.** Eso lo convierte en el sitio
+     * **El spec de un tema es un dato: se cambia sin desplegar nada.** Eso lo convierte en el sitio
      * exacto por donde un periódico se vuelve lento sin que nadie lo revise, porque basta con
      * pedir cuarenta bloques y ciento veinte fotos y el JSON entra igual.
      *
@@ -185,10 +182,6 @@ class SnkKilkanaThemeSpecValidator
         }
 
         $errors = [];
-
-        if (! in_array($spec['masthead'] ?? null, self::MASTHEADS, true)) {
-            $errors[] = 'masthead: must be one of '.implode(', ', self::MASTHEADS);
-        }
 
         $tokens = $this->arr($spec, 'tokens');
         $errors = [
@@ -324,6 +317,11 @@ class SnkKilkanaThemeSpecValidator
             if (! is_string($type[$key] ?? null) || trim($type[$key]) === '') {
                 $errors[] = "type.{$key}: missing font family";
             }
+        }
+
+        // La familia del nombre del periódico es opcional: sin ella, el nombre va en la del titular.
+        if (array_key_exists('masthead', $type) && (! is_string($type['masthead']) || trim($type['masthead']) === '')) {
+            $errors[] = 'type.masthead: empty font family';
         }
 
         $steps = is_array($type['steps'] ?? null) ? $type['steps'] : [];

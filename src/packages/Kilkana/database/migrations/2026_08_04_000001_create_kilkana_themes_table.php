@@ -14,9 +14,9 @@ use Packages\Kilkana\Enums\SnkKilkanaThemeStatusEnum;
  * lleva puesto. Un nivel intermedio obligaría a elegir dos veces antes de ver un periódico y
  * triplicaría el trabajo de diseñar cada tema.
  *
- * Y el tema baja entero a la base porque es JSON: tokens, tipografía, rejilla, `masthead`
- * (un enum de dos valores) y las plantillas de arranque son todo dato serializable. Publicar un
- * tema no exige desplegar el frontend.
+ * Y el spec del tema baja entero a la base porque es JSON: tokens, tipografía, rejilla y las
+ * plantillas de arranque son todo dato serializable. Lo que no baja es cómo se dibuja: la
+ * cabecera y los bloques de cada tema viven en su carpeta del frontend, por su slug.
  *
  * `status` existe por el mismo motivo que en las secciones: un tema se prepara antes de
  * ofrecerlo, y retirarlo no puede romper a quien ya lo viste. Como vestirse guarda una copia
