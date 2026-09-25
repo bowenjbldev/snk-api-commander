@@ -65,7 +65,7 @@ class SnkKilkanaThemeSpecValidator
         // Portada y sección
         'lead-story', 'lead-briefs', 'two-up', 'three-up', 'four-up', 'mosaic',
         'river', 'brief-list', 'photo-essay', 'opinion-strip',
-        'most-read', 'latest-in-category', 'live-ticker', 'topic-strip',
+        'most-read', 'latest-in-category', 'live-ticker',
         'newsletter-card', 'ad-slot', 'agenda',
         // Cuerpo del artículo
         'paragraph', 'heading', 'image', 'quote', 'list', 'embed',

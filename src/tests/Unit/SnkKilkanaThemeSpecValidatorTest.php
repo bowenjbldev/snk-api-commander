@@ -256,8 +256,8 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
     }
 
     /**
-     * Los cinco bloques compuestos tienen que entrar: `lead-briefs`, `brief-list`, `four-up`,
-     * `mosaic` y `topic-strip`.
+     * Los cuatro bloques compuestos tienen que entrar: `lead-briefs`, `brief-list`, `four-up` y
+     * `mosaic`.
      *
      * La banda va la tercera y no la segunda a propósito: `lead-briefs` más `four-up` más
      * `mosaic` son diez fotos, y sobre el pliegue eso es justo lo que el presupuesto para.
@@ -268,7 +268,7 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
         $spec['layouts']['section'][] = $this->row([[12, ['brief-list']]]);
         $spec['layouts']['section'][] = $this->row([
             [6, ['lead-briefs', 'brief-list']],
-            [6, ['four-up', 'mosaic', 'topic-strip']],
+            [6, ['four-up', 'mosaic']],
         ]);
 
         $this->assertSame([], $this->validator()->validate($spec));

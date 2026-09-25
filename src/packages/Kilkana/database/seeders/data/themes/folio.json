@@ -152,18 +152,6 @@
                 {
                     "cols": [
                         {
-                            "span": 12,
-                            "blocks": [
-                                {
-                                    "type": "topic-strip"
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "cols": [
-                        {
                             "span": 9,
                             "blocks": [
                                 {
@@ -735,18 +723,6 @@
                 }
             ],
             "section": [
-                {
-                    "cols": [
-                        {
-                            "span": 12,
-                            "blocks": [
-                                {
-                                    "type": "topic-strip"
-                                }
-                            ]
-                        }
-                    ]
-                },
                 {
                     "cols": [
                         {
