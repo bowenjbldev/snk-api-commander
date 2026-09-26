@@ -17,12 +17,7 @@
         "grid": {
             "sheet": 1200,
             "columns": 12,
-            "gutter": 24,
-            "rule": {
-                "width": 1,
-                "color": "borderSubtle",
-                "style": "solid"
-            }
+            "gutter": 24
         },
         "tokens": {
             "brand": "#111111",
@@ -103,7 +98,7 @@
                     "family": "text"
                 },
                 "band": {
-                    "size": 18,
+                    "size": 13,
                     "weight": 700,
                     "tracking": "0.08em",
                     "leading": 1.2,
@@ -594,7 +589,7 @@
                     },
                     "cols": [
                         {
-                            "span": 3,
+                            "span": 4,
                             "blocks": [
                                 {
                                     "type": "most-read",
@@ -611,7 +606,30 @@
                             ]
                         },
                         {
-                            "span": 3,
+                            "span": 8,
+                            "blocks": [
+                                {
+                                    "type": "two-up",
+                                    "config": {
+                                        "standfirst": true,
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 2,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "header": {
+                        "text": "Latest by section"
+                    },
+                    "cols": [
+                        {
+                            "span": 4,
                             "blocks": [
                                 {
                                     "type": "latest-in-category",
@@ -630,7 +648,7 @@
                             ]
                         },
                         {
-                            "span": 3,
+                            "span": 4,
                             "blocks": [
                                 {
                                     "type": "latest-in-category",
@@ -649,7 +667,7 @@
                             ]
                         },
                         {
-                            "span": 3,
+                            "span": 4,
                             "blocks": [
                                 {
                                     "type": "latest-in-category",
