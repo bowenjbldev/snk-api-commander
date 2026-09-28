@@ -47,11 +47,18 @@ class SnkKilkanaThemeSpecValidator
         'standfirst', 'meta', 'band', 'masthead', 'nav',
     ];
 
+    /**
+     * Las formas de sección **por puesto del menú**: `layouts.sectionByNth[0]` viste al primer
+     * puesto, el segundo al segundo, y un puesto sin forma cae en `layouts.section`. Por
+     * posición y no por nombre, porque un tema no conoce las secciones del periódico.
+     */
+    public const SECTION_BY_NTH = 'sectionByNth';
+
     /** Los cinco recortes con nombre. Un bloque pide uno y el tema decide cuál es. */
     public const RATIO_KEYS = ['hero', 'card', 'thumb', 'portrait', 'square'];
 
     /**
-     * Los tipos de bloque del editor: los diecisiete de portada y los diez del cuerpo.
+     * Los tipos de bloque del editor: los dieciséis de portada y los diez del cuerpo.
      *
      * Ninguno inventado: salen de contar las formas de trece portadas reales medidas. Un tipo
      * desconocido en una plantilla no se descarta como hace el normalizador del editor —ahí es
@@ -466,105 +473,141 @@ class SnkKilkanaThemeSpecValidator
         }
 
         foreach ($layouts as $layout => $rows) {
+            // Una forma de sección por puesto del menú: no es un documento sino una LISTA de
+            // documentos, y cada uno se valida entero y con su propio presupuesto. Tampoco se
+            // guarda: como el de arranque, es del tema, y por eso no está en el enum.
+            if ($layout === self::SECTION_BY_NTH) {
+                if (! is_array($rows) || $rows === [] || ! array_is_list($rows)) {
+                    $errors[] = "layouts.{$layout}: a list of documents, one per menu slot, and it comes empty or is not a list";
+
+                    continue;
+                }
+                foreach ($rows as $n => $document) {
+                    // Una forma vacía no viste ningún puesto: el frontend la rechaza igual.
+                    if (! is_array($document) || $document === []) {
+                        $errors[] = "layouts.{$layout}[{$n}]: not a composable document";
+
+                        continue;
+                    }
+                    $errors = [...$errors, ...$this->checkDocument("{$layout}[{$n}]", $document, $total, true)];
+                }
+
+                continue;
+            }
+
             if (! in_array($layout, $known, true)) {
                 $errors[] = "layouts.{$layout}: not a composable document";
 
                 continue;
             }
 
-            // El presupuesto se cuenta mientras se recorre, que es el único recorrido que hay:
-            // contarlo aparte sería recorrer dos veces lo mismo para decir lo mismo.
-            $blocks = 0;
-            $photos = 0;
-            $aboveFold = 0;
+            $errors = [...$errors, ...$this->checkDocument($layout, $rows, $total, $layout === 'section')];
+        }
 
-            foreach ((array) $rows as $i => $row) {
-                $where = "layouts.{$layout}[{$i}]";
-                $columns = is_array($row) && is_array($row['cols'] ?? null) ? $row['cols'] : [];
+        return $errors;
+    }
 
-                if ($columns === []) {
-                    $errors[] = "{$where}: a row needs at least one column";
+    /**
+     * Un documento del tema, fila a fila, con su presupuesto. `$ofSection` es un documento de
+     * sección: sus filas derivan el rótulo de la sección que se estrena sin declararla.
+     */
+    private function checkDocument(string $layout, mixed $rows, int $total, bool $ofSection): array
+    {
+        $errors = [];
+
+        if (! is_array($rows) || ! array_is_list($rows)) {
+            return ["layouts.{$layout}: a document is a list of rows"];
+        }
+
+        // El presupuesto se cuenta mientras se recorre, que es el único recorrido que hay:
+        // contarlo aparte sería recorrer dos veces lo mismo para decir lo mismo.
+        $blocks = 0;
+        $photos = 0;
+        $aboveFold = 0;
+
+        foreach ($rows as $i => $row) {
+            $where = "layouts.{$layout}[{$i}]";
+            $columns = is_array($row) && is_array($row['cols'] ?? null) ? $row['cols'] : [];
+
+            if ($columns === []) {
+                $errors[] = "{$where}: a row needs at least one column";
+
+                continue;
+            }
+
+            // La suma tiene que cuadrar: una fila que no llena la rejilla deja un hueco que
+            // nadie pidió, y una que se pasa desborda la hoja sin aviso.
+            $sum = array_sum(array_map(fn ($c) => is_array($c) ? ($c['span'] ?? 0) : 0, $columns));
+            if ($total > 0 && $sum !== $total) {
+                $errors[] = "{$where}: the spans add up to {$sum} and the grid has {$total}";
+            }
+
+            foreach ($columns as $column) {
+                $columnBlocks = is_array($column) && is_array($column['blocks'] ?? null) ? $column['blocks'] : [];
+                if ($columnBlocks === []) {
+                    $errors[] = "{$where}: a column needs at least one block";
 
                     continue;
                 }
 
-                // La suma tiene que cuadrar: una fila que no llena la rejilla deja un hueco que
-                // nadie pidió, y una que se pasa desborda la hoja sin aviso.
-                $sum = array_sum(array_map(fn ($c) => is_array($c) ? ($c['span'] ?? 0) : 0, $columns));
-                if ($total > 0 && $sum !== $total) {
-                    $errors[] = "{$where}: the spans add up to {$sum} and the grid has {$total}";
-                }
-
-                foreach ($columns as $column) {
-                    $columnBlocks = is_array($column) && is_array($column['blocks'] ?? null) ? $column['blocks'] : [];
-                    if ($columnBlocks === []) {
-                        $errors[] = "{$where}: a column needs at least one block";
+                foreach ($columnBlocks as $block) {
+                    $blockType = is_array($block) ? ($block['type'] ?? null) : null;
+                    if (! in_array($blockType, self::BLOCK_TYPES, true)) {
+                        $errors[] = "{$where}: «".(is_scalar($blockType) ? $blockType : '?').'» is not an editor block';
 
                         continue;
                     }
 
-                    foreach ($columnBlocks as $block) {
-                        $blockType = is_array($block) ? ($block['type'] ?? null) : null;
-                        if (! in_array($blockType, self::BLOCK_TYPES, true)) {
-                            $errors[] = "{$where}: «".(is_scalar($blockType) ? $blockType : '?').'» is not an editor block';
-
-                            continue;
-                        }
-
-                        $blocks++;
-                        $n = $this->imagesIn($block);
-                        $photos += $n;
-                        // Las dos primeras bandas son lo que se ve sin desplazar, y ahí está el
-                        // LCP: lo que cargue por encima del pliegue compite con él.
-                        if ($i < 2) {
-                            $aboveFold += $n;
-                        }
-
-                        $errors = [
-                            ...$errors,
-                            ...$this->checkSection(
-                                $block['config']['data']['section'] ?? null,
-                                "{$where}.blocks.data.section"
-                            ),
-                            ...$this->checkMin($block, $where),
-                        ];
+                    $blocks++;
+                    $n = $this->imagesIn($block);
+                    $photos += $n;
+                    // Las dos primeras bandas son lo que se ve sin desplazar, y ahí está el
+                    // LCP: lo que cargue por encima del pliegue compite con él.
+                    if ($i < 2) {
+                        $aboveFold += $n;
                     }
-                }
 
-                $errors = [...$errors, ...$this->checkSection($row['section'] ?? null, "{$where}.section")];
-
-                $header = is_array($row['header'] ?? null) ? $row['header'] : null;
-                if ($header !== null) {
-                    // Un rótulo derivado necesita de dónde derivarlo. En el documento de
-                    // sección la fuente es la que se estrena; en la portada la declara la fila,
-                    // o el rótulo sale vacío y la banda pierde la mitad de lo que la separa de
-                    // la de al lado.
-                    if (($header['from'] ?? null) === 'section') {
-                        if ($layout !== 'section' && ! isset($row['section'])) {
-                            $errors[] = "{$where}.header: derives from the section and the row declares none";
-                        }
-                    } elseif (trim((string) ($header['text'] ?? '')) === '') {
-                        $errors[] = "{$where}.header: the label cannot be empty";
-                    }
-                }
-
-                foreach ((array) ($row['skin'] ?? []) as $key => $value) {
-                    if ($key !== 'bleed' && ! $this->isColor($value)) {
-                        $errors[] = "{$where}.skin.{$key}: hex or theme key";
-                    }
+                    $errors = [
+                        ...$errors,
+                        ...$this->checkSection(
+                            $block['config']['data']['section'] ?? null,
+                            "{$where}.blocks.data.section"
+                        ),
+                        ...$this->checkMin($block, $where),
+                    ];
                 }
             }
 
-            $errors = [
-                ...$errors,
-                ...$this->overBudget($layout, 'bands', count((array) $rows), 'bands', 'DOM size'),
-                ...$this->overBudget($layout, 'blocks', $blocks, 'blocks', 'DOM size and TBT'),
-                ...$this->overBudget($layout, 'photos', $photos, 'images', 'page weight'),
-                ...$this->overBudget($layout, 'photos above the fold', $aboveFold, 'fold', 'LCP'),
-            ];
+            $errors = [...$errors, ...$this->checkSection($row['section'] ?? null, "{$where}.section")];
+
+            $header = is_array($row['header'] ?? null) ? $row['header'] : null;
+            if ($header !== null) {
+                // Un rótulo derivado necesita de dónde derivarlo. En un documento de sección la
+                // fuente es la que se estrena; en la portada la declara la fila, o el rótulo
+                // sale vacío y la banda pierde la mitad de lo que la separa de la de al lado.
+                if (($header['from'] ?? null) === 'section') {
+                    if (! $ofSection && ! isset($row['section'])) {
+                        $errors[] = "{$where}.header: derives from the section and the row declares none";
+                    }
+                } elseif (! $this->hasLabel($header['text'] ?? null)) {
+                    $errors[] = "{$where}.header: the label cannot be empty";
+                }
+            }
+
+            foreach ((array) ($row['skin'] ?? []) as $key => $value) {
+                if ($key !== 'bleed' && ! $this->isColor($value)) {
+                    $errors[] = "{$where}.skin.{$key}: hex or theme key";
+                }
+            }
         }
 
-        return $errors;
+        return [
+            ...$errors,
+            ...$this->overBudget($layout, 'bands', count($rows), 'bands', 'DOM size'),
+            ...$this->overBudget($layout, 'blocks', $blocks, 'blocks', 'DOM size and TBT'),
+            ...$this->overBudget($layout, 'photos', $photos, 'images', 'page weight'),
+            ...$this->overBudget($layout, 'photos above the fold', $aboveFold, 'fold', 'LCP'),
+        ];
     }
 
     private function overBudget(string $layout, string $what, int $count, string $cap, string $metric): array
@@ -703,6 +746,27 @@ class SnkKilkanaThemeSpecValidator
     private function isHex(mixed $value): bool
     {
         return is_string($value) && preg_match('/^#[0-9a-f]{6}$/i', $value) === 1;
+    }
+
+    /**
+     * Un rótulo escrito: una cadena, o una por idioma del CMS
+     * (`{"es-ES": "Lo más leído", "en-GB": "Most read"}`), ninguna vacía.
+     */
+    private function hasLabel(mixed $text): bool
+    {
+        if (is_string($text)) {
+            return trim($text) !== '';
+        }
+        if (! is_array($text) || $text === [] || array_is_list($text)) {
+            return false;
+        }
+        foreach ($text as $label) {
+            if (! is_string($label) || trim($label) === '') {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /** Un color del tema puede escribirse en hex o nombrando una clave de `tokens`. */

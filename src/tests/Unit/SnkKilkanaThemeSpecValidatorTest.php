@@ -319,4 +319,55 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
 
         $this->assertSame([], $this->validator()->validate($spec));
     }
+
+    /**
+     * Una forma de sección por puesto del menú: una lista de documentos, y cada uno puede
+     * derivar su rótulo de la sección que se estrena sin declararla, como la reserva.
+     */
+    public function test_it_accepts_a_section_shape_per_menu_slot(): void
+    {
+        $derived = [...$this->row([[12, ['river']]]), 'header' => ['from' => 'section']];
+        $spec = $this->spec();
+        $spec['layouts']['sectionByNth'] = [
+            [$derived, $this->row([[12, ['lead-story']]])],
+            [$this->row([[4, ['most-read']], [8, ['lead-story']]])],
+        ];
+
+        $this->assertSame([], $this->validator()->validate($spec));
+    }
+
+    /** Cada forma se valida entera y con su propio presupuesto, y el error dice cuál. */
+    public function test_it_checks_each_section_shape_on_its_own(): void
+    {
+        $spec = $this->spec();
+        $spec['layouts']['sectionByNth'] = [
+            [$this->row([[12, ['lead-story']]])],
+            array_fill(0, 17, $this->row([[12, ['four-up']]])),
+        ];
+
+        $errors = $this->validator()->validate($spec);
+
+        $this->assertCount(1, $errors);
+        $this->assertStringContainsString('layouts.sectionByNth[1]: photos 68', $errors[0]);
+    }
+
+    public function test_it_refuses_section_shapes_that_are_not_a_list_of_documents(): void
+    {
+        $spec = $this->spec();
+        $spec['layouts']['sectionByNth'] = ['sport' => [$this->row([[12, ['lead-story']]])]];
+
+        $this->assertStringContainsString('layouts.sectionByNth', $this->validator()->validate($spec)[0]);
+    }
+
+    /** Un rótulo escrito viene en cada idioma del CMS, y ninguno puede ir vacío. */
+    public function test_a_band_label_comes_in_each_language_and_none_empty(): void
+    {
+        $label = fn (mixed $text) => $this->spec(['layouts.front' => [
+            [...$this->row([[12, ['lead-story']]]), 'header' => ['text' => $text]],
+        ]]);
+
+        $this->assertSame([], $this->validator()->validate($label(['es-ES' => 'Lo más leído', 'en-GB' => 'Most read'])));
+        $this->assertStringContainsString('label cannot be empty', $this->validator()->validate($label(['es-ES' => 'Lo más leído', 'en-GB' => ' ']))[0]);
+        $this->assertStringContainsString('label cannot be empty', $this->validator()->validate($label([]))[0]);
+    }
 }

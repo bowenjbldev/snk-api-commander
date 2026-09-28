@@ -2,9 +2,9 @@
     "slug": "folio",
     "name": "Folio",
     "tagline": "Diario generalista de hoja ancha, con raíl, secciones y jerarquía de verdad",
-    "description": "Un broadsheet que se comporta como tal: doce columnas de setenta y ocho con filete en el medianil, cabecera centrada entre filetes con su línea de servicio y su menú, una apertura que decide el día a 54 px contra tarjetas de 20, y una portada que baja por las siete secciones vivas del periódico en dieciséis bandas. Sin un solo texto en color.",
+    "description": "Un broadsheet que se comporta como tal: doce columnas de sesenta y cuatro separadas por el aire del canal, cabecera centrada con su línea de servicio y su menú en bandas del acento, una apertura que decide el día a 54 px contra tarjetas de 20, y una portada que baja por las siete secciones vivas del periódico en quince bandas. Y cada sección se compone distinta: una forma por puesto del menú, de la apertura doble de deportes al teletipo de sucesos. Un solo color, el azul del acento, para la cabecera, los rótulos y los huecos.",
     "status": "published",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "featured": true,
     "position": 0,
     "popularity": 100,
@@ -15,7 +15,7 @@
     "spec": {
         "specVersion": 2,
         "grid": {
-            "sheet": 1200,
+            "sheet": 1032,
             "columns": 12,
             "gutter": 24
         },
@@ -74,7 +74,7 @@
                 },
                 "kicker": {
                     "size": 11,
-                    "weight": 700,
+                    "weight": 600,
                     "tracking": "0.07em",
                     "leading": 1.2,
                     "color": "accent",
@@ -155,7 +155,7 @@
                                         "standfirst": true,
                                         "data": {
                                             "mode": "auto",
-                                            "count": 4,
+                                            "count": 6,
                                             "sort": "recent"
                                         }
                                     }
@@ -169,17 +169,14 @@
                                 {
                                     "type": "most-read",
                                     "config": {
-                                        "window": "day",
                                         "data": {
                                             "mode": "auto",
                                             "count": 6,
-                                            "sort": "reads"
+                                            "sort": "reads",
+                                            "period": "day"
                                         },
                                         "min": 3
                                     }
-                                },
-                                {
-                                    "type": "ad-slot"
                                 }
                             ]
                         }
@@ -187,7 +184,10 @@
                 },
                 {
                     "header": {
-                        "text": "Breaking"
+                        "text": {
+                            "es-ES": "Última hora",
+                            "en-GB": "Breaking"
+                        }
                     },
                     "cols": [
                         {
@@ -224,7 +224,7 @@
                                     "config": {
                                         "data": {
                                             "mode": "auto",
-                                            "count": 6,
+                                            "count": 8,
                                             "sort": "recent"
                                         }
                                     }
@@ -262,7 +262,7 @@
                                     "config": {
                                         "data": {
                                             "mode": "auto",
-                                            "count": 5,
+                                            "count": 7,
                                             "sort": "recent"
                                         }
                                     }
@@ -302,7 +302,7 @@
                                     "config": {
                                         "data": {
                                             "mode": "auto",
-                                            "count": 4,
+                                            "count": 9,
                                             "sort": "recent"
                                         }
                                     }
@@ -317,7 +317,7 @@
                                     "config": {
                                         "data": {
                                             "mode": "auto",
-                                            "count": 4,
+                                            "count": 9,
                                             "sort": "recent"
                                         }
                                     }
@@ -380,7 +380,7 @@
                                     "config": {
                                         "data": {
                                             "mode": "auto",
-                                            "count": 5,
+                                            "count": 8,
                                             "sort": "recent"
                                         },
                                         "min": 3
@@ -522,7 +522,10 @@
                 },
                 {
                     "header": {
-                        "text": "In depth"
+                        "text": {
+                            "es-ES": "A fondo",
+                            "en-GB": "In depth"
+                        }
                     },
                     "cols": [
                         {
@@ -549,7 +552,7 @@
                     },
                     "cols": [
                         {
-                            "span": 8,
+                            "span": 12,
                             "blocks": [
                                 {
                                     "type": "opinion-strip",
@@ -557,21 +560,6 @@
                                         "data": {
                                             "mode": "auto",
                                             "count": 3,
-                                            "sort": "recent"
-                                        }
-                                    }
-                                }
-                            ]
-                        },
-                        {
-                            "span": 4,
-                            "blocks": [
-                                {
-                                    "type": "brief-list",
-                                    "config": {
-                                        "data": {
-                                            "mode": "auto",
-                                            "count": 5,
                                             "sort": "recent"
                                         }
                                     }
@@ -585,7 +573,10 @@
                 },
                 {
                     "header": {
-                        "text": "Most read"
+                        "text": {
+                            "es-ES": "Lo más leído",
+                            "en-GB": "Most read"
+                        }
                     },
                     "cols": [
                         {
@@ -594,11 +585,11 @@
                                 {
                                     "type": "most-read",
                                     "config": {
-                                        "window": "week",
                                         "data": {
                                             "mode": "auto",
-                                            "count": 6,
-                                            "sort": "reads"
+                                            "count": 7,
+                                            "sort": "reads",
+                                            "period": "week"
                                         },
                                         "min": 3
                                     }
@@ -625,7 +616,10 @@
                 },
                 {
                     "header": {
-                        "text": "Latest by section"
+                        "text": {
+                            "es-ES": "Lo último por secciones",
+                            "en-GB": "Latest by section"
+                        }
                     },
                     "cols": [
                         {
@@ -689,7 +683,10 @@
                 },
                 {
                     "header": {
-                        "text": "More news"
+                        "text": {
+                            "es-ES": "Más noticias",
+                            "en-GB": "More news"
+                        }
                     },
                     "cols": [
                         {
@@ -706,50 +703,8 @@
                                     }
                                 },
                                 {
-                                    "type": "brief-list",
+                                    "type": "four-up",
                                     "config": {
-                                        "data": {
-                                            "mode": "auto",
-                                            "count": 8,
-                                            "sort": "recent"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "cols": [
-                        {
-                            "span": 6,
-                            "blocks": [
-                                {
-                                    "type": "newsletter-card"
-                                }
-                            ]
-                        },
-                        {
-                            "span": 6,
-                            "blocks": [
-                                {
-                                    "type": "ad-slot"
-                                }
-                            ]
-                        }
-                    ]
-                }
-            ],
-            "section": [
-                {
-                    "cols": [
-                        {
-                            "span": 9,
-                            "blocks": [
-                                {
-                                    "type": "lead-briefs",
-                                    "config": {
-                                        "standfirst": true,
                                         "data": {
                                             "mode": "auto",
                                             "count": 4,
@@ -758,44 +713,35 @@
                                     }
                                 }
                             ]
-                        },
-                        {
-                            "span": 3,
-                            "sticky": true,
-                            "blocks": [
-                                {
-                                    "type": "most-read",
-                                    "config": {
-                                        "window": "week",
-                                        "data": {
-                                            "mode": "auto",
-                                            "count": 6,
-                                            "sort": "reads"
-                                        },
-                                        "min": 3
-                                    }
-                                },
-                                {
-                                    "type": "ad-slot"
-                                }
-                            ]
                         }
                     ]
-                },
+                }
+            ],
+            "section": [
                 {
                     "header": {
-                        "text": "Latest"
+                        "from": "section"
                     },
                     "cols": [
                         {
                             "span": 8,
                             "blocks": [
                                 {
-                                    "type": "river",
+                                    "type": "lead-story",
                                     "config": {
                                         "data": {
                                             "mode": "auto",
-                                            "count": 6,
+                                            "count": 1,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                },
+                                {
+                                    "type": "two-up",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 2,
                                             "sort": "recent"
                                         }
                                     }
@@ -806,6 +752,50 @@
                             "span": 4,
                             "blocks": [
                                 {
+                                    "type": "most-read",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 6,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "header": {
+                        "text": {
+                            "es-ES": "Lo último",
+                            "en-GB": "Latest"
+                        }
+                    },
+                    "cols": [
+                        {
+                            "span": 12,
+                            "blocks": [
+                                {
+                                    "type": "river",
+                                    "config": {
+                                        "data": {
+                                            "mode": "auto",
+                                            "count": 4,
+                                            "sort": "recent"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "cols": [
+                        {
+                            "span": 6,
+                            "blocks": [
+                                {
                                     "type": "brief-list",
                                     "config": {
                                         "data": {
@@ -814,16 +804,20 @@
                                             "sort": "recent"
                                         }
                                     }
-                                },
+                                }
+                            ]
+                        },
+                        {
+                            "span": 6,
+                            "blocks": [
                                 {
                                     "type": "latest-in-category",
                                     "config": {
                                         "data": {
                                             "mode": "auto",
-                                            "count": 5,
+                                            "count": 6,
                                             "sort": "recent"
-                                        },
-                                        "min": 3
+                                        }
                                     }
                                 }
                             ]
@@ -851,94 +845,1243 @@
                 },
                 {
                     "header": {
-                        "text": "In pictures"
+                        "text": {
+                            "es-ES": "Más de esta sección",
+                            "en-GB": "More from this section"
+                        }
                     },
                     "cols": [
                         {
                             "span": 12,
                             "blocks": [
                                 {
-                                    "type": "photo-essay",
-                                    "config": {
-                                        "data": {
-                                            "mode": "auto",
-                                            "count": 2,
-                                            "sort": "recent"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "cols": [
-                        {
-                            "span": 6,
-                            "blocks": [
-                                {
                                     "type": "brief-list",
                                     "config": {
                                         "data": {
                                             "mode": "auto",
-                                            "count": 3,
+                                            "count": 5,
                                             "sort": "recent"
-                                        }
+                                        },
+                                        "min": 3
                                     }
-                                }
-                            ]
-                        },
-                        {
-                            "span": 6,
-                            "blocks": [
-                                {
-                                    "type": "brief-list",
-                                    "config": {
-                                        "data": {
-                                            "mode": "auto",
-                                            "count": 3,
-                                            "sort": "recent"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "header": {
-                        "text": "More from this section"
-                    },
-                    "cols": [
-                        {
-                            "span": 12,
-                            "blocks": [
-                                {
-                                    "type": "four-up",
-                                    "config": {
-                                        "data": {
-                                            "mode": "auto",
-                                            "count": 4,
-                                            "sort": "recent"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "cols": [
-                        {
-                            "span": 12,
-                            "blocks": [
-                                {
-                                    "type": "newsletter-card"
                                 }
                             ]
                         }
                     ]
                 }
+            ],
+            "sectionByNth": [
+                [
+                    {
+                        "header": {
+                            "from": "section"
+                        },
+                        "cols": [
+                            {
+                                "span": 4,
+                                "blocks": [
+                                    {
+                                        "type": "latest-in-category",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 8,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 8,
+                                "blocks": [
+                                    {
+                                        "type": "lead-story",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 1,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "type": "two-up",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 2,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "header": {
+                            "text": {
+                                "es-ES": "Pueblo a pueblo",
+                                "en-GB": "Town by town"
+                            }
+                        },
+                        "cols": [
+                            {
+                                "span": 4,
+                                "blocks": [
+                                    {
+                                        "type": "brief-list",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 4,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 4,
+                                "blocks": [
+                                    {
+                                        "type": "brief-list",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 4,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 4,
+                                "blocks": [
+                                    {
+                                        "type": "brief-list",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 4,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "cols": [
+                            {
+                                "span": 12,
+                                "blocks": [
+                                    {
+                                        "type": "river",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 4,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "cols": [
+                            {
+                                "span": 6,
+                                "blocks": [
+                                    {
+                                        "type": "lead-story",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 1,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 6,
+                                "blocks": [
+                                    {
+                                        "type": "most-read",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 8,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "header": {
+                            "text": {
+                                "es-ES": "Más de esta sección",
+                                "en-GB": "More from this section"
+                            }
+                        },
+                        "cols": [
+                            {
+                                "span": 12,
+                                "blocks": [
+                                    {
+                                        "type": "three-up",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 3,
+                                                "sort": "recent"
+                                            },
+                                            "min": 3
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                [
+                    {
+                        "cols": [
+                            {
+                                "span": 12,
+                                "blocks": [
+                                    {
+                                        "type": "lead-story",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 1,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "header": {
+                            "from": "section"
+                        },
+                        "cols": [
+                            {
+                                "span": 5,
+                                "blocks": [
+                                    {
+                                        "type": "river",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 5,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 3,
+                                "blocks": [
+                                    {
+                                        "type": "brief-list",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 5,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 4,
+                                "blocks": [
+                                    {
+                                        "type": "latest-in-category",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 6,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "header": {
+                            "text": {
+                                "es-ES": "A fondo",
+                                "en-GB": "In depth"
+                            }
+                        },
+                        "cols": [
+                            {
+                                "span": 12,
+                                "blocks": [
+                                    {
+                                        "type": "three-up",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 3,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "cols": [
+                            {
+                                "span": 3,
+                                "blocks": [
+                                    {
+                                        "type": "most-read",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 8,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 6,
+                                "blocks": [
+                                    {
+                                        "type": "lead-story",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 1,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 3,
+                                "blocks": [
+                                    {
+                                        "type": "brief-list",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 5,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "header": {
+                            "text": {
+                                "es-ES": "Hemeroteca",
+                                "en-GB": "The record"
+                            }
+                        },
+                        "cols": [
+                            {
+                                "span": 12,
+                                "blocks": [
+                                    {
+                                        "type": "river",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 4,
+                                                "sort": "recent"
+                                            },
+                                            "min": 3
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                [
+                    {
+                        "header": {
+                            "from": "section"
+                        },
+                        "cols": [
+                            {
+                                "span": 3,
+                                "blocks": [
+                                    {
+                                        "type": "most-read",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 6,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 9,
+                                "blocks": [
+                                    {
+                                        "type": "lead-story",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 1,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "type": "three-up",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 3,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "cols": [
+                            {
+                                "span": 6,
+                                "blocks": [
+                                    {
+                                        "type": "lead-story",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 1,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 6,
+                                "blocks": [
+                                    {
+                                        "type": "latest-in-category",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 8,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "cols": [
+                            {
+                                "span": 4,
+                                "blocks": [
+                                    {
+                                        "type": "brief-list",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 4,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 4,
+                                "blocks": [
+                                    {
+                                        "type": "brief-list",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 4,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 4,
+                                "blocks": [
+                                    {
+                                        "type": "brief-list",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 4,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "header": {
+                            "text": {
+                                "es-ES": "Mercados y empleo",
+                                "en-GB": "Markets and work"
+                            }
+                        },
+                        "cols": [
+                            {
+                                "span": 12,
+                                "blocks": [
+                                    {
+                                        "type": "river",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 3,
+                                                "sort": "recent"
+                                            },
+                                            "min": 3
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "header": {
+                            "text": {
+                                "es-ES": "Más de esta sección",
+                                "en-GB": "More from this section"
+                            }
+                        },
+                        "cols": [
+                            {
+                                "span": 12,
+                                "blocks": [
+                                    {
+                                        "type": "three-up",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 3,
+                                                "sort": "recent"
+                                            },
+                                            "min": 3
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                [
+                    {
+                        "header": {
+                            "from": "section"
+                        },
+                        "cols": [
+                            {
+                                "span": 6,
+                                "blocks": [
+                                    {
+                                        "type": "lead-story",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 1,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 6,
+                                "blocks": [
+                                    {
+                                        "type": "lead-story",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 1,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "header": {
+                            "text": {
+                                "es-ES": "Últimos resultados",
+                                "en-GB": "Latest results"
+                            }
+                        },
+                        "cols": [
+                            {
+                                "span": 12,
+                                "blocks": [
+                                    {
+                                        "type": "river",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 5,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "cols": [
+                            {
+                                "span": 8,
+                                "blocks": [
+                                    {
+                                        "type": "mosaic",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 5,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 4,
+                                "blocks": [
+                                    {
+                                        "type": "latest-in-category",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 8,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "header": {
+                            "text": {
+                                "es-ES": "Club a club",
+                                "en-GB": "Club by club"
+                            }
+                        },
+                        "cols": [
+                            {
+                                "span": 4,
+                                "blocks": [
+                                    {
+                                        "type": "brief-list",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 3,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 4,
+                                "blocks": [
+                                    {
+                                        "type": "brief-list",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 3,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 4,
+                                "blocks": [
+                                    {
+                                        "type": "brief-list",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 3,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "header": {
+                            "text": {
+                                "es-ES": "Más de esta sección",
+                                "en-GB": "More from this section"
+                            }
+                        },
+                        "cols": [
+                            {
+                                "span": 12,
+                                "blocks": [
+                                    {
+                                        "type": "three-up",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 3,
+                                                "sort": "recent"
+                                            },
+                                            "min": 3
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                [
+                    {
+                        "header": {
+                            "from": "section"
+                        },
+                        "cols": [
+                            {
+                                "span": 12,
+                                "blocks": [
+                                    {
+                                        "type": "mosaic",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 5,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "cols": [
+                            {
+                                "span": 3,
+                                "blocks": [
+                                    {
+                                        "type": "brief-list",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 4,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 6,
+                                "blocks": [
+                                    {
+                                        "type": "lead-story",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 1,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 3,
+                                "blocks": [
+                                    {
+                                        "type": "latest-in-category",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 6,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "header": {
+                            "text": {
+                                "es-ES": "Cartelera",
+                                "en-GB": "Listings"
+                            }
+                        },
+                        "cols": [
+                            {
+                                "span": 6,
+                                "blocks": [
+                                    {
+                                        "type": "lead-story",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 1,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 6,
+                                "blocks": [
+                                    {
+                                        "type": "river",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 5,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "header": {
+                            "text": {
+                                "es-ES": "Patrimonio",
+                                "en-GB": "Heritage"
+                            }
+                        },
+                        "cols": [
+                            {
+                                "span": 12,
+                                "blocks": [
+                                    {
+                                        "type": "three-up",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 3,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "header": {
+                            "text": {
+                                "es-ES": "Más de esta sección",
+                                "en-GB": "More from this section"
+                            }
+                        },
+                        "cols": [
+                            {
+                                "span": 12,
+                                "blocks": [
+                                    {
+                                        "type": "brief-list",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 5,
+                                                "sort": "recent"
+                                            },
+                                            "min": 3
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                [
+                    {
+                        "header": {
+                            "from": "section"
+                        },
+                        "cols": [
+                            {
+                                "span": 12,
+                                "blocks": [
+                                    {
+                                        "type": "river",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 5,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "header": {
+                            "text": {
+                                "es-ES": "En investigación",
+                                "en-GB": "Under investigation"
+                            }
+                        },
+                        "cols": [
+                            {
+                                "span": 5,
+                                "blocks": [
+                                    {
+                                        "type": "lead-story",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 1,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 3,
+                                "blocks": [
+                                    {
+                                        "type": "brief-list",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 4,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 4,
+                                "blocks": [
+                                    {
+                                        "type": "brief-list",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 4,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "cols": [
+                            {
+                                "span": 6,
+                                "blocks": [
+                                    {
+                                        "type": "lead-story",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 1,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 6,
+                                "blocks": [
+                                    {
+                                        "type": "most-read",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 8,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "header": {
+                            "text": {
+                                "es-ES": "Breves",
+                                "en-GB": "The log"
+                            }
+                        },
+                        "cols": [
+                            {
+                                "span": 12,
+                                "blocks": [
+                                    {
+                                        "type": "brief-list",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 5,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "header": {
+                            "text": {
+                                "es-ES": "Más de esta sección",
+                                "en-GB": "More from this section"
+                            }
+                        },
+                        "cols": [
+                            {
+                                "span": 12,
+                                "blocks": [
+                                    {
+                                        "type": "three-up",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 3,
+                                                "sort": "recent"
+                                            },
+                                            "min": 2
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                [
+                    {
+                        "header": {
+                            "from": "section"
+                        },
+                        "cols": [
+                            {
+                                "span": 12,
+                                "blocks": [
+                                    {
+                                        "type": "opinion-strip",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 3,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "header": {
+                            "text": {
+                                "es-ES": "Columnistas",
+                                "en-GB": "Columnists"
+                            }
+                        },
+                        "cols": [
+                            {
+                                "span": 4,
+                                "blocks": [
+                                    {
+                                        "type": "brief-list",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 4,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 4,
+                                "blocks": [
+                                    {
+                                        "type": "brief-list",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 4,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 4,
+                                "blocks": [
+                                    {
+                                        "type": "brief-list",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 4,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "cols": [
+                            {
+                                "span": 6,
+                                "blocks": [
+                                    {
+                                        "type": "lead-story",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 1,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "span": 6,
+                                "blocks": [
+                                    {
+                                        "type": "latest-in-category",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 6,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "header": {
+                            "text": {
+                                "es-ES": "Cartas al director",
+                                "en-GB": "Letters"
+                            }
+                        },
+                        "cols": [
+                            {
+                                "span": 12,
+                                "blocks": [
+                                    {
+                                        "type": "river",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 5,
+                                                "sort": "recent"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "header": {
+                            "text": {
+                                "es-ES": "Más de esta sección",
+                                "en-GB": "More from this section"
+                            }
+                        },
+                        "cols": [
+                            {
+                                "span": 12,
+                                "blocks": [
+                                    {
+                                        "type": "three-up",
+                                        "config": {
+                                            "data": {
+                                                "mode": "auto",
+                                                "count": 3,
+                                                "sort": "recent"
+                                            },
+                                            "min": 2
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
             ],
             "starter": [
                 {
@@ -960,10 +2103,13 @@
                             "span": 8,
                             "blocks": [
                                 {
-                                    "type": "river",
+                                    "type": "latest-in-category",
                                     "config": {
                                         "data": {
-                                            "count": 5
+                                            "count": 6,
+                                            "section": {
+                                                "nth": 1
+                                            }
                                         }
                                     }
                                 }
@@ -973,7 +2119,7 @@
                             "span": 4,
                             "blocks": [
                                 {
-                                    "type": "brief-list",
+                                    "type": "most-read",
                                     "config": {
                                         "data": {
                                             "count": 5
@@ -986,7 +2132,7 @@
                 },
                 {
                     "section": {
-                        "nth": 1
+                        "nth": 2
                     },
                     "header": {
                         "from": "section"
