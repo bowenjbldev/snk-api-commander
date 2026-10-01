@@ -217,4 +217,14 @@ class SnkKilkanaThemeWearTest extends TestCase
         $orphan->setRelation('theme', null);
         $this->assertFalse(app(SnkKilkanaThemeWearService::class)->updateAvailable($orphan));
     }
+
+    /** La cabecera y el pie elegidos van por id: kebab-case, y solo de las piezas intercambiables. */
+    public function test_it_takes_the_chosen_variants_by_id(): void
+    {
+        $ok = $this->validate(['theme_overrides' => ['variants' => ['masthead' => 'race-number', 'footer' => 'base']]]);
+        $this->assertFalse($ok->fails(), (string) $ok->errors());
+
+        $bad = $this->validate(['theme_overrides' => ['variants' => ['masthead' => 'Race Number']]]);
+        $this->assertArrayHasKey('theme_overrides.variants.masthead', $bad->errors()->toArray());
+    }
 }

@@ -359,6 +359,18 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
         $this->assertStringContainsString('layouts.sectionByNth', $this->validator()->validate($spec)[0]);
     }
 
+    /** La tercera familia es opcional, y un peldaño solo puede pedirla si el tema la declara. */
+    public function test_a_step_in_mono_needs_the_mono_family(): void
+    {
+        $spec = $this->spec();
+        $spec['type']['steps']['kicker']['family'] = 'mono';
+
+        $this->assertStringContainsString('type.mono', $this->validator()->validate($spec)[0]);
+
+        $spec['type']['mono'] = "'IBM Plex Mono', monospace";
+        $this->assertSame([], $this->validator()->validate($spec));
+    }
+
     /** Un rótulo escrito viene en cada idioma del CMS, y ninguno puede ir vacío. */
     public function test_a_band_label_comes_in_each_language_and_none_empty(): void
     {
@@ -369,5 +381,23 @@ class SnkKilkanaThemeSpecValidatorTest extends TestCase
         $this->assertSame([], $this->validator()->validate($label(['es-ES' => 'Lo más leído', 'en-GB' => 'Most read'])));
         $this->assertStringContainsString('label cannot be empty', $this->validator()->validate($label(['es-ES' => 'Lo más leído', 'en-GB' => ' ']))[0]);
         $this->assertStringContainsString('label cannot be empty', $this->validator()->validate($label([]))[0]);
+    }
+
+    /** Las variantes de cabecera y pie: opcionales, con la base primero y en kebab-case. */
+    public function test_variants_start_with_base_and_are_kebab_case(): void
+    {
+        $with = function (mixed $variants) {
+            $spec = $this->spec();
+            $spec['variants'] = $variants;
+
+            return $this->validator()->validate($spec);
+        };
+
+        $this->assertSame([], $this->validator()->validate($this->spec()));
+        $this->assertSame([], $with(['masthead' => ['base', 'race-number'], 'footer' => ['base']]));
+        $this->assertStringContainsString('starts with «base»', $with(['masthead' => ['dorsal', 'base']])[0]);
+        $this->assertStringContainsString('not a swappable part', $with(['blocks' => ['base']])[0]);
+        $this->assertStringContainsString('repeated ids', $with(['footer' => ['base', 'red', 'red']])[0]);
+        $this->assertStringContainsString('kebab-case', $with(['masthead' => ['base', 'Dorsal']])[0]);
     }
 }

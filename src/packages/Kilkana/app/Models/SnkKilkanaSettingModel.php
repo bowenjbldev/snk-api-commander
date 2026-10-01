@@ -214,7 +214,14 @@ class SnkKilkanaSettingModel extends Model
             'theme_overrides.hero.weight' => ['nullable', 'integer', $between('weight'), 'multiple_of:100'],
             'theme_overrides.hero.leading' => ['nullable', 'numeric', $between('leading')],
             'theme_overrides.hero.tracking' => ['nullable', 'string', self::inUnit('tracking')],
+            // La cabecera y el pie que el periódico elige entre las variantes de su tema. Aquí solo
+            // la forma: un id que el tema no declara lo pinta la calle en su base.
+            'theme_overrides.variants' => 'nullable|array',
         ];
+
+        foreach (SnkKilkanaThemeSpecValidator::SWAPPABLE_PARTS as $part) {
+            $rules["theme_overrides.variants.{$part}"] = ['nullable', 'string', 'regex:'.SnkKilkanaThemeSpecValidator::VARIANT_ID];
+        }
 
         foreach (self::COLOR_KEYS as $key) {
             $rules["theme_overrides.tokens.{$key}"] = ['nullable', 'string', 'regex:/^#[0-9a-f]{6}$/i'];

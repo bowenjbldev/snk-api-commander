@@ -153,6 +153,11 @@ class SnkKilkanaThemeSpecValidator
 
     private const AA_RATIO = 4.5;
 
+    /** Las piezas que un tema puede ofrecer en variantes, y la forma de sus ids. */
+    public const SWAPPABLE_PARTS = ['masthead', 'footer'];
+
+    public const VARIANT_ID = '/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/';
+
     /**
      * Rangos numéricos. Anchos a propósito: los extremos son diarios reales.
      *
@@ -200,6 +205,7 @@ class SnkKilkanaThemeSpecValidator
             ...$this->checkDensity($this->arr($spec, 'density')),
             ...$this->checkChrome($this->arr($spec, 'chrome')),
             ...$this->checkLayouts($spec),
+            ...$this->checkVariants($spec['variants'] ?? null),
         ];
 
         // El contraste va al final y solo si los colores son válidos: un hex mal escrito ya se
@@ -210,6 +216,47 @@ class SnkKilkanaThemeSpecValidator
         }
 
         return array_values($errors);
+    }
+
+    /**
+     * Las cabeceras y los pies que el tema ofrece a elegir: `variants.masthead` y `variants.footer`,
+     * listas de ids en kebab-case que empiezan por `base`. Es opcional: sin ella, el tema trae solo la
+     * base. Lo que elige el periódico viaja en `theme_overrides.variants`.
+     */
+    private function checkVariants(mixed $variants): array
+    {
+        if ($variants === null) {
+            return [];
+        }
+        if (! is_array($variants) || array_is_list($variants)) {
+            return ['variants: must be an object'];
+        }
+
+        $errors = [];
+        foreach ($variants as $part => $ids) {
+            if (! in_array($part, self::SWAPPABLE_PARTS, true)) {
+                $errors[] = "variants.{$part}: not a swappable part (".implode(', ', self::SWAPPABLE_PARTS).')';
+
+                continue;
+            }
+            if (! is_array($ids) || ! array_is_list($ids) || ($ids[0] ?? null) !== 'base') {
+                $errors[] = "variants.{$part}: a list that starts with «base»";
+
+                continue;
+            }
+            if (count(array_unique($ids)) !== count($ids)) {
+                $errors[] = "variants.{$part}: repeated ids";
+
+                continue;
+            }
+            foreach ($ids as $id) {
+                if (! is_string($id) || ! preg_match(self::VARIANT_ID, $id)) {
+                    $errors[] = "variants.{$part}: «".(is_scalar($id) ? $id : '?')."» is not a kebab-case id";
+                }
+            }
+        }
+
+        return $errors;
     }
 
     private function checkTokens(array $tokens): array
@@ -331,6 +378,12 @@ class SnkKilkanaThemeSpecValidator
             $errors[] = 'type.masthead: empty font family';
         }
 
+        // Una tercera familia, opcional, para los peldaños que piden `family: "mono"`.
+        $mono = array_key_exists('mono', $type);
+        if ($mono && (! is_string($type['mono']) || trim($type['mono']) === '')) {
+            $errors[] = 'type.mono: empty font family';
+        }
+
         $steps = is_array($type['steps'] ?? null) ? $type['steps'] : [];
 
         foreach (self::TYPE_STEPS as $name) {
@@ -360,6 +413,13 @@ class SnkKilkanaThemeSpecValidator
 
             if (array_key_exists('color', $step) && ! $this->isColor($step['color'])) {
                 $errors[] = "{$where}.color: hex or theme key";
+            }
+
+            $family = $step['family'] ?? null;
+            if ($family !== null && ! in_array($family, ['display', 'text', 'mono'], true)) {
+                $errors[] = "{$where}.family: display, text or mono";
+            } elseif ($family === 'mono' && ! $mono) {
+                $errors[] = "{$where}.family: asks for the mono family and the theme declares no type.mono";
             }
         }
 

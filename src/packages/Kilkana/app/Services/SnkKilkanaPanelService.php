@@ -113,18 +113,21 @@ class SnkKilkanaPanelService
         ];
     }
 
-    /** @return array{launched_at: ?string, theme: ?string, published: int} */
+    /** @return array{launched_at: ?string, theme: ?string, overrides: object, published: int} */
     private function setup(): array
     {
         $settings = SnkKilkanaSettingModel::query()
             ->with('theme:id,slug')
-            ->find(1, ['launched_at', 'theme_id', 'theme_spec']);
+            ->find(1, ['launched_at', 'theme_id', 'theme_spec', 'theme_overrides']);
 
         return [
             'launched_at' => $settings?->launched_at?->toIso8601String(),
             // El slug del tema puesto, y nulo mientras vaya desnudo: es lo que Themes marca
             // como «live» y lo que da por hecho el primer paso.
             'theme' => $settings?->theme_spec !== null ? $settings->theme?->slug : null,
+            // Lo que el periódico movió sobre su tema —colores, aire, apertura y la cabecera y el pie
+            // elegidos—: el panel lo pinta en cada vista del periódico, no solo en el configurador.
+            'overrides' => (object) ($settings?->theme_overrides ?? []),
             'published' => SnkKilkanaPostModel::query()->published()->count(),
         ];
     }
