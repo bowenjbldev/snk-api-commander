@@ -89,6 +89,9 @@ class SnkKilkanaSettingModel extends Model
 
     public const DEFAULT_TZ = 'Europe/Madrid';
 
+    /** Los pasos del asistente, en orden; `done` es haberlo acabado. */
+    public const ONBOARDING_STEPS = ['identity', 'theme', 'sections', 'handoff', 'done'];
+
     /** Las claves de los dos grupos abiertos; lo que no esté aquí no se guarda. */
     public const LEGAL = ['name', 'email'];
 
@@ -98,6 +101,7 @@ class SnkKilkanaSettingModel extends Model
     {
         return [
             'launched_at' => 'datetime',
+            'onboarding' => 'array',
             'search_visible' => 'boolean',
             'contextual_spellcheck' => 'boolean',
             'theme_spec' => 'array',

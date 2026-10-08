@@ -3,6 +3,9 @@
 namespace Packages\Kilkana\Services;
 
 use Packages\Core\Support\CorePaginationSupport;
+use Packages\Kilkana\Enums\SnkKilkanaLayoutEnum;
+use Packages\Kilkana\Enums\SnkKilkanaPostStatusEnum;
+use Packages\Kilkana\Models\SnkKilkanaLayoutModel;
 use Packages\Kilkana\Http\Resources\SnkKilkanaAuthorResource;
 use Packages\Kilkana\Http\Resources\SnkKilkanaCategoryResource;
 use Packages\Kilkana\Http\Resources\SnkKilkanaPostResource;
@@ -113,12 +116,12 @@ class SnkKilkanaPanelService
         ];
     }
 
-    /** @return array{launched_at: ?string, theme: ?string, overrides: object, published: int} */
+    /** @return array{launched_at: ?string, theme: ?string, overrides: object, published: int, draft: ?int} */
     private function setup(): array
     {
         $settings = SnkKilkanaSettingModel::query()
             ->with('theme:id,slug')
-            ->find(1, ['launched_at', 'theme_id', 'theme_spec', 'theme_overrides']);
+            ->find(1, ['launched_at', 'onboarding', 'theme_id', 'theme_spec', 'theme_overrides']);
 
         return [
             'launched_at' => $settings?->launched_at?->toIso8601String(),
@@ -129,6 +132,21 @@ class SnkKilkanaPanelService
             // elegidos—: el panel lo pinta en cada vista del periódico, no solo en el configurador.
             'overrides' => (object) ($settings?->theme_overrides ?? []),
             'published' => SnkKilkanaPostModel::query()->published()->count(),
+            // Por dónde va el asistente y lo que la lista necesita contar: las secciones que ya
+            // admiten piezas publicadas, y si la portada tiene una versión propia publicada.
+            'onboarding' => (object) ($settings?->onboarding ?? []),
+            'sections_live' => SnkKilkanaCategoryModel::query()->reachable()->count(),
+            // La fila nace en la versión 1 solo con leerla; publicada la portada, pasa de ahí.
+            'front_published' => SnkKilkanaLayoutModel::query()
+                ->where('layout', SnkKilkanaLayoutEnum::Front->value)->where('version', '>', 1)->exists(),
+            // El último borrador de quien pregunta, mientras la calle no abra: «escribir» lo retoma
+            // en vez de dar de alta otro papel en blanco cada vez que se vuelve a la lista.
+            'draft' => $settings?->launched_at === null
+                ? SnkKilkanaPostModel::query()
+                    ->where('status', SnkKilkanaPostStatusEnum::Draft)
+                    ->where('created_by', auth()->id())
+                    ->latest('updated_at')->value('id')
+                : null,
         ];
     }
 

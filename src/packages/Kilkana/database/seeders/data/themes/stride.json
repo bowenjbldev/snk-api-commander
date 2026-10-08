@@ -1,10 +1,10 @@
 {
     "slug": "stride",
     "name": "Stride",
-    "tagline": "Diario deportivo de condensada y rojo, con el minuto a minuto al lado de la apertura",
+    "tagline": "Para deportes: titulares grandes y el minuto a minuto junto a la apertura",
     "description": "Un diario deportivo que se lee a golpe de foto: una hoja de 1080 en doce columnas, titulares en una grotesca condensada muy gruesa, un solo acento carmesí y el minuto a minuto al lado de la apertura. Cada deporte tiene su banda, con la foto alta y el río al lado, y la cabecera se elige entre siete, de la tira negra con la barra roja al marcador.",
     "status": "published",
-    "version": "1.1.0",
+    "version": "1.2.1",
     "featured": false,
     "position": 2,
     "popularity": 55,

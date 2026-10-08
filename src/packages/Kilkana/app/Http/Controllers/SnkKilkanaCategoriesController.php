@@ -68,6 +68,9 @@ class SnkKilkanaCategoriesController extends CoreBaseApiController
         // Con la forma de un slug, o no es una URL que `[[section]]` vaya a casar nunca: ni puntos
         // —`robots.txt` es una ruta fija—, ni barras, ni mayúsculas. Derivado del nombre ya sale así.
         'slug' => 'nullable|string|max:'.SnkKilkanaCategoryModel::SLUG_MAX.'|regex:'.SnkKilkanaCategoryModel::SLUG_SHAPE.'|unique:kilkana_categories,slug',
+        // Sin estado nace en preparación. El asistente las crea ya en el menú: la primera pieza
+        // es el paso siguiente y una sección en preparación no admite piezas publicadas.
+        'status' => 'sometimes|string|in:draft,live',
         'parent_id' => 'nullable|integer|exists:kilkana_categories,id',
         'description' => 'nullable|string',
         'seo_title' => 'nullable|string|max:500',

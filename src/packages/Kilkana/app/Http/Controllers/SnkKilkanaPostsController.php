@@ -303,7 +303,7 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
-        $data = $validator->validated();
+        $data = $this->withBlockConfig($validator->validated(), $request->all());
         if ($this->deniesPublish($data['status'] ?? null)) {
             return $this->forbidPublish();
         }
@@ -353,12 +353,33 @@ class SnkKilkanaPostsController extends CoreBaseApiController
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
-        $data = $validator->validated();
+        $data = $this->withBlockConfig($validator->validated(), $input);
         if ($this->deniesPublish($data['status'] ?? null)) {
             return $this->forbidPublish();
         }
 
         return response()->json($this->posts->update($post, $data, (int) auth()->id()));
+    }
+
+    /**
+     * El `config` de cada bloque, **entero**.
+     *
+     * `validated()` deja de un array solo las claves que tienen regla propia en cuanto alguna la
+     * tiene, y en un `config` la tienen el alt y el pie: sin esto, guardar el cuerpo tiraría el
+     * texto de cada párrafo y el medio de cada foto, y contestaría 200. Qué lleva un `config`
+     * depende del tipo de bloque y no cabe en una lista de reglas; de él se valida que sea un
+     * array y, si trae alt o pie, su largo.
+     */
+    private function withBlockConfig(array $data, array $input): array
+    {
+        foreach ($data['body_blocks'] ?? [] as $i => $block) {
+            $config = $input['body_blocks'][$i]['config'] ?? null;
+            if (is_array($config)) {
+                $data['body_blocks'][$i]['config'] = $config;
+            }
+        }
+
+        return $data;
     }
 
     /**

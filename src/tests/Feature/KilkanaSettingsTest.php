@@ -88,6 +88,7 @@ class KilkanaSettingsTest extends TestCase
         $this->assertNull($this->save([])->getData(true)['launched_at']);
         $this->assertNull(app(SnkKilkanaPublicService::class)->site()['launched_at']);
 
+        $this->publishOne();
         $first = $this->save(['launched' => true])->getData(true)['launched_at'];
         $this->assertNotNull($first);
         $this->assertSame($first, app(SnkKilkanaPublicService::class)->site()['launched_at']);
@@ -120,7 +121,8 @@ class KilkanaSettingsTest extends TestCase
         SnkKilkanaCategoryModel::create(['name' => 'Barrios', 'slug' => 'barrios', 'status' => 'live', 'position' => 1, 'parent_id' => $local->id]);
         $byline = SnkKilkanaAuthorModel::create(['alias' => 'Ada Prat']);
         $post = SnkKilkanaPostModel::create([
-            'title' => 'Pleno', 'excerpt' => 'Entradilla.', 'slug' => 'pleno', 'status' => 'draft',
+            'title' => 'Pleno', 'excerpt' => 'Entradilla.', 'slug' => 'pleno', 'status' => 'published',
+            'publish_at' => '2026-07-01 08:00:00', 'url_date' => '2026-07-01',
             'category_id' => $local->id, 'author_id' => $byline->id, 'created_by' => 1, 'updated_by' => 1,
         ]);
         $post->tags()->attach(SnkKilkanaTagModel::create(['name' => 'movilidad']));
@@ -134,6 +136,42 @@ class KilkanaSettingsTest extends TestCase
         $this->assertSame(0, SnkKilkanaCategoryModel::count());
         $this->assertSame(0, SnkKilkanaTagModel::count());
         $this->assertSame(1, SnkKilkanaAuthorModel::count(), 'Las firmas son gente, no contenido.');
+    }
+
+    /** Abrir pide una pieza publicada y una sección navegable: sin ellas la calle abriría vacía. */
+    public function test_launching_needs_a_published_post_and_a_live_section(): void
+    {
+        try {
+            $this->save(['launched' => true]);
+            $this->fail('Abrió un periódico vacío.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('launched', $e->errors());
+        }
+        $this->assertNull($this->save([])->getData(true)['launched_at']);
+    }
+
+    /** El paso del asistente solo avanza: volver a corregir algo no reabre la puesta en marcha. */
+    public function test_the_onboarding_step_never_goes_back(): void
+    {
+        $step = fn (array $onboarding) => $this->save(['onboarding' => $onboarding])->getData(true)['onboarding'];
+
+        $this->assertSame('sections', $step(['step' => 'sections'])['step']);
+        $back = $step(['step' => 'theme', 'kind' => 'sports']);
+        $this->assertSame('sections', $back['step']);
+        $this->assertSame('sports', $back['kind'], 'Lo demás que manda el paso sí se guarda.');
+        $this->assertSame('done', $step(['step' => 'done'])['step']);
+        $this->assertSame('done', $step(['step' => 'identity'])['step']);
+    }
+
+    private function publishOne(): void
+    {
+        $section = SnkKilkanaCategoryModel::create(['name' => 'Local', 'slug' => 'local', 'status' => 'live', 'position' => 0]);
+        SnkKilkanaPostModel::create([
+            'title' => 'Pleno', 'excerpt' => 'Entradilla.', 'slug' => 'pleno', 'status' => 'published',
+            'publish_at' => '2026-07-01 08:00:00', 'url_date' => '2026-07-01',
+            'category_id' => $section->id, 'author_id' => SnkKilkanaAuthorModel::create(['alias' => 'Ada Prat'])->id,
+            'created_by' => 1, 'updated_by' => 1,
+        ]);
     }
 
     private function save(array $body)

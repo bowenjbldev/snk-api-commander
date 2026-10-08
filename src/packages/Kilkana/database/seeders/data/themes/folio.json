@@ -1,10 +1,10 @@
 {
     "slug": "folio",
     "name": "Folio",
-    "tagline": "Diario generalista de hoja ancha, con raíl, secciones y jerarquía de verdad",
-    "description": "Un broadsheet que se comporta como tal: doce columnas de sesenta y cuatro separadas por el aire del canal, cabecera centrada con su línea de servicio y su menú en bandas del acento, una apertura que decide el día a 54 px contra tarjetas de 20, y una portada que baja por las siete secciones vivas del periódico en quince bandas. Y cada sección se compone distinta: una forma por puesto del menú, de la apertura doble de deportes al teletipo de sucesos. Un solo color, el azul del acento, para la cabecera, los rótulos y los huecos.",
+    "tagline": "Para actualidad general: una noticia que abre, las últimas al lado y un bloque por sección",
+    "description": "Un broadsheet que se comporta como tal: doce columnas de sesenta y cuatro separadas por el aire del canal, cabecera centrada con su línea de servicio y su menú en bandas del acento, una apertura que decide el día a 54 px contra tarjetas de 20, y una portada que baja por las siete secciones vivas del periódico en quince bandas. Y cada sección se compone distinta: una forma por puesto del menú, de la apertura doble de deportes al teletipo de sucesos. Un solo color, el azul del acento, para la cabecera, los rótulos y los huecos. La cabecera y el pie se eligen entre seis cada uno, de las bandas del acento al papel.",
     "status": "published",
-    "version": "2.1.0",
+    "version": "2.3.1",
     "featured": true,
     "position": 0,
     "popularity": 100,
@@ -141,6 +141,24 @@
                 "radius": "0",
                 "shadow": "none"
             }
+        },
+        "variants": {
+            "masthead": [
+                "base",
+                "paper",
+                "left",
+                "full-blue",
+                "one-row",
+                "rules"
+            ],
+            "footer": [
+                "base",
+                "paper",
+                "centered",
+                "newsletter",
+                "minimal",
+                "split"
+            ]
         },
         "layouts": {
             "front": [

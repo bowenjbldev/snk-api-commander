@@ -86,6 +86,7 @@ class KilkanaPostCoverTest extends TestCase
         $this->assertSame('La plaza llena de puestos', $fresh->cover_alt);
         $this->assertSame('El primer día de la feria.', $fresh->cover_caption);
         $this->assertSame('La plaza, vacía al amanecer', $fresh->body_blocks[0]['config']['alt']);
+        $this->assertSame($photo->id, $fresh->body_blocks[0]['config']['media_id'], 'Y el alt no se lleva por delante el medio.');
         $this->assertSame('La plaza', $photo->fresh()->alt, 'La ficha de la mediateca no se toca.');
 
         $long = str_repeat('a', 501);
@@ -95,6 +96,47 @@ class KilkanaPostCoverTest extends TestCase
 
         $this->assertSame(200, $save(['cover_alt' => null, 'cover_caption' => null])->getStatusCode());
         $this->assertNull($post->fresh()->cover_alt, 'Vacío vuelve a heredar.');
+    }
+
+    /**
+     * Guardar el cuerpo conserva el `config` entero de cada bloque. Las reglas del alt y del pie
+     * hacían que la validación devolviera solo esas dos claves: el texto se perdía con un 200, y
+     * el editor, que conserva lo suyo, no lo enseñaba hasta recargar.
+     */
+    public function test_saving_the_body_keeps_the_whole_config_of_every_block(): void
+    {
+        $marta = CoreUserModel::create(['name' => 'Marta Beneyto', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
+        $marta->assignRole('editor_in_chief');
+        $this->actingAs($marta, 'sanctum');
+        $section = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
+        $byline = SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);
+        $body = [
+            ['id' => 'b1', 'type' => 'paragraph', 'config' => ['text' => 'El pleno aprobó el plan.', 'html' => 'El pleno <b>aprobó</b> el plan.']],
+            ['id' => 'b2', 'type' => 'heading', 'config' => ['text' => 'Lo que viene']],
+            ['id' => 'b3', 'type' => 'divider'],
+        ];
+
+        // Al dar de alta, en un borrador y en una pieza ya publicada: los tres caminos del cuerpo.
+        $created = app(SnkKilkanaPostsController::class)->store(Request::create('/', 'POST', [
+            'title' => 'Plan', 'category' => 'local', 'author_id' => $byline->id, 'status' => 'draft', 'body_blocks' => $body,
+        ]));
+        $this->assertSame(201, $created->getStatusCode());
+        $post = SnkKilkanaPostModel::findOrFail($created->getData(true)['id']);
+        $this->assertSame($body[0]['config'], $post->body_blocks[0]['config']);
+
+        $save = fn (array $data) => app(SnkKilkanaPostsController::class)->update(Request::create('/', 'PUT', $data), $post->id);
+        $body[0]['config']['text'] = 'El pleno aprobó el plan de movilidad.';
+        $this->assertSame(200, $save(['body_blocks' => $body])->getStatusCode());
+        $this->assertSame('El pleno aprobó el plan de movilidad.', $post->fresh()->body_blocks[0]['config']['text']);
+        $this->assertSame('Lo que viene', $post->fresh()->body_blocks[1]['config']['text']);
+
+        $this->assertSame(200, $save(['status' => 'published', 'excerpt' => 'Entradilla.', 'publish_at' => now()->subMinute()->toIso8601String()])->getStatusCode());
+        $body[1]['config']['text'] = 'Lo que viene ahora';
+        $this->assertSame(200, $save(['body_blocks' => $body])->getStatusCode());
+        $fresh = $post->fresh();
+        $this->assertSame('published', $fresh->status->value);
+        $this->assertSame('Lo que viene ahora', $fresh->body_blocks[1]['config']['text']);
+        $this->assertSame($body[0]['config'], $fresh->body_blocks[0]['config']);
     }
 
     /** Quien guarda desde una versión vieja no pisa la nueva: se le dice quién y cuándo. */

@@ -52,6 +52,12 @@ class SnkKilkanaSettingsController extends Controller
             'tenant.url' => 'nullable|url:http,https|max:255',
             // Solo hacia delante: `true` sella `launched_at` si no lo estaba, y `false` no hace nada.
             'launched' => 'sometimes|boolean',
+            // Por dónde va el asistente. Solo estas tres claves: lo demás se cuenta de lo que hay.
+            'onboarding' => 'sometimes|array',
+            'onboarding.step' => ['sometimes', 'string', Rule::in(SnkKilkanaSettingModel::ONBOARDING_STEPS)],
+            // La clase de diario: el slug de una categoría de temas, que es catálogo y cambia.
+            'onboarding.kind' => 'sometimes|nullable|string|max:40',
+            'onboarding.declined' => 'sometimes|boolean',
             'lang' => ['sometimes', 'string', Rule::in(SnkKilkanaSettingModel::LANGS)],
             'tz' => 'sometimes|string|timezone:all',
             'search_visible' => 'sometimes|boolean',

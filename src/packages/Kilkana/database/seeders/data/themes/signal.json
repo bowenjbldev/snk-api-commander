@@ -1,10 +1,10 @@
 {
     "slug": "signal",
     "name": "Signal",
-    "tagline": "Diario de tecnología y análisis, con raíl, río de actualidad y rótulos en mono",
-    "description": "Un diario técnico que se lee deprisa: una hoja de 1152 en doce columnas con raíl de cuatro, la cabecera en una sola fila con el nombre a la izquierda y el menú al lado, una apertura que le saca 1,5 veces a la tarjeta y un río de actualidad con la miniatura a la derecha. Los titulares van en una grotesca apretada y los antetítulos, el menú y los rótulos en mono, con un solo acento verde azulado. Cada sección abre con su propia forma, de la columna de minuto a minuto al mosaico.",
+    "tagline": "Para tecnología y análisis: hoja compacta y una lista continua de lo último",
+    "description": "Un diario técnico que se lee deprisa: una hoja de 1152 en doce columnas con raíl de cuatro, la cabecera en una sola fila con el nombre a la izquierda y el menú al lado, una apertura que le saca 1,5 veces a la tarjeta y un río de actualidad con la miniatura a la derecha. Los titulares van en una grotesca apretada y los antetítulos, el menú y los rótulos en mono, con un solo acento verde azulado. Cada sección abre con su propia forma, de la columna de minuto a minuto al mosaico, y la cabecera se elige entre siete y el pie entre seis, de la fila de tinta al papel.",
     "status": "published",
-    "version": "1.0.3",
+    "version": "1.2.1",
     "featured": false,
     "position": 1,
     "popularity": 60,
@@ -142,6 +142,25 @@
                 "radius": "0",
                 "shadow": "none"
             }
+        },
+        "variants": {
+            "masthead": [
+                "base",
+                "paper",
+                "centered",
+                "ticker",
+                "two-tone",
+                "spine",
+                "search"
+            ],
+            "footer": [
+                "base",
+                "paper",
+                "newsletter",
+                "minimal",
+                "sitemap",
+                "two-tone"
+            ]
         },
         "layouts": {
             "front": [

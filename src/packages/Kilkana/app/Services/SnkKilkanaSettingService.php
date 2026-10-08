@@ -3,7 +3,9 @@
 namespace Packages\Kilkana\Services;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
+use Packages\Kilkana\Models\SnkKilkanaLayoutModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
 use Packages\Kilkana\Models\SnkKilkanaPostSlugModel;
 use Packages\Kilkana\Models\SnkKilkanaSettingModel;
@@ -63,10 +65,29 @@ class SnkKilkanaSettingService
         $row = $this->get();
 
         $row->fill($this->columnsFrom($data));
+        if (is_array($data['onboarding'] ?? null)) {
+            // Se mezcla: cada paso manda solo lo suyo y no borra lo que dijo el anterior.
+            $told = collect($data['onboarding'])->only(['step', 'kind', 'declined'])->all();
+            // El paso solo avanza: volver al asistente a corregir algo ya decidido lo reescribe,
+            // pero no lo reabre ni devuelve al periódico a mitad de la puesta en marcha.
+            $order = array_flip(SnkKilkanaSettingModel::ONBOARDING_STEPS);
+            if (($order[$told['step'] ?? ''] ?? -1) < ($order[$row->onboarding['step'] ?? ''] ?? -1)) {
+                unset($told['step']);
+            }
+            $row->onboarding = [...($row->onboarding ?? []), ...$told];
+        }
         // Lanzar es un hecho, no un ajuste: se sella una vez y no se deshace desde aquí. Un
         // periódico que quiera desaparecer de la calle tiene `search_visible`, que es otra cosa.
-        if (($data['launched'] ?? false) === true) {
-            $row->launched_at ??= now();
+        if (($data['launched'] ?? false) === true && $row->launched_at === null) {
+            // La puerta es del periódico y no del panel: sin una pieza publicada y una sección
+            // navegable la calle abriría vacía, y abrir no se deshace.
+            if (! SnkKilkanaPostModel::query()->published()->exists()
+                || ! SnkKilkanaCategoryModel::query()->reachable()->exists()) {
+                throw ValidationException::withMessages([
+                    'launched' => 'The newspaper needs a published post and a live section before it opens.',
+                ]);
+            }
+            $row->launched_at = now();
         }
         $row->save();
 
@@ -100,11 +121,14 @@ class SnkKilkanaSettingService
             SnkKilkanaCategoryModel::query()->whereNotNull('parent_id')->delete();
             SnkKilkanaCategoryModel::query()->delete();
             SnkKilkanaTagModel::query()->delete();
+            // La portada compuesta también: sin ella la lista vuelve a pedir que se componga.
+            SnkKilkanaLayoutModel::query()->delete();
 
             // Desvestido también: elegir tema es el primer paso, y reiniciar es volver a él.
             $row = $this->get();
             $row->forceFill([
                 'launched_at' => null,
+                'onboarding' => null,
                 'theme_id' => null,
                 'theme_spec' => null,
                 'theme_version' => null,
@@ -133,6 +157,7 @@ class SnkKilkanaSettingService
                 'url' => $row->tenant_url,
             ],
             'launched_at' => $row->launched_at?->toIso8601String(),
+            'onboarding' => (object) ($row->onboarding ?? []),
             'lang' => $row->lang,
             'tz' => $row->tz,
             'search_visible' => (bool) $row->search_visible,
