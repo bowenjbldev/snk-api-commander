@@ -92,7 +92,8 @@ class SnkKilkanaDatabaseSeeder extends Seeder
         // renombrar la sección al sembrar, porque el slug es su identidad aquí y renombrarla
         // dejaría a la siembra siguiente intentando recrear una URL que ya está retirada.
         'sucesos-y-tribunales' => ['name' => 'Sucesos', 'retired' => ['sucesos']],
-        'opinion' => ['name' => 'Opinión'],
+        // La única que no se maqueta como una noticia: sin foto de apertura y con la firma delante.
+        'opinion' => ['name' => 'Opinión', 'template' => 'opinion'],
         'medio-ambiente' => ['name' => 'Medio ambiente'],
     ];
 
@@ -1113,6 +1114,21 @@ class SnkKilkanaDatabaseSeeder extends Seeder
             : $own[intdiv($hash, 3) % count($own)];
     }
 
+    /**
+     * La foto de apertura de unas pocas piezas se aparta de su tema, como en una redacción: la
+     * mayoría sale como el tema pone, y de vez en cuando un reportaje abre con una panorámica de
+     * borde a borde o una foto pide un 3:2. Determinista desde el slug, para que resembrar no
+     * cambie cuáles.
+     */
+    private static function presentation(array $post): ?array
+    {
+        return match (crc32($post['slug']) % 9) {
+            0 => ['cover_ratio' => 'wide', 'cover_size' => 'full'],
+            1 => ['cover_ratio' => 'card'],
+            default => null,
+        };
+    }
+
     /** La descripción SEO de una de cada tres piezas: la entradilla, recortada a 158 caracteres en una palabra. */
     private static function seoDescription(array $post): ?string
     {
@@ -1534,6 +1550,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 'parent_id' => $parent ? ($ids[$parent] ?? null) : null,
                 'position' => $position[$branch],
                 'status' => $attrs['status'] ?? SnkKilkanaCategoryStatusEnum::Live,
+                'template' => $attrs['template'] ?? null,
             ])->save();
 
             foreach ($attrs['retired'] ?? [] as $retiredPath) {
@@ -1627,6 +1644,7 @@ class SnkKilkanaDatabaseSeeder extends Seeder
                 'seo_description' => $post['seo_description'] ?? self::seoDescription($post),
                 'og_title' => $post['og_title'] ?? null,
                 'og_description' => $post['og_description'] ?? null,
+                'presentation' => self::presentation($post),
             ];
 
             // Y esto sí se sincroniza: es lo que ata la pieza al resto del juego de datos —su

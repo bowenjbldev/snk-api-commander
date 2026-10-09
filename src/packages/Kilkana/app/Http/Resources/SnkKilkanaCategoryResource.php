@@ -23,6 +23,8 @@ class SnkKilkanaCategoryResource extends JsonResource
             'status' => $this->whenHas('status'),
             'position' => $this->whenHas('position'),
             'parent_id' => $this->whenHas('parent_id'),
+            // La plantilla de pieza que la sección elige; nula, sigue a su madre.
+            'template' => $this->whenHas('template'),
             'noindex' => $this->whenHas('noindex'),
             'updated_at' => $this->whenHas('updated_at'),
 
@@ -35,6 +37,9 @@ class SnkKilkanaCategoryResource extends JsonResource
             // La madre, por lo que se pinta de ella: sale solo si la relación se ha incluido.
             'parent_slug' => $this->whenLoaded('parent', fn () => $this->resource->parent?->slug),
             'parent_name' => $this->whenLoaded('parent', fn () => $this->resource->parent?->name),
+            // Solo donde la madre vino con su plantilla, que es el catálogo del panel: la calle la
+            // carga con tres columnas y no la necesita, porque cada pieza ya trae la suya resuelta.
+            'parent_template' => $this->when($this->resource->parentCarries('template'), fn () => $this->resource->parent?->template),
         ];
     }
 }

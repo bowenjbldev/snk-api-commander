@@ -107,7 +107,7 @@ class SnkKilkanaPostService
     public const FIELDS = [
         'id', 'title', 'excerpt', 'slug', 'status', 'content_tier',
         'publish_at', 'unpublish_at', 'updated_at', 'created_at',
-        'url_date', 'cover_media_id', 'cover_alt', 'cover_caption', 'og_image_id', 'noindex', 'featured',
+        'url_date', 'cover_media_id', 'cover_alt', 'cover_caption', 'presentation', 'og_image_id', 'noindex', 'featured',
         // Las foráneas de las relaciones incluidas. **Sin ellas la relación llega nula**: un
         // `belongsTo` empareja lo cargado con la clave de la fila, y si el recorte se la lleva,
         // Eloquent no tiene con qué emparejar y no avisa. Quien incluye una relación pide también
@@ -653,6 +653,11 @@ class SnkKilkanaPostService
             $columns = collect($revision->payload)
                 ->except(['id', 'created_at', 'updated_at', 'created_by', 'updated_by'])
                 ->all();
+            // La instantánea guarda los atributos crudos, y este llega como texto JSON: sin
+            // decodificarlo, el cast lo volvería a codificar y saldría una cadena.
+            if (is_string($columns['presentation'] ?? null)) {
+                $columns['presentation'] = json_decode($columns['presentation'], true);
+            }
             $post->fill($columns);
             $post->updated_by = $userId;
             $post->save();
@@ -707,6 +712,14 @@ class SnkKilkanaPostService
         }
         if (array_key_exists('body_blocks', $columns)) {
             $columns['body_blocks'] = SnkKilkanaRichText::cleanBlocks($columns['body_blocks']);
+        }
+        if (array_key_exists('presentation', $columns)) {
+            // Solo lo que la pieza elige: una clave nula es «lo que ponga el tema» y no se guarda,
+            // y sin ninguna la columna vuelve a nula.
+            $columns['presentation'] = array_filter(
+                $columns['presentation'] ?? [],
+                fn ($value) => $value !== null,
+            ) ?: null;
         }
 
         return $columns;

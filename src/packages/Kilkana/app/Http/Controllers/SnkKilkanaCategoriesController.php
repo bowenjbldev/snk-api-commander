@@ -5,7 +5,9 @@ namespace Packages\Kilkana\Http\Controllers;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
+use Packages\Kilkana\Enums\SnkKilkanaArticleTemplateEnum;
 use Packages\Kilkana\Enums\SnkKilkanaCategoryStatusEnum;
 use Packages\Kilkana\Http\Resources\SnkKilkanaCategoryResource;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
@@ -20,6 +22,9 @@ class SnkKilkanaCategoriesController extends CoreBaseApiController
     {
         foreach (['validationRulesStore', 'validationRulesUpdate'] as $property) {
             $this->{$property}['status'] = 'sometimes|'.SnkKilkanaCategoryStatusEnum::rule();
+            // La plantilla de pieza de la sección. Nula es «no elige»: sigue a su madre o, sin
+            // ella, a la de noticia.
+            $this->{$property}['template'] = 'sometimes|nullable|'.SnkKilkanaArticleTemplateEnum::rule();
         }
     }
 
@@ -27,7 +32,7 @@ class SnkKilkanaCategoriesController extends CoreBaseApiController
 
     protected ?string $resourceClass = SnkKilkanaCategoryResource::class;
 
-    protected array $allowedFields = ['id', 'name', 'slug', 'status', 'position', 'parent_id', 'noindex', 'updated_at'];
+    protected array $allowedFields = ['id', 'name', 'slug', 'status', 'position', 'parent_id', 'template', 'noindex', 'updated_at'];
 
     /**
      * Cada sección sale con cuántas piezas archiva, cuándo publicó la última y qué URLs dejó
@@ -95,6 +100,50 @@ class SnkKilkanaCategoriesController extends CoreBaseApiController
         'noindex' => 'sometimes|boolean',
         'position' => 'nullable|integer|min:0|max:65535',
     ];
+
+    /**
+     * Una sección que no dice su puesto **nace la última entre sus hermanas**. La columna nace a
+     * cero, y a cero ya está la primera del menú: sin esto la nueva se cuela la segunda, por
+     * delante de todas las que alguien ordenó. Quien manda el puesto —el asistente, la siembra—
+     * lo conserva.
+     */
+    public function store(Request $request): JsonResponse
+    {
+        if (! $request->has('position')) {
+            $last = SnkKilkanaCategoryModel::query()->where('parent_id', $request->input('parent_id'))->max('position');
+            $request->merge(['position' => $last === null ? 0 : $last + 1]);
+        }
+
+        return parent::store($request);
+    }
+
+    /**
+     * **Cambiar la plantilla de pieza de una sección mueve su archivo entero**, porque las piezas
+     * la siguen en vivo. Con `keep_posts` no: las que ya existen se quedan con la que llevaban,
+     * fijada en cada una, y solo las que se escriban desde entonces llevan la nueva.
+     *
+     * Las dos escrituras van en una transacción: una sección cambiada con el archivo a medio
+     * fijar no es ninguno de los dos resultados que se ofrecen.
+     */
+    public function update(Request $request, $id = null): JsonResponse
+    {
+        $section = $request->boolean('keep_posts') ? SnkKilkanaCategoryModel::query()->find($id) : null;
+        if ($section === null) {
+            return parent::update($request, $id);
+        }
+
+        $news = SnkKilkanaArticleTemplateEnum::News->value;
+        $before = $section->inheritedTemplate() ?? $news;
+
+        return $section->getConnection()->transaction(function () use ($request, $id, $section, $before, $news) {
+            $response = parent::update($request, $id);
+            if ($response->isSuccessful() && ($section->refresh()->inheritedTemplate() ?? $news) !== $before) {
+                $section->pinPosts($before);
+            }
+
+            return $response;
+        });
+    }
 
     /**
      * Borrar dice QUÉ lo impide, en vez de reventar con el SQL a la vista.

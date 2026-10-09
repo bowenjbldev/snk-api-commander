@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaPostsController;
+use Packages\Kilkana\Http\Resources\SnkKilkanaPostResource;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaMediaModel;
@@ -96,6 +97,70 @@ class KilkanaPostCoverTest extends TestCase
 
         $this->assertSame(200, $save(['cover_alt' => null, 'cover_caption' => null])->getStatusCode());
         $this->assertNull($post->fresh()->cover_alt, 'Vacío vuelve a heredar.');
+    }
+
+    /**
+     * La forma y el tamaño de la foto de apertura se guardan solo donde la pieza se aparta de su
+     * tema: una clave nula no se apunta, y sin ninguna la columna vuelve a nula.
+     */
+    public function test_the_cover_shape_is_kept_only_where_the_piece_departs_from_its_theme(): void
+    {
+        $marta = CoreUserModel::create(['name' => 'Marta Beneyto', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
+        $marta->assignRole('editor_in_chief');
+        $this->actingAs($marta, 'sanctum');
+        $section = SnkKilkanaCategoryModel::create(['slug' => 'local', 'name' => 'Local', 'status' => 'live', 'position' => 0]);
+        $byline = SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);
+        $post = SnkKilkanaPostModel::create(['title' => 'Plan', 'slug' => 'plan', 'category_id' => $section->id, 'author_id' => $byline->id, 'status' => 'draft', 'body_blocks' => [], 'created_by' => $marta->id, 'updated_by' => $marta->id]);
+        $save = fn (array $body) => app(SnkKilkanaPostsController::class)->update(Request::create('/', 'PUT', $body), $post->id);
+
+        $this->assertSame(200, $save(['presentation' => ['cover_ratio' => 'wide', 'cover_size' => 'full']])->getStatusCode());
+        $this->assertSame(['cover_ratio' => 'wide', 'cover_size' => 'full'], $post->fresh()->presentation);
+
+        $this->assertSame(200, $save(['presentation' => ['cover_ratio' => 'portrait', 'cover_size' => null]])->getStatusCode());
+        $this->assertSame(['cover_ratio' => 'portrait'], $post->fresh()->presentation, 'Lo nulo no se apunta.');
+
+        $this->assertSame(422, $save(['presentation' => ['cover_ratio' => 'cinemascope']])->getStatusCode());
+        $this->assertSame(422, $save(['presentation' => ['cover_size' => 'huge']])->getStatusCode());
+
+        $this->assertSame(200, $save(['presentation' => ['cover_ratio' => null, 'cover_size' => null]])->getStatusCode());
+        $this->assertNull($post->fresh()->presentation, 'Sin nada elegido, la pieza vuelve a seguir a su tema.');
+
+        // Guardar otra cosa no toca lo elegido.
+        $save(['presentation' => ['cover_ratio' => 'card']]);
+        $this->assertSame(200, $save(['title' => 'Plan de barrios'])->getStatusCode());
+        $this->assertSame(['cover_ratio' => 'card'], $post->fresh()->presentation);
+    }
+
+    /**
+     * La plantilla de una pieza: la que fija ella o, si no fija ninguna, la de su sección —la
+     * suya o la de su madre—. La ficha trae las dos y quien pinta las combina.
+     */
+    public function test_a_piece_carries_its_section_template_and_can_fix_its_own(): void
+    {
+        $marta = CoreUserModel::create(['name' => 'Marta Beneyto', 'email' => 'marta@eldiario.example', 'password' => 'secret1234']);
+        $marta->assignRole('editor_in_chief');
+        $this->actingAs($marta, 'sanctum');
+        $opinion = SnkKilkanaCategoryModel::create(['slug' => 'opinion', 'name' => 'Opinión', 'status' => 'live', 'position' => 0, 'template' => 'opinion']);
+        $columns = SnkKilkanaCategoryModel::create(['slug' => 'tribunas', 'name' => 'Tribunas', 'status' => 'live', 'position' => 0, 'parent_id' => $opinion->id]);
+        $byline = SnkKilkanaAuthorModel::create(['slug' => 'redaccion', 'alias' => 'Redacción']);
+        $post = SnkKilkanaPostModel::create(['title' => 'Plan', 'slug' => 'plan', 'category_id' => $columns->id, 'author_id' => $byline->id, 'status' => 'draft', 'body_blocks' => [], 'created_by' => $marta->id, 'updated_by' => $marta->id]);
+        $save = fn (array $body) => app(SnkKilkanaPostsController::class)->update(Request::create('/', 'PUT', $body), $post->id);
+        $card = fn () => (new SnkKilkanaPostResource($post->fresh()->load('category')))->resolve();
+
+        $this->assertSame('opinion', $card()['section_template'], 'La hija sin plantilla lleva la de su madre.');
+
+        $columns->update(['template' => 'feature']);
+        $this->assertSame('feature', $card()['section_template']);
+
+        $this->assertSame(200, $save(['presentation' => ['template' => 'news']])->getStatusCode());
+        $this->assertSame(['template' => 'news'], $post->fresh()->presentation, 'La pieza fija la suya.');
+        $this->assertSame('feature', $card()['section_template'], 'Y la de la sección sigue diciéndose aparte.');
+
+        $this->assertSame(422, $save(['presentation' => ['template' => 'cinemascope']])->getStatusCode());
+
+        // Un listado trae la sección recortada: sin su plantilla cargada, la pieza no la dice.
+        $trimmed = $post->fresh()->load('category:id,name,slug');
+        $this->assertArrayNotHasKey('section_template', (new SnkKilkanaPostResource($trimmed))->resolve());
     }
 
     /**

@@ -35,6 +35,9 @@ class SnkKilkanaPostResource extends JsonResource
             // herencia la resuelve quien pinta: aquí va lo guardado.
             'cover_alt' => $this->whenHas('cover_alt'),
             'cover_caption' => $this->whenHas('cover_caption'),
+            // Lo que la pieza decide de su página: hoy, la forma y el tamaño de la foto de
+            // apertura. Nulo sigue al tema, y esa herencia también la resuelve quien pinta.
+            'presentation' => $this->whenHas('presentation'),
             // El alias del `withSum` de audiencia. Solo está si la consulta lo pidió, y por eso
             // se declara igual que una columna: para el Resource no hay diferencia.
             'views_total' => $this->whenHas('views_total'),
@@ -61,6 +64,14 @@ class SnkKilkanaPostResource extends JsonResource
             'url_path' => $this->whenHas('url_date', fn () => $this->resource->url_path),
 
             'category' => new SnkKilkanaCategoryResource($this->whenLoaded('category')),
+            // La plantilla de pieza que pone su sección: la suya o, si no elige, la de la madre.
+            // Solo con la sección cargada entera, que es la ficha de una pieza: un listado la
+            // trae recortada y no la necesita. Quien pinta la combina con `presentation.template`.
+            'section_template' => $this->when(
+                $this->resource->relationLoaded('category')
+                    && array_key_exists('template', $this->resource->category?->getAttributes() ?? []),
+                fn () => $this->resource->category->inheritedTemplate(),
+            ),
             'author' => new SnkKilkanaAuthorResource($this->whenLoaded('author')),
             'tags' => SnkKilkanaTagResource::collection($this->whenLoaded('tags')),
             'cover' => new SnkKilkanaMediaResource($this->whenLoaded('coverMedia')),

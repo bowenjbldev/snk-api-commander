@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Packages\Core\Http\Controllers\CoreBaseApiController;
+use Packages\Kilkana\Enums\SnkKilkanaArticleTemplateEnum;
 use Packages\Kilkana\Enums\SnkKilkanaBlockTypeEnum;
 use Packages\Kilkana\Enums\SnkKilkanaContentTierEnum;
 use Packages\Kilkana\Enums\SnkKilkanaPostStatusEnum;
@@ -152,6 +153,13 @@ class SnkKilkanaPostsController extends CoreBaseApiController
             // Vacíos heredan los de la ficha de la mediateca.
             $this->{$property}['cover_alt'] = 'nullable|string|max:500';
             $this->{$property}['cover_caption'] = 'nullable|string|max:500';
+            // Cómo sale la pieza donde se aparta de su tema. **Cada clave con su regla**:
+            // `validated()` tira las hermanas que no la tienen, y una clave nueva que se olvide
+            // aquí se pierde al guardar sin que nada falle.
+            $this->{$property}['presentation'] = 'sometimes|nullable|array';
+            $this->{$property}['presentation.template'] = 'sometimes|nullable|'.SnkKilkanaArticleTemplateEnum::rule();
+            $this->{$property}['presentation.cover_ratio'] = 'sometimes|nullable|string|in:auto,wide,hero,card,thumb,square,portrait';
+            $this->{$property}['presentation.cover_size'] = 'sometimes|nullable|string|in:column,full';
             $this->{$property}['body_blocks.*.config.alt'] = 'sometimes|nullable|string|max:500';
             $this->{$property}['body_blocks.*.config.caption'] = 'sometimes|nullable|string|max:500';
         }

@@ -9,6 +9,7 @@ use Illuminate\Validation\ValidationException;
 use Packages\Core\Models\CoreUserModel;
 use Packages\Kilkana\Enums\SnkKilkanaCategoryStatusEnum;
 use Packages\Kilkana\Http\Controllers\SnkKilkanaCategoriesController;
+use Packages\Kilkana\Http\Resources\SnkKilkanaCategoryResource;
 use Packages\Kilkana\Models\SnkKilkanaAuthorModel;
 use Packages\Kilkana\Models\SnkKilkanaCategoryModel;
 use Packages\Kilkana\Models\SnkKilkanaPostModel;
@@ -376,6 +377,118 @@ class KilkanaCategoriesTest extends TestCase
             }
         }
         $this->assertSame(0, SnkKilkanaCategoryModel::query()->count());
+    }
+
+    /**
+     * Una sección elige la plantilla de sus piezas, del catálogo y de ninguna otra parte, y el
+     * catálogo del panel dice además la de su madre: es lo que una hija que no elige hereda.
+     */
+    public function test_a_section_keeps_its_article_template_and_tells_the_one_it_inherits(): void
+    {
+        $this->actingWith(role: 'editor_in_chief');
+        $sections = app(SnkKilkanaCategoriesController::class);
+        $create = fn (array $body) => $sections->store(Request::create('/', 'POST', $body));
+        $update = fn (int $id, array $body) => $sections->update(Request::create('/', 'PUT', $body), $id);
+
+        $opinion = $create(['name' => 'Opinión', 'template' => 'opinion']);
+        $this->assertSame(201, $opinion->getStatusCode());
+        $id = $opinion->getData(true)['id'];
+        $this->assertSame('opinion', SnkKilkanaCategoryModel::find($id)->template);
+
+        $this->assertSame(422, $create(['name' => 'Rara', 'template' => 'cinemascope'])->getStatusCode());
+        $this->assertSame(422, $update($id, ['template' => 'cinemascope'])->getStatusCode());
+
+        $child = SnkKilkanaCategoryModel::create(['name' => 'Tribunas', 'slug' => 'tribunas', 'status' => 'draft', 'position' => 0, 'parent_id' => $id]);
+        $this->assertNull($child->template);
+        $this->assertSame('opinion', $child->inheritedTemplate(), 'La hija que no elige lleva la de su madre.');
+
+        $row = collect(SnkKilkanaCategoryResource::collection(SnkKilkanaCategoryModel::query()->asCatalogue()->get())->resolve())
+            ->firstWhere('slug', 'tribunas');
+        $this->assertNull($row['template']);
+        $this->assertSame('opinion', $row['parent_template']);
+
+        $this->assertSame(200, $update($child->id, ['template' => 'feature'])->getStatusCode());
+        $this->assertSame('feature', $child->fresh()->inheritedTemplate(), 'Al elegir la suya, deja de seguirla.');
+
+        $this->assertSame(200, $update($id, ['template' => null])->getStatusCode());
+        $this->assertNull(SnkKilkanaCategoryModel::find($id)->inheritedTemplate(), 'Sin elegir y sin madre, la de noticia.');
+    }
+
+    /**
+     * Cambiar la plantilla de una sección mueve su archivo, que la sigue en vivo. Con
+     * `keep_posts` el archivo se queda como salió: cada pieza que la seguía —también las de una
+     * hija que no elige— gana fijada la de antes, y la que ya tenía la suya no se toca.
+     */
+    public function test_changing_a_section_template_can_leave_its_archive_as_it_was(): void
+    {
+        $this->actingWith(role: 'editor_in_chief');
+        $opinion = SnkKilkanaCategoryModel::create(['name' => 'Opinión', 'slug' => 'opinion', 'status' => 'live', 'position' => 0, 'template' => 'opinion']);
+        $columns = SnkKilkanaCategoryModel::create(['name' => 'Tribunas', 'slug' => 'tribunas', 'status' => 'live', 'position' => 0, 'parent_id' => $opinion->id]);
+        $local = $this->category('Local', 'local', 'live', 1);
+        $byline = $this->author('Ada Prat');
+        $plain = $this->makePost('Sin nada', $opinion, $byline, 'draft');
+        $framed = $this->makePost('Con su foto', $opinion, $byline, 'draft');
+        $framed->update(['presentation' => ['cover_ratio' => 'wide']]);
+        $fixed = $this->makePost('Con la suya', $opinion, $byline, 'draft');
+        $fixed->update(['presentation' => ['template' => 'feature']]);
+        $child = $this->makePost('En la hija', $columns, $byline, 'draft');
+        $other = $this->makePost('En otra', $local, $byline, 'draft');
+        $stamp = $plain->fresh()->updated_at;
+        $update = fn (array $body) => app(SnkKilkanaCategoriesController::class)->update(Request::create('/', 'PUT', $body), $opinion->id);
+        $look = fn (SnkKilkanaPostModel $post) => $post->fresh()->presentation;
+
+        // Sin pedirlo, nada se fija: el archivo sigue a la sección.
+        $this->assertSame(200, $update(['template' => 'analysis'])->getStatusCode());
+        $this->assertNull($look($plain));
+
+        $this->assertSame(200, $update(['template' => 'news', 'keep_posts' => true])->getStatusCode());
+        $this->assertSame('news', $opinion->fresh()->template);
+        $this->assertSame(['template' => 'analysis'], $look($plain));
+        $this->assertEqualsCanonicalizing(['template' => 'analysis', 'cover_ratio' => 'wide'], $look($framed));
+        $this->assertSame(['template' => 'feature'], $look($fixed), 'La que tenía la suya no se toca.');
+        $this->assertSame(['template' => 'analysis'], $look($child), 'La hija que no elige seguía a su madre.');
+        $this->assertNull($look($other));
+        $this->assertEquals($stamp, $plain->fresh()->updated_at, 'No es una edición de la pieza.');
+
+        // Un cambio que la API rechaza no fija nada, y uno que no cambia la maqueta tampoco.
+        $late = $this->makePost('La de después', $opinion, $byline, 'draft');
+        $this->assertSame(422, $update(['template' => 'cinemascope', 'keep_posts' => true])->getStatusCode());
+        $this->assertSame(200, $update(['template' => null, 'keep_posts' => true])->getStatusCode());
+        $this->assertNull($look($late), 'Sin elegir es noticia: de noticia a noticia no hay nada que conservar.');
+    }
+
+    /**
+     * La calle carga la madre con tres columnas, sin su plantilla. Con una subsección, leerla ahí
+     * tumbaba la lista entera —y con ella la portada del panel y la del lector—.
+     */
+    public function test_the_street_lists_a_subsection_without_asking_for_its_parents_template(): void
+    {
+        $features = SnkKilkanaCategoryModel::create(['name' => 'Reportajes', 'slug' => 'reportajes', 'status' => 'live', 'position' => 0, 'template' => 'feature']);
+        $child = SnkKilkanaCategoryModel::create(['name' => 'Entrevistas', 'slug' => 'entrevistas', 'status' => 'live', 'position' => 0, 'parent_id' => $features->id]);
+
+        $rows = collect(SnkKilkanaCategoryResource::collection($this->street->categories())->resolve());
+        $row = $rows->firstWhere('slug', 'entrevistas');
+
+        $this->assertSame('reportajes', $row['parent_slug']);
+        $this->assertArrayNotHasKey('parent_template', $row);
+        $this->assertArrayNotHasKey('parent_template', (new SnkKilkanaCategoryResource($this->street->category('entrevistas')))->resolve());
+        // Y con la madre a medias, la hija sigue sabiendo cuál hereda: lo pregunta.
+        $half = SnkKilkanaCategoryModel::query()->with('parent:id,slug,name')->find($child->id);
+        $this->assertSame('feature', $half->inheritedTemplate());
+    }
+
+    /** Sin puesto, una sección nueva va detrás de sus hermanas; con puesto, donde se dice. */
+    public function test_a_new_section_is_born_last_among_its_siblings(): void
+    {
+        $this->actingWith(role: 'editor_in_chief');
+        $local = $this->category('Local', 'local', 'live', 0);
+        $this->category('Deportes', 'deportes', 'live', 1);
+        $create = fn (array $body) => app(SnkKilkanaCategoriesController::class)->store(Request::create('/', 'POST', $body))->getData(true);
+
+        $this->assertSame(2, $create(['name' => 'Reportajes'])['position']);
+        $this->assertSame(0, $create(['name' => 'Barrios', 'parent_id' => $local->id])['position'], 'Cada madre numera a las suyas.');
+        $this->assertSame(1, $create(['name' => 'Pedanías', 'parent_id' => $local->id])['position']);
+        $this->assertSame(0, $create(['name' => 'Portada del día', 'position' => 0])['position'], 'Quien lo dice, lo conserva.');
     }
 
     /** Un slug dado a mano tiene que tener forma de slug: con punto, barra o mayúscula no casa con ninguna ruta. */

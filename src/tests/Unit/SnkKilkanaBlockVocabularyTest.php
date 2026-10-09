@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use Packages\Kilkana\Database\Seeders\SnkKilkanaDemoBodyFactory;
+use Packages\Kilkana\Enums\SnkKilkanaArticleTemplateEnum;
 use Packages\Kilkana\Enums\SnkKilkanaBlockTypeEnum;
 use Packages\Kilkana\Enums\SnkKilkanaPostStatusEnum;
 use PHPUnit\Framework\TestCase;
@@ -35,6 +36,27 @@ class SnkKilkanaBlockVocabularyTest extends TestCase
             'factbox',
             'related',
         ], SnkKilkanaBlockTypeEnum::values());
+    }
+
+    /**
+     * Las plantillas de pieza, con la misma regla: la gemela es el catálogo `ARTICLE_TEMPLATES`
+     * de `src/lib/data/article.ts`, y su prueba, `article.test.ts`. Una plantilla que este lado
+     * no conoce no se puede guardar en una sección ni en una pieza.
+     */
+    public function test_the_ten_article_templates_are_the_ones_the_sheet_draws(): void
+    {
+        $this->assertSame([
+            'news',
+            'feature',
+            'opinion',
+            'interview',
+            'photo-story',
+            'analysis',
+            'review',
+            'guide',
+            'match-report',
+            'preview',
+        ], SnkKilkanaArticleTemplateEnum::values());
     }
 
     public function test_publish_and_schedule_are_the_statuses_that_put_a_post_on_the_street(): void

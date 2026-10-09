@@ -72,6 +72,7 @@ class SnkKilkanaPostModel extends Model
             'status' => SnkKilkanaPostStatusEnum::class,
             'featured' => 'boolean',
             'noindex' => 'boolean',
+            'presentation' => 'array',
             'content_tier' => SnkKilkanaContentTierEnum::class,
             'publish_at' => 'datetime',
             'unpublish_at' => 'datetime',

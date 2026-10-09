@@ -85,7 +85,7 @@ class SnkKilkanaCategoryModel extends Model
             ->with(['retiredSlugs' => fn ($q) => $q->orderByDesc('created_at')])
             // La madre, para `parent_slug` y `parent_name`: el panel dibuja las secciones en
             // árbol, y sin ella una hija se lee como una sección de primer nivel.
-            ->with('parent:id,name,slug')
+            ->with('parent:id,name,slug,template')
             ->orderBy('position')
             ->orderBy('id');
     }
@@ -129,6 +129,65 @@ class SnkKilkanaCategoryModel extends Model
     public function parent(): BelongsTo
     {
         return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    /**
+     * Si la madre está cargada **y trae esa columna**. La calle la carga con tres —`id`, `slug`,
+     * `name`— y leerle una cuarta revienta fuera de producción: con preguntar si la relación está
+     * cargada no basta, hay que preguntar con qué.
+     */
+    public function parentCarries(string $column): bool
+    {
+        return $this->relationLoaded('parent')
+            && ($this->parent === null || array_key_exists($column, $this->parent->getAttributes()));
+    }
+
+    /**
+     * La plantilla de pieza que llevan sus piezas: la suya o, si no elige, la de su madre.
+     *
+     * Con la madre ya cargada no pregunta nada; si no, una consulta y no una carga perezosa,
+     * que fuera de producción revienta. Nula es que ninguna de las dos elige: la de noticia.
+     *
+     * ponytail: esa consulta es una por fila si un listado trae la sección entera de piezas en
+     * subsecciones que no eligen. Hoy solo la ficha de una pieza la trae así; el listado que la
+     * necesite carga `category.parent`, como hace la calle.
+     */
+    public function inheritedTemplate(): ?string
+    {
+        if ($this->template !== null || $this->parent_id === null) {
+            return $this->template;
+        }
+
+        return $this->parentCarries('template')
+            ? $this->parent?->template
+            : self::query()->whereKey($this->parent_id)->value('template');
+    }
+
+    /**
+     * Fija `$template` en las piezas que hoy siguen a la sección: las suyas y las de las hijas
+     * que no eligen, siempre que la pieza no tenga ya la suya. Devuelve cuántas.
+     *
+     * Es lo que hace «solo las nuevas» al cambiar la plantilla de una sección: el archivo se queda
+     * como salió y lo que se escriba desde entonces lleva la nueva. Va por debajo del modelo a
+     * propósito: no es una edición de la pieza, así que ni mueve su `updated_at` ni deja revisión.
+     */
+    public function pinPosts(string $template): int
+    {
+        $sections = self::query()->where('parent_id', $this->id)->whereNull('template')->pluck('id')->push($this->id);
+        $following = fn () => SnkKilkanaPostModel::withTrashed()
+            ->whereIn('category_id', $sections)
+            ->whereNull('presentation->template')
+            ->toBase();
+
+        // Las que guardan algo de su foto conservan eso y ganan la plantilla. Una a una, que son
+        // las menos; el resto, que no guarda nada, de una vez.
+        $own = $following()->whereNotNull('presentation')->get(['id', 'presentation']);
+        foreach ($own as $post) {
+            $look = ['template' => $template] + (json_decode((string) $post->presentation, true) ?: []);
+            SnkKilkanaPostModel::withTrashed()->whereKey($post->id)->toBase()->update(['presentation' => json_encode($look)]);
+        }
+
+        return $own->count() + $following()->whereNull('presentation')->update(['presentation' => json_encode(['template' => $template])]);
     }
 
     /** Las URLs que esta sección ha dejado atrás; el trait las mantiene. */

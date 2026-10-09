@@ -69,7 +69,7 @@ class SnkKilkanaPublicService
         'id', 'title', 'excerpt', 'slug', 'status', 'content_tier',
         'publish_at', 'unpublish_at', 'updated_at', 'url_date',
         'noindex', 'seo_title', 'seo_description', 'og_title', 'og_description', 'og_image_id',
-        'category_id', 'author_id', 'cover_media_id', 'cover_alt', 'cover_caption',
+        'category_id', 'author_id', 'cover_media_id', 'cover_alt', 'cover_caption', 'presentation',
         'categories.id', 'categories.name', 'categories.slug', 'categories.parent_id',
         'authors.id', 'authors.alias', 'authors.slug', 'authors.noindex', 'authors.user_id',
         'authors.avatar_media_id',
@@ -556,7 +556,8 @@ class SnkKilkanaPublicService
     private function article(Builder $query): ?SnkKilkanaPostModel
     {
         $post = $query
-            ->with([self::AUTHOR_PUBLIC, 'ogImage', 'category', 'tags', 'coverMedia'])
+            // La madre de la sección, por la plantilla de pieza que una hija hereda de ella.
+            ->with([self::AUTHOR_PUBLIC, 'ogImage', 'category', 'category.parent:id,name,slug,template', 'tags', 'coverMedia'])
             ->withSum('views as views_total', 'engaged')
             // Los aprobados, con el alias definitivo: es lo que la calle puede ver.
             ->withCount(['comments as comments_count' => fn ($c) => $c->approved()])
